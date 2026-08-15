@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>정산어택 · 화면 설계</title>
+<style>
+  :root{
+    --cyan-600:#0891B2; --cyan-500:#06B6D4; --cyan-400:#22D3EE;
+    --cyan-100:#CFF7FD; --cyan-50:#ECFDFF;
+    --ink:#0B2B33; --ink-2:#3F6672; --ink-3:#7EA2AC;
+    --line:#DCEEF3; --white:#fff;
+    --warn:#F97362;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    background:linear-gradient(160deg,#E6FAFF 0%,#F4FEFF 40%,#EAF9FD 100%);
+    color:var(--ink); padding:48px 28px 80px; -webkit-font-smoothing:antialiased;
+  }
+  .head{max-width:1360px;margin:0 auto 40px;}
+  .brand{font-size:44px;font-weight:900;letter-spacing:-1.5px;
+    background:linear-gradient(96deg,var(--cyan-600),var(--cyan-400));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .sub{color:var(--ink-2);font-size:15px;margin-top:8px;line-height:1.65;}
+  .palette{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;}
+  .sw{width:60px;height:44px;border-radius:11px;display:flex;align-items:flex-end;justify-content:center;
+      font-size:9px;font-weight:700;padding-bottom:4px;color:#fff;box-shadow:0 2px 8px rgba(8,145,178,.16);}
+
+  .sectitle{max-width:1360px;margin:44px auto 18px;font-size:19px;font-weight:800;
+    display:flex;align-items:center;gap:10px;}
+  .sectitle span{font-size:12px;font-weight:700;color:var(--cyan-600);background:var(--cyan-100);
+    padding:4px 11px;border-radius:99px;}
+
+  .row{max-width:1360px;margin:0 auto;display:flex;gap:26px;flex-wrap:wrap;}
+  .col{width:308px;}
+  .cap{font-size:12.5px;font-weight:800;color:var(--cyan-600);margin-bottom:9px;}
+  .capd{font-size:11.5px;color:var(--ink-3);font-weight:500;margin-left:6px;}
+
+  .phone{background:var(--white);border-radius:30px;padding:16px 15px 20px;
+    box-shadow:0 14px 34px rgba(8,60,75,.13),0 0 0 1px var(--line);min-height:566px;
+    display:flex;flex-direction:column;}
+  .bar{display:flex;align-items:center;gap:9px;padding:4px 4px 14px;}
+  .bar b{font-size:16.5px;font-weight:800;letter-spacing:-.4px;}
+  .back{color:var(--ink-3);font-size:17px;font-weight:700;}
+  .step{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--cyan-600);
+    background:var(--cyan-50);padding:4px 9px;border-radius:99px;}
+
+  .lab{font-size:11.5px;font-weight:700;color:var(--ink-2);margin:14px 2px 7px;}
+  .inp{border:1.5px solid var(--line);border-radius:13px;padding:12px 13px;font-size:13.5px;
+    color:var(--ink);background:#FBFEFF;}
+  .inp.ph{color:var(--ink-3);}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;}
+  .chip{background:var(--cyan-50);color:var(--cyan-600);border:1px solid var(--cyan-100);
+    border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:700;display:flex;gap:6px;align-items:center;}
+  .chip i{font-style:normal;color:var(--ink-3);font-size:12px;}
+
+  .card{border:1.5px solid var(--line);border-radius:16px;padding:13px;margin-bottom:10px;background:#FBFEFF;}
+  .card .t{font-size:13.5px;font-weight:800;margin-bottom:9px;display:flex;align-items:center;gap:7px;}
+  .kv{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:var(--ink-2);}
+  .kv b{color:var(--ink);font-weight:700;}
+  .addbtn{border:1.5px dashed var(--cyan-400);color:var(--cyan-600);border-radius:14px;
+    padding:12px;text-align:center;font-size:13px;font-weight:800;background:var(--cyan-50);}
+
+  .prog{background:var(--cyan-50);border-radius:16px;padding:14px;margin-bottom:12px;}
+  .prog .n{font-size:22px;font-weight:900;color:var(--cyan-600);letter-spacing:-.5px;}
+  .prog .n small{font-size:13px;color:var(--ink-3);font-weight:700;}
+  .track{height:7px;background:#D6F2F9;border-radius:99px;margin-top:9px;overflow:hidden;}
+  .fill{height:100%;width:60%;background:linear-gradient(90deg,var(--cyan-500),var(--cyan-400));border-radius:99px;}
+
+  .prow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);}
+  .av{width:32px;height:32px;border-radius:11px;background:var(--cyan-100);color:var(--cyan-600);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12.5px;flex:0 0 auto;}
+  .av.off{background:#EEF4F6;color:var(--ink-3);}
+  .pn{font-size:13.5px;font-weight:700;}
+  .ps{font-size:11px;color:var(--ink-3);margin-top:2px;}
+  .tag{margin-left:auto;font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:99px;}
+  .tag.ok{background:var(--cyan-50);color:var(--cyan-600);}
+  .tag.no{background:#FFF1EF;color:var(--warn);}
+
+  .amt{margin-left:auto;font-size:13.5px;font-weight:800;}
+
+  .cta{margin-top:auto;background:linear-gradient(96deg,var(--cyan-600),var(--cyan-500));color:#fff;
+    border-radius:15px;padding:14px;text-align:center;font-size:14.5px;font-weight:800;
+    box-shadow:0 7px 18px rgba(6,182,212,.3);}
+  .cta2{margin-top:9px;border:1.5px solid var(--line);color:var(--ink-2);border-radius:15px;
+    padding:12px;text-align:center;font-size:13px;font-weight:700;}
+
+  .tf{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:9px 11px;
+    background:var(--cyan-50);border-radius:12px;margin-bottom:7px;}
+  .tf b{font-weight:800;}
+  .arw{color:var(--cyan-500);font-weight:900;}
+
+  .web{background:var(--white);border-radius:30px;padding:16px 15px 20px;min-height:566px;
+    box-shadow:0 14px 34px rgba(8,60,75,.13),0 0 0 2px var(--cyan-400);display:flex;flex-direction:column;}
+  .url{background:#EFF8FA;border-radius:99px;padding:7px 13px;font-size:10.5px;color:var(--ink-3);
+    margin-bottom:13px;font-family:ui-monospace,monospace;}
+
+  .tog{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1.5px solid var(--line);
+    border-radius:13px;margin-bottom:8px;background:#FBFEFF;}
+  .tog.on{border-color:var(--cyan-400);background:var(--cyan-50);}
+  .tog .tl{font-size:13px;font-weight:700;}
+  .sw2{margin-left:auto;width:40px;height:23px;border-radius:99px;background:#DEE9ED;position:relative;flex:0 0 auto;}
+  .sw2.on{background:var(--cyan-500);}
+  .sw2::after{content:"";position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.2);}
+  .sw2.on::after{left:20px;}
+  .sub2{padding-left:16px;}
+
+  .big{text-align:center;padding:22px 0 18px;}
+  .big .l{font-size:12.5px;color:var(--ink-2);font-weight:700;}
+  .big .v{font-size:40px;font-weight:900;letter-spacing:-2px;color:var(--cyan-600);margin-top:5px;}
+
+  .why{border:2px solid var(--cyan-400);border-radius:17px;padding:14px;background:var(--cyan-50);margin-bottom:12px;}
+  .why .wt{font-size:12px;font-weight:800;color:var(--cyan-600);margin-bottom:10px;}
+  .wrow{display:flex;align-items:baseline;gap:8px;font-size:12.5px;padding:6px 0;border-bottom:1px dashed #B9E9F3;}
+  .wrow:last-child{border:0;}
+  .wrow .rl{font-weight:800;flex:0 0 34px;}
+  .wrow .rd{color:var(--ink-2);}
+  .wrow .rv{margin-left:auto;font-weight:800;}
+  .muted{color:var(--ink-3);}
+
+  .note{max-width:1360px;margin:36px auto 0;background:#fff;border-radius:18px;padding:22px 24px;
+    box-shadow:0 0 0 1px var(--line);font-size:13.5px;line-height:1.85;color:var(--ink-2);}
+  .note b{color:var(--ink);}
+  .note h4{font-size:14.5px;color:var(--ink);margin-bottom:8px;}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <div class="brand">정산어택</div>
+  <div class="sub" style="background:#FFF1EF;border:2px solid var(--warn);border-radius:14px;padding:14px 16px;color:#8A2A1E;">
+    <b style="font-size:15px">⚠ 이 목업은 SPEC v3보다 앞선 버전입니다. 화면의 <u>톤과 정보 밀도</u> 참고용으로만 쓰세요.</b><br>
+    <b>화면 목록의 기준은 <code>docs/SPEC.md</code> §8입니다.</b> 이 목업에는 다음이 반영돼 있지 않습니다 —
+    참여자 로그인(여기엔 "로그인 없음"으로 표기됨), URL <code>/s/</code>→<code>/g/</code>, "정산"→"모임"·"총무"→"주최자" 용어,
+    확정 미리보기(H3-b), 입금 상태(§5-b), 재정산 차액·환불(§5-c), 면제자, 술병 입력, 기타 항목,
+    모임 날짜, 주최자 계좌, 링크 재발급, §6 고정 안내 문구.
+  </div>
+  <div class="sub">
+    표시된 숫자는 <b>CALC_RULES.md의 T5 케이스</b>를 실제 계산한 값입니다. 목업과 명세가 같은 숫자를 씁니다.
+  </div>
+  <div class="palette">
+    <div class="sw" style="background:#0891B2">0891B2</div>
+    <div class="sw" style="background:#06B6D4">06B6D4</div>
+    <div class="sw" style="background:#22D3EE">22D3EE</div>
+    <div class="sw" style="background:#CFF7FD;color:#0891B2">CFF7FD</div>
+    <div class="sw" style="background:#ECFDFF;color:#0891B2">ECFDFF</div>
+    <div class="sw" style="background:#0B2B33">0B2B33</div>
+  </div>
+</div>
+
+<div class="sectitle">총무 앱 <span>Android 우선 · Compose Multiplatform</span></div>
+<div class="row">
+
+  <!-- A1 -->
+  <div class="col">
+    <div class="cap">A1 · 정산 만들기<span class="capd">누가 있었는지</span></div>
+    <div class="phone">
+      <div class="bar"><b>새 정산</b><div class="step">1 / 2</div></div>
+      <div class="lab">정산 이름</div>
+      <div class="inp">8월 팀 회식</div>
+      <div class="lab">참여자</div>
+      <div class="inp ph">이름 입력 후 엔터</div>
+      <div class="chips">
+        <div class="chip">동규 <i>✕</i></div>
+        <div class="chip">민지 <i>✕</i></div>
+        <div class="chip">재훈 <i>✕</i></div>
+        <div class="chip">수아 <i>✕</i></div>
+        <div class="chip">지원 <i>✕</i></div>
+      </div>
+      <div class="lab">반올림 단위</div>
+      <div class="chips">
+        <div class="chip" style="background:var(--cyan-500);color:#fff;border-color:var(--cyan-500)">10원</div>
+        <div class="chip">100원</div>
+      </div>
+      <div class="cta">다음</div>
+    </div>
+  </div>
+
+  <!-- A2 -->
+  <div class="col">
+    <div class="cap">A2 · 차수 입력<span class="capd">얼마 썼는지</span></div>
+    <div class="phone">
+      <div class="bar"><span class="back">‹</span><b>차수 입력</b><div class="step">2 / 2</div></div>
+      <div class="card">
+        <div class="t">1차 · 삼겹살집</div>
+        <div class="kv"><span>총액</span><b>87,000원</b></div>
+        <div class="kv"><span>그중 술값</span><b>35,000원</b></div>
+        <div class="kv"><span>결제</span><b>동규</b></div>
+      </div>
+      <div class="card">
+        <div class="t">2차 · 호프집</div>
+        <div class="kv"><span>총액</span><b>42,000원</b></div>
+        <div class="kv"><span>그중 술값</span><b>30,000원</b></div>
+        <div class="kv"><span>결제</span><b>민지</b></div>
+      </div>
+      <div class="addbtn">+ 차수 추가</div>
+      <div class="lab" style="color:var(--ink-3);font-weight:500;line-height:1.6">
+        누가 참석했고 누가 마셨는지는<br>다음 화면에서 각자 체크합니다
+      </div>
+      <div class="cta">링크 만들기</div>
+    </div>
+  </div>
+
+  <!-- A3 -->
+  <div class="col">
+    <div class="cap">A3 · 수집 현황<span class="capd">기다리다 끊을 수 있게</span></div>
+    <div class="phone">
+      <div class="bar"><b>8월 팀 회식</b><div class="step">수집 중</div></div>
+      <div class="prog">
+        <div class="n">3 <small>/ 5명 응답</small></div>
+        <div class="track"><div class="fill"></div></div>
+      </div>
+      <div class="prow"><div class="av">동</div><div><div class="pn">동규</div><div class="ps">1차·술 / 2차·술</div></div><div class="tag ok">완료</div></div>
+      <div class="prow"><div class="av">민</div><div><div class="pn">민지</div><div class="ps">1차·술 / 2차·술</div></div><div class="tag ok">완료</div></div>
+      <div class="prow"><div class="av">재</div><div><div class="pn">재훈</div><div class="ps">1차·술 / 2차·술</div></div><div class="tag ok">완료</div></div>
+      <div class="prow"><div class="av off">수</div><div><div class="pn muted">수아</div><div class="ps">대신 체크하기 ›</div></div><div class="tag no">미응답</div></div>
+      <div class="prow"><div class="av off">지</div><div><div class="pn muted">지원</div><div class="ps">대신 체크하기 ›</div></div><div class="tag no">미응답</div></div>
+      <div class="cta">지금 확정하기</div>
+      <div class="cta2">링크 다시 공유</div>
+    </div>
+  </div>
+
+  <!-- A4 -->
+  <div class="col">
+    <div class="cap">A4 · 결과<span class="capd">공유까지</span></div>
+    <div class="phone">
+      <div class="bar"><b>정산 완료</b><div class="step">확정됨</div></div>
+      <div class="prog" style="text-align:center;padding:16px">
+        <div class="n" style="font-size:27px">129,000원</div>
+        <div style="font-size:11.5px;color:var(--ink-2);font-weight:700;margin-top:3px">5명 · 2차수</div>
+      </div>
+      <div class="prow"><div class="av">동</div><div class="pn">동규</div><div class="amt">33,150원</div></div>
+      <div class="prow"><div class="av">민</div><div class="pn">민지</div><div class="amt">33,150원</div></div>
+      <div class="prow"><div class="av">재</div><div class="pn">재훈</div><div class="amt">33,150원</div></div>
+      <div class="prow"><div class="av">수</div><div class="pn">수아</div><div class="amt">19,150원</div></div>
+      <div class="prow" style="border:0"><div class="av">지</div><div class="pn">지원</div><div class="amt">10,400원</div></div>
+      <div class="lab">보낼 사람</div>
+      <div class="tf"><b>재훈</b><span class="arw">→</span><b>동규</b><span style="margin-left:auto;font-weight:800">33,150원</span></div>
+      <div class="tf"><b>수아</b><span class="arw">→</span><b>동규</b><span style="margin-left:auto;font-weight:800">19,150원</span></div>
+      <div class="tf"><b>지원</b><span class="arw">→</span><b>동규</b><span style="margin-left:auto;font-weight:800">1,550원</span></div>
+      <div class="tf"><b>지원</b><span class="arw">→</span><b>민지</b><span style="margin-left:auto;font-weight:800">8,850원</span></div>
+      <div class="cta">카카오톡으로 공유</div>
+    </div>
+  </div>
+</div>
+
+<div class="sectitle">참여자 웹 <span>설치 없음 · 로그인 없음 · 서버 렌더링</span></div>
+<div class="row">
+
+  <!-- W1 -->
+  <div class="col">
+    <div class="cap">W1 · 체크<span class="capd">각자 자기 것만</span></div>
+    <div class="web">
+      <div class="url">jeongsan.app/s/k3f9dq2</div>
+      <div class="bar"><b>8월 팀 회식</b></div>
+      <div class="lab">누구세요?</div>
+      <div class="chips">
+        <div class="chip">동규</div><div class="chip">민지</div><div class="chip">재훈</div>
+        <div class="chip">수아</div>
+        <div class="chip" style="background:var(--cyan-500);color:#fff;border-color:var(--cyan-500)">지원</div>
+      </div>
+      <div class="lab">1차 · 삼겹살집</div>
+      <div class="tog on"><div class="tl">참석했어요</div><div class="sw2 on"></div></div>
+      <div class="tog sub2"><div class="tl">술 마셨어요</div><div class="sw2"></div></div>
+      <div class="lab">2차 · 호프집</div>
+      <div class="tog"><div class="tl">참석했어요</div><div class="sw2"></div></div>
+      <div class="cta">제출하기</div>
+    </div>
+  </div>
+
+  <!-- W2 -->
+  <div class="col" style="width:330px">
+    <div class="cap">W2 · 결과<span class="capd">★ 이 화면이 제품의 핵심</span></div>
+    <div class="web">
+      <div class="url">jeongsan.app/s/k3f9dq2/me</div>
+      <div class="big">
+        <div class="l">지원님이 내실 금액</div>
+        <div class="v">10,400원</div>
+      </div>
+      <div class="why">
+        <div class="wt">이렇게 계산됐어요</div>
+        <div class="wrow"><span class="rl">1차</span><span class="rd">참석 · 술 안 마심<br><span style="font-size:11px">안주값 52,000 ÷ 5명</span></span><span class="rv">10,400원</span></div>
+        <div class="wrow"><span class="rl">2차</span><span class="rd muted">불참</span><span class="rv muted">0원</span></div>
+      </div>
+      <div class="lab">이렇게 보내주세요</div>
+      <div class="tf"><b>동규</b><span style="margin-left:auto;font-weight:800">1,550원</span></div>
+      <div class="tf"><b>민지</b><span style="margin-left:auto;font-weight:800">8,850원</span></div>
+      <div class="cta2" style="margin-top:14px">전체 내역 보기 ▾</div>
+      <div style="margin-top:auto;font-size:11px;color:var(--ink-3);text-align:center;line-height:1.7">
+        모두의 체크 내역이 서로에게 공개됩니다
+      </div>
+    </div>
+  </div>
+
+  <div class="col" style="width:330px">
+    <div class="cap">W2 확장 · 전체 내역<span class="capd">공개 = 자정작용</span></div>
+    <div class="web">
+      <div class="url">jeongsan.app/s/k3f9dq2/all</div>
+      <div class="bar"><b>전체 내역</b></div>
+      <div class="prow"><div class="av">동</div><div><div class="pn">동규</div><div class="ps">1차 참석·술 / 2차 참석·술</div></div><div class="amt">33,150</div></div>
+      <div class="prow"><div class="av">민</div><div><div class="pn">민지</div><div class="ps">1차 참석·술 / 2차 참석·술</div></div><div class="amt">33,150</div></div>
+      <div class="prow"><div class="av">재</div><div><div class="pn">재훈</div><div class="ps">1차 참석·술 / 2차 참석·술</div></div><div class="amt">33,150</div></div>
+      <div class="prow"><div class="av">수</div><div><div class="pn">수아</div><div class="ps">1차 참석·술 / 2차 불참</div></div><div class="amt">19,150</div></div>
+      <div class="prow"><div class="av">지</div><div><div class="pn">지원</div><div class="ps">1차 참석·논알콜 / 2차 불참</div></div><div class="amt">10,400</div></div>
+      <div class="prog" style="margin-top:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--ink-2);line-height:1.75">
+          1차 87,000원 (술 35,000) · 동규 결제<br>
+          2차 42,000원 (술 30,000) · 민지 결제<br>
+          <b style="color:var(--cyan-600)">합계 129,000원 = 각자 부담 합계</b>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <h4>디자인 방향 — 앨범에서 가져올 것과 가져오지 말 것</h4>
+  <b>가져올 것은 오브젝트가 아니라 온도입니다.</b> 시원한 청록 계열, 굵고 둥근 타이포, 밝고 가벼운 톤.
+  정산은 원래 찝찝하게 끝나는 일인데 "시원하게 끝난다"가 그대로 제품 컨셉이 되고, 이름이 정산어택인 것과도 결이 맞습니다.<br><br>
+  <b>피할 것</b> — Y2K 레트로 소품(브라운관 TV·크롬·물방울), 앨범 로고의 글자 형태를 그대로 따라 그리기.
+  <b>앨범 이미지 자체는 어떤 형태로도 사용하지 마세요.</b> 소속사 저작물입니다.<br><br>
+
+  <b style="color:#0891B2">※ 개정 — 핑크는 배제하지 않습니다.</b> 아이콘 시안 G(핑크 온 시안)를 채택하기로 하면서
+  <code>design/icon/README.md</code>의 판단을 따릅니다. 버블 레터링·핑크 온 시안은 특정 작품이 아니라 <b>양식</b>이므로 문제되지 않습니다.
+  다만 <b>앱 UI는 시안 단색 체계를 유지</b>하고, 핑크(<code>#EE3E95</code>)는 <b>"내 금액"과 "미입금 배지" 두 곳에만</b> 씁니다.
+  장식이 아니라 <b>"여기가 당신이 볼 곳"이라는 기능</b>이 되게 하려는 것입니다.
+  아이콘 배경 <code>#0899C2</code>는 아래 팔레트의 <code>#0891B2</code>와 사실상 같은 색이라 이미 정합됩니다.<br><br>
+  실무적으로는 Material 3 컬러 시스템에 <b>primary로 #0891B2 하나만</b> 지정하면 나머지 팔레트와 다크모드가 자동으로 따라옵니다.
+  색을 하나씩 고를 필요가 없습니다. 한글 폰트는 상업 이용이 가능한 <b>Pretendard</b>가 무난합니다.
+</div>
+
+</body>
+</html>

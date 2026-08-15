@@ -1,0 +1,93 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#1b1b1b;font-family:"Noto Sans CJK KR",sans-serif}
+.wrap{display:flex;flex-wrap:wrap;gap:34px;padding:34px}
+.item{text-align:center;color:#eee;font-size:13px}
+.mini{margin-top:12px;display:flex;gap:10px;justify-content:center;align-items:center}
+svg{display:block;border-radius:22%}
+</style></head><body><div class="wrap">
+<script>
+function defs(k){return `<defs>
+ <linearGradient id="bg${k}" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0%" stop-color="#8CEDF9"/><stop offset="45%" stop-color="#33CBE7"/><stop offset="100%" stop-color="#0899C2"/></linearGradient>
+ <radialGradient id="glow${k}" cx="30%" cy="20%" r="72%">
+  <stop offset="0%" stop-color="#F2FEFF" stop-opacity=".8"/><stop offset="100%" stop-color="#F2FEFF" stop-opacity="0"/></radialGradient>
+ <linearGradient id="pink${k}" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0%" stop-color="#FFD3E6"/><stop offset="34%" stop-color="#FF8CBF"/><stop offset="100%" stop-color="#EE3E95"/></linearGradient>
+ <linearGradient id="gl${k}" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0%" stop-color="#fff" stop-opacity=".8"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient>
+ <radialGradient id="hole${k}" cx="42%" cy="38%" r="70%">
+  <stop offset="0%" stop-color="#0B3A4B"/><stop offset="55%" stop-color="#08303F"/><stop offset="100%" stop-color="#0E5A70"/></radialGradient>
+ <filter id="sh${k}" x="-40%" y="-40%" width="180%" height="185%">
+  <feDropShadow dx="0" dy="13" stdDeviation="11" flood-color="#00485F" flood-opacity=".30"/></filter>
+</defs>`}
+
+function bg(k){return `<rect width="512" height="512" fill="url(#bg${k})"/>
+ <rect width="512" height="512" fill="url(#glow${k})"/>
+ <circle cx="438" cy="86" r="52" fill="#fff" opacity=".14"/>
+ <circle cx="438" cy="86" r="52" fill="none" stroke="#fff" stroke-opacity=".42" stroke-width="3"/>
+ <circle cx="421" cy="69" r="13" fill="#fff" opacity=".5"/>
+ <circle cx="68" cy="432" r="32" fill="#fff" opacity=".12"/>
+ <circle cx="68" cy="432" r="32" fill="none" stroke="#fff" stroke-opacity=".4" stroke-width="2.5"/>
+ <circle cx="466" cy="366" r="12" fill="#fff" opacity=".2"/>`}
+
+// ÷ 를 도형으로: 위 점 / 막대 / 아래 점
+const DOT_T={cx:256,cy:172,r:37}, BAR={x:126,y:236,w:260,h:52,rx:26}, DOT_B={cx:256,cy:352,r:37};
+function divShapes(){return `
+ <circle cx="${DOT_T.cx}" cy="${DOT_T.cy}" r="${DOT_T.r}"/>
+ <rect x="${BAR.x}" y="${BAR.y}" width="${BAR.w}" height="${BAR.h}" rx="${BAR.rx}"/>
+ <circle cx="${DOT_B.cx}" cy="${DOT_B.cy}" r="${DOT_B.r}"/>`}
+
+function div(k,rot){
+ const g=divShapes();
+ const r=rot?` transform="rotate(${rot} 256 262)"`:'';
+ return `<g${r}>
+  <g filter="url(#sh${k})">
+   <g fill="none" stroke="#fff" stroke-width="46" stroke-linejoin="round">${g}</g>
+   <g fill="none" stroke="#C21E69" stroke-width="26" stroke-linejoin="round">${g}</g>
+  </g>
+  <g fill="url(#pink${k})">${g}</g>
+  <clipPath id="cpd${k}"><g>${g}</g></clipPath>
+  <g clip-path="url(#cpd${k})"><rect x="0" y="120" width="512" height="66" fill="url(#gl${k})"/>
+   <rect x="0" y="236" width="512" height="24" fill="url(#gl${k})"/></g>
+ </g>`}
+
+// 총알 구멍 + 방사형 크랙
+function bullet(k,cx,cy,r){
+ const A=[14,62,108,152,200,244,292,336];
+ const seg=(w,col,op)=>A.map((a,i)=>{const rad=a*Math.PI/180, L=r*(1.85+(i%3)*0.6);
+  return `<path d="M ${cx+Math.cos(rad)*r*0.85} ${cy+Math.sin(rad)*r*0.85} L ${cx+Math.cos(rad)*L} ${cy+Math.sin(rad)*L}" stroke="${col}" stroke-width="${w-(i%3)*1.5}" stroke-linecap="round" opacity="${op}"/>`}).join('');
+ return `${seg(15,'#fff','.95')}${seg(8,'#9C1250','1')}
+  <circle cx="${cx}" cy="${cy}" r="${r+7}" fill="#fff" opacity=".95"/>
+  <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#hole${k})"/>
+  <ellipse cx="${cx-r*0.3}" cy="${cy-r*0.32}" rx="${r*0.36}" ry="${r*0.24}" fill="#7FD9EC" opacity=".35"/>`}
+
+// 코믹 폭발 별
+function burst(k,cx,cy,R,n,fill,op){
+ let p='';
+ for(let i=0;i<n*2;i++){const a=(i/(n*2))*Math.PI*2-Math.PI/2;
+  const rr=i%2? R*0.54 : R*(0.92+((i%4)?0.08:0));
+  p+=(i?'L':'M')+(cx+Math.cos(a)*rr).toFixed(1)+' '+(cy+Math.sin(a)*rr).toFixed(1)+' ';}
+ return `<path d="${p}Z" fill="${fill}" opacity="${op}"/>`}
+
+// 조준선
+function crosshair(k,cx,cy,R){
+ return `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="11" opacity=".85"/>
+  <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#0B6E8C" stroke-width="4" opacity=".5"/>
+  ${[[0,-1],[0,1],[-1,0],[1,0]].map(([dx,dy])=>`<line x1="${cx+dx*(R-4)}" y1="${cy+dy*(R-4)}" x2="${cx+dx*(R+40)}" y2="${cy+dy*(R+40)}" stroke="#fff" stroke-width="12" stroke-linecap="round" opacity=".9"/>`).join('')}`}
+
+// 궤적(속도선)
+function trail(k){
+ const L=[[28,372,26,.85],[36,318,17,.6],[74,410,13,.45]];
+ return L.map(([x,y,w,o])=>`<path d="M ${x} ${y} L ${x+300} ${y-190}" stroke="#fff" stroke-width="${w}" stroke-linecap="round" opacity="${o}"/>`).join('')}
+
+const V=[
+{k:"e",n:"E · 총알구멍",   f:k=>bg(k)+div(k,0)+bullet(k,226,262,30)},
+{k:"f",n:"F · 조준선",     f:k=>bg(k)+crosshair(k,256,262,188)+div(k,0)},
+{k:"g",n:"G · 임팩트 폭발", f:k=>bg(k)+burst(k,256,262,258,11,"#FFFFFF",".95")+burst(k,256,262,224,11,"#FFDE5C","1")+div(k,-8)},
+{k:"h",n:"H · 관통 궤적",   f:k=>bg(k)+trail(k)+div(k,-8)+bullet(k,318,244,27)},
+];
+document.write(V.map(v=>{const s=defs(v.k)+v.f(v.k);return `<div class="item">
+ <svg width="240" height="240" viewBox="0 0 512 512">${s}</svg>
+ <div class="mini"><svg width="96" height="96" viewBox="0 0 512 512">${s}</svg><svg width="48" height="48" viewBox="0 0 512 512">${s}</svg></div>
+ <div style="margin-top:9px">${v.n}</div></div>`}).join(""));
+</script></div></body></html>

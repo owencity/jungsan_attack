@@ -1,0 +1,13 @@
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+.idea/
+*.iml
+.kotlin/
+
+__pycache__/
+*.pyc
+
+.DS_Store
+Thumbs.db
