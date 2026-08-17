@@ -11,6 +11,7 @@
 | [004](004-two-step-confirm.md) | 확정을 미리보기·수락 2단계로 나누고 `inputHash`로 경합을 막는다 | 확정 |
 | [005](005-no-stored-settlement.md) | 계산 결과를 저장하지 않되 `paidAmount`로 차액을 낸다 | 확정 |
 | [006](006-single-vm-no-kubernetes.md) | 단일 VM에 docker compose로 배포한다. K8s·ArgoCD·Jenkins를 쓰지 않는다 | 확정 |
+| [007](007-backend-serves-og.md) | 공유 링크를 백엔드 호스트에 두고 OG 태그가 든 HTML로 응답한다 | 확정 |
 
 ## 형식
 
