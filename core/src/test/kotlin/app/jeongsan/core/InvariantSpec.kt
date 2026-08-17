@@ -56,7 +56,7 @@ class InvariantSpec : StringSpec({
                 it.participantId to (it.paidTotal - it.finalAmount)
             }
             // 보내는 쪽은 줄고(−), 받는 쪽은 는다(+). 순잔액과 부호가 같아야 한다.
-            val moved = mutableMapOf<String, Long>()
+            val moved = mutableMapOf<Long, Long>()
             result.transfers.forEach {
                 moved[it.fromId] = (moved[it.fromId] ?: 0L) - it.amount
                 moved[it.toId] = (moved[it.toId] ?: 0L) + it.amount
@@ -78,13 +78,13 @@ private fun SettlementInput.settleOrNull(): SettlementResult? =
 private fun scenario(seed: Int): SettlementInput {
     val rnd = Random(seed)
     val n = rnd.nextInt(2, 9)
-    val ps = (0 until n).map { Participant("p%02d".format(it), "P$it") }
+    val ps = (0 until n).map { Participant(id = (it + 1).toLong(), name = "P$it") }
 
     val rounds = mutableListOf<Round>()
     val att = mutableMapOf<AttendanceKey, Attendance>()
 
     repeat(rnd.nextInt(1, 5)) { i ->
-        val roundId = "r${i + 1}"
+        val roundId = (i + 1).toLong()
         val attendees = ps.filter { rnd.nextDouble() < 0.8 }.ifEmpty { listOf(ps[0]) }.toSet()
         val drinkers = attendees.filter { rnd.nextDouble() < 0.7 }.toSet()
         val total = rnd.nextInt(1, 41) * 1_000L

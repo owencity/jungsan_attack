@@ -18,6 +18,8 @@ enum class ErrorCode {
     INVALID_ROUNDING_UNIT,
     DRANK_WITHOUT_ATTEND,
     DUPLICATE_ID,
+    DUPLICATE_ROUND_SEQ,
+    AMOUNT_TOO_LARGE,
     TOO_FEW_PARTICIPANTS,
     NO_ATTENDEE,
     NO_NON_EXEMPT_ATTENDEE,
@@ -34,28 +36,45 @@ enum class ErrorCode {
 data class ValidationError(
     val code: ErrorCode,
     val message: String,
-    val roundId: String? = null,
-    val extraId: String? = null,
-    val participantId: String? = null,
+    val roundId: Long? = null,
+    val extraId: Long? = null,
+    val participantId: Long? = null,
 )
 
 object Validator {
 
+    /**
+     * 총액 상한. 값 자체는 임의지만 **상한이 존재하는 것**이 중요하다.
+     *
+     * 코드 리뷰 F2 — `Rational.ceilTo`가 `longValueExact()`로 끝나므로 이론상
+     * `Long` 범위를 넘으면 `ArithmeticException`이 난다. "이 엔진은 예외를 던지지 않는다"는
+     * 원칙에 구멍이 하나 있으면 호출자는 매번 방어를 고민해야 하므로 여기서 막는다.
+     *
+     * 실질적 이득은 오버플로 방어가 아니라 **오타 방어**다 —
+     * 87,000원을 870,000,000원으로 잘못 입력하는 일은 실제로 난다.
+     */
+    const val MAX_AMOUNT: Long = 1_000_000_000_000L   // 1조 원
+
     fun validate(input: SettlementInput, phase: ValidationPhase): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
+        val rounds = input.effectiveRounds()          // F6 — 한 번만 계산해 넘긴다
         val ids = input.participants.map { it.id }.toSet()
 
-        validateAlways(input, ids, errors)
+        validateAlways(input, rounds, ids, errors)
         if (phase == ValidationPhase.CONFIRM) {
-            validateOnConfirm(input, errors)
+            validateOnConfirm(input, rounds, errors)
         }
         return errors
     }
 
+    private fun <T> duplicatesOf(values: List<T>): Set<T> =
+        values.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+
     /** 저장 시점에도 확정 시점에도 걸리는 형식 검증. */
     private fun validateAlways(
         input: SettlementInput,
-        ids: Set<String>,
+        rounds: List<Round>,
+        ids: Set<Long>,
         errors: MutableList<ValidationError>,
     ) {
         if (input.roundingUnit != 10 && input.roundingUnit != 100) {
@@ -65,8 +84,29 @@ object Validator {
             )
         }
 
-        if (ids.size != input.participants.size) {
-            errors += ValidationError(ErrorCode.DUPLICATE_ID, "참여자 id가 중복되었습니다.")
+        // ── 중복 id (F1) — 세 컬렉션 모두 검사하고 어느 id가 중복인지 담는다.
+        // 참여자만 검사하고 있었는데, 같은 roundId 가 둘이면 attendance 조회가 두 차수에
+        // 같은 값을 돌려주어 금액이 조용히 틀린다. 그런데 합계는 맞으므로 불변식으로도 안 잡힌다.
+        duplicatesOf(input.participants.map { it.id }).forEach {
+            errors += ValidationError(
+                ErrorCode.DUPLICATE_ID, "참여자 id가 중복되었습니다: $it", participantId = it,
+            )
+        }
+        duplicatesOf(input.rounds.map { it.id }).forEach {
+            errors += ValidationError(
+                ErrorCode.DUPLICATE_ID, "차수 id가 중복되었습니다: $it", roundId = it,
+            )
+        }
+        duplicatesOf(input.extras.map { it.id }).forEach {
+            errors += ValidationError(
+                ErrorCode.DUPLICATE_ID, "기타 항목 id가 중복되었습니다: $it", extraId = it,
+            )
+        }
+        duplicatesOf(input.rounds.map { it.seq }).forEach {
+            errors += ValidationError(
+                ErrorCode.DUPLICATE_ROUND_SEQ,
+                "차수 순번이 중복되었습니다: ${it}차. 근거 화면의 차수 순서가 흔들립니다.",
+            )
         }
 
         input.drinkItems.forEach { item ->
@@ -81,7 +121,7 @@ object Validator {
         }
 
         // 술값은 DrinkItem으로 덮어써진 뒤의 값으로 검증해야 한다 (§2.1-b).
-        input.effectiveRounds().forEach { round ->
+        rounds.forEach { round ->
             if (round.total <= 0) {
                 errors += ValidationError(
                     ErrorCode.TOTAL_NOT_POSITIVE,
@@ -103,6 +143,13 @@ object Validator {
                     roundId = round.id,
                 )
             }
+            if (round.total > MAX_AMOUNT) {
+                errors += ValidationError(
+                    ErrorCode.AMOUNT_TOO_LARGE,
+                    "${round.label}의 총액이 너무 큽니다. 0을 하나 더 찍지 않았는지 확인해주세요.",
+                    roundId = round.id,
+                )
+            }
             if (round.payerId !in ids) {
                 errors += ValidationError(
                     ErrorCode.PAYER_NOT_FOUND,
@@ -114,6 +161,13 @@ object Validator {
         }
 
         input.extras.forEach { extra ->
+            if (extra.amount > MAX_AMOUNT) {
+                errors += ValidationError(
+                    ErrorCode.AMOUNT_TOO_LARGE,
+                    "'${extra.label}'의 금액이 너무 큽니다.",
+                    extraId = extra.id,
+                )
+            }
             if (extra.amount <= 0) {
                 errors += ValidationError(
                     ErrorCode.TOTAL_NOT_POSITIVE,
@@ -153,7 +207,18 @@ object Validator {
     }
 
     /** 확정 시점에만 걸리는 인원·배분 검증. */
-    private fun validateOnConfirm(input: SettlementInput, errors: MutableList<ValidationError>) {
+    private fun validateOnConfirm(
+        input: SettlementInput,
+        rounds: List<Round>,
+        errors: MutableList<ValidationError>,
+    ) {
+        val grandTotal = rounds.sumOf { it.total } + input.extras.sumOf { it.amount }
+        if (grandTotal > MAX_AMOUNT) {
+            errors += ValidationError(
+                ErrorCode.AMOUNT_TOO_LARGE, "전체 총액이 너무 큽니다. (${grandTotal}원)",
+            )
+        }
+
         if (input.participants.size < 2) {
             errors += ValidationError(
                 ErrorCode.TOO_FEW_PARTICIPANTS,
@@ -170,7 +235,7 @@ object Validator {
             return
         }
 
-        input.effectiveRounds().forEach { round ->
+        rounds.forEach { round ->
             val attendees = input.participants.filter {
                 input.attendanceOf(it.id, round.id).attended
             }

@@ -11,10 +11,10 @@ sealed interface SettlementOutcome {
 
 data class SettlementResult(
     /** 면제자를 제외하고 결제 총액이 가장 큰 참여자. 동률이면 id 사전순 첫 번째. */
-    val mainPayerId: String,
-    val amounts: Map<String, Long>,
+    val mainPayerId: Long,
+    val amounts: Map<Long, Long>,
     /** 근거 화면(W2)용. **계산만 하고 버리지 말 것** — `CALC_RULES.md` §1. */
-    val breakdown: Map<String, ParticipantBreakdown>,
+    val breakdown: Map<Long, ParticipantBreakdown>,
     val transfers: List<Transfer>,
     val grandTotal: Long,
     /** 실제로 적용된 반올림 단위. 대표결제자 음수를 피하려 강등됐을 수 있다. */
@@ -24,7 +24,7 @@ data class SettlementResult(
 )
 
 data class ParticipantBreakdown(
-    val participantId: String,
+    val participantId: Long,
     val name: String,
     val isExempt: Boolean,
     val isMainPayer: Boolean,
@@ -45,7 +45,7 @@ data class ParticipantBreakdown(
  * 화면이 `안주값 52,000 ÷ 5명`처럼 **계산 과정을 그대로 보여줘야** 하기 때문이다.
  */
 data class RoundBreakdown(
-    val roundId: String,
+    val roundId: Long,
     val seq: Int,
     val label: String,
     val attended: Boolean,
@@ -61,7 +61,7 @@ data class RoundBreakdown(
 }
 
 data class ExtraBreakdown(
-    val extraId: String,
+    val extraId: Long,
     val label: String,
     val amount: Long,
     val bearerCount: Int,
@@ -69,4 +69,4 @@ data class ExtraBreakdown(
 )
 
 /** `from`이 `to`에게 보낸다. */
-data class Transfer(val fromId: String, val toId: String, val amount: Long)
+data class Transfer(val fromId: Long, val toId: Long, val amount: Long)

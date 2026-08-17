@@ -43,7 +43,7 @@ object Settlement {
         val exemptIds = input.participants.filter { it.exempt }.map { it.id }.toSet()
 
         // ── §2.1 원부담 계산 — 반올림 없음. 정확한 유리수로만 누적한다.
-        val roundLines = mutableMapOf<String, MutableList<RoundBreakdown>>()
+        val roundLines = mutableMapOf<Long, MutableList<RoundBreakdown>>()
         input.participants.forEach { roundLines[it.id] = mutableListOf() }
 
         rounds.sortedBy { it.seq }.forEach { round ->
@@ -79,7 +79,7 @@ object Settlement {
         }
 
         // ── §2.1-d 기타 항목 — 부담자(면제자 제외)끼리 균등 분담.
-        val extraLines = mutableMapOf<String, MutableList<ExtraBreakdown>>()
+        val extraLines = mutableMapOf<Long, MutableList<ExtraBreakdown>>()
         input.participants.forEach { extraLines[it.id] = mutableListOf() }
 
         input.extras.forEach { extra ->
@@ -117,7 +117,7 @@ object Settlement {
             .first().id
 
         // ── §2.3 반올림. 대표결제자는 잔액을 가져가므로 구조적으로 합계가 원금과 일치한다.
-        val amounts = mutableMapOf<String, Long>()
+        val amounts = mutableMapOf<Long, Long>()
         input.participants.forEach { p ->
             when {
                 p.exempt -> amounts[p.id] = 0L
@@ -125,6 +125,9 @@ object Settlement {
                 else -> amounts[p.id] = raw.getValue(p.id).ceilTo(unit)
             }
         }
+        // ★ 나눗셈이 아니라 뺄셈이다. 나눠서 구한 뒤 차이를 맞추는 방식으로 바꾸지 말 것.
+        //   이 한 줄 때문에 합계가 원금과 어긋날 수가 없고, 보정 로직이 한 줄도 필요 없다.
+        //   `amounts`에는 아직 대표결제자가 없으므로 sum()이 "나머지 전원의 합"이다.
         amounts[mainPayerId] = grandTotal - amounts.values.sum()
 
         val breakdown = input.participants.associate { p ->
@@ -161,13 +164,13 @@ object Settlement {
      */
     private fun buildTransfers(
         input: SettlementInput,
-        paid: Map<String, Long>,
-        amounts: Map<String, Long>,
+        paid: Map<Long, Long>,
+        amounts: Map<Long, Long>,
     ): List<Transfer> {
         val balance = input.participants.associate { p ->
             p.id to (paid.getValue(p.id) - amounts.getValue(p.id))
         }
-        val order = compareByDescending<Pair<String, Long>> { it.second }.thenBy { it.first }
+        val order = compareByDescending<Pair<Long, Long>> { it.second }.thenBy { it.first }
 
         val creditors = balance.filter { it.value > 0 }
             .map { it.key to it.value }.sortedWith(order).toMutableList()
