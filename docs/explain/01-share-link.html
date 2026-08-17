@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>공유 링크가 안고 있는 두 문제</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 15mm; }
+
+  :root {
+    --p700:#1b4f9c; --p600:#2c74d6; --p500:#4a8ce8; --p100:#d6e6fb; --p50:#f2f7fe;
+    --acc:#ff9a3d; --acc2:#ffb03a; --acc-bg:#fff5ea; --acc-ink:#a8520a;
+    --warn:#d93025; --warn-bg:#fdeceb;
+    --ok:#12855c; --ok-bg:#eafaf3;
+    --ink:#0e2340; --ink2:#3d556f; --ink3:#8398b3; --line:#dfe8f3;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin:0; color:var(--ink); background:#fff;
+    font-family:'Malgun Gothic','Segoe UI',-apple-system,sans-serif;
+    font-size:10.2pt; line-height:1.72; letter-spacing:-.01em;
+  }
+  code, .mono, pre {
+    font-family:'Cascadia Mono','Consolas','D2Coding',monospace;
+    font-variant-ligatures:none;
+  }
+
+  /* ── 표지 ───────────────────────────── */
+  .cover {
+    height:257mm; display:flex; flex-direction:column; justify-content:center;
+    page-break-after:always; position:relative; overflow:hidden;
+  }
+  .cover .glow {
+    position:absolute; border-radius:50%; filter:blur(2px); opacity:.1;
+  }
+  .g1 { width:300px; height:300px; background:var(--p500); top:-90px; right:-80px; }
+  .g2 { width:200px; height:200px; background:var(--acc); bottom:20px; left:-70px; }
+  .kicker {
+    font-size:8.6pt; font-weight:800; letter-spacing:.24em; color:var(--p600);
+    text-transform:uppercase; margin-bottom:20px;
+  }
+  .cover h1 {
+    font-size:30pt; line-height:1.24; margin:0 0 14px; font-weight:800;
+    letter-spacing:-.035em; max-width:15em;
+  }
+  .cover h1 em { font-style:normal; color:var(--p600); }
+  .cover .sub { font-size:12.4pt; color:var(--ink2); font-weight:600; margin-bottom:36px; }
+  .qbox {
+    border-left:3px solid var(--acc); background:var(--acc-bg);
+    padding:15px 18px; max-width:33em; border-radius:0 9px 9px 0;
+  }
+  .qbox .ql { font-size:8.2pt; font-weight:800; color:var(--acc-ink); letter-spacing:.14em; margin-bottom:7px; }
+  .qbox p { margin:0 0 5px; font-size:10.6pt; color:var(--ink); font-weight:600; }
+  .qbox p:last-child { margin:0; }
+  .cover .foot {
+    position:absolute; bottom:0; left:0; font-size:8.4pt; color:var(--ink3);
+    border-top:1px solid var(--line); padding-top:9px; width:100%;
+  }
+
+  /* ── 섹션 ───────────────────────────── */
+  h2 {
+    font-size:15.4pt; font-weight:800; letter-spacing:-.03em;
+    margin:0 0 4px; padding-top:2px; color:var(--ink);
+    page-break-after:avoid;
+  }
+  h2 .n {
+    display:inline-block; min-width:1.45em; height:1.45em; line-height:1.45em;
+    text-align:center; border-radius:7px; background:var(--p600); color:#fff;
+    font-size:10.4pt; margin-right:9px; vertical-align:.09em;
+  }
+  h2 + .lead { color:var(--ink2); font-size:10pt; margin:0 0 16px; padding-left:2.4em; }
+  /* 절은 한 페이지보다 길다. 분할 금지를 걸면 앞 페이지에 빈 공간이 생긴다.
+     금지는 그림·표·박스처럼 실제로 쪼개지면 안 되는 것에만 건다. */
+  .sec { margin-bottom:26px; }
+  h3 {
+    font-size:11.4pt; font-weight:800; margin:22px 0 7px; letter-spacing:-.02em;
+    page-break-after:avoid;
+  }
+  h3 .d { color:var(--acc); margin-right:7px; }
+  p { margin:0 0 9px; }
+  b, strong { font-weight:800; }
+  em { font-style:normal; background:linear-gradient(transparent 62%, var(--acc2) 62%); padding:0 1px; }
+  .hr { height:1px; background:var(--line); margin:30px 0 26px; }
+
+  /* ── 코드 / 다이어그램 ─────────────────── */
+  pre {
+    background:#0f2138; color:#d8e6f7; border-radius:10px;
+    padding:13px 15px; font-size:8.7pt; line-height:1.68; overflow:hidden;
+    margin:11px 0; white-space:pre-wrap; page-break-inside:avoid;
+  }
+  pre .c  { color:#7ea7d6; }
+  pre .o  { color:#ffb56b; font-weight:700; }
+  pre .g  { color:#66d6a4; }
+  pre .r  { color:#ff8f85; font-weight:700; }
+  pre .dim{ color:#6b87a8; }
+
+  .fig {
+    border:1px solid var(--line); border-radius:11px; padding:15px 16px 12px;
+    margin:13px 0; background:var(--p50); page-break-inside:avoid;
+  }
+  .fig .cap {
+    font-size:8.2pt; font-weight:800; color:var(--p600);
+    letter-spacing:.1em; margin-bottom:11px;
+  }
+  .fig svg { display:block; width:100%; height:auto; }
+
+  /* ── 표 ─────────────────────────────── */
+  table {
+    width:100%; border-collapse:collapse; font-size:9.2pt; margin:11px 0;
+    page-break-inside:avoid;
+  }
+  th {
+    background:var(--p600); color:#fff; text-align:left; font-weight:700;
+    padding:7px 10px; font-size:8.6pt; letter-spacing:.02em;
+  }
+  th:first-child { border-radius:7px 0 0 0; }
+  th:last-child  { border-radius:0 7px 0 0; }
+  td { padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:nth-child(even) td { background:#fafcfe; }
+  td.mono, th.mono { font-size:8.6pt; }
+  td.num { text-align:right; font-family:'Cascadia Mono','Consolas',monospace; font-size:8.8pt; }
+
+  /* ── 강조 박스 ──────────────────────── */
+  .box { border-radius:10px; padding:12px 15px; margin:12px 0; page-break-inside:avoid; }
+  .box .t { font-weight:800; font-size:9.8pt; margin-bottom:5px; }
+  .box p:last-child { margin:0; }
+  .box.w  { background:var(--warn-bg); border-left:3px solid var(--warn); }
+  .box.w .t { color:var(--warn); }
+  .box.k  { background:var(--acc-bg); border-left:3px solid var(--acc); }
+  .box.k .t { color:var(--acc-ink); }
+  .box.o  { background:var(--ok-bg); border-left:3px solid var(--ok); }
+  .box.o .t { color:var(--ok); }
+
+  ul { margin:8px 0 10px; padding-left:1.15em; }
+  li { margin-bottom:4px; }
+  li::marker { color:var(--p500); }
+
+  .pill {
+    display:inline-block; padding:1px 8px; border-radius:20px; font-size:8.2pt;
+    font-weight:800; letter-spacing:.02em;
+  }
+  .pill.a { background:var(--acc-bg); color:var(--acc-ink); }
+  .pill.b { background:var(--p100); color:var(--p700); }
+  .pill.n { background:#eef2f7; color:var(--ink2); }
+
+  .brk { page-break-before:always; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ 표지 ══════════ -->
+<div class="cover">
+  <div class="glow g1"></div><div class="glow g2"></div>
+  <div class="kicker">정산어택 · 기술 메모 01</div>
+  <h1>공유 링크가 안고 있는 <em>두 문제</em></h1>
+  <div class="sub">429 임계값과 OG 응답 — 왜 이 URL 하나가 특별한가</div>
+
+  <div class="qbox">
+    <div class="ql">받은 질문</div>
+    <p>“429 임계값은 무슨 소리일까”</p>
+    <p>“OG 응답은 무슨 소리일까?”</p>
+  </div>
+
+  <div class="foot">
+    두 질문은 우연히 같은 URL 에 대한 것이다 —
+    <span class="mono">GET /g/{token}</span>
+  </div>
+</div>
+
+<!-- ══════════ 0 ══════════ -->
+<div class="sec">
+  <h2><span class="n">0</span>같은 URL 이 두 방향으로 특별하다</h2>
+  <p class="lead">공유 링크는 이 앱에서 유일하게 규칙이 다른 주소다.</p>
+
+<pre>https://jungsan.devkdk.com/g/<span class="o">k3f9dq2</span>
+                             <span class="dim">└─ 이 짧은 문자열이 전부다</span></pre>
+
+  <p>다른 모든 API 는 <b>로그인 토큰이 있어야</b> 응답한다. 이 URL 만 <em>문자열 자체가 열쇠</em>다.
+  링크를 받은 사람이 아직 로그인하지 않았어도 모임 이름을 보여줘야 하기 때문이다.</p>
+
+  <p>그 성질에서 두 가지가 따라 나온다.</p>
+
+  <table>
+    <tr><th style="width:4em">질문</th><th style="width:12em">무엇을 묻는 것인가</th><th>왜 이 URL 만 문제인가</th></tr>
+    <tr>
+      <td><span class="pill b">4</span></td>
+      <td><b>429 임계값</b></td>
+      <td>열쇠가 짧은 문자열이라 <b>맞춰서 들어올 수 있다.</b> 몇 번까지 시도를 허용할지</td>
+    </tr>
+    <tr>
+      <td><span class="pill b">5</span></td>
+      <td><b>OG 응답</b></td>
+      <td>단톡방에 <b>붙이는 유일한 주소</b>다. 붙였을 때 카드가 제대로 떠야 한다</td>
+    </tr>
+  </table>
+</div>
+
+<div class="hr"></div>
+
+<!-- ══════════ 1 ══════════ -->
+<div class="sec">
+  <h2><span class="n">1</span>429 임계값</h2>
+  <p class="lead">“이 주소를 1분에 몇 번까지 부르게 할지” 를 정하는 숫자다.</p>
+
+  <h3><span class="d">1.1</span>무엇을 막는 것인가</h3>
+
+  <p><span class="mono">k3f9dq2</span> 는 7글자다. 공격자는 <b>아무 문자열이나 만들어 계속 요청</b>한다.
+  하나만 맞으면 남의 모임 정보가 그대로 나온다.</p>
+
+  <div class="fig">
+    <div class="cap">무작위 대입</div>
+    <svg viewBox="0 0 560 132">
+      <g font-family="Consolas, monospace" font-size="10.5">
+        <rect x="0" y="6" width="150" height="120" rx="9" fill="#fff" stroke="#dfe8f3"/>
+        <text x="14" y="26" font-size="9" font-weight="700" fill="#8398b3" font-family="Malgun Gothic">공격자</text>
+        <text x="14" y="48" fill="#d93025">/g/a8f2k1x</text>
+        <text x="14" y="66" fill="#d93025">/g/9dk3ms0</text>
+        <text x="14" y="84" fill="#d93025">/g/p2wq7bz</text>
+        <text x="14" y="102" fill="#12855c" font-weight="700">/g/k3f9dq2</text>
+        <text x="14" y="119" fill="#8398b3">…</text>
+
+        <path d="M162 66 L214 66" stroke="#3d556f" stroke-width="1.4"/>
+        <path d="M208 61 L214 66 L208 71" fill="none" stroke="#3d556f" stroke-width="1.4"/>
+
+        <rect x="222" y="34" width="118" height="64" rx="9" fill="#0f2138"/>
+        <text x="281" y="62" font-size="9" fill="#d8e6f7" text-anchor="middle" font-family="Malgun Gothic">정산어택</text>
+        <text x="281" y="79" font-size="9" fill="#7ea7d6" text-anchor="middle" font-family="Malgun Gothic">서버</text>
+
+        <path d="M348 66 L400 66" stroke="#3d556f" stroke-width="1.4"/>
+        <path d="M394 61 L400 66 L394 71" fill="none" stroke="#3d556f" stroke-width="1.4"/>
+
+        <rect x="408" y="16" width="152" height="100" rx="9" fill="#fdeceb" stroke="#d93025" stroke-width="1.2"/>
+        <text x="422" y="36" font-size="9" font-weight="700" fill="#d93025" font-family="Malgun Gothic">맞으면 새어 나가는 것</text>
+        <text x="422" y="56" font-size="9" fill="#0e2340" font-family="Malgun Gothic">· 모임 이름 · 날짜</text>
+        <text x="422" y="74" font-size="9" fill="#0e2340" font-family="Malgun Gothic">· 주최자 이름</text>
+        <text x="422" y="92" font-size="9" fill="#0e2340" font-family="Malgun Gothic">· 참여자 명단 · 사진</text>
+        <text x="422" y="110" font-size="9" fill="#0e2340" font-family="Malgun Gothic">· 차수별 금액</text>
+      </g>
+    </svg>
+  </div>
+
+  <h3><span class="d">1.2</span>숫자로 재보면</h3>
+
+  <p>지금 토큰은 <b>7자 · 소문자와 숫자</b>(36종)다.</p>
+
+  <table>
+    <tr><th>항목</th><th class="num" style="width:12em">값</th><th style="width:16em">계산</th></tr>
+    <tr><td>가능한 토큰 수</td><td class="num">78,364,164,096</td><td class="mono">36<sup>7</sup></td></tr>
+    <tr><td>동시에 살아 있는 모임 (가정)</td><td class="num">10,000</td><td></td></tr>
+    <tr><td>한 번 찍어서 맞을 확률</td><td class="num">1 / 7,836,416</td><td class="mono">10,000 ÷ 36<sup>7</sup></td></tr>
+    <tr><td><b>50% 맞추는 데 필요한 시도</b></td><td class="num"><b>약 543만 회</b></td><td class="mono">ln2 × 7,836,416</td></tr>
+  </table>
+
+  <p>543만 회가 커 보이지만, <b>얼마나 빨리 던질 수 있느냐에 달려 있다.</b></p>
+
+  <table>
+    <tr><th>초당 요청</th><th style="width:11em">50% 도달까지</th><th>누가 할 수 있나</th></tr>
+    <tr><td class="mono">10</td><td>6.3 일</td><td>노트북 한 대</td></tr>
+    <tr><td class="mono">100</td><td>15 시간</td><td>클라우드 인스턴스 하나</td></tr>
+    <tr><td class="mono">1,000</td><td><b style="color:#d93025">1.5 시간</b></td><td>봇넷 · 분산 스크립트</td></tr>
+  </table>
+
+  <div class="box w">
+    <div class="t">막지 않으면 뚫린다</div>
+    <p>“확률이 낮다” 는 <b>시도 횟수를 제한할 때만 성립한다.</b> 제한이 없으면
+    확률이 낮은 사건은 그냥 <b>오래 걸리는 사건</b>이 된다.</p>
+  </div>
+
+  <h3><span class="d">1.3</span>그래서 두 가지가 필요하다 — 순서가 있다</h3>
+
+  <table>
+    <tr><th style="width:3.4em"></th><th style="width:9em">무엇</th><th>효과</th></tr>
+    <tr>
+      <td><span class="pill a">근본</span></td>
+      <td><b>토큰을 길게</b></td>
+      <td>
+        <span class="mono">12자 · 62종</span> 으로 늘리면 가능한 수가
+        <span class="mono">62<sup>12</sup> ≈ 3.2 × 10<sup>21</sup></span>.
+        초당 1,000회로 던져도 <b>50% 도달에 5,100만 년</b>
+      </td>
+    </tr>
+    <tr>
+      <td><span class="pill n">보조</span></td>
+      <td><b>429 제한</b></td>
+      <td>길이를 늘려도 <b>대입 시도 자체를 볼 수 없다.</b> 제한을 걸면 로그와
+      메트릭에 드러나고, 실수로 링크가 유출됐을 때 긁어가는 속도도 줄인다</td>
+    </tr>
+  </table>
+
+  <div class="box k">
+    <div class="t">길이가 먼저다</div>
+    <p><b>토큰이 짧으면 429 로 메울 수 없다.</b> 분산해서 던지면 IP 당 제한은
+    그냥 IP 를 늘려서 피한다. 반대로 <b>길이가 충분하면 429 는 없어도 뚫리지 않는다</b> —
+    그래도 두는 이유는 <em>탐지</em>와 <em>비용 방어</em>다.</p>
+  </div>
+
+  <h3><span class="d">1.4</span>임계값 — 정상 사용자를 세어서 정한다</h3>
+
+  <p>임계값은 감으로 정하는 숫자가 아니다. <b>정상 사용자가 이 주소를 몇 번 부르는지</b>
+  세고, 거기에 여유를 준다.</p>
+
+<pre><span class="c">// 링크를 받은 사람이 이 URL 을 부르는 횟수</span>
+카톡에서 링크 클릭        <span class="g">1회</span>   <span class="dim">모임 이름·참여자 확인</span>
+로그인하고 돌아옴         <span class="g">1회</span>   <span class="dim">myParticipantId 확인</span>
+참여 버튼                <span class="g">0회</span>   <span class="dim">POST join 은 다른 경로</span>
+참여 후 체크·결과         <span class="g">0회</span>   <span class="dim">gatheringId 로 옮겨간다 (API.md §5)</span>
+                        ────
+                        <span class="o">2~3회</span></pre>
+
+  <p><b>참여 이후에는 이 URL 을 아예 부르지 않는다.</b> 계약에서 토큰을 진입·참여에만
+  쓰기로 했기 때문이다. 그래서 제한을 낮게 걸어도 정상 사용에 걸리지 않는다.</p>
+
+  <table>
+    <tr><th style="width:11em">규칙</th><th class="mono" style="width:9em">제안</th><th>이유</th></tr>
+    <tr><td>IP 당 요청</td><td class="mono">분당 30회</td><td>정상 사용의 10배</td></tr>
+    <tr><td><b>연속 404</b></td><td class="mono">5회 → 10분 차단</td><td>맞추려는 시도만 여기 걸린다. 정상 사용자는 404 를 안 본다</td></tr>
+    <tr><td>성공(200) 응답</td><td class="mono">세지 않는다</td><td>↓ 아래</td></tr>
+  </table>
+
+  <div class="box o">
+    <div class="t">성공을 세면 정상 사용자가 막힌다</div>
+    <p>단톡방에 링크를 뿌리면 <b>같은 회사 사무실의 20명이 같은 공인 IP</b>(NAT) 로
+    들어온다. 카카오톡 인앱 브라우저는 미리보기까지 요청한다.
+    <b>성공 응답까지 세면 뒤에 클릭한 사람이 429 를 받는다.</b></p>
+    <p>세야 하는 것은 요청 수가 아니라 <em>틀린 요청 수</em>다.</p>
+  </div>
+</div>
+
+<!-- ══════════ 2 ══════════ -->
+<div class="sec brk">
+  <h2><span class="n">2</span>OG 응답</h2>
+  <p class="lead">단톡방에 링크를 붙였을 때 뜨는 <b>카드</b>를 만드는 태그다.</p>
+
+  <h3><span class="d">2.1</span>그 카드는 누가 만드나</h3>
+
+  <p>OG 는 <b>Open Graph</b>다. 카카오톡·슬랙·페이스북이 공통으로 읽는 규격이다.
+  링크를 붙이면 <b>그 서비스의 크롤러가 URL 을 직접 GET</b> 해서
+  HTML <span class="mono">&lt;head&gt;</span> 의 태그를 읽어 카드를 만든다.</p>
+
+  <div class="fig">
+    <div class="cap">카드가 만들어지는 경로</div>
+    <svg viewBox="0 0 560 168">
+      <g font-family="Malgun Gothic, sans-serif" font-size="9">
+        <rect x="0" y="14" width="104" height="50" rx="9" fill="#fff" stroke="#dfe8f3"/>
+        <text x="52" y="35" text-anchor="middle" font-weight="700" fill="#0e2340">주최자</text>
+        <text x="52" y="51" text-anchor="middle" fill="#8398b3" font-size="8.2">링크 붙여넣기</text>
+
+        <path d="M110 39 L152 39" stroke="#3d556f" stroke-width="1.3"/>
+        <path d="M146 34.5 L152 39 L146 43.5" fill="none" stroke="#3d556f" stroke-width="1.3"/>
+
+        <rect x="160" y="14" width="112" height="50" rx="9" fill="#fee500" stroke="#e4cf00"/>
+        <text x="216" y="35" text-anchor="middle" font-weight="700" fill="#191600">카카오톡</text>
+        <text x="216" y="51" text-anchor="middle" fill="#5f5500" font-size="8.2">크롤러 호출</text>
+
+        <path d="M278 39 L330 39" stroke="#2c74d6" stroke-width="1.5"/>
+        <path d="M324 34.5 L330 39 L324 43.5" fill="none" stroke="#2c74d6" stroke-width="1.5"/>
+        <text x="304" y="30" text-anchor="middle" fill="#2c74d6" font-size="8" font-family="Consolas">GET /g/k3f9dq2</text>
+
+        <rect x="338" y="8" width="222" height="62" rx="9" fill="#0f2138"/>
+        <text x="352" y="27" fill="#7ea7d6" font-size="8.2" font-family="Consolas">&lt;meta property="og:title"</text>
+        <text x="352" y="41" fill="#66d6a4" font-size="8.2" font-family="Consolas">      content="8월 팀 회식"&gt;</text>
+        <text x="352" y="58" fill="#7ea7d6" font-size="8.2" font-family="Consolas">&lt;meta property="og:image" …&gt;</text>
+
+        <path d="M216 70 L216 106" stroke="#3d556f" stroke-width="1.3"/>
+        <path d="M211.5 100 L216 106 L220.5 100" fill="none" stroke="#3d556f" stroke-width="1.3"/>
+
+        <rect x="120" y="112" width="192" height="52" rx="9" fill="#fff" stroke="#2c74d6" stroke-width="1.4"/>
+        <rect x="128" y="120" width="36" height="36" rx="7" fill="#2c74d6"/>
+        <text x="146" y="143" text-anchor="middle" fill="#ffb03a" font-size="15" font-weight="800">÷</text>
+        <text x="174" y="133" font-weight="800" fill="#0e2340" font-size="9.4">8월 팀 회식 · 정산어택</text>
+        <text x="174" y="149" fill="#3d556f" font-size="8.4">동규님이 정산에 초대했습니다</text>
+
+        <text x="326" y="142" fill="#12855c" font-size="8.6" font-weight="700">← 이런 카드가 떠야 한다</text>
+      </g>
+    </svg>
+  </div>
+
+  <h3><span class="d">2.2</span>지금 우리가 주고 있는 것 — 실측</h3>
+
+  <p>배포된 <span class="mono">index.html</span> 을 직접 받아 확인했다.</p>
+
+<pre><span class="c">// C:\dev\profile\index.html · jungsan.devkdk.com 실측</span>
+og: 태그          <span class="r">0개</span>
+&lt;title&gt;           <span class="r">김동규 | Backend Developer</span>
+&lt;meta description&gt; <span class="r">백엔드 개발자 김동규의 개인 사이트 —</span>
+                   <span class="r">개발 철학과 프로젝트(ValkyrieFS, 24시간이모자라)를 소개합니다.</span></pre>
+
+  <div class="box w">
+    <div class="t">지금 단톡방에 링크를 붙이면</div>
+    <p>카드에 <b>“김동규 | Backend Developer”</b> 와 <b>포트폴리오 소개문</b>이 뜬다.
+    모임 이름도, 누가 초대했는지도 없다. <b>받은 사람은 무슨 링크인지 알 수 없어 누르지 않는다.</b></p>
+  </div>
+
+  <h3><span class="d">2.3</span>왜 JS 로 고칠 수 없나 — 이게 핵심이다</h3>
+
+  <p>“그럼 화면에서 <span class="mono">document.title</span> 을 바꾸면 되지 않나” 가
+  자연스러운 생각인데, <b>안 된다.</b></p>
+
+  <div class="fig">
+    <div class="cap">브라우저와 크롤러가 받는 것이 다르다</div>
+    <svg viewBox="0 0 560 152">
+      <g font-family="Malgun Gothic, sans-serif" font-size="9">
+        <rect x="0" y="0" width="272" height="152" rx="10" fill="#eafaf3" stroke="#12855c" stroke-width="1.2"/>
+        <text x="16" y="22" font-weight="800" fill="#12855c">사람의 브라우저</text>
+        <text x="16" y="44" font-family="Consolas" font-size="8.4" fill="#0e2340">① HTML 받음 → 빈 껍데기</text>
+        <text x="16" y="62" font-family="Consolas" font-size="8.4" fill="#0e2340">② JS 실행</text>
+        <text x="16" y="80" font-family="Consolas" font-size="8.4" fill="#0e2340">③ API 호출 → 모임 데이터</text>
+        <text x="16" y="98" font-family="Consolas" font-size="8.4" fill="#0e2340">④ 화면 그림</text>
+        <rect x="16" y="110" width="240" height="30" rx="6" fill="#fff" stroke="#12855c" stroke-dasharray="3 2"/>
+        <text x="136" y="129" text-anchor="middle" font-weight="700" fill="#12855c">“8월 팀 회식” 보인다</text>
+
+        <rect x="288" y="0" width="272" height="152" rx="10" fill="#fdeceb" stroke="#d93025" stroke-width="1.2"/>
+        <text x="304" y="22" font-weight="800" fill="#d93025">카카오톡 크롤러</text>
+        <text x="304" y="44" font-family="Consolas" font-size="8.4" fill="#0e2340">① HTML 받음 → 빈 껍데기</text>
+        <text x="304" y="62" font-family="Consolas" font-size="8.4" fill="#8398b3">② JS 실행 안 함</text>
+        <text x="304" y="80" font-family="Consolas" font-size="8.4" fill="#8398b3">③ API 호출 안 함</text>
+        <text x="304" y="98" font-family="Consolas" font-size="8.4" fill="#8398b3">④ 화면 안 그림</text>
+        <rect x="304" y="110" width="240" height="30" rx="6" fill="#fff" stroke="#d93025" stroke-dasharray="3 2"/>
+        <text x="424" y="129" text-anchor="middle" font-weight="700" fill="#d93025">&lt;title&gt; 만 읽고 끝</text>
+      </g>
+    </svg>
+  </div>
+
+  <p><b>크롤러는 JS 를 실행하지 않는다.</b> 우리 프론트는 CSR(Client-Side Rendering) SPA 라
+  모임 이름이 JS 가 API 를 부른 뒤에야 생긴다. <em>크롤러가 받는 HTML 에는 그 정보가 아직 없다.</em></p>
+
+  <div class="box k">
+    <div class="t">그래서 프론트만으로는 해결할 수 없다</div>
+    <p>이건 화면 코드의 문제가 아니라 <b>누가 그 HTML 을 만들어 주느냐의 문제</b>다.
+    <b>백엔드가 <span class="mono">/g/{token}</span> 을 HTML 로도 응답해야 한다.</b></p>
+  </div>
+
+  <h3><span class="d">2.4</span>같은 URL 에 두 손님이 온다</h3>
+
+<pre><span class="c">// GET /g/k3f9dq2 를 받았을 때</span>
+크롤러  →  <span class="o">og: 태그가 든 HTML</span>        <span class="dim">모임 이름 · 주최자 · 아이콘</span>
+사람    →  <span class="g">정산어택 화면</span>            <span class="dim">참여 버튼까지</span></pre>
+
+  <p>가르는 방법이 세 가지 있다. <b>어느 것을 쓸지는 <span class="mono">ADR-007</span> 에서 정한다.</b></p>
+
+  <table>
+    <tr><th style="width:3.2em"></th><th style="width:11em">방법</th><th>장점 / 걸리는 점</th></tr>
+    <tr>
+      <td><span class="pill b">A</span></td>
+      <td><b>공유 링크를<br>백엔드 도메인으로</b><br><span class="mono" style="font-size:8pt">api…/g/{t}</span></td>
+      <td>
+        <b>+</b> 가장 단순하다. 백엔드가 HTML 을 주고 사람은 프론트로 보낸다<br>
+        <b>−</b> 단톡방에 뜨는 주소가 <span class="mono">jungsan.devkdk.com</span> 이 아니다
+      </td>
+    </tr>
+    <tr>
+      <td><span class="pill b">B</span></td>
+      <td><b>Vercel rewrite</b><br><span class="mono" style="font-size:8pt">/g/* → 백엔드</span></td>
+      <td>
+        <b>+</b> 주소가 그대로 <span class="mono">jungsan.devkdk.com/g/…</span><br>
+        <b>−</b> 사람을 프론트로 되돌릴 때 같은 경로로 다시 들어와 순환한다. 경로를 하나 더 둬야 한다
+      </td>
+    </tr>
+    <tr>
+      <td><span class="pill b">C</span></td>
+      <td><b>Cloudflare Worker</b><br><span class="mono" style="font-size:8pt">User-Agent 로 분기</span></td>
+      <td>
+        <b>+</b> 주소도 그대로고 순환도 없다. 크롤러만 백엔드로 보낸다<br>
+        <b>−</b> <span class="mono">jungsan.devkdk.com</span> 을 <b>오렌지 구름으로 되돌려야</b> Worker 가 붙는다
+      </td>
+    </tr>
+  </table>
+
+  <div class="box k">
+    <div class="t">C 를 쓰면 방금 한 DNS 설정을 되돌려야 한다</div>
+    <p><span class="mono">jungsan.devkdk.com</span> 을 <b>DNS only(회색 구름)</b> 으로 뒀다.
+    Cloudflare Worker 는 <b>프록시를 지나는 요청에만</b> 붙으므로, C 를 고르면
+    오렌지 구름으로 바꾸고 <span class="mono">SSL/TLS</span> 를 <span class="mono">Full (strict)</span> 로
+    맞춰야 한다. <em>그 대가로 429 를 서버가 아니라 Cloudflare 가 걸 수 있다</em> —
+    질문 4 와 5 가 여기서 만난다.</p>
+  </div>
+</div>
+
+<!-- ══════════ 3 ══════════ -->
+<div class="sec">
+  <div class="hr"></div>
+  <h2><span class="n">3</span>정해야 하는 것</h2>
+  <p class="lead">두 질문의 답은 셋으로 좁혀진다.</p>
+
+  <table>
+    <tr><th style="width:3.2em"></th><th style="width:12em">항목</th><th style="width:12em">제가 권하는 값</th><th>왜</th></tr>
+    <tr>
+      <td><span class="pill a">1</span></td>
+      <td><b>shareToken 길이</b></td>
+      <td><b>12자 · 62종</b><br><span class="mono" style="font-size:8pt">지금 7자 · 36종</span></td>
+      <td>길이가 근본이고 <b>비용이 0</b>이다. 지금 바꾸면 나중에 마이그레이션이 없다</td>
+    </tr>
+    <tr>
+      <td><span class="pill a">2</span></td>
+      <td><b>429 임계값</b></td>
+      <td>IP당 <b>분당 30회</b><br>연속 404 <b>5회 → 10분</b><br>성공은 세지 않음</td>
+      <td>정상 사용이 2~3회다. 틀린 요청만 세면 NAT 뒤 20명이 안 막힌다</td>
+    </tr>
+    <tr>
+      <td><span class="pill a">3</span></td>
+      <td><b>OG 방식</b></td>
+      <td><b>A</b> (백엔드 도메인)<br>또는 <b>C</b> (Worker)</td>
+      <td>A 는 지금 당장 되고, C 는 주소가 예쁘다. B 는 순환 때문에 경로가 지저분해진다</td>
+    </tr>
+  </table>
+
+  <div class="box o">
+    <div class="t">토큰 길이는 지금 정하는 게 싸다</div>
+    <p>아직 발급된 토큰이 하나도 없다. <b>스키마를 만들기 전에 정하면 컬럼 길이 하나로 끝난다.</b>
+    운영 중에 바꾸면 이미 단톡방에 뿌려진 링크를 살려두면서 새 형식을 함께 받아야 한다.</p>
+  </div>
+
+  <p style="margin-top:18px; color:var(--ink3); font-size:8.6pt; border-top:1px solid var(--line); padding-top:10px;">
+    정산어택 · 기술 메모 01 · <span class="mono">docs/explain/01-share-link.html</span> ·
+    본문의 실측값은 배포본 <span class="mono">jungsan.devkdk.com</span> 에서 직접 받아 확인한 것이다.
+  </p>
+</div>
+
+</body>
+</html>
