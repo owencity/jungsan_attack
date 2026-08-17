@@ -526,7 +526,7 @@ DELETE /gatherings/{id}/extras/{extraId}                                        
 |---|---|---|
 | `join.devkdk.com/g/{token}` | **HTML** — `og:*` 태그 + 프론트로 보내는 스크립트 | 카카오톡 크롤러 · 링크를 누른 사람 |
 | `jungsan.devkdk.com/g/{token}` | 정산어택 화면 (Vercel) | 리다이렉트로 도달한 사람 |
-| `api.devkdk.com/api/v1/g/{token}` | **JSON** (↓ §5.1) | 그 화면의 JS |
+| `{api호스트}/api/v1/g/{token}` | **JSON** (↓ §5.1) | 그 화면의 JS |
 
 **단톡방에 뿌리는 주소는 `join.devkdk.com` 이다.** 프론트가 만드는 공유 링크도
 그 주소여야 한다 — 주소창에서 복사한 `jungsan.devkdk.com/g/…` 를 뿌리면
@@ -599,9 +599,16 @@ IP 당 요청        분당 30회
 **세야 하는 것은 요청 수가 아니라 틀린 요청 수다.** 정상 사용자는 `404` 를 보지 않는다.
 연속 `404` 는 맞추려는 시도에서만 쌓인다.
 
-> 제한을 어디서 걸지는 `ADR-007` 이 정하는 OG 방식에 따라 달라진다.
-> `/g/{token}` 을 Cloudflare 가 먼저 받게 되면 애플리케이션이 아니라
-> **Cloudflare Rate Limiting 에서 거는 것이 맞다** — 우리 서버에 닿기 전에 끊긴다.
+**제한을 두 겹으로 나눈다** (`ADR-007`).
+
+```
+Cloudflare Rate Limiting    IP 당 분당 30회        우리 서버에 닿기 전에 끊긴다
+Bucket4j (SPEC §10)         연속 404 5회 → 10분    토큰 유효성을 알아야 판단된다
+```
+
+**연속 `404` 규칙은 Cloudflare 가 대신할 수 없다.** 토큰이 유효한지는 DB 를 봐야
+알고, 그건 애플리케이션만 할 수 있다. 반대로 **거친 상한을 애플리케이션에서 걸면
+이미 늦다** — 요청이 VM 까지 도달해 커넥션과 스레드를 먹는다.
 
 ### 5.2 참여 — `POST /g/{token}/join`  (W0-2)
 

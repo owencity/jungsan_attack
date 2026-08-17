@@ -164,23 +164,71 @@ IP 당 요청        분당 30회
   직접 OG를 낼 수 있으므로 이 엔드포인트를 걷어낸다**
 - 카카오톡이 JS 를 실행하는 크롤러로 바뀌면 (가능성 낮음) 역시 필요 없어진다
 
-## 회원님이 해야 하는 콘솔 작업
+## 배포 — Zero Trust 터널을 쓰지 않는다
 
-**백엔드가 뜬 뒤에** Cloudflare 에서 한 번만 하면 된다. 이미 `dev_turnel` 이
-`api.devkdk.com` 을 태우고 있으므로 그 터널에 호스트 하나를 더 붙이는 것이다.
+`ADR-006` 이 배포 대상을 **OCI Always Free 인스턴스 한 대**로 정했다.
+**공인 IP 가 있으므로 Cloudflare Tunnel 이 할 일이 없다.** 터널은 공인 IP 가 없는
+곳(개인 노트북·집 서버)을 밖으로 내보내는 도구다.
 
 ```
-Cloudflare > Zero Trust > Networks > Tunnels > dev_turnel > Configure
-  Public Hostname > Add a public hostname
-     Subdomain   join
-     Domain      devkdk.com
-     Path        (비움)
-     Service     HTTP  →  localhost:8080
+join.devkdk.com   A 레코드  →  OCI 공인 IP     Proxied (오렌지 구름)
+api.devkdk.com    A 레코드  →  같은 OCI IP     Proxied (오렌지 구름)
 ```
 
-**DNS 레코드는 따로 만들지 않는다.** 터널에 호스트를 추가하면 Cloudflare 가
-CNAME 을 자동으로 만든다.
+**한 대에 두 호스트가 붙고, 리버스 프록시가 Host 헤더로 갈라 같은 Spring 앱에 넣는다.**
+경로로 응답이 갈린다 — `/api/v1/**` 은 JSON, `/g/**` 은 HTML.
+호스트를 나누는 이유는 순전히 **단톡방에 보이는 주소** 때문이다.
 
-> `api.devkdk.com` 과 같은 포트를 가리켜도 된다. 같은 Spring 앱이 경로로 갈라서
-> 응답한다 — `/api/v1/**` 은 JSON, `/g/**` 은 HTML.
-> 호스트를 나누는 이유는 순전히 **단톡방에 보이는 주소** 때문이다.
+### 이쪽은 오렌지 구름이 맞다 — `jungsan.devkdk.com` 과 반대다
+
+프론트(`jungsan.devkdk.com`)는 **회색 구름(DNS only)** 으로 뒀다. Vercel 이 자기
+인증서를 직접 발급하고, 앞에 Cloudflare 를 끼우면 도메인 검증이 막히거나
+`SSL/TLS` 가 `Flexible` 일 때 리다이렉트 루프가 난다.
+
+**우리 오리진에는 그 이유가 없고, 오히려 얻는 것이 셋이다.**
+
+| | |
+|---|---|
+| **오리진 IP 가 숨는다** | OCI 인스턴스에 직접 붙는 스캔·공격을 못 받는다 |
+| **인증서를 갱신하지 않는다** | Cloudflare Origin Certificate 는 무료·15년이다. certbot 갱신 실패로 서비스가 죽는 경로가 사라진다 |
+| **요청 제한을 우리 서버 앞에서 끊는다** | ↓ |
+
+### 요청 제한을 두 겹으로 나눈다
+
+`API.md` §5.1 이 정한 규칙을 **성질에 따라 나눠 배치한다.**
+
+```
+Cloudflare Rate Limiting     거친 상한          우리 서버에 닿기 전에 끊긴다
+  join.devkdk.com/g/*        IP 당 분당 30회
+
+Bucket4j (SPEC §10)          정밀 규칙          토큰 유효성을 알아야 판단된다
+  연속 404 5회 → 10분 차단
+```
+
+**연속 `404` 규칙은 Cloudflare 가 대신할 수 없다.** 토큰이 유효한지는 DB 를 봐야
+알고, 그건 애플리케이션만 할 수 있다. 반대로 **거친 상한은 애플리케이션에서 걸면
+이미 늦다** — 요청이 12GB VM 까지 도달해 커넥션과 스레드를 먹는다.
+
+> `SPEC.md` §10 의 *"모니터링이 서비스를 죽이지 않게 할 것"* 과 같은 이유다.
+> 한 대에 앱·PostgreSQL·Loki·Prometheus·Grafana 가 다 올라가므로,
+> **막을 수 있는 트래픽은 서버 밖에서 막는 것이 이득이 크다.**
+
+### 회원님이 해야 하는 콘솔 작업
+
+**OCI 인스턴스를 만든 뒤에** 한 번만 하면 된다.
+
+```
+Cloudflare > devkdk.com > DNS > Records > Add record
+  Type   A      Name  join    IPv4  <OCI 공인 IP>    Proxy  Proxied (오렌지)
+  Type   A      Name  api     IPv4  <OCI 공인 IP>    Proxy  Proxied (오렌지)
+
+Cloudflare > SSL/TLS > Overview
+  Full (strict)      ← Flexible 이면 리다이렉트 루프가 난다
+
+Cloudflare > SSL/TLS > Origin Server > Create Certificate
+  받은 인증서를 리버스 프록시에 설치한다
+```
+
+> `api.devkdk.com` 은 지금 터널을 가리키고 있다. **24hours 가 그 주소를 쓰고 있으면
+> 건드리지 말고 정산어택용으로 다른 이름을 쓴다** — 예: `jungsan-api.devkdk.com`.
+> 두 서비스가 한 호스트를 공유하면 CORS 허용 목록과 경로 라우팅이 얽힌다.
