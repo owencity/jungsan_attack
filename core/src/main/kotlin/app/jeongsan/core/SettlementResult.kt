@@ -11,15 +11,15 @@ sealed interface SettlementOutcome {
 
 data class SettlementResult(
     /** 면제자를 제외하고 결제 총액이 가장 큰 참여자. 동률이면 id 사전순 첫 번째. */
-    val absorberId: String,
+    val mainPayerId: String,
     val amounts: Map<String, Long>,
     /** 근거 화면(W2)용. **계산만 하고 버리지 말 것** — `CALC_RULES.md` §1. */
     val breakdown: Map<String, ParticipantBreakdown>,
     val transfers: List<Transfer>,
     val grandTotal: Long,
-    /** 실제로 적용된 반올림 단위. 흡수자 음수를 피하려 강등됐을 수 있다. */
+    /** 실제로 적용된 반올림 단위. 대표결제자 음수를 피하려 강등됐을 수 있다. */
     val appliedRoundingUnit: Int,
-    /** 요청한 단위가 흡수자를 음수로 만들어 10원으로 강등된 경우 `true` — `CALC_RULES.md` T7. */
+    /** 요청한 단위가 대표결제자를 음수로 만들어 10원으로 강등된 경우 `true` — `CALC_RULES.md` T7. */
     val roundingUnitDowngraded: Boolean,
 )
 
@@ -27,7 +27,7 @@ data class ParticipantBreakdown(
     val participantId: String,
     val name: String,
     val isExempt: Boolean,
-    val isAbsorber: Boolean,
+    val isMainPayer: Boolean,
     val rounds: List<RoundBreakdown>,
     val extras: List<ExtraBreakdown>,
     /** 반올림 전 원부담. 차수·기타 항목 몫의 정확한 합이다. */

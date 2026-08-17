@@ -3,7 +3,7 @@ package app.jeongsan.core
 /**
  * 계산 엔진의 입력. DB도 UI도 모른다. `CALC_RULES.md` §1 참조.
  *
- * `id`는 문자열이다. `CALC_RULES.md` §2.2가 흡수자 동률 시 **사전순** 결정을 요구하기 때문에
+ * `id`는 문자열이다. `CALC_RULES.md` §2.2가 대표결제자 동률 시 **사전순** 결정을 요구하기 때문에
  * 전순서가 있는 타입이어야 하고, 저장소의 키 타입에 엔진이 묶이지 않게 하려는 것이다.
  */
 data class SettlementInput(
@@ -36,7 +36,7 @@ data class SettlementInput(
 data class Participant(
     val id: String,
     val name: String,
-    /** `CALC_RULES.md` §2.1-c — 부담 0이며 **모든 분모에서 제외**된다. 흡수자가 될 수 없다. */
+    /** `CALC_RULES.md` §2.1-c — 부담 0이며 **모든 분모에서 제외**된다. 대표결제자가 될 수 없다. */
     val exempt: Boolean = false,
 )
 

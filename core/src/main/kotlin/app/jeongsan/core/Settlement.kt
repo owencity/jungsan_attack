@@ -13,7 +13,7 @@ object Settlement {
 
         val first = compute(input, input.roundingUnit)
 
-        // T7 — 흡수자가 음수면 예외 처리 대신 단위를 10원으로 강등해 재계산한다.
+        // T7 — 대표결제자가 음수면 예외 처리 대신 단위를 10원으로 강등해 재계산한다.
         if (first.amounts.values.any { it < 0 } && input.roundingUnit != 10) {
             val retried = compute(input, unit = 10)
             if (retried.amounts.values.any { it < 0 }) {
@@ -32,7 +32,7 @@ object Settlement {
         val victim = result.amounts.entries.first { it.value < 0 }
         return ValidationError(
             ErrorCode.NEGATIVE_FINAL_AMOUNT,
-            "1인당 금액이 너무 작아 흡수자의 부담이 음수가 됩니다. " +
+            "1인당 금액이 너무 작아 대표결제자의 부담이 음수가 됩니다. " +
                 "(${victim.key}: ${victim.value}원) 인원을 줄이거나 금액을 확인해주세요.",
             participantId = victim.key,
         )
@@ -104,35 +104,35 @@ object Settlement {
                 ).sum()
         }
 
-        // ── §2.2 흡수자 결정 — 면제자 제외, 결제총액 최대, 동률이면 id 사전순.
+        // ── §2.2 대표결제자 결정 — 면제자 제외, 결제총액 최대, 동률이면 id 사전순.
         val paid = input.participants.associate { it.id to 0L }.toMutableMap()
         rounds.forEach { paid[it.payerId] = paid.getValue(it.payerId) + it.total }
         input.extras.forEach { paid[it.payerId] = paid.getValue(it.payerId) + it.amount }
 
         val grandTotal = rounds.sumOf { it.total } + input.extras.sumOf { it.amount }
 
-        val absorberId = input.participants
+        val mainPayerId = input.participants
             .filter { !it.exempt }
             .sortedWith(compareByDescending<Participant> { paid.getValue(it.id) }.thenBy { it.id })
             .first().id
 
-        // ── §2.3 반올림. 흡수자는 잔액을 가져가므로 구조적으로 합계가 원금과 일치한다.
+        // ── §2.3 반올림. 대표결제자는 잔액을 가져가므로 구조적으로 합계가 원금과 일치한다.
         val amounts = mutableMapOf<String, Long>()
         input.participants.forEach { p ->
             when {
                 p.exempt -> amounts[p.id] = 0L
-                p.id == absorberId -> Unit
+                p.id == mainPayerId -> Unit
                 else -> amounts[p.id] = raw.getValue(p.id).ceilTo(unit)
             }
         }
-        amounts[absorberId] = grandTotal - amounts.values.sum()
+        amounts[mainPayerId] = grandTotal - amounts.values.sum()
 
         val breakdown = input.participants.associate { p ->
             p.id to ParticipantBreakdown(
                 participantId = p.id,
                 name = p.name,
                 isExempt = p.exempt,
-                isAbsorber = p.id == absorberId,
+                isMainPayer = p.id == mainPayerId,
                 rounds = roundLines.getValue(p.id),
                 extras = extraLines.getValue(p.id),
                 rawTotal = if (p.exempt) Rational.ZERO else raw.getValue(p.id),
@@ -142,7 +142,7 @@ object Settlement {
         }
 
         return SettlementResult(
-            absorberId = absorberId,
+            mainPayerId = mainPayerId,
             amounts = amounts,
             breakdown = breakdown,
             transfers = buildTransfers(input, paid, amounts),

@@ -10,7 +10,7 @@ import io.kotest.matchers.shouldBe
  */
 class SettlementSpec : StringSpec({
 
-    "T1 · 기본 N빵 — 나머지가 흡수자에게 간다" {
+    "T1 · 기본 N빵 — 나머지가 대표결제자에게 간다" {
         val ps = participants("A", "B", "C")
         val result = SettlementInput(
             participants = ps,
@@ -18,7 +18,7 @@ class SettlementSpec : StringSpec({
             attendance = attendance { sober("r1", "A", "B", "C") },
         ).succeed()
 
-        result.absorberId shouldBe "A"
+        result.mainPayerId shouldBe "A"
         result.amounts shouldBe mapOf("A" to 3_320L, "B" to 3_340L, "C" to 3_340L)
         result.amounts.values.sum() shouldBe 10_000L
         result.transfers shouldBe listOf(
@@ -27,7 +27,7 @@ class SettlementSpec : StringSpec({
         )
     }
 
-    "T2 · 2차 불참 — 올림이 없으면 흡수자도 이득을 보지 않는다" {
+    "T2 · 2차 불참 — 올림이 없으면 대표결제자도 이득을 보지 않는다" {
         val result = SettlementInput(
             participants = participants("A", "B", "C", "D"),
             rounds = listOf(
@@ -107,7 +107,7 @@ class SettlementSpec : StringSpec({
         )
     }
 
-    "T6 · unit=100 — 단위가 커질수록 흡수자의 이득이 커진다" {
+    "T6 · unit=100 — 단위가 커질수록 대표결제자의 이득이 커진다" {
         val result = SettlementInput(
             participants = participants("A", "B", "C"),
             rounds = listOf(round("r1", 1, total = 10_000, alcohol = 0, payerId = "A")),
@@ -120,7 +120,7 @@ class SettlementSpec : StringSpec({
         result.roundingUnitDowngraded shouldBe false
     }
 
-    "T7 · unit=1000은 거부된다 — 흡수자를 음수로 만들기 때문이다" {
+    "T7 · unit=1000은 거부된다 — 대표결제자를 음수로 만들기 때문이다" {
         val errors = SettlementInput(
             participants = participants("A", "B", "C", "D"),
             rounds = listOf(round("r1", 1, total = 4_100, alcohol = 0, payerId = "A")),
@@ -131,9 +131,9 @@ class SettlementSpec : StringSpec({
         errors.codes() shouldBe setOf(ErrorCode.INVALID_ROUNDING_UNIT)
     }
 
-    "T7-b · unit=100에서 흡수자가 음수가 되면 10원으로 강등해 재계산한다" {
+    "T7-b · unit=100에서 대표결제자가 음수가 되면 10원으로 강등해 재계산한다" {
         // 15명 / 총액 15,100원 → 1인당 1,006.67원.
-        // unit=100이면 14명이 1,100원씩 = 15,400원이라 흡수자가 −300원이 된다.
+        // unit=100이면 14명이 1,100원씩 = 15,400원이라 대표결제자가 −300원이 된다.
         val ps = participants(*(0 until 15).map { "p%02d".format(it) }.toTypedArray())
         val result = SettlementInput(
             participants = ps,
@@ -159,7 +159,7 @@ class SettlementSpec : StringSpec({
             attendance = attendance { sober("r1", "동규", "민지", "재훈", "수아") },
         ).succeed()
 
-        result.absorberId shouldBe "동규"
+        result.mainPayerId shouldBe "동규"
         result.amounts shouldBe mapOf(
             "동규" to 13_320L, "민지" to 13_340L, "재훈" to 13_340L, "수아" to 0L,
         )

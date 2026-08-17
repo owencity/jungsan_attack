@@ -31,16 +31,16 @@ def settle(participants, rounds, extras, attendance, exempt=(), unit=10):
     for e in extras: paid[e['payer']] += e['amount']
     grand = sum(r['total'] for r in rounds) + sum(e['amount'] for e in extras)
 
-    # 흡수자: 면제자 제외, 결제총액 최대, 동률이면 id 사전순
+    # 대표결제자: 면제자 제외, 결제총액 최대, 동률이면 id 사전순
     cand = [p for p in participants if p not in ex]
-    absorber = sorted(cand, key=lambda p: (-paid[p], p))[0]
+    mainPayer = sorted(cand, key=lambda p: (-paid[p], p))[0]
 
     final = {}
     for p in participants:
         if p in ex: final[p] = 0
-        elif p == absorber: continue
+        elif p == mainPayer: continue
         else: final[p] = int(ceil(raw[p]/unit)*unit)
-    final[absorber] = grand - sum(final.values())
+    final[mainPayer] = grand - sum(final.values())
 
     bal = {p: paid[p]-final[p] for p in participants}
     cr = sorted([[p,v] for p,v in bal.items() if v>0], key=lambda x:(-x[1],x[0]))
@@ -52,12 +52,12 @@ def settle(participants, rounds, extras, attendance, exempt=(), unit=10):
         cr[ci][1]-=amt; de[di][1]-=amt
         if cr[ci][1]==0: ci+=1
         if de[di][1]==0: di+=1
-    return absorber, final, tr, grand
+    return mainPayer, final, tr, grand
 
 def show(name, ps, rs, ex_items, att, exempt=(), unit=10):
     ab, fin, tr, g = settle(ps, rs, ex_items, att, exempt, unit)
     print(f"--- {name}")
-    print("  흡수자:", ab, "| 면제:", list(exempt) or "없음")
+    print("  대표결제자:", ab, "| 면제:", list(exempt) or "없음")
     for p in ps: print(f"   {p}: {fin[p]:,}원" + ("  (면제)" if p in exempt else ""))
     ok = sum(fin.values())==g
     print(f"   합계 {sum(fin.values()):,} / 원금 {g:,} → {'OK' if ok else 'MISMATCH'}")

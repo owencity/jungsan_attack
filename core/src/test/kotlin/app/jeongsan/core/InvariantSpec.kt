@@ -25,7 +25,7 @@ class InvariantSpec : StringSpec({
         verified shouldBeGreaterThan cases / 2
     }
 
-    "모든 최종 금액이 0 이상이다 — 흡수자 포함 (T7 회귀)" {
+    "모든 최종 금액이 0 이상이다 — 대표결제자 포함 (T7 회귀)" {
         var verified = 0
         repeat(cases) { seed ->
             val result = scenario(seed).settleOrNull() ?: return@repeat
@@ -38,12 +38,12 @@ class InvariantSpec : StringSpec({
         verified shouldBeGreaterThan cases / 2
     }
 
-    "같은 입력은 항상 같은 출력을 낸다 — 금액·흡수자·송금 순서 전부" {
+    "같은 입력은 항상 같은 출력을 낸다 — 금액·대표결제자·송금 순서 전부" {
         repeat(2_000) { seed ->
             val input = scenario(seed)
             val a = input.settleOrNull() ?: return@repeat
             val b = input.settleOrNull() ?: return@repeat
-            a.absorberId shouldBe b.absorberId
+            a.mainPayerId shouldBe b.mainPayerId
             a.amounts shouldBe b.amounts
             a.transfers shouldBe b.transfers
         }
