@@ -232,3 +232,30 @@ Cloudflare > SSL/TLS > Origin Server > Create Certificate
 > `api.devkdk.com` 은 지금 터널을 가리키고 있다. **24hours 가 그 주소를 쓰고 있으면
 > 건드리지 말고 정산어택용으로 다른 이름을 쓴다** — 예: `jungsan-api.devkdk.com`.
 > 두 서비스가 한 호스트를 공유하면 CORS 허용 목록과 경로 라우팅이 얽힌다.
+
+#### ⚠ 포트를 두 곳에서 열어야 한다
+
+**현재 인스턴스는 22만 열려 있다.** 밖에서 확인한 결과다.
+
+```
+22    열림
+80    닫힘
+443   닫힘
+8080  닫힘
+```
+
+**DNS 를 붙여도 포트가 닫혀 있으면 아무것도 안 된다.** 그리고 OCI Ubuntu 는
+방화벽이 **두 겹**이라 한 곳만 열면 계속 막힌다 — 이걸 모르면 DNS·인증서를
+의심하며 시간을 버린다.
+
+```
+① VCN 보안 목록        Networking > VCN > Security Lists > Ingress Rules
+                      0.0.0.0/0 → TCP 80, 443 허용
+
+② 인스턴스 내부 방화벽  OCI Ubuntu 이미지는 iptables 로 22 외 전부 차단해둔다
+                      sudo iptables -I INPUT 6 -p tcp --dport 443 -j ACCEPT
+                      sudo netfilter-persistent save        ← 저장 안 하면 재부팅 시 사라진다
+```
+
+**Cloudflare 프록시를 쓰면 80 은 열지 않아도 된다.** Cloudflare 가 오리진에
+443 으로만 붙기 때문이다. 열지 않는 쪽이 표면이 줄어 낫다.

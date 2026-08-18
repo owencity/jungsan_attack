@@ -247,8 +247,8 @@
   <h4>인프라 선택 — 무료 한도 안에서 최대 성능</h4>
   <table>
     <tr><th style="width:9em">항목</th><th style="width:13em">OCI Always Free</th><th>AWS 프리티어 (t3.micro)</th></tr>
-    <tr><td><b>vCPU</b></td><td class="mono">4 (Ampere ARM64)</td><td class="mono">1</td></tr>
-    <tr><td><b>RAM</b></td><td class="mono"><b>24 GB</b></td><td class="mono">1 GB &nbsp;<span style="color:#d93025;font-weight:800">← 24배 차이</span></td></tr>
+    <tr><td><b>vCPU</b></td><td class="mono">2 (Ampere ARM64)</td><td class="mono">1</td></tr>
+    <tr><td><b>RAM</b></td><td class="mono"><b>12 GB</b></td><td class="mono">1 GB &nbsp;<span style="color:#d93025;font-weight:800">← 12배 차이</span></td></tr>
     <tr><td><b>기간</b></td><td class="mono"><b>무기한</b></td><td class="mono">12개월 &nbsp;<span style="color:#d93025;font-weight:800">← 만료된다</span></td></tr>
     <tr><td><b>블록 스토리지</b></td><td class="mono">200 GB</td><td class="mono">30 GB</td></tr>
   </table>
@@ -258,6 +258,14 @@
     <p>앱 + PostgreSQL + Prometheus + Loki + Grafana 를 한 대에 올리려면
     <b>1GB 로는 불가능하다.</b> 대가는 <b>ARM64</b> 다 — x86 러너로 빌드하면 서버에서
     뜨지 않아 GitHub Actions 를 ARM 크로스빌드로 구성해야 한다.</p>
+  </div>
+
+  <div class="box w">
+    <div class="t">Always Free 한도가 축소됐다</div>
+    <p>예전 <b>4 OCPU / 24GB</b> 에서 현재 <b>2 OCPU / 12GB</b> 다.
+    <b>프로젝트 A 의 벤치마크를 냈던 사양과 다르므로</b> 지금 재현하면 값이 달라진다.
+    그리고 관측 스택까지 한 대에 올리는 구성이 12GB 에서도 성립하는지는
+    <b>실측해야 한다</b>(△).</p>
   </div>
 
   <h4>시도와 결과</h4>
@@ -432,7 +440,9 @@
       <li>단일 VM 에서 K8s 를 쓰지 않은 이유</li>
       <li><b>왜 AWS EC2 가 아니라 OCI 인가</b> → 프리티어 1GB vs Always Free 24GB · 12개월 vs 무기한</li>
       <li>그 선택의 대가는? → ARM64. 크로스빌드가 필요하고 일부 이미지가 ARM 을 지원하지 않는다</li>
-      <li>OCI Always Free ARM 한도는? → 월 3,000 OCPU 시간 / 18,000 GB 시간 = 4 OCPU / 24GB 상시</li>
+      <li>OCI Always Free ARM 한도는? → <b>축소됐다.</b> 현재 2 OCPU / 12GB</li>
+      <li>그래서 무엇이 달라지는가 → 컨테이너 메모리 상한을 12GB 기준으로 다시 배분해야 한다</li>
+      <li><b>관측 스택까지 한 대에 올리는 것이 12GB 에서도 성립하는가</b> → 실측 필요 (△)</li>
     </ul>
   </div>
 
