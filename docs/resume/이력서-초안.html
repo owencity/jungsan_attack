@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>이력서 초안 — 서버 개발자</title>
+<style>
+  @page { size:A4; margin:15mm 14mm 14mm; }
+  :root{
+    --p800:#12386f; --p700:#1b4f9c; --p600:#2c74d6; --p500:#4a8ce8; --p100:#d6e6fb; --p50:#f3f8ff;
+    --acc:#ff9a3d; --acc2:#ffb03a; --accbg:#fff5ea; --accink:#a8520a;
+    --warn:#d93025; --warnbg:#fdeceb; --ok:#12855c; --okbg:#eafaf3;
+    --ink:#0e2340; --ink2:#3d556f; --ink3:#8398b3; --line:#dfe8f3;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{margin:0;color:var(--ink);background:#fff;
+    font-family:'Malgun Gothic','Segoe UI',-apple-system,sans-serif;
+    font-size:9.8pt;line-height:1.68;letter-spacing:-.012em}
+  code,.mono,pre{font-family:'Cascadia Mono','Consolas',monospace;font-variant-ligatures:none}
+
+  .cover{height:262mm;display:flex;flex-direction:column;justify-content:center;
+    page-break-after:always;position:relative;overflow:hidden}
+  .cover .blob{position:absolute;border-radius:50%;opacity:.09}
+  .b1{width:330px;height:330px;background:var(--p500);top:-120px;right:-90px}
+  .b2{width:210px;height:210px;background:var(--acc);bottom:30px;left:-80px}
+  .kick{font-size:8.4pt;font-weight:800;letter-spacing:.24em;color:var(--p600);
+    text-transform:uppercase;margin-bottom:18px}
+  .cover h1{font-size:31pt;font-weight:800;letter-spacing:-.042em;margin:0 0 12px;line-height:1.16}
+  .cover h1 em{font-style:normal;color:var(--p600)}
+  .cover .one{font-size:11pt;color:var(--ink2);max-width:31em;margin-bottom:30px;line-height:1.62}
+  .legend{border:1px solid var(--line);border-radius:11px;padding:14px 16px;max-width:36em;background:var(--p50)}
+  .legend .lt{font-size:8pt;font-weight:800;letter-spacing:.13em;color:var(--p600);margin-bottom:9px}
+  .legend div.r{display:flex;gap:11px;margin-bottom:5px;font-size:9.4pt}
+  .legend div.r:last-child{margin-bottom:0}
+  .legend .mk{flex:0 0 4.6em;font-weight:800}
+  .cover .note{position:absolute;bottom:0;left:0;font-size:8.2pt;color:var(--ink3)}
+
+  h2{font-size:14.6pt;font-weight:800;letter-spacing:-.032em;margin:0 0 3px;page-break-after:avoid}
+  h2 .n{display:inline-block;min-width:1.4em;height:1.4em;line-height:1.4em;text-align:center;
+    border-radius:7px;background:var(--p600);color:#fff;font-size:9.8pt;margin-right:9px;vertical-align:.09em}
+  h2+.lead{color:var(--ink2);font-size:9.6pt;margin:0 0 14px;padding-left:2.35em}
+  h3{font-size:10.9pt;font-weight:800;margin:18px 0 6px;letter-spacing:-.02em;page-break-after:avoid}
+  h3 .d{color:var(--acc);margin-right:6px}
+  h4{font-size:9.8pt;font-weight:800;margin:14px 0 4px;color:var(--p700)}
+  p{margin:0 0 8px}
+  b,strong{font-weight:800}
+  em.h{font-style:normal;background:linear-gradient(transparent 62%,var(--acc2) 62%);padding:0 1px}
+  .hr{height:1px;background:var(--line);margin:24px 0 20px}
+  .sec{margin-bottom:20px}
+  .brk{page-break-before:always}
+  ul{margin:6px 0 9px;padding-left:1.1em} li{margin-bottom:3px} li::marker{color:var(--p500)}
+
+  pre{background:#0f2138;color:#d8e6f7;border-radius:10px;padding:12px 14px;font-size:8.3pt;
+    line-height:1.62;margin:9px 0;white-space:pre-wrap;page-break-inside:avoid}
+  pre .c{color:#7ea7d6} pre .o{color:#ffb56b;font-weight:700} pre .g{color:#66d6a4}
+  pre .r{color:#ff8f85;font-weight:700} pre .dim{color:#6b87a8} pre .y{color:#ffe08a}
+
+  table{width:100%;border-collapse:collapse;font-size:8.8pt;margin:9px 0;page-break-inside:avoid}
+  th{background:var(--p600);color:#fff;text-align:left;font-weight:700;padding:6px 9px;font-size:8.2pt}
+  th:first-child{border-radius:6px 0 0 0} th:last-child{border-radius:0 6px 0 0}
+  td{padding:6px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:nth-child(even) td{background:#fafcfe}
+  td.mono{font-size:8.3pt}
+
+  .box{border-radius:10px;padding:11px 14px;margin:10px 0;page-break-inside:avoid}
+  .box .t{font-weight:800;font-size:9.5pt;margin-bottom:4px}
+  .box p:last-child{margin:0}
+  .box.w{background:var(--warnbg);border-left:3px solid var(--warn)} .box.w .t{color:var(--warn)}
+  .box.k{background:var(--accbg);border-left:3px solid var(--acc)} .box.k .t{color:var(--accink)}
+  .box.o{background:var(--okbg);border-left:3px solid var(--ok)} .box.o .t{color:var(--ok)}
+  .box.b{background:var(--p50);border-left:3px solid var(--p600)} .box.b .t{color:var(--p700)}
+
+  .star{border:2px solid var(--acc);border-radius:12px;padding:15px 17px;margin:13px 0;
+    background:linear-gradient(180deg,#fff8f0,#fff);page-break-inside:avoid}
+  .star .st{font-weight:800;font-size:10.6pt;color:var(--accink);margin-bottom:7px}
+
+  .stats{display:flex;gap:8px;margin:11px 0;page-break-inside:avoid}
+  .stat{flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 11px;background:#fff}
+  .stat .v{font-size:15.5pt;font-weight:800;color:var(--p600);letter-spacing:-.03em;line-height:1.15}
+  .stat .v small{font-size:9pt;font-weight:800}
+  .stat .k{font-size:7.8pt;color:var(--ink2);font-weight:700;margin-top:2px}
+  .stat .s{font-size:7.4pt;color:var(--ink3)}
+
+  .mk{display:inline-block;font-weight:800;font-size:8.4pt;padding:0 6px;border-radius:5px}
+  .mk.ok{background:var(--okbg);color:var(--ok)}
+  .mk.tri{background:var(--accbg);color:var(--accink)}
+  .mk.q{background:#eef2f7;color:var(--ink2)}
+
+  .qt{border-left:2px solid var(--p500);padding-left:12px;margin:9px 0}
+  .qt .qh{font-weight:800;font-size:9.6pt;margin-bottom:4px}
+  .qt ul{margin:3px 0 0}
+  .qt li{font-size:8.9pt;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="kick">이력서 초안 · 서버 개발자</div>
+  <h1>측정으로 결정하는<br><em>백엔드 개발자</em></h1>
+  <div class="one">
+    토스뱅크 · 토스플레이스 지원용 초안.<br>
+    두 공고가 공통으로 요구하는 <b>“문제 정의 → 시도 → 결과”</b> 형식에 맞춰
+    두 프로젝트를 재서술했다.
+  </div>
+  <div class="legend">
+    <div class="lt">표시 규칙</div>
+    <div class="r"><span class="mk"><span class="mk ok">✓</span></span><span><b>지금 제출 가능.</b> 측정·코드로 확인된 사실</span></div>
+    <div class="r"><span class="mk"><span class="mk tri">△</span></span><span><b>아직 미검증.</b> 목표 문장이며 검증 전에는 이력서에서 뺀다</span></div>
+    <div class="r"><span class="mk"><span class="mk q">확인</span></span><span>내가 모르는 사실. 직접 채워야 함</span></div>
+  </div>
+  <div class="note">△ 목록이 곧 다음 4주의 작업 목록이다. 검증되면 표시만 지운다.</div>
+</div>
+
+<div class="sec">
+  <h2><span class="n">0</span>먼저 채워야 하는 것</h2>
+  <p class="lead">이 네 개가 비면 서류의 앞부분이 성립하지 않는다.</p>
+  <table>
+    <tr><th style="width:14em">항목</th><th>왜 필요한가</th></tr>
+    <tr><td><span class="mk q">확인</span> <b>경력 연차 · 재직 기간</b></td><td>서류의 첫 판단 기준</td></tr>
+    <tr><td><span class="mk q">확인</span> <b>회사 · 도메인 공개 범위</b></td><td>“유통업 ERP” 까지 쓸지, “신규 대규모 시스템” 으로 둘지</td></tr>
+    <tr><td><span class="mk q">확인</span> <b>실무 시스템 규모</b></td><td>일 주문 건수 · 테이블 수 · 동시 사용자. <b>두 JD 가 “대규모 트래픽” 을 직접 묻는다</b></td></tr>
+    <tr><td><span class="mk q">확인</span> <b>실무에서 직접 한 개선</b></td><td>사이드 프로젝트만으로 “기존 대비 나은 결과” 를 채우기는 약하다</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <h2><span class="n">1</span>요약과 핵심 역량</h2>
+
+<pre><span class="g">✓</span>  통념을 측정으로 검증한 뒤 결정하는 백엔드 개발자.
+
+   신규 시스템의 DBMS 선택 근거를 직접 벤치마크로 검증했고<span class="o">(주문 607만 행 규모)</span>,
+   그 과정에서 <span class="y">내 측정이 드라이버 비대칭으로 오염된 것을 스스로 적발</span>해 공정화했다.
+   결정은 코드가 아니라 문서로 남긴다 — 버린 안과 재검토 조건까지 함께.</pre>
+
+  <p><b>첫 문장에 “측정” 을 놓았다.</b> 두 JD 가 공통으로 요구하는 것이
+  <em class="h">문제 정의 → 시도 → 결과</em> 이고, 이 사람의 일관된 패턴이 그것이다.</p>
+
+  <table>
+    <tr><th style="width:3.4em"></th><th style="width:15em">역량</th><th>근거</th></tr>
+    <tr><td><span class="mk ok">✓</span></td><td><b>Kotlin/Java + Spring 서버 개발</b></td><td>필수 요건. 실무 + 정산어택</td></tr>
+    <tr><td><span class="mk ok">✓</span></td><td><b>데이터 모델과 API 설계</b></td><td>엔드포인트 24개 · 오류 코드 31종을 구현 전에 계약으로 확정</td></tr>
+    <tr><td><span class="mk ok">✓</span></td><td><b>성능 근거를 실행계획으로 증명</b></td><td><code>EXPLAIN ANALYZE</code> 로 “왜 빠른가” 까지 규명</td></tr>
+    <tr><td><span class="mk ok">✓</span></td><td><b>정합성 · 격리수준</b></td><td>동일 격리수준에서 lost update 재현·차단을 실측</td></tr>
+    <tr><td><span class="mk ok">✓</span></td><td><b>측정 설계 능력</b></td><td>드라이버 비대칭 오염 적발 → 공정 측정으로 교정</td></tr>
+    <tr><td><span class="mk ok">✓</span></td><td><b>결정 기록</b></td><td>ADR 8건. 버린 안과 재검토 조건 포함</td></tr>
+    <tr><td><span class="mk tri">△</span></td><td><b>동시성 제어</b></td><td>설계 완료, 부하 검증 예정</td></tr>
+    <tr><td><span class="mk q">확인</span></td><td><b>대규모 트래픽 운영</b></td><td>실무 규모를 채워야 성립</td></tr>
+  </table>
+</div>
+
+<div class="sec brk">
+  <h2><span class="n">2</span>프로젝트 A — 신규 시스템 DBMS 선택을 벤치마크로 검증</h2>
+  <p class="lead">단독 설계·구현·측정 · 실무 의사결정을 사이드 프로젝트로 검증</p>
+
+  <h4>문제</h4>
+  <p>사내에서 <b>신규 대규모 시스템 도입과 기존 시스템 마이그레이션</b>을 진행 중이었고,
+  라이브 전이라 DBMS 를 다시 고를 수 있었다. 관성적으로 쓰던 MySQL 대신
+  <b>PostgreSQL 을 선택</b>했지만, 그 근거가 <em class="h">“복잡 쿼리·정합성엔 PG 가 낫다더라”</em>
+  는 통념에 머물러 있었다.</p>
+
+  <h4>제약</h4>
+  <ul>
+    <li><b>DBMS 는 한번 정하면 되돌리기 어렵다.</b> 마이그레이션 비용이 선택 비용보다 크다</li>
+    <li>두 엔진을 공정하게 비교해야 한다 — 코어·버퍼·데이터가 다르면 아무 의미가 없다</li>
+    <li><b>“PostgreSQL 이 다 이긴다” 는 결론은 신뢰할 수 없다.</b> 트레이드오프가 나와야 한다</li>
+  </ul>
+
+  <h4>시도</h4>
+  <ul>
+    <li>현장의 <b>통념 5가지</b>를 참 / 거짓 / 조건부로 가리는 형태로 문제를 정의</li>
+    <li><b>동일 코어 · 동일 버퍼(각 6GB) · 동일 데이터(CSV)</b> 로 대칭 구성</li>
+    <li>단순 OLTP 는 <code>sysbench</code>, 복합 쿼리는 <code>EXPLAIN ANALYZE</code> 로
+      <b>“왜 빠른지” 까지 규명</b>, 동시성·정합성은 Python 하니스로 직접 재현</li>
+    <li>주문–재고–배송 풀필먼트 14테이블 · <b>주문 607만 · 주문상세 1,321만 행</b></li>
+    <li><b>OCI(4 vCPU / 24GB)</b> 에서 최종 측정, <b>GitHub Actions → SSH → OCI</b> 자동화 —
+      호스팅 러너는 트리거만, 측정은 전부 실제 하드웨어에서</li>
+  </ul>
+
+  <div class="stats">
+    <div class="stat"><div class="v">1,321<small>만 행</small></div><div class="k">측정 데이터 규모</div><div class="s">주문상세 기준</div></div>
+    <div class="stat"><div class="v">4.7<small>×</small></div><div class="k">7테이블 조인</div><div class="s">18.1s vs 85.5s</div></div>
+    <div class="stat"><div class="v">69<small>×</small></div><div class="k">1,300만 행 집계</div><div class="s">0.87s vs 59.6s</div></div>
+    <div class="stat"><div class="v">257<small>건</small></div><div class="k">MySQL lost update</div><div class="s">PG 는 0건</div></div>
+  </div>
+
+  <h4>결과</h4>
+<pre><span class="g">✓</span> <span class="o">대규모 조인</span>      7테이블 조인    PG <span class="g">18.1s</span>  vs  MySQL <span class="r">85.5s</span>     <span class="o">4.7×</span>
+                    PG = Parallel Hash Join(4워커) / MySQL = 행당 PK 조회 Nested Loop
+                    <span class="dim">→ 튜닝 문제가 아니라 아키텍처 한계임을 실행계획으로 확인</span>
+
+<span class="g">✓</span> <span class="o">대규모 분석</span>      1,300만 행 집계  PG <span class="g">0.87s</span>  vs  MySQL <span class="r">59.6s</span>     <span class="o">69×</span>
+                    <span class="dim">scale 이 커질수록 격차가 벌어짐</span>
+
+<span class="g">✓</span> <span class="o">정합성 (결정타)</span>  동일 RR 에서   MySQL lost update <span class="r">257건</span>  vs  PG <span class="g">0건</span>
+                    MySQL 은 조용히 덮어씀(fail-silent) · DDL 롤백 불가
+                    PG 는 직렬화 오류로 거부(fail-loud) · DDL 롤백 가능
+
+<span class="g">✓</span> <span class="o">반증도 함께</span>      insert 꼬리지연 max 는 <span class="y">MySQL 이 안정적</span> (44ms vs PG 268ms)
+                    <span class="dim">→ "PG 가 다 이긴다" 가 거짓임을 스스로 기록</span></pre>
+
+  <div class="star">
+    <div class="st">★ 이 프로젝트의 핵심 — 내 측정이 틀렸음을 스스로 찾아냈다</div>
+    <p>통념 ④ <b>“PG 는 MVCC 라 동시 쓰기가 빠르다”</b> 를 재던 중,
+    <b>양쪽 드라이버가 비대칭(한쪽만 네이티브 C)이라 측정이 오염된 것을 적발</b>했다.
+    양쪽 모두 네이티브 C 드라이버로 교체해 공정화한 결과 쓰기 격차가
+    <b>1.44× → 1.22×</b> 로 좁혀졌다.</p>
+    <p>그리고 <b>통념의 인과 자체가 틀렸음</b>을 확인했다 — MySQL 도 MVCC 다.
+    PG 의 modest 한 우위는 MVCC 때문이 아니고, 그 대가로
+    hot row dead tuple <b>34,169건</b>의 bloat 을 진다.</p>
+    <p style="margin-top:7px"><em class="h">측정 결과를 뒤집는 것보다 측정 방법을 의심하는 것이 어렵다.</em>
+    적발·교정 과정을 별도 검증 로그 문서에 전부 기록했다.</p>
+  </div>
+
+  <div class="box b">
+    <div class="t">결론을 맥락 의존으로 남긴 것이 이 프로젝트의 신뢰도다</div>
+    <p>직관으로 고른 PostgreSQL 이 <b>우리 시스템 요구(복잡 쿼리·분석·정합성)에 한해서는</b>
+    데이터로 뒷받침되는 선택이었다. <b>단순 키-값 트래픽 위주였다면 결론이 달랐을 수 있다.</b></p>
+  </div>
+</div>
+
+<div class="sec brk">
+  <h2><span class="n">3</span>프로젝트 B — 정산어택 (진행 중)</h2>
+  <p class="lead">2026.08 ~ · 기획·설계·개발 단독 · 웹 + 모바일</p>
+
+  <h4>문제</h4>
+  <p>술자리 정산은 나눗셈 문제가 아니라 <b>기록 문제</b>다. 1차 5명, 2차 3명, 한 명은 논알콜,
+  택시비는 2명 부담 — 인원수로 나누면 누군가는 반드시 손해를 본다.
+  그런데 <em class="h">그 정보는 총무의 기억 속에만 있다.</em></p>
+
+  <h4>제약</h4>
+  <ul>
+    <li><b>금액은 1원도 틀리면 안 된다.</b> 합계가 원금과 정확히 일치해야 한다</li>
+    <li>참여자에게 <b>앱 설치를 요구할 수 없다</b> — 이탈하면 총무가 다시 전부 입력한다</li>
+    <li>무료 인스턴스 한 대에 앱·DB·관측 스택을 모두 올린다</li>
+  </ul>
+
+  <h4>시도와 결과</h4>
+<pre><span class="g">✓</span> <span class="o">BigDecimal 이 안전하다는 통념을 반증</span>
+   랜덤 30,000건을 참조 구현과 대조 → <span class="r">210건(0.70%) 금액 불일치</span>
+   정밀도를 100자리로 올려도 사라지지 않음 = <span class="y">정밀도가 아니라 표현의 문제</span>
+   → BigInteger 유리수로 교체 → <span class="g">불일치 0건</span>
+
+<span class="g">✓</span> <span class="o">합계 불변식을 코드 구조로 보장</span>
+   대표결제자 몫을 나눗셈이 아니라 뺄셈으로 남김
+     <span class="y">amounts[mainPayer] = grandTotal - amounts.values.sum()</span>
+   <span class="dim">→ 보정 로직이 존재하지 않으므로 보정 버그도 존재할 수 없다</span>
+
+<span class="g">✓</span> <span class="o">구현 전에 계약을 확정</span>
+   엔드포인트 24개 · 오류 코드 31종 · 요청/응답 형식
+   계산 엔진의 ErrorCode enum 과 <span class="g">기계로 대조해 누락 0건</span> 확인
+
+<span class="g">✓</span> <span class="o">결정을 기록으로 남김</span>
+   ADR 8건 — 각 문서에 버린 안과 재검토 조건 포함
+   계산 엔진 739줄 / 테스트 741줄 / <span class="g">46건 전부 통과</span>
+
+<span class="o">△</span> <span class="dim">동시성 제어를 부하로 검증</span>
+   경합 4종을 성질별로 분리 (행 잠금 · 복합 유니크 · 조건부 UPDATE)
+   → 동시 N 요청에서 정원 초과 0건 · p99 <span class="dim">측정 예정</span>
+
+<span class="o">△</span> <span class="dim">조회 쿼리 수를 고정</span>
+   컬렉션 6개를 순진하게 로딩하면 N+1
+   → gathering_id 로 따로 긁어 메모리 조립, 5~6 쿼리로 <span class="dim">고정 측정 예정</span></pre>
+
+  <h4>설계 판단</h4>
+  <table>
+    <tr><th style="width:17em">판단</th><th>이유</th></tr>
+    <tr><td>계산 엔진을 DB·HTTP 없이 순수 함수로 격리</td><td>금액 정확성만 따로 검증하기 위해</td></tr>
+    <tr><td>계산 결과를 저장하지 않고 매번 도출</td><td>저장하면 “저장된 금액” 과 “지금 계산한 금액” 이 갈라진다</td></tr>
+    <tr><td><code>Gathering</code> 을 애그리게이트 루트로, 그 행을 잠금 단위로</td><td><b>애그리게이트 경계 = 잠금 경계 = 트랜잭션 경계</b></td></tr>
+    <tr><td>브로커 대신 아웃박스 테이블</td><td>알림 하나 때문에 운영 대상을 늘리지 않는다. DB 커밋과 함께 원자적</td></tr>
+    <tr><td>비정규화 카운터를 쓰지 않음</td><td>갱신 경로가 5개라 하나만 빠뜨려도 정원 게이트가 조용히 틀린다</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <h2><span class="n">4</span>성장 — JD 가 직접 요구하는 항목</h2>
+  <p class="lead">“어떤 성장을 생각하고 있고, 성장을 위해 어떤 노력을 하고 있는지”</p>
+
+<pre><span class="g">✓</span> <span class="o">통념을 측정으로 바꾸는 습관</span>
+   "PG 가 낫다더라"       → 5가지 통념을 참/거짓/조건부로 가림
+   "BigDecimal 이면 된다"  → 30,000건 대조로 반증
+
+<span class="g">✓</span> <span class="o">내 측정을 의심하는 습관</span>
+   드라이버 비대칭 오염을 스스로 적발해 공정화 (1.44× → 1.22×)
+   결론을 맥락 의존으로 남기고 반증 사례를 함께 기록
+
+<span class="g">✓</span> <span class="o">AI 산출물을 검증하는 습관</span>
+   생성된 설명 중 인과가 틀린 것을 적발한 로그를 별도 문서로 관리
+   할루시 적발 1건 · 과잉 일반화 차단 2건 · 조건 명시 3건
+
+<span class="g">✓</span> <span class="o">결정을 문서로 남기는 습관</span>
+   ADR 8건. 버린 안과 재검토 조건을 함께 적어,
+   나중에 근거를 모른 채 뒤집지 않게 만든다
+
+<span class="o">△</span> <span class="dim">구현력 보강</span>
+   알고리즘·구현 훈련을 별도로 진행 중 (2026.08~10)
+   → 설계는 되지만 빈 파일에서 코드를 만드는 속도가 부족하다는 자기 진단</pre>
+
+  <div class="box k">
+    <div class="t">마지막 항목은 서류에 넣지 않는 쪽을 권한다</div>
+    <p>약점을 먼저 말하는 것이 신뢰를 주기도 하지만, 서류 단계에서는 감점 요인이 될 수 있다.
+    <b>면접에서 물으면 답하는 쪽</b>이 낫다 — 그때는 “진단하고 조치 중” 이라는 강점이 된다.</p>
+  </div>
+
+  <div class="box o">
+    <div class="t">세 번째 항목이 지금 가장 희소하다</div>
+    <p><b>AI 산출물의 인과가 틀린 것을 적발해 기록한 로그</b>를 가진 지원자는 드물다.
+    “AI 를 쓴다” 가 아니라 <b>“AI 를 검증한다”</b> 는 서술이라 차별점이 된다.</p>
+  </div>
+</div>
+
+<div class="sec brk">
+  <h2><span class="n">5</span>파생 질문 트리 — 정산어택</h2>
+  <p class="lead">이력서 문장이 스터디 범위를 정의한다. 하루 1~2개씩 답을 채운다.</p>
+
+  <p>DB 프로젝트는 <code>MySQL_PostgreSQL/report/면접_예상질문.md</code> 에 A~I 로 이미 있으므로,
+  여기서는 <b>정산어택 문장에서 파생되는 것만</b> 정리한다.</p>
+
+  <div class="qt">
+    <div class="qh">“유리수로 교체했다”</div>
+    <ul>
+      <li><code>BigDecimal</code> 의 내부 표현은? <code>unscaledValue × 10^-scale</code> 인데 왜 1/3 을 담지 못하는가</li>
+      <li><code>MathContext</code> 를 100자리로 올려도 왜 해결되지 않는가</li>
+      <li><code>double</code> 은 왜 애초에 후보가 아닌가 — 이진 부동소수로 0.1 을 담지 못하는 문제</li>
+      <li><code>BigInteger</code> 연산 비용은? 분모가 커지면 어떻게 되는가 → 약분 시점</li>
+      <li>통화가 여러 개가 되면? 소수점을 쓰는 통화는 무엇이 달라지는가</li>
+    </ul>
+  </div>
+
+  <div class="qt">
+    <div class="qh">“합계를 뺄셈으로 보장했다”</div>
+    <ul>
+      <li>대표결제자가 음수가 될 수 있는 조건은? 그때 어떻게 처리하는가</li>
+      <li>반올림 단위를 100원으로 올리면 왜 음수가 더 쉽게 나오는가</li>
+      <li>이 방식의 단점은? 한 사람이 반올림 오차를 전부 흡수한다 → 공정한가</li>
+    </ul>
+  </div>
+
+  <div class="qt">
+    <div class="qh">“애그리게이트 경계를 잠금 경계로 잡았다”</div>
+    <ul>
+      <li><code>SELECT … FOR UPDATE</code> 는 어떤 잠금인가. <code>FOR SHARE</code> 와 차이</li>
+      <li>왜 <code>participant</code> 가 아니라 <code>gathering</code> 을 잠그는가 → <b>없는 행은 잠글 수 없다</b></li>
+      <li>MVCC 에서 일반 <code>SELECT</code> 는 왜 막히지 않는가</li>
+      <li>격리수준을 <code>SERIALIZABLE</code> 로 올리면 이 잠금이 필요 없어지는가 → 그 대가는</li>
+      <li>데드락이 나는 조건과 회피 규칙 → 잠금 순서 고정</li>
+      <li>낙관적 락(<code>@Version</code>)을 왜 안 썼는가 → 재시도를 참여자에게 요구하게 된다</li>
+    </ul>
+  </div>
+
+  <div class="qt">
+    <div class="qh">“복합 유니크로 중복 참여를 막았다”</div>
+    <ul>
+      <li>애플리케이션의 <code>if (exists) throw</code> 가 왜 불충분한가</li>
+      <li><b>PostgreSQL 의 <code>UNIQUE</code> 는 <code>NULL</code> 을 어떻게 취급하는가</b> → 널 허용 시 제약이 무력화</li>
+      <li>제약 위반 예외를 어느 계층에서 도메인 오류로 변환해야 하는가</li>
+      <li>유니크 인덱스가 잠금에 미치는 영향</li>
+    </ul>
+  </div>
+
+  <div class="qt">
+    <div class="qh">“조건부 UPDATE 로 상태 경합을 처리했다”</div>
+    <ul>
+      <li><code>UPDATE … WHERE status = 'COLLECTING'</code> 이 원자적인 이유</li>
+      <li>영향 행 수 0 을 오류로 볼 것인가 정상 종료로 볼 것인가 → 사용자 맥락에 따라</li>
+      <li>이것과 낙관적 락의 차이는 본질적으로 무엇인가</li>
+    </ul>
+  </div>
+
+  <div class="qt">
+    <div class="qh">“브로커 대신 아웃박스를 썼다”</div>
+    <ul>
+      <li>아웃박스가 해결하는 문제는? → DB 커밋과 메시지 발행의 원자성</li>
+      <li><b>아웃박스는 Kafka 의 대체인가 보완인가</b> → 보통 보완. 확장 경로는 Outbox → CDC → Kafka</li>
+      <li>발행 실패 시 중복 발행이 생기는데 소비자 멱등성은 어떻게 보장하는가</li>
+      <li>Kafka 를 넣는다면 파티션 키는? → <code>gatheringId</code>. <b>애그리게이트 경계와 같아야 하는 이유</b></li>
+      <li>파티션을 늘리면 순서 보장이 어떻게 깨지는가</li>
+    </ul>
+  </div>
+
+  <div class="qt">
+    <div class="qh">“무료 인스턴스 한 대에 전부 올린다”</div>
+    <ul>
+      <li>앱·DB·Prometheus·Loki·Grafana 의 메모리 배분 근거는? → <b>실측값 필요 (△)</b></li>
+      <li>컨테이너 메모리 상한이 없으면 무엇이 먼저 죽는가</li>
+      <li>ARM64 크로스빌드가 필요한 이유</li>
+      <li>단일 VM 에서 K8s 를 쓰지 않은 이유</li>
+    </ul>
+  </div>
+
+  <div class="qt">
+    <div class="qh">“요청 제한을 두 겹으로 나눴다”</div>
+    <ul>
+      <li>엣지(Cloudflare)와 애플리케이션(Bucket4j)의 역할 분담 근거</li>
+      <li><b>연속 404 규칙을 엣지에서 못 하는 이유</b> → 토큰 유효성은 DB 를 봐야 안다</li>
+      <li>성공 응답을 세지 않는 이유 → NAT 뒤 다수 사용자</li>
+      <li>토큰 길이 12자·62종의 근거 → 대입 난이도 계산</li>
+      <li>인스턴스가 늘면 카운터가 왜 뚫리는가 → Redis 백엔드가 필요한 지점</li>
+    </ul>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="hr"></div>
+  <h2><span class="n">6</span>4주 작업 목록 — △ 를 지우는 순서</h2>
+
+  <table>
+    <tr><th style="width:3.4em">주</th><th style="width:22em">작업</th><th>지워지는 △</th></tr>
+    <tr><td><b>1</b></td><td>스키마(Liquibase · ERD · 명세) + 서버 골격</td><td>—</td></tr>
+    <tr><td><b>2</b></td><td>엔드포인트 구현 · 프론트 연동 · <b>순진한 로딩 vs 조립 쿼리 수 측정</b></td><td>N+1</td></tr>
+    <tr><td><b>3</b></td><td>인프라 실측(메모리 배분) · Kafka 이력 스트림 · Redis 제한</td><td>메모리 배분 근거</td></tr>
+    <tr><td><b>4</b></td><td><b>부하 테스트 — 동시 요청 정원 초과 0건 · p99</b></td><td>동시성</td></tr>
+  </table>
+
+  <h3><span class="d">§</span>이 초안에서 의도적으로 빼놓은 것</h3>
+  <table>
+    <tr><th style="width:14em">뺀 것</th><th>이유</th></tr>
+    <tr><td><b>K8s · Istio · ArgoCD</b></td><td>단일 VM 에 얹으면 “왜” 에 답이 없다. <b>“왜 안 썼는지” 가 더 강한 답변</b>이다</td></tr>
+    <tr><td><b>MongoDB · Elasticsearch</b></td><td>이 도메인에 자리가 없다. 억지로 넣으면 그 항목이 감점이 된다</td></tr>
+    <tr><td><b>RDS</b></td><td>DB 를 앱과 다른 클라우드에 두는 구조를 설명할 수 없다</td></tr>
+    <tr><td>사용자 수 · 다운로드 수</td><td>아직 출시 전이다. 출시 후 채운다</td></tr>
+  </table>
+
+  <p style="margin-top:15px;color:var(--ink3);font-size:8.2pt;border-top:1px solid var(--line);padding-top:9px">
+    이력서 초안 · 수치는 두 저장소에서 직접 측정한 값이다 ·
+    <span class="mono">주문 607만/주문상세 1,321만 행 · core 739/741줄 · 테스트 46건 · ADR 8건</span>
+  </p>
+</div>
+
+</body>
+</html>
