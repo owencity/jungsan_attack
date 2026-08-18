@@ -12,6 +12,7 @@
 | [005](005-no-stored-settlement.md) | 계산 결과를 저장하지 않되 `paidAmount`로 차액을 낸다 | 확정 |
 | [006](006-single-vm-no-kubernetes.md) | 단일 VM에 docker compose로 배포한다. K8s·ArgoCD·Jenkins를 쓰지 않는다 | 확정 |
 | [007](007-backend-serves-og.md) | 공유 링크를 백엔드 호스트에 두고 OG 태그가 든 HTML로 응답한다 | 확정 |
+| [008](008-join-concurrency.md) | 참여 동시성을 `gathering` 행 잠금과 복합 유니크로 나눠 막는다 | 확정 |
 
 ## 형식
 
