@@ -16,3 +16,4 @@ Thumbs.db
 # PDF·PNG 를 헤드리스 Chrome 으로 뽑을 때 나오는 것들로, 커밋 대상이 아니다.
 # (design/icon/_icon_page.html 이 아이콘 커밋에 딸려 들어간 적이 있다)
 _*
+core/bin/

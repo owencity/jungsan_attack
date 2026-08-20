@@ -454,7 +454,7 @@ jobs:
     <tr>
       <td><span class="pill done">완료</span></td>
       <td><b>API 계약</b></td>
-      <td>엔드포인트 24개 · 요청/응답 · 오류 코드 31종. 계산 엔진 <code>ErrorCode</code> 와 <b>기계로 대조해 누락 0건</b> 확인</td>
+      <td>엔드포인트 24개 · 요청/응답 · 오류 코드 34종. 계산 엔진 <code>ErrorCode</code> 와 <b>기계로 대조해 누락 0건</b> 확인</td>
     </tr>
     <tr>
       <td><span class="pill done">완료</span></td>
@@ -534,7 +534,7 @@ jobs:
     <tr><td><b>정확성을 측정으로 증명</b></td><td>통념(<code>BigDecimal</code>)을 30,000건 대조로 반증하고 유리수로 교체. <b>0.70% 불일치 → 0건</b></td></tr>
     <tr><td><b>불변식을 코드 구조로 보장</b></td><td>대표결제자 몫을 <b>뺄셈으로 남겨</b> 합계가 원금과 어긋날 수 없게 만들었다. 보정 로직이 존재하지 않는다</td></tr>
     <tr><td><b>동시성 설계</b></td><td>경합 4종을 성질별로 나눠 <b>행 잠금 · 복합 유니크 · 조건부 UPDATE</b> 로 각각 처리</td></tr>
-    <tr><td><b>계약 우선 개발</b></td><td>엔드포인트 24개와 오류 코드 31종을 구현 전에 확정하고 엔진 <code>enum</code> 과 기계 대조</td></tr>
+    <tr><td><b>계약 우선 개발</b></td><td>엔드포인트 24개와 오류 코드 34종을 구현 전에 확정하고 엔진 <code>enum</code> 과 기계 대조</td></tr>
     <tr><td><b>제약 아래의 인프라 설계</b></td><td>무료 ARM 인스턴스 한 대 · 크로스 빌드 · 컨테이너 메모리 상한 · 엣지와 앱의 방어 분담</td></tr>
     <tr><td><b>결정 기록</b></td><td>ADR 8건. 각 문서에 <b>버린 안과 재검토 조건</b>을 함께 남겼다</td></tr>
   </table>
