@@ -1,4 +1,15 @@
-# 정산어택 — API 계약 · v1
+# 정산어택 — API 계약 · v2
+
+> **v2 변경** (`ADR-009`~`013`) — `Group`(영구 모임)·실시간 채팅·MSA(k3s) 를
+> 반영했다. 기존 번호(§0~11)는 그대로 두고 `SPEC.md` v4 와 같은 방식으로
+> `§3-b`·`§5-b` 를 새로 달았다 — 이 문서를 참조하는 곳이 `ADR-008` 하나뿐이라
+> 재번호해도 위험은 작았지만, 일관성을 위해 같은 규칙을 썼다.
+>
+> 이 v2 는 **정산(Gathering) 도메인의 기존 24개 엔드포인트를 하나도 바꾸지
+> 않는다.** `Group`은 얹는 것이고, `Gathering`은 `Group` 없이도 그대로 유효하다
+> (`ADR-009`) — 그래서 `/gatherings/*` 를 `/groups/{id}/gatherings/*` 로
+> 옮기지 않았다. 처음 이 재구성을 이야기할 때 그렇게 옮기겠다고 했었는데,
+> 그러면 `Group` 없는 `Gathering`을 표현할 경로가 없어진다 — 그 계획을 취소했다.
 
 이 문서는 **프론트와 백엔드가 코드를 짜기 전에 합의하는 형식**이다.
 
@@ -18,7 +29,7 @@
 | Base path | `/api/v1` | |
 | 금액 | `Long` · 원 단위 · 소수 없음 | 계산 엔진이 정수만 다룬다 (`ADR-001`) |
 | id | JSON `number` | ↓ §0.1 |
-| 시각 | ISO-8601 + offset (`2026-08-17T21:40:00+09:00`) | 컬럼이 `TIMESTAMPTZ` |
+| 시각 | ISO-8601 + offset (`2026-08-17T21:40:00+09:00`) | 서버는 UTC로 쓰고 읽는다(`ERD.md` §0). 직렬화 형식은 DB 컬럼 타입과 무관 |
 | 날짜 | `YYYY-MM-DD` (모임 날짜) | 시각이 아니다. UTC 변환 금지 — ↓ §0.2 |
 | 인증 | `Authorization: Bearer <jwt>` | ↓ §2 |
 | 문자셋 | UTF-8 | |
@@ -42,6 +53,21 @@ JSON 숫자로 보내면 프론트에서 조용히 값이 바뀐다.
 
 프론트는 `DatePicker.toISO()` 가 로컬 자정 기준으로 만든 `YYYY-MM-DD` 문자열을 보낸다.
 백엔드도 `LocalDate` 로 받는다. **어느 쪽도 `toISOString()`/`Instant` 로 변환하지 않는다.**
+
+### 0.3 이 문서의 `/api/v1/...` 뒤에는 서비스가 3개 있다 (`ADR-013`)
+
+**프론트는 이 사실을 몰라도 된다.** Spring Cloud Gateway가 경로로 갈라 보낸다.
+
+```
+/api/v1/auth/**                                   REST API 서비스
+/api/v1/gatherings/**  · /api/v1/groups/**         REST API 서비스
+/api/v1/g/{token}  · /api/v1/gr/{token}            REST API 서비스
+/ws/gatherings/{id}                                채팅 게이트웨이 (§5-b)
+/api/v1/gatherings/{id}/messages                   채팅 게이트웨이 (§5-b) — REST 지만 메시지는 MongoDB 에 있다
+```
+
+이 문서의 나머지 절에서 "어느 서비스가 처리하는지"는 §5-b에서만 명시한다.
+그 외에는 전부 REST API 서비스다.
 
 ---
 
@@ -175,6 +201,9 @@ GET /api/v1/gatherings
 | `ALREADY_SCHEDULED` | 409 | 이미 삭제 예정인 모임 |
 | `PARTICIPANT_HAS_PAYMENT` | 409 | 입금 표시된 사람은 명단에서 못 뺀다 |
 | `TOO_MANY_REQUESTS` | 429 | shareToken 무작위 대입 방어 |
+| `NOT_GROUP_OWNER` | 403 | 그룹 관리 기능은 OWNER 전용 (§3-b) |
+| `ALREADY_GROUP_MEMBER` | 409 | 이미 그룹 멤버 (§3-b) |
+| `INVALID_GROUP_TOKEN` | 404 | 그룹 초대 링크가 틀리거나 재발급됨 (§3-b) |
 
 ---
 
@@ -286,6 +315,7 @@ POST /gatherings
   "hostName": "동규",
   "expectedCount": 5,
   "roundingUnit": 10,
+  "groupId": 100,
   "payout": { "bankName": "국민은행", "accountNo": "123456-78-901234", "accountHolder": "김동규" }
 }
 ```
@@ -293,6 +323,7 @@ POST /gatherings
 ```
 201   Gathering                   // shareToken 포함. 프론트는 이걸로 링크를 만든다
 400   VALIDATION_FAILED           // INVALID_ROUNDING_UNIT 등
+403   NOT_GROUP_OWNER              // groupId 를 보냈는데 그 그룹 멤버가 아님
 ```
 
 | 필드 | 필수 | 비고 |
@@ -302,6 +333,7 @@ POST /gatherings
 | `hostName` | ✔ | 주최자의 `Participant.name`. 닉네임이 기본값이지만 바꿀 수 있다 |
 | `expectedCount` | ✔ | **정원 초과 승인 게이트의 기준.** 비면 방어가 통째로 사라진다 |
 | `roundingUnit` | | 없으면 10 |
+| `groupId` | | 영구 그룹에 묶는다(`ADR-009`). 없으면 1회성 모임 |
 | `payout` | | 없어도 된다. 나중에 등록 가능 |
 
 **서버가 같이 하는 일** — 주최자 자신의 `Participant` 를 만들고
@@ -419,6 +451,87 @@ deleteScheduledAt: string | null      // null 이면 정상. 값이 있으면 �
 
 > 단일 VM 이므로(`ADR-006`) 스케줄러 인스턴스가 둘일 걱정이 없다.
 > Spring `@Scheduled` 하나로 충분하고 별도 배치 인프라를 두지 않는다.
+
+---
+
+## 3-b. 모임 — `Group` (영구 모임, `ADR-009`)
+
+`Group`은 `Gathering`과 **같은 패턴**을 쓴다 — 초대 링크·참여·역할. 참여자가
+이미 `/g/{token}` 흐름에 익숙하므로 같은 모양을 재사용하면 새로 배울 게 없다.
+
+**다만 이번 버전에서는 얇게 간다.** `ADR-009`가 *"Group은 참여를 자동화하지
+않는다"*까지만 정했고, 초대 링크의 OG 카드 최적화(`ADR-007`이 `Gathering`에
+한 것과 같은 수준)는 여기서 하지 않는다 — Group은 카카오톡으로 낯선 사람에게
+뿌리는 것이 아니라 **이미 아는 사람들끼리** 쓰는 것이라 우선순위가 낮다.
+필요해지면 그때 `ADR-007`과 같은 패턴을 적용한다.
+
+### 3-b.1 목록 — `GET /groups`
+
+```
+200   [ { "id": 100, "name": "신림팸", "memberCount": 4, "gatheringCount": 3 }, ... ]
+```
+
+### 3-b.2 생성 — `POST /groups`
+
+```
+POST /groups
+{ "name": "신림팸" }
+```
+
+```
+201   { "id": 100, "name": "신림팸", "shareToken": "...", "role": "OWNER" }
+```
+
+**서버가 같이 하는 일** — 생성자를 `GroupMember(role=OWNER)`로 즉시 등록한다.
+`Gathering`의 `hostParticipantId`와 같은 이유다 — 주인 없는 그룹은 없다.
+
+### 3-b.3 상세 — `GET /groups/{id}`
+
+```
+200
+{
+  "id": 100, "name": "신림팸",
+  "members": [ { "userId": 7, "nickname": "동규", "role": "OWNER" }, ... ],
+  "gatherings": [ { "id": 1, "name": "8월 팀 회식", "date": "2026-08-14" }, ... ]
+}
+403   NOT_FOUND                    // 멤버가 아니면 404(§1.3 의 403/404 규칙과 동일)
+```
+
+`gatherings`는 `GET /gatherings?groupId=100`과 같은 목록을 편의상 함께 준다 —
+H0 화면이 그룹 상세를 열자마자 소속 모임을 보여줘야 하므로 왕복을 줄인다.
+
+### 3-b.4 초대 — `GET /gr/{token}` → `POST /gr/{token}/join`
+
+`Gathering`의 `/g/{token}` → `/g/{token}/join`과 **완전히 같은 2단계**다.
+
+```
+GET /gr/{token}
+200   { "groupId": 100, "name": "신림팸", "ownerName": "동규", "memberCount": 4 }
+404   INVALID_GROUP_TOKEN
+
+POST /gr/{token}/join
+Authorization: Bearer <jwt>
+201   { "groupId": 100, "role": "MEMBER" }
+409   ALREADY_GROUP_MEMBER
+404   INVALID_GROUP_TOKEN
+```
+
+**정원 개념이 없다.** `Gathering`의 `PENDING`(§5.2)은 `expectedCount`가 있어야
+성립하는데, `Group`은 그런 상한을 두지 않는다 — 계속 만나는 사람들이 알아서
+드나드는 것을 굳이 승인제로 만들 이유가 없다.
+
+**요청 제한은 `Gathering`과 같은 규칙을 쓴다**(분당 30회, 연속 404 5회 → 10분,
+§5.1). 로그인 없이 응답하는 주소가 하나 더 늘었을 뿐 위협 모델은 같다.
+
+### 3-b.5 멤버 제거 — `DELETE /groups/{id}/members/{userId}`
+
+```
+204
+403   NOT_GROUP_OWNER
+```
+
+**OWNER 자신은 못 뺀다** — `Gathering`의 주최자와 같은 이유(§6.2)로, 주인
+없는 그룹을 만들지 않는다. OWNER 이전(양도) 기능은 이번 버전에 없다.
 
 ---
 
@@ -717,6 +830,61 @@ PUT /gatherings/1/participants/3/payout
 
 ---
 
+## 5-b. 실시간 채팅 (`ADR-010`)
+
+**여기부터는 REST API 서비스가 아니라 채팅 게이트웨이(Netty)가 처리한다**
+(`ADR-013`, §0.3). 메시지는 MongoDB Atlas에 있다 — MySQL 트랜잭션과 무관하다.
+
+### 5-b.1 이력 조회 — `GET /gatherings/{id}/messages`
+
+WebSocket에 붙기 전, 방에 처음 들어왔을 때(또는 재연결 시) 이전 메시지를
+가져오는 REST 엔드포인트다.
+
+```
+GET /gatherings/1/messages?before=2026-08-20T21:00:00Z&limit=50
+200
+[
+  { "type": "TEXT", "memberId": 7, "message": "2차 어디감?", "createdAt": "..." },
+  { "type": "EXPENSE", "memberId": 3, "message": "84,000원의 지출을 등록했습니다", "createdAt": "..." }
+]
+403   NOT_FOUND                    // 명단에 없으면 404 (§1.3 규칙과 동일)
+```
+
+**`before` 커서 페이지네이션이다.** 채팅은 `OFFSET`이 아니라 시각 기준으로
+과거로 스크롤하는 게 자연스럽고, MongoDB 인덱스(`meetingId, createdAt`)와도 맞는다.
+
+### 5-b.2 WebSocket — `wss://{api호스트}/ws/gatherings/{id}`
+
+```
+핸드셰이크    Sec-WebSocket-Protocol: bearer.<JWT>
+             ⚠ 쿼리 파라미터로 토큰을 보내지 않는다 — 로그에 남는다(ADR-010)
+
+프레임(양방향)
+  { "type": "TEXT", "message": "2차 어디감?" }              클라이언트 → 서버
+  { "type": "TEXT", "memberId": 7, "message": "...",
+    "createdAt": "..." }                                   서버 → 클라이언트(브로드캐스트)
+```
+
+**클라이언트는 `memberId`·`createdAt`을 보내지 않는다.** 서버가 핸드셰이크에서
+검증한 JWT로 채우고, 시각도 서버가 찍는다 — 클라이언트 시계를 믿지 않는다.
+
+**`EXPENSE`·`SETTLEMENT`·`JOIN`·`LEAVE`·`NOTICE` 타입은 클라이언트가 보내지
+않는다.** 서버 내부 이벤트(지출 등록, 입장/퇴장)가 Kafka를 거쳐 이 방으로
+발행하는 것이다(`ADR-010`) — 채팅 클라이언트는 받기만 한다.
+
+### 5-b.3 접속 상태
+
+```
+GET /gatherings/{id}/presence
+200   { "onlineMemberIds": [7, 3, 91] }
+```
+
+Redis `meeting:{id}:online`을 그대로 읽는다(`ADR-010`). REST로도 노출하는
+이유는 WebSocket 연결 전에도(방에 들어가기 전 미리보기 등) 현재 접속자 수를
+보여줄 수 있어야 하기 때문이다.
+
+---
+
 ## 6. 명단 관리 — 주최자
 
 ### 6.1 면제자 지정 — `PATCH /gatherings/{id}/participants/{pid}`
@@ -911,8 +1079,16 @@ PUT /gatherings/1/participants/3/payment
 | **W1** 체크 | `GET /gatherings/{id}` · `PUT /attendance` |
 | **W2** 내 결과 | `GET /settlement` · `PUT /payment` · `PUT /payout` |
 | **W3** 전체 내역 | `GET /gatherings/{id}` · `GET /settlement` |
+| **(신규)** 그룹 목록·상세 | `GET /groups` · `GET /groups/{id}` |
+| **(신규)** 그룹 만들기 | `POST /groups` |
+| **(신규)** 그룹 초대 | `GET /gr/{token}` → `POST /gr/{token}/join` · `DELETE /members/{userId}` |
+| **(신규)** 채팅방 | `GET /messages` · `WS /ws/gatherings/{id}` · `GET /presence` |
 
-**엔드포인트 24개.** 지금 `api.ts` 에 있는 것은 이 중 **읽기 7개**뿐이다.
+**엔드포인트 33개** — 정산(Gathering) 도메인 24개(§3~8, 변동 없음) +
+`Group` 6개(§3-b) + 채팅 3개(§5-b). 지금 `api.ts` 에 있는 것은 정산 도메인
+**읽기 7개**뿐이다. `Group`·채팅은 프론트 화면이 아직 없다 — **계약만 있고
+UI는 없는 상태**(SPEC v4 §9가 이걸 알고 있다: `Group` 통계·활동 타임라인·
+채팅 검색을 명시적으로 범위 밖에 뒀다. 여기 나열한 것은 그 밖의 최소 기능이다).
 
 `H0` 에는 삭제·되돌리기 버튼이 아직 없다. `deleteScheduledAt` 배지와 함께
 화면을 만들어야 한다 — `types.ts` 의 `Gathering`·`GatheringSummary` 에도
@@ -933,6 +1109,10 @@ PUT /gatherings/1/participants/3/payment
 | `shareToken` | **12자 · 62종 · SecureRandom** | 길이가 근본 방어다. 발급 전이라 지금이 가장 싸다 (§3.4) |
 | 요청 제한 | **분당 30회 · 연속 404 5회 → 10분** | 성공은 세지 않는다. NAT 뒤 20명이 막히면 안 된다 (§5.1) |
 | OG 응답 | **백엔드가 HTML 로 응답** | `join.devkdk.com/g/{token}`. UA 판별을 없앤다 (`ADR-007`) |
+| DB 엔진 | **MySQL 8.4** | `ADR-011`. 이 문서의 타입 표기(§0)는 그대로 유효 — `BIGINT`·직렬화 형식은 엔진 무관 |
+| `Group` 초대 | **`Gathering`과 같은 패턴, OG 최적화는 생략** | 아는 사람끼리 쓰는 것이라 우선순위 낮음 (§3-b) |
+| 채팅 인증 | **WebSocket 서브프로토콜로 JWT 전달** | 쿼리 파라미터는 로그에 남는다 (`ADR-010`, §5-b.2) |
+| MSA 라우팅 | **경로 기준으로 Gateway 가 분기** | REST API 서비스 / 채팅 게이트웨이 2곳뿐 (`ADR-013`, §0.3) |
 
 ### 남음
 
@@ -941,8 +1121,10 @@ PUT /gatherings/1/participants/3/payment
 | # | 항목 | 어디서 |
 |---|---|---|
 | 1 | 참여 동시성의 잠금 범위 | `ADR-008` |
-| 2 | 테이블·컬럼·인덱스 | Liquibase · ERD · 테이블 명세 |
+| 2 | 테이블·컬럼·인덱스 | ✅ 완료 — Liquibase · `ERD.md` · `table-spec.xlsx`, 실제 MySQL 실행 검증까지 끝남 |
 | 3 | `deleteScheduledAt` 배지와 삭제 버튼 | `H0` 화면 |
+| 4 | `Group`·채팅 화면 | 계약(§3-b·§5-b)만 있고 프론트 화면이 아직 없다 |
+| 5 | Spring Boot 서버 모듈 자체 | `settings.gradle.kts`에 `:server` 없음 — 다음 작업 |
 
 ---
 
@@ -952,4 +1134,5 @@ PUT /gatherings/1/participants/3/payment
 `Participant` 로 옮기기로 했다 — 주최자 말고도 받을 사람이 생기기 때문이다(§5.5).
 `types.ts` 는 이미 옮긴 형태이고, **이 계약도 옮긴 형태를 따른다.**
 
-SPEC 갱신 때 §4 를 함께 고친다.
+SPEC 갱신 때 §4 를 함께 고친다. (`SPEC.md` v4 상단의 "누적된 미반영 변경
+목록"에 이 항목이 이미 들어 있다 — 이 v2 개정도 그 목록을 다루지 않았다.)
