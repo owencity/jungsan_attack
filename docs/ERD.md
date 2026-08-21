@@ -4,9 +4,12 @@
 > **스키마가 바뀌면 이 문서가 아니라 changelog를 먼저 고치고, 이 문서를 그에 맞춰
 > 갱신한다** (`00-README.md` — 명세서는 손으로 쓰지 않는다의 정신을 ERD에도 적용).
 >
-> ⚠️ **아직 실행 검증 전이다.** Docker가 꺼져 있어 실제 MySQL에 이 changelog를
-> 돌려보지 못했다. 문법·FK 방향은 손으로 검토했지만, `docker compose up` 후
-> `liquibase update`로 한 번 실행해 확인할 것.
+> ✅ **실행 검증 완료 (2026-08-21).** MySQL 8.4 컨테이너 + Liquibase 공식 이미지로
+> 실제 migration을 돌렸다. `information_schema`로 대조해 테이블 11개·컬럼 77개·
+> FK 17개·인덱스 16개가 이 문서·엑셀 명세와 정확히 일치함을 확인했다. 그 과정에서
+> `gathering_date` 컬럼 코멘트에 개행이 섞여 들어간 실제 버그를 찾아 고쳤다
+> (`report/트러블슈팅-STAR.md` 참조). 검증에 쓴 컨테이너·네트워크는 삭제했다 —
+> 재현하려면 §5의 명령을 다시 실행할 것.
 
 ---
 
@@ -216,8 +219,42 @@ chat_message
 
 ---
 
-## 5. 다음 단계
+## 5. 재현 명령 (검증에 실제로 쓴 것)
 
-- [ ] Docker 켜고 `liquibase update` 실행 — 문법·FK 순서 실제 검증
-- [ ] `docs/table-spec.xlsx` 생성 — 이 changelog를 파싱해 5시트 생성(§6 스크립트)
-- [ ] `server` 모듈을 `settings.gradle.kts`에 `include(":server")`로 추가
+```bash
+# 1. 테스트용 MySQL
+docker network create jeongsan-test-net
+docker run -d --name jeongsan-mysql-test --network jeongsan-test-net \
+  -e MYSQL_ROOT_PASSWORD=test -e MYSQL_DATABASE=jeongsan mysql:8.4
+
+# 2. MySQL 드라이버 — liquibase 공식 이미지는 라이선스 문제로 안 갖고 있다
+curl -sL -o mysql-connector-j.jar \
+  https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/9.1.0/mysql-connector-j-9.1.0.jar
+
+# 3. 실행 (Git Bash면 MSYS_NO_PATHCONV=1 필수 — 안 그러면 컨테이너 내부
+#    경로가 Windows 경로로 잘못 변환된다)
+MSYS_NO_PATHCONV=1 docker run --rm --network jeongsan-test-net \
+  -v "$(pwd)/server/src/main/resources:/liquibase/changelog" \
+  -v "$(pwd)/mysql-connector-j.jar:/liquibase/lib/mysql-connector-j.jar" \
+  liquibase/liquibase \
+  --changeLogFile=db/changelog/db.changelog-master.yaml \
+  --url="jdbc:mysql://jeongsan-mysql-test:3306/jeongsan?allowPublicKeyRetrieval=true&useSSL=false" \
+  --username=root --password=test \
+  --classpath=/liquibase/lib/mysql-connector-j.jar \
+  update
+
+# 4. 확인 (한글 코멘트가 깨져 보이면 --default-character-set=utf8mb4 를 빼먹은 것 —
+#    실제 데이터가 아니라 클라이언트 세션 charset 문제다)
+docker exec jeongsan-mysql-test mysql -uroot -ptest --default-character-set=utf8mb4 jeongsan
+
+# 5. 정리
+docker rm -f jeongsan-mysql-test && docker network rm jeongsan-test-net
+```
+
+## 6. 다음 단계
+
+- [x] Docker 켜고 `liquibase update` 실행 — 완료(§0 상단 참조)
+- [x] `docs/table-spec.xlsx` 생성 — 완료
+- [ ] `server` 모듈을 `settings.gradle.kts`에 `include(":server")`로 추가하고
+      실제 Spring Boot 부트스트랩(`build.gradle.kts`, `application.yml`) 작성
+- [ ] `API.md` 엔드포인트 재구성(`/groups/{id}/gatherings/{id}/*`) 반영
