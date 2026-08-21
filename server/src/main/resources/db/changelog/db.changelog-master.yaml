@@ -1,0 +1,20 @@
+databaseChangeLog:
+  # 순서가 FK 의존성을 결정한다 — 바꾸지 말 것.
+  # gatherings.host_participant_id 만 예외: 003 에서 컬럼만 만들고,
+  # 004 마지막에 순환 참조 FK 를 뒤늦게 건다.
+  - include:
+      file: db/changelog/001-users.yaml
+  - include:
+      file: db/changelog/002-groups.yaml
+  - include:
+      file: db/changelog/003-gatherings.yaml
+  - include:
+      file: db/changelog/004-participants.yaml
+  - include:
+      file: db/changelog/005-rounds.yaml
+  - include:
+      file: db/changelog/006-extra-items.yaml
+  - include:
+      file: db/changelog/007-attendances.yaml
+  - include:
+      file: db/changelog/008-notification-outbox.yaml

@@ -1,0 +1,89 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-create-extra-items
+      author: jeongsan
+      changes:
+        - createTable:
+            tableName: extra_items
+            remarks: "기타 항목(택시비 등). 차수에 속하지 않고 모임에 직접 속한다"
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  remarks: "기타 항목 고유 id"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: gathering_id
+                  type: BIGINT
+                  remarks: "소속 모임"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_extra_items_gathering
+                    references: gatherings(id)
+              - column:
+                  name: label
+                  type: VARCHAR(30)
+                  remarks: "항목 이름. 예: 택시비"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: BIGINT
+                  remarks: "금액(원)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payer_id
+                  type: BIGINT
+                  remarks: "결제자. 부담자(extra_item_bearers)와 다를 수 있다 — 결제만 하고 부담은 안 하는 경우가 있다"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_extra_items_payer
+                    references: participants(id)
+        - createIndex:
+            tableName: extra_items
+            indexName: idx_extra_items_gathering_id
+            columns:
+              - column:
+                  name: gathering_id
+            remarks: "모임 상세 조회 시 기타 항목 목록 로딩용"
+        - createIndex:
+            tableName: extra_items
+            indexName: idx_extra_items_payer_id
+            columns:
+              - column:
+                  name: payer_id
+            remarks: "참여자별 결제 내역 조회용"
+
+  - changeSet:
+      id: 010-create-extra-item-bearers
+      author: jeongsan
+      changes:
+        - createTable:
+            tableName: extra_item_bearers
+            remarks: "기타 항목을 부담할 참여자 목록(다대다). PUT 으로 통째 교체한다(API.md §4.5) — 추가/삭제를 개별 API로 두지 않는다"
+            columns:
+              - column:
+                  name: extra_item_id
+                  type: BIGINT
+                  remarks: "기타 항목"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_extra_item_bearers_item
+                    references: extra_items(id)
+              - column:
+                  name: participant_id
+                  type: BIGINT
+                  remarks: "부담자"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_extra_item_bearers_participant
+                    references: participants(id)
+        - addPrimaryKey:
+            tableName: extra_item_bearers
+            columnNames: extra_item_id, participant_id
+            constraintName: pk_extra_item_bearers
+            remarks: "복합 PK — 같은 사람을 같은 항목에 두 번 넣을 수 없다"

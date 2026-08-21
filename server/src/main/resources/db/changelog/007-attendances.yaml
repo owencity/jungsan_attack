@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-create-attendances
+      author: jeongsan
+      comment: >
+        attended=false 인데 drank=true 인 조합은 여기서 CHECK 로 막지 않는다.
+        core Validator 가 DRANK_WITHOUT_ATTEND 로 이미 저장 전에 막고, 상세한 오류
+        메시지·roundId·participantId 를 함께 준다(API.md §1.4) — DB CHECK 는 그
+        컨텍스트 없이 뭉뚱그린 제약 위반만 던진다. 정상 흐름에서는 DB 가 이 값을
+        볼 일이 없으므로(애플리케이션이 SAVE 단계에서 이미 막는다) 이중 방어의
+        이득이 크지 않다고 판단해 뺐다.
+      changes:
+        - createTable:
+            tableName: attendances
+            remarks: "참석·음주 체크. 계산 엔진이 이 테이블로부터 매번 다시 계산한다(ADR-005) — 결과를 저장하지 않는다"
+            columns:
+              - column:
+                  name: participant_id
+                  type: BIGINT
+                  remarks: "체크한 참여자"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_attendances_participant
+                    references: participants(id)
+              - column:
+                  name: round_id
+                  type: BIGINT
+                  remarks: "대상 차수"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_attendances_round
+                    references: rounds(id)
+              - column:
+                  name: attended
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  remarks: "참석 여부"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: drank
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  remarks: "음주 여부. attended=false 면 반드시 false(애플리케이션이 강제)"
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: attendances
+            columnNames: participant_id, round_id
+            constraintName: pk_attendances
+            remarks: "복합 PK — 참여자 1명당 차수 1개에 체크는 하나뿐"

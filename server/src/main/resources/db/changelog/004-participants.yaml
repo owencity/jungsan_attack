@@ -1,0 +1,149 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-participants
+      author: jeongsan
+      comment: >
+        user_id 는 반드시 NOT NULL 이다 — ADR-008 의 복합 유니크(gathering_id, user_id)가
+        중복 참여를 막는 전제다. MySQL 의 UNIQUE 는 NULL 을 서로 다른 값으로 취급하므로
+        NULL 을 허용하면 이 제약이 조용히 무력화된다. 주최자 사전 등록 기능을 뺐고
+        참여가 로그인 필수가 되어 모든 Participant 가 계정을 가진다(ADR-008).
+      changes:
+        - createTable:
+            tableName: participants
+            remarks: "모임 안의 좌석. 한 사용자가 한 모임에 최대 1개(uq_participants_gathering_user)"
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  remarks: "참여자 고유 id"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: gathering_id
+                  type: BIGINT
+                  remarks: "소속 모임"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_participants_gathering
+                    references: gatherings(id)
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  remarks: "연결된 로그인 계정. NOT NULL — ADR-008 복합 유니크의 전제"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_participants_user
+                    references: users(id)
+              - column:
+                  name: name
+                  type: VARCHAR(30)
+                  remarks: "참여자가 직접 적은 이름. 카카오 닉네임은 기본값일 뿐 — 총무가 알아볼 이름이 따로 필요하다"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: exempt
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  remarks: "면제자. 모든 분모에서 제외되고 부담 0. 대표결제자가 될 수 없다(CALC_RULES §7.3)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(10)
+                  defaultValue: JOINED
+                  remarks: "JOINED | PENDING. 정원 초과 시 PENDING 으로 들어와 주최자 승인을 기다린다(API.md §5.2, §6.3)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: responded
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  remarks: "체크(출석·음주)를 제출했는지. 미응답자는 주최자가 대신 체크할 수 있다(SPEC §5)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: responded_at
+                  type: DATETIME
+                  remarks: "체크 제출 시각. UTC"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: payment_status
+                  type: VARCHAR(10)
+                  defaultValue: NONE
+                  remarks: "NONE | SENT | RECEIVED. 확정 전에는 항상 NONE(SPEC §5-b)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: paid_amount
+                  type: BIGINT
+                  remarks: >
+                    SENT/RECEIVED 로 표시된 시점의 최종 부담액. 자기신고가 아니라
+                    서버가 그 순간 계산해 기록한다. 재정산 차액 계산의 유일한 근거다(SPEC §5-c)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: sent_at
+                  type: DATETIME
+                  remarks: "SENT 로 표시된 시각. UTC"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: received_at
+                  type: DATETIME
+                  remarks: "RECEIVED 로 표시된 시각. UTC"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: payout_bank_name
+                  type: VARCHAR(30)
+                  remarks: >
+                    이 참여자가 결제자로 지정됐을 때 받을 계좌의 은행명. 결제자 본인이
+                    직접 등록한다(API.md §5.5) — Gathering 에 두지 않는 이유는 주최자 말고도
+                    받을 사람이 생기기 때문이다(택시비를 다른 사람이 결제한 경우)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: payout_account_no
+                  type: VARCHAR(30)
+                  remarks: "계좌번호. 화면에는 하이픈 포함 표시하되 복사 버튼은 숫자만 넣는다(SPEC §8)"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: payout_account_holder
+                  type: VARCHAR(30)
+                  remarks: "예금주명"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  remarks: "참여(좌석 생성) 시각. UTC"
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: participants
+            columnNames: gathering_id, user_id
+            constraintName: uq_participants_gathering_user
+            remarks: "중복 참여 방지(ADR-008). 위반은 409 ALREADY_JOINED 로 변환한다"
+        - createIndex:
+            tableName: participants
+            indexName: idx_participants_user_id
+            columns:
+              - column:
+                  name: user_id
+            remarks: "사용자별 참여 이력 조회용"
+
+  - changeSet:
+      id: 006-add-gatherings-host-participant-fk
+      author: jeongsan
+      comment: "003 에서 미룬 순환 참조 FK. participants 테이블이 이제 존재하므로 여기서 건다"
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: gatherings
+            baseColumnNames: host_participant_id
+            referencedTableName: participants
+            referencedColumnNames: id
+            constraintName: fk_gatherings_host_participant

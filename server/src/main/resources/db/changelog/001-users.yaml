@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-users
+      author: jeongsan
+      comment: >
+        USER 는 MySQL 예약어라 테이블명을 복수형(users)으로 피한다.
+        같은 이유로 groups 도 GROUP 을 피해 복수형을 쓴다(002 참조).
+      changes:
+        - createTable:
+            tableName: users
+            remarks: "로그인 계정. 카카오/구글 하나당 한 행"
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  remarks: "사용자 고유 id"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: provider
+                  type: VARCHAR(10)
+                  remarks: "로그인 제공자. KAKAO | GOOGLE. 값 검증은 애플리케이션 계층(core)이 한다"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: provider_id
+                  type: VARCHAR(100)
+                  remarks: "제공자가 발급한 고유 식별자(카카오 회원번호 등). 절대 비밀번호나 액세스 토큰이 아니다"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: nickname
+                  type: VARCHAR(50)
+                  remarks: "로그인 시점 닉네임 스냅샷. 참여자가 모임에서 쓰는 이름(participants.name)과 다르다 — 기본값일 뿐"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: profile_image_url
+                  type: VARCHAR(500)
+                  remarks: "프로필 사진 URL. 동명이인 구분용(SPEC §2)"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: tier
+                  type: VARCHAR(10)
+                  defaultValue: FREE
+                  remarks: "요금제. FREE | PRO. 지금은 전원 FREE — 인앱결제 자리만 확보(SPEC §9)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tier_expires_at
+                  type: DATETIME
+                  remarks: "PRO 만료 시각. 지금은 항상 NULL. UTC 로 저장 — 밑 004 changelog의 타임스탬프 규칙 참조"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  remarks: "최초 로그인(가입) 시각. UTC"
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: users
+            columnNames: provider, provider_id
+            constraintName: uq_users_provider_id
+            remarks: "같은 소셜 계정으로 User 행이 중복 생성되는 것을 막는다 — 로그인 UPSERT 의 조회 키"

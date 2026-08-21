@@ -1,0 +1,71 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-create-notification-outbox
+      author: jeongsan
+      comment: "ADR-002. 브로커 대신 아웃박스. 이후 갱신(ADR-002 이후 갱신 절)으로 Kafka 발행자 역할까지 맡는다"
+      changes:
+        - createTable:
+            tableName: notification_outbox
+            remarks: "비동기 발송 대기열. 비즈니스 트랜잭션과 같은 트랜잭션으로 적재해 유실을 막는다"
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  remarks: "발송 항목 고유 id"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR(50)
+                  remarks: "이벤트 종류. 예: GatheringConfirmed, ExpenseCreated"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: JSON
+                  remarks: "이벤트 페이로드. 소비자(FCM 발송기 · 이후 Kafka 컨슈머)가 이 형태로 그대로 읽는다"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(12)
+                  defaultValue: PENDING
+                  remarks: "PENDING | SENT | FAILED"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: retry_count
+                  type: INT
+                  defaultValueNumeric: 0
+                  remarks: "재시도 횟수"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_retry_at
+                  type: DATETIME
+                  remarks: "다음 폴링 대상 시각. UTC. @Scheduled 폴러가 이 시각이 지난 PENDING 행을 긁는다"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  remarks: "적재 시각. UTC"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sent_at
+                  type: DATETIME
+                  remarks: "실제 발송 성공 시각. UTC. 미발송이면 NULL"
+                  constraints:
+                    nullable: true
+        - createIndex:
+            tableName: notification_outbox
+            indexName: idx_outbox_status_next_retry
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: next_retry_at
+            remarks: "폴링 쿼리(WHERE status='PENDING' AND next_retry_at<=now()) 전용. ADR-002 가 명시한 인덱스"

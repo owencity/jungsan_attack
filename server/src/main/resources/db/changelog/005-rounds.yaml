@@ -1,0 +1,124 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-create-rounds
+      author: jeongsan
+      changes:
+        - createTable:
+            tableName: rounds
+            remarks: "차수(1차·2차·...). 계산 엔진(core)의 Round 와 1:1"
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  remarks: "차수 고유 id"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: gathering_id
+                  type: BIGINT
+                  remarks: "소속 모임"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_rounds_gathering
+                    references: gatherings(id)
+              - column:
+                  name: seq
+                  type: INT
+                  remarks: >
+                    차수 순번(정렬용, 표시 라벨과 별개). 서버가 MAX(seq)+1 로 정한다 —
+                    클라이언트가 정하면 동시 추가 때 중복이 난다(API.md §4.1)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: label
+                  type: VARCHAR(30)
+                  remarks: "표시용 이름. 예: 1차 · 삼겹살집"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_amount
+                  type: BIGINT
+                  remarks: "차수 총액(원). 1조 원 상한 — 오타 방어(core Validator AMOUNT_TOO_LARGE)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: alcohol_amount
+                  type: BIGINT
+                  defaultValueNumeric: 0
+                  remarks: "술값. drink_items 가 하나라도 있으면 그 합계로 덮어쓴다(SPEC §4)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payer_id
+                  type: BIGINT
+                  remarks: "이 차수를 결제한 참여자. 수정 가능"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_rounds_payer
+                    references: participants(id)
+        - addUniqueConstraint:
+            tableName: rounds
+            columnNames: gathering_id, seq
+            constraintName: uq_rounds_gathering_seq
+            remarks: >
+              차수 순번 중복 방지. core Validator 의 DUPLICATE_ROUND_SEQ 와 같은 규칙을
+              DB 레벨에서도 건다 — 애플리케이션 버그로 뚫려도 여기서 막힌다
+        - createIndex:
+            tableName: rounds
+            indexName: idx_rounds_payer_id
+            columns:
+              - column:
+                  name: payer_id
+            remarks: "참여자별 결제 내역 조회용(정산 근거 화면)"
+
+  - changeSet:
+      id: 008-create-drink-items
+      author: jeongsan
+      changes:
+        - createTable:
+            tableName: drink_items
+            remarks: "술병 단위 입력(선택). 있으면 rounds.alcohol_amount 를 이 합계로 덮어쓴다"
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  remarks: "술병 항목 고유 id"
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: round_id
+                  type: BIGINT
+                  remarks: "소속 차수"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_drink_items_round
+                    references: rounds(id)
+              - column:
+                  name: name
+                  type: VARCHAR(20)
+                  remarks: "술 이름. 예: 소주"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bottle_count
+                  type: INT
+                  remarks: "병 수. 1 이상(core Validator INVALID_DRINK_ITEM)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unit_price
+                  type: BIGINT
+                  remarks: "병당 단가(원). 1 이상"
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: drink_items
+            indexName: idx_drink_items_round_id
+            columns:
+              - column:
+                  name: round_id
+            remarks: "차수 상세 조회 시 술병 목록 로딩용"
