@@ -1,6 +1,17 @@
-# 정산어택 — 제품 명세서 (MVP) · v3
+# 정산어택 — 제품 명세서 (MVP) · v4
 
 > 구현 에이전트가 읽는 문서다. 결정 사항만 적는다. 여기 없는 것은 **만들지 않는다.**
+
+> **v4 변경** (`ADR-009`~`013`) — `Group`(영구 모임)과 실시간 채팅을 추가하고
+> MSA(k3s)로 전환했다. `Gathering`(1회성 정산)의 기존 동작은 전부 그대로다 —
+> `Group`은 그 위에 얹는 컨테이너다. 새 내용은 `§4-b`·`§4-c`, `§9` 추가 항목,
+> `§10` 전체에 있다. **기존 번호는 유지한다** — 교차 참조(`§5-b`, `§7.4` 등)가
+> 문서 곳곳에 있어 통째로 재번호하면 그 참조가 다 깨진다.
+>
+> ⚠️ **이 문서에는 별개로 누적된 미반영 변경 목록이 있다** (계좌→`participant`
+> 이동, `expectedCount` 필수, `PENDING`/승인·거부, 모임 삭제 2트랙, `shareToken`
+> 12자·62종, 본인 탈퇴 없음 등 — 대화 중 결정됐으나 이 파일엔 아직 반영 안 됨).
+> **이번 v4 개정은 그 목록을 다루지 않는다.** Group/채팅/MSA 확장만 반영했다.
 
 ---
 
@@ -14,6 +25,11 @@
 2. **결과에 근거를 함께 보여준다.** "너 12,340원"이 아니라 "1차 참석·음주 / 2차 불참 → 그래서 12,340원"을 보여준다. **이 서비스의 존재 이유가 여기 있다. 금액만 보여주면 만들 이유가 없다.**
 
 용어는 **모임(Gathering)** 으로 통일한다. "정산"은 모임에 딸린 결과다.
+
+**모임은 1회성으로 쓸 수도, 영구 모임(`Group`) 안에서 반복될 수도 있다.**
+"신림팸"처럼 계속 만나는 사람들이 매번 새 모임을 만들되 같은 `Group`으로 묶는
+것을 지원한다(`§4-b`). 실시간으로 채팅하며 지출을 기록하는 모임방도 지원한다
+(`§4-c`). 둘 다 기존 1회성 정산 흐름 위에 얹는 것이지, 그 흐름을 바꾸지 않는다.
 
 ## 2. 로그인 정책
 
@@ -87,6 +103,7 @@ User
 
 Gathering (모임)
   id, name                       // "8월 팀 회식"
+  groupId → Group.id | null      // 영구 모임 소속. 없어도 1회성으로 유효(§4-b)
   hostUserId → User.id
   hostParticipantId              // 주최자 본인도 Participant로 존재한다
   gatheringDate                  // 모임 날짜
@@ -132,6 +149,52 @@ Attendance
 - **계산 결과를 저장하지 않는다.** `Attendance`로부터 매번 계산한다. 근거 화면과 재계산이 여기에 의존한다.
 - `alcoholAmount`는 차수 단위 금액 하나다. 메뉴별 분할은 범위 밖이다.
 - `DrinkItem`이 하나라도 있으면 `alcoholAmount = Σ(bottleCount × unitPrice)`로 덮어쓴다.
+
+## 4-b. Group — 영구 모임 (`ADR-009`)
+
+같은 사람들이 반복해서 만나는 모임을 지원한다. 예: "신림팸", "대학 동기",
+"회사 개발팀". `Group` 안에 여러 `Gathering`(각 회차)이 생긴다.
+
+```
+Group
+  id, name                       // "신림팸"
+  createdByUserId → User.id
+  createdAt
+
+GroupMember
+  groupId, userId
+  role: OWNER | MEMBER
+  joinedAt
+```
+
+**`Group`은 참여를 자동화하지 않는다.** 소속돼 있어도 다음 `Gathering`에
+자동으로 `Participant`로 등록되지 않는다 — `§2-b`(모임 생성을 강제하지 않는다)와
+`§5`(자기신고 신뢰)의 원칙을 그대로 지킨다. `Group`이 하는 일은 둘뿐이다.
+
+- `Gathering` 생성 시 `Group`을 지정하면 이전 회차 참여자 이름을 자동완성 후보로 보여준다
+- H0(내 모임) 화면에서 `Group`별로 묶어 볼 수 있다
+
+`Group` 목록·통계·활동 타임라인은 이 버전의 범위 밖이다(`§9`).
+
+## 4-c. 실시간 채팅 (`ADR-010`)
+
+`Gathering` 진행 중 실시간 모임방을 제공한다. 채팅, 입장/퇴장, 현재 접속자
+표시, 지출 등록 이벤트("민수님이 84,000원의 지출을 등록했습니다")가 채팅에
+함께 뜬다.
+
+```
+ChatMessage (MongoDB — 관계형 스키마 밖. groupId/meetingId 는 각각
+             Group.id / Gathering.id 를 가리킨다)
+  groupId, meetingId, memberId
+  type: TEXT | IMAGE | EXPENSE | SETTLEMENT | JOIN | LEAVE | NOTICE
+  message
+  createdAt
+```
+
+**REST API 서버와 별도 프로세스(Netty + WebSocket)로 둔다.** 메시지 저장은
+MongoDB(관리형 오프로드, `ADR-012`), 접속 상태·마지막 읽음 위치는 Redis에
+둔다. 인증은 WebSocket 핸드셰이크에서 JWT를 서브프로토콜로 검증한다(쿼리
+파라미터 금지 — 로그에 토큰이 남는다). 자세한 아키텍처는 `ADR-010` 참조.
 
 ## 5. 상태 전이
 
@@ -391,29 +454,43 @@ NONE ──(참여자: "보냈어요")──> SENT ──(주최자: "받았어�
 - **광고** — 넣지 않는다. 정산 금액 옆에 배너가 붙으면 신뢰를 깎는다. 이건 범위 결정이 아니라 제품 원칙이다
 - **인앱결제** — 출시 후 판단. 지금은 `User.tier` 필드 자리만 확보한다
 - 다국어, iOS (Android 먼저)
+- **`Group` 통계·활동 타임라인(Activity)** — `ADR-009`가 범위 밖으로 명시. `Gathering` 몇 회, 총 지출 같은 집계는 나중
+- **`Group` 안에서 `Gathering` 자동 생성·소속 전원 자동 초대** — `ADR-009`. 매번 링크로 들어와 확인하는 흐름은 안 바뀐다
+- **채팅 전문 검색** — Elasticsearch 도입 전까지(`ADR-012`가 마지막 단계로 유예)
+- **채팅 이미지/파일 첨부** — `type: IMAGE`는 스키마에 자리만 있다. 업로드·스토리지 연동은 범위 밖
+- **Eureka·Config Server, Logstash·Kibana** — `ADR-013`·`ADR-012`가 명시적으로 배제. k3s 네이티브 기능과 중복되거나(전자) 이미 있는 관측 스택과 중복(후자)
 
 ## 10. 기술 스택
 
 ```
-언어·프레임워크   Kotlin + Spring Boot
-데이터            PostgreSQL + JPA + QueryDSL(OpenFeign 포크) + JdbcTemplate
+언어·프레임워크   Kotlin + Spring Boot + Spring Cloud (Gateway · Stream)
+서비스 구성       REST API 서비스 · 채팅 게이트웨이(Netty) · 알림 워커(선택)
+                 3개로 제한한다 — ADR-013. 그 이상 쪼개지 않는다
+오케스트레이션     k3s (단일 노드)
+서비스 디스커버리  k3s Service (DNS). Eureka 안 씀 — 중복(ADR-013)
+설정 관리         ConfigMap · Secret. Config Server 안 씀 — 중복(ADR-013)
+데이터(트랜잭션)   MySQL + JPA + QueryDSL + JdbcTemplate            (ADR-011)
+데이터(채팅)      MongoDB Atlas (관리형, 오프로드)                   (ADR-012)
+캐시·상태         Redis (자체 호스팅) — presence · 분산락 · 마지막 읽음 위치
+메시징            Kafka (자체 호스팅. 안 맞으면 Redpanda) + Spring Cloud Stream
+                 아웃박스가 발행자 — RabbitMQ 대신 아웃박스, 이제 Kafka로 확장 (ADR-002)
+실시간            Netty + WebSocket, REST 서버와 별도 프로세스        (ADR-010)
+검색              Elasticsearch — 채팅 검색 전용, 마지막 단계로 유예   (ADR-012)
 스키마            Liquibase (YAML, ddl-auto: none, 테스트에서만 validate)
-비동기            아웃박스 테이블 + @Scheduled  (RabbitMQ 미사용 — ADR-002)
 테스트            JUnit5 + Kotest(property) + Testcontainers   (H2 미사용)
 관측              Actuator + micrometer-registry-prometheus + Micrometer Tracing
-                 Loki + Prometheus + Grafana (단일 인스턴스 자체 호스팅)
-로깅              Logback + logstash-logback-encoder (JSON) + 수집 에이전트
+                 Loki + Prometheus + Grafana (자체 호스팅). Logstash·Kibana 안 씀
 문서              springdoc-openapi
-보안              Bucket4j (shareToken 무차별 대입 방어)
-빌드·배포         Docker(ARM64) + GitHub Actions ARM 러너 + GHCR + SSH docker compose
+보안              Bucket4j (shareToken 무차별 대입 방어) + Cloudflare Rate Limiting
+빌드·배포         Docker(ARM64) + GitHub Actions ARM 러너 + GHCR + k3s 매니페스트 적용
 운영 알림         Grafana Alerting → Slack (#alert-critical / #alert-warning)
 서비스 알림       FCM — 주최자 전용
 ```
 
 - 주최자 앱: Kotlin Multiplatform + Compose Multiplatform (Android 우선)
-- 참여자 웹: 서버 렌더링. 카카오톡 미리보기용 **OG 태그 필수**
+- 참여자 웹: React(CSR) + Vercel. 카카오톡 미리보기는 백엔드가 별도 OG HTML로 응답(`ADR-007`)
 - 로그인: 카카오 로그인, 구글 로그인 (닉네임·프로필 이미지는 기본 동의항목)
-- 배포: OCI — Always Free 한도가 2 OCPU / 12GB로 축소됨. 인스턴스 사양 확인할 것
+- 배포: OCI Always Free **1대** (2 OCPU / 12GB, ARM64). 콘솔 확인 완료 — 추가 인스턴스 없음
 
 ### FCM은 주최자 전용이다
 
@@ -431,7 +508,15 @@ Loki를 쓰므로 액세스 로그에 URL 전체를 남기면 `/g/{token}`이 �
 
 ### 모니터링이 서비스를 죽이지 않게 할 것
 
-앱·PostgreSQL·Loki·Prometheus·Grafana를 12GB 한 대에 올린다. **컨테이너별 메모리 상한과 스왑 2~4GB를 처음부터 지정한다.** 상한이 없으면 Prometheus가 부풀어 앱을 OOM으로 죽인다 — 감시자가 감시 대상을 죽이는 셈이다. 앱과 DB에 우선순위를 주고 모니터링을 조인다.
+k3s·서비스 3개·MySQL·Redis·Kafka·Loki·Prometheus·Grafana를 12GB 한 대에
+올린다(개략 6.3~9.2GB, `ADR-012`·`ADR-013` 참조 — 전부 추정치이며 `bench/`로
+실측할 것). **컨테이너별 메모리 상한과 스왑 2~4GB를 처음부터 지정한다.** 상한이
+없으면 Prometheus가 부풀어 앱을 OOM으로 죽인다 — 감시자가 감시 대상을 죽이는
+셈이다. 앱과 MySQL에 우선순위를 주고 모니터링을 조인다.
+
+**MongoDB·Elasticsearch를 이 12GB 예산에 넣지 않는다.** MongoDB는 Atlas
+관리형으로 오프로드했고, Elasticsearch는 도입 시점을 마지막으로 유예했다
+(`ADR-012`). 이 둘을 자체 호스팅으로 착각하고 예산을 다시 짜면 안 된다.
 
 ## 11. 구현 순서 — 반드시 이 순서로
 
@@ -456,6 +541,23 @@ Loki를 쓰므로 액세스 로그에 URL 전체를 남기면 `/g/{token}`이 �
 14. FCM 알림 (주최자 전용)
 
 2번이 끝나기 전에 화면을 만들지 않는다. **이 서비스의 난이도는 UI가 아니라 계산 규칙에 있다.**
+
+### 확장 단계 — Group · 실시간 채팅 · MSA (`ADR-009`~`013`)
+
+**1~14가 전부 끝난 뒤 시작한다.** 1회성 `Gathering` 정산이 먼저 완결돼야 그
+위에 `Group`을 얹는 의미가 있다.
+
+15. **`Group`/`GroupMember` 추가** — `gathering.group_id` 컬럼, H0 화면에 그룹별 묶음 표시
+16. **MySQL 전환** — 이 단계 전까지는 PostgreSQL로 개발해도 무방. `ADR-011`의 판단은
+    "정산 도메인은 규모상 어느 쪽이어도 무리 없다"이므로 전환 비용이 낮을 때(스키마가
+    아직 단순할 때) 미리 해두는 편이 낫다
+17. **k3s 전환 · Spring Cloud Gateway** — REST API 서비스를 k3s Deployment로.
+    `ADR-013`이 정한 예산(서비스 3개, Eureka·Config Server 없음)을 지킨다
+18. **Kafka 도입** — 아웃박스의 발행 대상을 FCM 직접 호출에서 Kafka로 전환(`ADR-002` 확장)
+19. **채팅 게이트웨이 (Netty + WebSocket + MongoDB Atlas + Redis)** — 별도 서비스로 배포(`ADR-010`)
+20. **Elasticsearch (채팅 검색)** — 남는 인프라 여유로 마지막에(`ADR-012`)
+
+각 단계 전에 `bench/`로 실제 메모리를 재서 `ADR-012`·`ADR-013`의 추정치를 갱신한다.
 
 ### 명세서는 손으로 쓰지 않는다
 
