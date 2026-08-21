@@ -26,7 +26,7 @@ databaseChangeLog:
               - column:
                   name: seq
                   type: INT
-                  remarks: >
+                  remarks: >-
                     차수 순번(정렬용, 표시 라벨과 별개). 서버가 MAX(seq)+1 로 정한다 —
                     클라이언트가 정하면 동시 추가 때 중복이 난다(API.md §4.1)
                   constraints:
@@ -62,7 +62,7 @@ databaseChangeLog:
             tableName: rounds
             columnNames: gathering_id, seq
             constraintName: uq_rounds_gathering_seq
-            remarks: >
+            remarks: >-
               차수 순번 중복 방지. core Validator 의 DUPLICATE_ROUND_SEQ 와 같은 규칙을
               DB 레벨에서도 건다 — 애플리케이션 버그로 뚫려도 여기서 막힌다
         - createIndex:

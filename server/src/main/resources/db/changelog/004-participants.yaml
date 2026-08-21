@@ -79,7 +79,7 @@ databaseChangeLog:
               - column:
                   name: paid_amount
                   type: BIGINT
-                  remarks: >
+                  remarks: >-
                     SENT/RECEIVED 로 표시된 시점의 최종 부담액. 자기신고가 아니라
                     서버가 그 순간 계산해 기록한다. 재정산 차액 계산의 유일한 근거다(SPEC §5-c)
                   constraints:
@@ -99,7 +99,7 @@ databaseChangeLog:
               - column:
                   name: payout_bank_name
                   type: VARCHAR(30)
-                  remarks: >
+                  remarks: >-
                     이 참여자가 결제자로 지정됐을 때 받을 계좌의 은행명. 결제자 본인이
                     직접 등록한다(API.md §5.5) — Gathering 에 두지 않는 이유는 주최자 말고도
                     받을 사람이 생기기 때문이다(택시비를 다른 사람이 결제한 경우)

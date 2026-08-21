@@ -50,7 +50,7 @@ databaseChangeLog:
               - column:
                   name: gathering_date
                   type: DATE
-                  remarks: >
+                  remarks: >-
                     모임 날짜. 시각을 붙이지 않는다 — "8월 14일 회식"은 사람의 표현이지
                     순간이 아니다. DATETIME 으로 다루면 KST 오전 9시 이전에 만든 모임이
                     UTC 변환으로 전날이 된다(API.md §0.2)
