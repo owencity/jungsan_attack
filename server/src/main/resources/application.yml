@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: jeongsan-server
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:jeongsan}?allowPublicKeyRetrieval=true&useSSL=false&characterEncoding=UTF-8
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    # ddl-auto: none 고정 (SPEC §10). 스키마는 Liquibase 가 유일하게 다룬다 —
+    # Hibernate 가 스스로 테이블을 만들거나 고치게 두지 않는다.
+    hibernate:
+      ddl-auto: none
+    open-in-view: false   # 트랜잭션 경계를 서비스 계층에 명확히 두기 위해 끈다 — 컨트롤러까지 세션을 끌고 가지 않는다
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    # 기본값(classpath:db/changelog/db.changelog-master.yaml)과 실제 경로가
+    # 일치해 change-log 를 따로 지정할 필요가 없다.
+    enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  endpoint:
+    health:
+      show-details: never   # 내부 구성(DB 호스트 등)이 노출되지 않게
+
+logging:
+  level:
+    liquibase: INFO

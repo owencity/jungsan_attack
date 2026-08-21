@@ -1,0 +1,15 @@
+# 로컬 개발용. OCI 배포 구성(k3s)과는 별개다 — ADR-013 의 매니페스트가 실제 배포를 담당한다.
+# 이 파일은 로컬에서 server 모듈을 돌리기 위한 MySQL 하나만 띄운다.
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: local
+      MYSQL_DATABASE: jeongsan
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-plocal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
