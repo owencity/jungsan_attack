@@ -1,0 +1,64 @@
+databaseChangeLog:
+  # 테이블 코멘트 규칙을 도입한다: "한글명 — 설명"
+  #
+  # 왜 필요한가
+  #   ① ERD·명세서가 영문 테이블명만 보여줘서 무슨 테이블인지 바로 안 읽힌다.
+  #      한글명을 별도 파일로 관리하면 스키마와 어긋나므로, 코멘트를 유일한 출처로 삼는다.
+  #   ② 용어가 충돌하고 있었다 — groups 도 "모임", gatherings 도 "모임"이라고 적혀 있었다.
+  #      2026-08-23 번개/주기 결정 이후 실제 용어는 다음과 같다:
+  #         Group      = 모임    (번개 FLASH / 주기 RECURRING)
+  #         Gathering  = 술자리  (모임 안에서 열리는 1회 술자리, 정산 단위)
+  #      SPEC·API 문서의 옛 표현(Gathering=모임)보다 이쪽이 지금 사용자 언어에 맞다.
+  #
+  # 설명 본문은 기존 것을 그대로 두고 앞에 "한글명 — "만 붙인다.
+
+  - changeSet:
+      id: 016-table-korean-names
+      author: jeongsan
+      comment: >-
+        모든 테이블 코멘트를 "한글명 — 설명" 형식으로 통일한다.
+        gatherings 는 용어 충돌도 함께 바로잡는다(모임 → 술자리).
+      changes:
+        - setTableRemarks:
+            tableName: users
+            remarks: "회원 — 로그인 계정. 카카오/구글 하나당 한 행"
+        - setTableRemarks:
+            tableName: groups
+            remarks: >-
+              모임 — 술자리(Gathering)를 묶는 컨테이너. 번개(FLASH)와 주기(RECURRING) 두 종류다.
+              참여는 자동화하지 않는다(ADR-009) — group_members 는 소속만 기록한다
+        - setTableRemarks:
+            tableName: group_members
+            remarks: "모임 멤버 — 모임 소속. 사용자 1명당 모임 1개에 행 1개(같은 조합 재가입 없음)"
+        - setTableRemarks:
+            tableName: gatherings
+            remarks: >-
+              술자리 — 모임 안에서 열리는 1회 술자리이자 정산 단위. SPEC §4.
+              Round·ExtraItem·Attendance 로부터 매번 재계산하고 결과는 저장하지 않는다(ADR-005)
+        - setTableRemarks:
+            tableName: participants
+            remarks: "참여자 — 술자리 안의 좌석. 한 사용자가 한 술자리에 최대 1개(uq_participants_gathering_user)"
+        - setTableRemarks:
+            tableName: rounds
+            remarks: "차수 — 1차·2차·... 계산 엔진(core)의 Round 와 1:1"
+        - setTableRemarks:
+            tableName: drink_items
+            remarks: "술병 항목 — 술병 단위 입력(선택). 있으면 rounds.alcohol_amount 를 이 합계로 덮어쓴다"
+        - setTableRemarks:
+            tableName: extra_items
+            remarks: "기타 항목 — 택시비 등. 차수에 속하지 않고 술자리에 직접 속한다. MVP 범위 밖(2026-08-23 결정)"
+        - setTableRemarks:
+            tableName: extra_item_bearers
+            remarks: >-
+              기타 항목 부담자 — 기타 항목을 나눠 낼 참여자 목록(다대다).
+              PUT 으로 통째 교체한다(API.md §4.5) — 추가/삭제를 개별 API로 두지 않는다
+        - setTableRemarks:
+            tableName: attendances
+            remarks: >-
+              참석 체크 — 참석·음주 여부. 계산 엔진이 이 테이블로부터 매번 다시 계산한다(ADR-005)
+              — 결과를 저장하지 않는다
+        - setTableRemarks:
+            tableName: notification_outbox
+            remarks: >-
+              알림 아웃박스 — 비동기 발송 대기열. 비즈니스 트랜잭션과 같은 트랜잭션으로 적재해
+              유실을 막는다(ADR-002)

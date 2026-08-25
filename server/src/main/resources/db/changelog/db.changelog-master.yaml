@@ -18,3 +18,7 @@ databaseChangeLog:
       file: db/changelog/007-attendances.yaml
   - include:
       file: db/changelog/008-notification-outbox.yaml
+  - include:
+      file: db/changelog/009-group-type-and-lifecycle.yaml
+  - include:
+      file: db/changelog/010-table-korean-names.yaml

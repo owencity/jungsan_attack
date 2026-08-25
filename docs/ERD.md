@@ -96,8 +96,12 @@ erDiagram
     groups {
         bigint id PK
         varchar name
+        varchar group_type "FLASH | RECURRING"
+        varchar share_token UK "모임 가입 링크 /gr/{token}"
         bigint created_by_user_id FK
         datetime created_at
+        datetime delete_scheduled_at "FLASH 만 — 확정 +14일"
+        datetime deleted_at "소프트 삭제. 목록에서만 숨김"
     }
     group_members {
         bigint group_id PK,FK

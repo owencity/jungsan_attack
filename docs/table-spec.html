@@ -1,0 +1,734 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
+<title>정산어택 — ERD · 테이블 명세서</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+:root{--cy7:#046C87;--cy6:#0891B2;--cy5:#06B6D4;--cy2:#A5E9F5;--cy1:#D8F4FA;--cy0:#EFFBFD;
+--ink:#0B2B33;--ink2:#3F6672;--ink3:#83A5AF;--line:#D7E9EE;--warn:#D8503C;--ok:#1E9E6A;--pink:#EE3E95;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Malgun Gothic","Nanum Gothic",sans-serif;color:var(--ink);font-size:13px;
+line-height:1.7;padding:34px 30px;max-width:1180px;margin:0 auto;background:#fff}
+h1{font-size:26px;font-weight:800;letter-spacing:-.8px}
+.sub{color:var(--ink2);font-size:14px;margin-top:5px}
+.rule{width:60px;height:5px;background:var(--cy5);border-radius:99px;margin:18px 0 26px}
+.stats{display:flex;gap:10px;margin:20px 0 30px;flex-wrap:wrap}
+.st{flex:1;min-width:120px;border:1.5px solid var(--cy2);border-radius:10px;padding:12px 14px;background:var(--cy0)}
+.st .n{font-size:23px;font-weight:800;color:var(--cy7);line-height:1.2}
+.st .l{font-size:11.5px;color:var(--ink2);font-weight:700}
+h2{font-size:17px;font-weight:800;margin:34px 0 12px;padding-bottom:7px;border-bottom:2.5px solid var(--cy5)}
+.erd{border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;background:#FCFEFF}
+.tbl{border:1px solid var(--line);border-radius:12px;margin:16px 0;overflow:hidden}
+.th{display:flex;align-items:baseline;gap:10px;padding:11px 15px;background:var(--cy0);
+border-bottom:1px solid var(--cy2)}
+.th .ko{font-size:15.5px;font-weight:800;color:var(--ink)}
+.th h3{font-size:13px;font-weight:700;color:var(--cy6);font-family:Consolas,monospace}
+.cnt{margin-left:auto;font-size:11px;color:var(--ink3);font-weight:700}
+.tc{padding:9px 15px;font-size:12.5px;color:var(--ink2);background:#FBFDFE;border-bottom:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#F7FCFD;color:var(--cy7);font-weight:800;text-align:left;padding:7px 12px;
+font-size:11px;border-bottom:1.5px solid var(--cy2)}
+td{padding:7px 12px;border-bottom:1px solid #EDF5F8;vertical-align:top}
+tr:last-child td{border-bottom:0}
+code{font-family:Consolas,monospace;font-size:11px;background:var(--cy0);padding:1px 5px;
+border-radius:3px;color:var(--cy7)}
+.cname b{font-family:Consolas,monospace;font-size:12px}
+.k{display:inline-block;font-size:9px;font-weight:800;padding:1px 5px;border-radius:3px;
+margin-left:5px;color:#fff;vertical-align:1px}
+.pk{background:var(--cy6)} .uk{background:var(--pink)} .fk{background:var(--ink3)}
+.ref{font-size:10px;color:var(--ink3);font-family:Consolas,monospace;margin-top:2px}
+.req{color:var(--warn);font-weight:700;font-size:10.5px}
+.opt{color:var(--ink3);font-size:10.5px}
+.dim{color:#C8D9DF}
+.cmt{color:var(--ink2);font-size:11.5px;line-height:1.6}
+.idx{padding:10px 15px;background:#FBFDFE;border-top:1px solid var(--line)}
+.idx .it{font-size:11px;font-weight:800;color:var(--cy7);margin-bottom:5px}
+.idx ul{list-style:none} .idx li{font-size:11.5px;padding:2.5px 0;color:var(--ink2)}
+.ik{display:inline-block;font-size:9px;font-weight:800;padding:1px 5px;border-radius:3px;color:#fff}
+.ik.u{background:var(--pink)} .ik.i{background:var(--ink3)}
+.icmt{color:var(--ink3);font-size:11px}
+footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);
+font-size:11px;color:var(--ink3)}
+</style></head><body>
+<h1>정산어택 — ERD · 테이블 명세서</h1>
+<div class="sub">살아있는 MySQL 8.4 스키마에서 생성 · <code>jeongsan</code></div>
+<div class="rule"></div>
+
+<div class="stats">
+  <div class="st"><div class="n">11</div><div class="l">테이블</div></div>
+  <div class="st"><div class="n">81</div><div class="l">컬럼</div></div>
+  <div class="st"><div class="n">17</div><div class="l">외래키</div></div>
+  <div class="st"><div class="n">100%</div><div class="l">코멘트 커버리지</div></div>
+</div>
+
+<h2>ERD</h2>
+<div class="erd"><pre class="mermaid">erDiagram
+    participants ||--o{ attendances : "participant_id"
+    rounds ||--o{ attendances : "round_id"
+    rounds ||--o{ drink_items : "round_id"
+    extra_items ||--o{ extra_item_bearers : "extra_item_id"
+    participants ||--o{ extra_item_bearers : "participant_id"
+    gatherings ||--o{ extra_items : "gathering_id"
+    participants ||--o{ extra_items : "payer_id"
+    groups ||--o{ gatherings : "group_id"
+    participants ||--o{ gatherings : "host_participant_id"
+    users ||--o{ gatherings : "host_user_id"
+    groups ||--o{ group_members : "group_id"
+    users ||--o{ group_members : "user_id"
+    users ||--o{ groups : "created_by_user_id"
+    gatherings ||--o{ participants : "gathering_id"
+    users ||--o{ participants : "user_id"
+    gatherings ||--o{ rounds : "gathering_id"
+    participants ||--o{ rounds : "payer_id"
+    attendances["참석 체크 attendances"] {
+        bigint participant_id PK
+        bigint round_id PK
+        _ 그외_2개
+    }
+    drink_items["술병 항목 drink_items"] {
+        bigint id PK
+        bigint round_id FK
+        _ 그외_3개
+    }
+    extra_item_bearers["기타 항목 부담자 extra_item_bearers"] {
+        bigint extra_item_id PK
+        bigint participant_id PK
+    }
+    extra_items["기타 항목 extra_items"] {
+        bigint id PK
+        bigint gathering_id FK
+        bigint payer_id FK
+        _ 그외_2개
+    }
+    gatherings["술자리 gatherings"] {
+        bigint id PK
+        bigint group_id FK
+        bigint host_user_id FK
+        bigint host_participant_id FK
+        varchar share_token UK
+        _ 그외_9개
+    }
+    group_members["모임 멤버 group_members"] {
+        bigint group_id PK
+        bigint user_id PK
+        _ 그외_2개
+    }
+    groups["모임 groups"] {
+        bigint id PK
+        bigint created_by_user_id FK
+        varchar share_token UK
+        _ 그외_5개
+    }
+    notification_outbox["알림 아웃박스 notification_outbox"] {
+        bigint id PK
+        _ 그외_7개
+    }
+    participants["참여자 participants"] {
+        bigint id PK
+        bigint gathering_id FK
+        bigint user_id FK
+        _ 그외_13개
+    }
+    rounds["차수 rounds"] {
+        bigint id PK
+        bigint gathering_id FK
+        bigint payer_id FK
+        _ 그외_4개
+    }
+    users["회원 users"] {
+        bigint id PK
+        _ 그외_7개
+    }</pre></div>
+
+<h2>테이블 명세</h2>
+<section class="tbl">
+      <div class="th"><span class="ko">참석 체크</span><h3>attendances</h3><span class="cnt">4개 컬럼</span></div>
+      <p class="tc">참석·음주 여부. 계산 엔진이 이 테이블로부터 매번 다시 계산한다(ADR-005) — 결과를 저장하지 않는다</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>participant_id</b><span class="k pk">PK</span><span class="k fk">FK</span><div class="ref">→ participants(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">체크한 참여자</td>
+        </tr><tr>
+            <td class="cname"><b>round_id</b><span class="k pk">PK</span><span class="k fk">FK</span><div class="ref">→ rounds(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">대상 차수</td>
+        </tr><tr>
+            <td class="cname"><b>attended</b></td>
+            <td><code>tinyint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>0</code></td>
+            <td class="cmt">참석 여부</td>
+        </tr><tr>
+            <td class="cname"><b>drank</b></td>
+            <td><code>tinyint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>0</code></td>
+            <td class="cmt">음주 여부. attended=false 면 반드시 false(애플리케이션이 강제)</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik i">INDEX</span> <code>fk_attendances_round</code> (round_id)</li><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (participant_id,round_id)</li></ul></div>
+    </section><section class="tbl">
+      <div class="th"><span class="ko">술병 항목</span><h3>drink_items</h3><span class="cnt">5개 컬럼</span></div>
+      <p class="tc">술병 단위 입력(선택). 있으면 rounds.alcohol_amount 를 이 합계로 덮어쓴다</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>id</b><span class="k pk">PK</span></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">술병 항목 고유 id</td>
+        </tr><tr>
+            <td class="cname"><b>round_id</b><span class="k fk">FK</span><div class="ref">→ rounds(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">소속 차수</td>
+        </tr><tr>
+            <td class="cname"><b>name</b></td>
+            <td><code>varchar(20)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">술 이름. 예: 소주</td>
+        </tr><tr>
+            <td class="cname"><b>bottle_count</b></td>
+            <td><code>int</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">병 수. 1 이상(core Validator INVALID_DRINK_ITEM)</td>
+        </tr><tr>
+            <td class="cname"><b>unit_price</b></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">병당 단가(원). 1 이상</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik i">INDEX</span> <code>idx_drink_items_round_id</code> (round_id)</li><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (id)</li></ul></div>
+    </section><section class="tbl">
+      <div class="th"><span class="ko">기타 항목 부담자</span><h3>extra_item_bearers</h3><span class="cnt">2개 컬럼</span></div>
+      <p class="tc">기타 항목을 나눠 낼 참여자 목록(다대다). PUT 으로 통째 교체한다(API.md §4.5) — 추가/삭제를 개별 API로 두지 않는다</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>extra_item_id</b><span class="k pk">PK</span><span class="k fk">FK</span><div class="ref">→ extra_items(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">기타 항목</td>
+        </tr><tr>
+            <td class="cname"><b>participant_id</b><span class="k pk">PK</span><span class="k fk">FK</span><div class="ref">→ participants(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">부담자</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik i">INDEX</span> <code>fk_extra_item_bearers_participant</code> (participant_id)</li><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (extra_item_id,participant_id)</li></ul></div>
+    </section><section class="tbl">
+      <div class="th"><span class="ko">기타 항목</span><h3>extra_items</h3><span class="cnt">5개 컬럼</span></div>
+      <p class="tc">택시비 등. 차수에 속하지 않고 술자리에 직접 속한다. MVP 범위 밖(2026-08-23 결정)</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>id</b><span class="k pk">PK</span></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">기타 항목 고유 id</td>
+        </tr><tr>
+            <td class="cname"><b>gathering_id</b><span class="k fk">FK</span><div class="ref">→ gatherings(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">소속 모임</td>
+        </tr><tr>
+            <td class="cname"><b>label</b></td>
+            <td><code>varchar(30)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">항목 이름. 예: 택시비</td>
+        </tr><tr>
+            <td class="cname"><b>amount</b></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">금액(원)</td>
+        </tr><tr>
+            <td class="cname"><b>payer_id</b><span class="k fk">FK</span><div class="ref">→ participants(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">결제자. 부담자(extra_item_bearers)와 다를 수 있다 — 결제만 하고 부담은 안 하는 경우가 있다</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik i">INDEX</span> <code>idx_extra_items_gathering_id</code> (gathering_id)</li><li><span class="ik i">INDEX</span> <code>idx_extra_items_payer_id</code> (payer_id)</li><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (id)</li></ul></div>
+    </section><section class="tbl">
+      <div class="th"><span class="ko">술자리</span><h3>gatherings</h3><span class="cnt">14개 컬럼</span></div>
+      <p class="tc">모임 안에서 열리는 1회 술자리이자 정산 단위. SPEC §4. Round·ExtraItem·Attendance 로부터 매번 재계산하고 결과는 저장하지 않는다(ADR-005)</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>id</b><span class="k pk">PK</span></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">모임 고유 id</td>
+        </tr><tr>
+            <td class="cname"><b>group_id</b><span class="k fk">FK</span><div class="ref">→ groups(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">소속 영구 그룹. NULL 이면 그룹 없이 1회성으로 존재(ADR-009)</td>
+        </tr><tr>
+            <td class="cname"><b>name</b></td>
+            <td><code>varchar(50)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">모임 이름. 예: 8월 팀 회식</td>
+        </tr><tr>
+            <td class="cname"><b>host_user_id</b><span class="k fk">FK</span><div class="ref">→ users(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">주최자 계정</td>
+        </tr><tr>
+            <td class="cname"><b>host_participant_id</b><span class="k fk">FK</span><div class="ref">→ participants(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">주최자 본인의 participants 행. 주최자도 반드시 참여자로 존재한다(대표결제자 후보가 되어야 하므로). FK 는 004 에서 건다</td>
+        </tr><tr>
+            <td class="cname"><b>gathering_date</b></td>
+            <td><code>date</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">모임 날짜. 시각을 붙이지 않는다 — &quot;8월 14일 회식&quot;은 사람의 표현이지 순간이 아니다. DATETIME 으로 다루면 KST 오전 9시 이전에 만든 모임이 UTC 변환으로 전날이 된다(API.md §0.2)</td>
+        </tr><tr>
+            <td class="cname"><b>status</b></td>
+            <td><code>varchar(12)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>COLLECTING</code></td>
+            <td class="cmt">COLLECTING | CONFIRMED. 값 검증은 애플리케이션 계층이 한다(core Validator)</td>
+        </tr><tr>
+            <td class="cname"><b>share_token</b><span class="k uk">UK</span></td>
+            <td><code>varchar(12)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">공유 링크 토큰. 12자·62종·SecureRandom(API.md §3.4). 로그에 남기지 않는다(SPEC §10)</td>
+        </tr><tr>
+            <td class="cname"><b>expected_count</b></td>
+            <td><code>int</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">본인 포함 예상 인원. 필수 — 정원 초과 시 참여 승인 게이트의 기준(API.md §3.2). 계산에는 쓰지 않는다</td>
+        </tr><tr>
+            <td class="cname"><b>rounding_unit</b></td>
+            <td><code>int</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>10</code></td>
+            <td class="cmt">반올림 단위. 10 | 100. 1000 은 대표결제자를 음수로 만들어 불허(CALC_RULES T7)</td>
+        </tr><tr>
+            <td class="cname"><b>revision</b></td>
+            <td><code>int</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>0</code></td>
+            <td class="cmt">확정할 때마다 +1. 재정산 감지용(SPEC §5-c)</td>
+        </tr><tr>
+            <td class="cname"><b>confirmed_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">마지막 확정 시각. UTC. 미확정이면 NULL</td>
+        </tr><tr>
+            <td class="cname"><b>delete_scheduled_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">삭제 예정 시각. NULL 이면 정상. 값이 있으면 그 시각에 실제 삭제된다 — 2트랙 삭제(API.md §3.5). 이 기간에도 모임은 정상 동작한다</td>
+        </tr><tr>
+            <td class="cname"><b>created_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">모임 생성 시각. UTC</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik i">INDEX</span> <code>fk_gatherings_host_participant</code> (host_participant_id)</li><li><span class="ik i">INDEX</span> <code>idx_gatherings_group_id</code> (group_id)</li><li><span class="ik i">INDEX</span> <code>idx_gatherings_host_user_id</code> (host_user_id)</li><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (id)</li><li><span class="ik u">UNIQUE</span> <code>uq_gatherings_share_token</code> (share_token)</li></ul></div>
+    </section><section class="tbl">
+      <div class="th"><span class="ko">모임 멤버</span><h3>group_members</h3><span class="cnt">4개 컬럼</span></div>
+      <p class="tc">모임 소속. 사용자 1명당 모임 1개에 행 1개(같은 조합 재가입 없음)</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>group_id</b><span class="k pk">PK</span><span class="k fk">FK</span><div class="ref">→ groups(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">소속된 그룹</td>
+        </tr><tr>
+            <td class="cname"><b>user_id</b><span class="k pk">PK</span><span class="k fk">FK</span><div class="ref">→ users(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">소속된 사용자</td>
+        </tr><tr>
+            <td class="cname"><b>role</b></td>
+            <td><code>varchar(10)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>MEMBER</code></td>
+            <td class="cmt">OWNER | MEMBER. 값 검증은 애플리케이션 계층이 한다</td>
+        </tr><tr>
+            <td class="cname"><b>joined_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">그룹에 들어온 시각. UTC</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik i">INDEX</span> <code>fk_group_members_user</code> (user_id)</li><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (group_id,user_id)</li></ul></div>
+    </section><section class="tbl">
+      <div class="th"><span class="ko">모임</span><h3>groups</h3><span class="cnt">8개 컬럼</span></div>
+      <p class="tc">술자리(Gathering)를 묶는 컨테이너. 번개(FLASH)와 주기(RECURRING) 두 종류다. 참여는 자동화하지 않는다(ADR-009) — group_members 는 소속만 기록한다</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>id</b><span class="k pk">PK</span></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">그룹 고유 id</td>
+        </tr><tr>
+            <td class="cname"><b>name</b></td>
+            <td><code>varchar(50)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">그룹 이름. 예: 신림팸</td>
+        </tr><tr>
+            <td class="cname"><b>created_by_user_id</b><span class="k fk">FK</span><div class="ref">→ users(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">그룹을 만든 사용자. 반드시 OWNER 로 group_members 에도 존재해야 한다(애플리케이션이 같은 트랜잭션에서 보장)</td>
+        </tr><tr>
+            <td class="cname"><b>created_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">그룹 생성 시각. UTC</td>
+        </tr><tr>
+            <td class="cname"><b>group_type</b></td>
+            <td><code>varchar(10)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>RECURRING</code></td>
+            <td class="cmt">FLASH(번개, 1회성) | RECURRING(주기적). 값 검증은 애플리케이션 계층이 한다. FLASH 는 생성 시 Gathering 1개를 함께 만들고, 정산 확정 +14일에 소프트 삭제된다.</td>
+        </tr><tr>
+            <td class="cname"><b>share_token</b><span class="k uk">UK</span></td>
+            <td><code>varchar(12)</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">모임 가입 링크 토큰(/gr/{token}). 12자·62종·SecureRandom. 로그에 남기지 않는다(SPEC §10). 기존 행을 위해 nullable 로 두고 애플리케이션이 생성 시 항상 채운다.</td>
+        </tr><tr>
+            <td class="cname"><b>deleted_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">소프트 삭제 시각. UTC. NULL 이면 살아있다. 모임 목록 조회는 deleted_at IS NULL 로 거른다. 결제 내역(id 직접 접근)은 이 값을 무시하고 그대로 보여준다.</td>
+        </tr><tr>
+            <td class="cname"><b>delete_scheduled_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">삭제 예정 시각. UTC. FLASH 모임의 정산이 확정될 때 확정시각 + 14일로 채운다. RECURRING 은 항상 NULL — 만료가 없다. 스케줄러가 이 시각을 지난 행의 deleted_at 을 채운다.</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik i">INDEX</span> <code>fk_groups_created_by_user</code> (created_by_user_id)</li><li><span class="ik i">INDEX</span> <code>idx_groups_delete_scheduled_at</code> (delete_scheduled_at)</li><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (id)</li><li><span class="ik u">UNIQUE</span> <code>uq_groups_share_token</code> (share_token)</li></ul></div>
+    </section><section class="tbl">
+      <div class="th"><span class="ko">알림 아웃박스</span><h3>notification_outbox</h3><span class="cnt">8개 컬럼</span></div>
+      <p class="tc">비동기 발송 대기열. 비즈니스 트랜잭션과 같은 트랜잭션으로 적재해 유실을 막는다(ADR-002)</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>id</b><span class="k pk">PK</span></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">발송 항목 고유 id</td>
+        </tr><tr>
+            <td class="cname"><b>type</b></td>
+            <td><code>varchar(50)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">이벤트 종류. 예: GatheringConfirmed, ExpenseCreated</td>
+        </tr><tr>
+            <td class="cname"><b>payload</b></td>
+            <td><code>json</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">이벤트 페이로드. 소비자(FCM 발송기 · 이후 Kafka 컨슈머)가 이 형태로 그대로 읽는다</td>
+        </tr><tr>
+            <td class="cname"><b>status</b></td>
+            <td><code>varchar(12)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>PENDING</code></td>
+            <td class="cmt">PENDING | SENT | FAILED</td>
+        </tr><tr>
+            <td class="cname"><b>retry_count</b></td>
+            <td><code>int</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>0</code></td>
+            <td class="cmt">재시도 횟수</td>
+        </tr><tr>
+            <td class="cname"><b>next_retry_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">다음 폴링 대상 시각. UTC. @Scheduled 폴러가 이 시각이 지난 PENDING 행을 긁는다</td>
+        </tr><tr>
+            <td class="cname"><b>created_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">적재 시각. UTC</td>
+        </tr><tr>
+            <td class="cname"><b>sent_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">실제 발송 성공 시각. UTC. 미발송이면 NULL</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik i">INDEX</span> <code>idx_outbox_status_next_retry</code> (status,next_retry_at)</li><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (id)</li></ul></div>
+    </section><section class="tbl">
+      <div class="th"><span class="ko">참여자</span><h3>participants</h3><span class="cnt">16개 컬럼</span></div>
+      <p class="tc">술자리 안의 좌석. 한 사용자가 한 술자리에 최대 1개(uq_participants_gathering_user)</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>id</b><span class="k pk">PK</span></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">참여자 고유 id</td>
+        </tr><tr>
+            <td class="cname"><b>gathering_id</b><span class="k fk">FK</span><div class="ref">→ gatherings(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">소속 모임</td>
+        </tr><tr>
+            <td class="cname"><b>user_id</b><span class="k fk">FK</span><div class="ref">→ users(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">연결된 로그인 계정. NOT NULL — ADR-008 복합 유니크의 전제</td>
+        </tr><tr>
+            <td class="cname"><b>name</b></td>
+            <td><code>varchar(30)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">참여자가 직접 적은 이름. 카카오 닉네임은 기본값일 뿐 — 총무가 알아볼 이름이 따로 필요하다</td>
+        </tr><tr>
+            <td class="cname"><b>exempt</b></td>
+            <td><code>tinyint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>0</code></td>
+            <td class="cmt">면제자. 모든 분모에서 제외되고 부담 0. 대표결제자가 될 수 없다(CALC_RULES §7.3)</td>
+        </tr><tr>
+            <td class="cname"><b>status</b></td>
+            <td><code>varchar(10)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>JOINED</code></td>
+            <td class="cmt">JOINED | PENDING. 정원 초과 시 PENDING 으로 들어와 주최자 승인을 기다린다(API.md §5.2, §6.3)</td>
+        </tr><tr>
+            <td class="cname"><b>responded</b></td>
+            <td><code>tinyint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>0</code></td>
+            <td class="cmt">체크(출석·음주)를 제출했는지. 미응답자는 주최자가 대신 체크할 수 있다(SPEC §5)</td>
+        </tr><tr>
+            <td class="cname"><b>responded_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">체크 제출 시각. UTC</td>
+        </tr><tr>
+            <td class="cname"><b>payment_status</b></td>
+            <td><code>varchar(10)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>NONE</code></td>
+            <td class="cmt">NONE | SENT | RECEIVED. 확정 전에는 항상 NONE(SPEC §5-b)</td>
+        </tr><tr>
+            <td class="cname"><b>paid_amount</b></td>
+            <td><code>bigint</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">SENT/RECEIVED 로 표시된 시점의 최종 부담액. 자기신고가 아니라 서버가 그 순간 계산해 기록한다. 재정산 차액 계산의 유일한 근거다(SPEC §5-c)</td>
+        </tr><tr>
+            <td class="cname"><b>sent_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">SENT 로 표시된 시각. UTC</td>
+        </tr><tr>
+            <td class="cname"><b>received_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">RECEIVED 로 표시된 시각. UTC</td>
+        </tr><tr>
+            <td class="cname"><b>payout_bank_name</b></td>
+            <td><code>varchar(30)</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">이 참여자가 결제자로 지정됐을 때 받을 계좌의 은행명. 결제자 본인이 직접 등록한다(API.md §5.5) — Gathering 에 두지 않는 이유는 주최자 말고도 받을 사람이 생기기 때문이다(택시비를 다른 사람이 결제한 경우)</td>
+        </tr><tr>
+            <td class="cname"><b>payout_account_no</b></td>
+            <td><code>varchar(30)</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">계좌번호. 화면에는 하이픈 포함 표시하되 복사 버튼은 숫자만 넣는다(SPEC §8)</td>
+        </tr><tr>
+            <td class="cname"><b>payout_account_holder</b></td>
+            <td><code>varchar(30)</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">예금주명</td>
+        </tr><tr>
+            <td class="cname"><b>created_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">참여(좌석 생성) 시각. UTC</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik i">INDEX</span> <code>idx_participants_user_id</code> (user_id)</li><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (id)</li><li><span class="ik u">UNIQUE</span> <code>uq_participants_gathering_user</code> (gathering_id,user_id)</li></ul></div>
+    </section><section class="tbl">
+      <div class="th"><span class="ko">차수</span><h3>rounds</h3><span class="cnt">7개 컬럼</span></div>
+      <p class="tc">1차·2차·... 계산 엔진(core)의 Round 와 1:1</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>id</b><span class="k pk">PK</span></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">차수 고유 id</td>
+        </tr><tr>
+            <td class="cname"><b>gathering_id</b><span class="k fk">FK</span><div class="ref">→ gatherings(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">소속 모임</td>
+        </tr><tr>
+            <td class="cname"><b>seq</b></td>
+            <td><code>int</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">차수 순번(정렬용, 표시 라벨과 별개). 서버가 MAX(seq)+1 로 정한다 — 클라이언트가 정하면 동시 추가 때 중복이 난다(API.md §4.1)</td>
+        </tr><tr>
+            <td class="cname"><b>label</b></td>
+            <td><code>varchar(30)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">표시용 이름. 예: 1차 · 삼겹살집</td>
+        </tr><tr>
+            <td class="cname"><b>total_amount</b></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">차수 총액(원). 1조 원 상한 — 오타 방어(core Validator AMOUNT_TOO_LARGE)</td>
+        </tr><tr>
+            <td class="cname"><b>alcohol_amount</b></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>0</code></td>
+            <td class="cmt">술값. drink_items 가 하나라도 있으면 그 합계로 덮어쓴다(SPEC §4)</td>
+        </tr><tr>
+            <td class="cname"><b>payer_id</b><span class="k fk">FK</span><div class="ref">→ participants(id)</div></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">이 차수를 결제한 참여자. 수정 가능</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik i">INDEX</span> <code>idx_rounds_payer_id</code> (payer_id)</li><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (id)</li><li><span class="ik u">UNIQUE</span> <code>uq_rounds_gathering_seq</code> (gathering_id,seq)</li></ul></div>
+    </section><section class="tbl">
+      <div class="th"><span class="ko">회원</span><h3>users</h3><span class="cnt">8개 컬럼</span></div>
+      <p class="tc">로그인 계정. 카카오/구글 하나당 한 행</p>
+      <table>
+        <tr><th style="width:23%">컬럼</th><th style="width:13%">타입</th><th style="width:9%">NULL</th>
+            <th style="width:9%">기본값</th><th>설명</th></tr>
+        <tr>
+            <td class="cname"><b>id</b><span class="k pk">PK</span></td>
+            <td><code>bigint</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">사용자 고유 id</td>
+        </tr><tr>
+            <td class="cname"><b>provider</b></td>
+            <td><code>varchar(10)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">로그인 제공자. KAKAO | GOOGLE. 값 검증은 애플리케이션 계층(core)이 한다</td>
+        </tr><tr>
+            <td class="cname"><b>provider_id</b></td>
+            <td><code>varchar(100)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">제공자가 발급한 고유 식별자(카카오 회원번호 등). 절대 비밀번호나 액세스 토큰이 아니다</td>
+        </tr><tr>
+            <td class="cname"><b>nickname</b></td>
+            <td><code>varchar(50)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">로그인 시점 닉네임 스냅샷. 참여자가 모임에서 쓰는 이름(participants.name)과 다르다 — 기본값일 뿐</td>
+        </tr><tr>
+            <td class="cname"><b>profile_image_url</b></td>
+            <td><code>varchar(500)</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">프로필 사진 URL. 동명이인 구분용(SPEC §2)</td>
+        </tr><tr>
+            <td class="cname"><b>tier</b></td>
+            <td><code>varchar(10)</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><code>FREE</code></td>
+            <td class="cmt">요금제. FREE | PRO. 지금은 전원 FREE — 인앱결제 자리만 확보(SPEC §9)</td>
+        </tr><tr>
+            <td class="cname"><b>tier_expires_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="opt">NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">PRO 만료 시각. 지금은 항상 NULL. UTC 로 저장 — 밑 004 changelog의 타임스탬프 규칙 참조</td>
+        </tr><tr>
+            <td class="cname"><b>created_at</b></td>
+            <td><code>datetime</code></td>
+            <td><span class="req">NOT NULL</span></td>
+            <td><span class="dim">—</span></td>
+            <td class="cmt">최초 로그인(가입) 시각. UTC</td>
+        </tr>
+      </table>
+      <div class="idx"><div class="it">인덱스 · 제약</div><ul><li><span class="ik u">UNIQUE</span> <code>PRIMARY</code> (id)</li><li><span class="ik u">UNIQUE</span> <code>uq_users_provider_id</code> (provider,provider_id)</li></ul></div>
+    </section>
+
+<footer>Liquibase 가 유일한 스키마 진실이다(<code>ddl-auto: none</code>) —
+이 문서는 그 결과를 살아있는 DB 에서 되읽은 것이다.</footer>
+<script>mermaid.initialize({startOnLoad:true,theme:'base',
+themeVariables:{primaryColor:'#EFFBFD',primaryBorderColor:'#0891B2',primaryTextColor:'#0B2B33',
+lineColor:'#83A5AF',fontSize:'12px'}});</script>
+</body></html>
