@@ -1,0 +1,39 @@
+# 로컬 개발. 환경변수 없이 `./gradlew :server:bootRun` 만으로 떠야 한다.
+#
+# 여기 적힌 값은 전부 **로컬 전용이고 이미 저장소에 공개돼 있다**
+# (docker-compose.yml 의 MYSQL_ROOT_PASSWORD 등). 숨길 이유가 없으므로 기본값으로 박는다 —
+# 매번 환경변수를 앞에 붙이는 비용이 더 크다.
+
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:jeongsan}?allowPublicKeyRetrieval=true&useSSL=false&characterEncoding=UTF-8
+    username: ${DB_USER:root}
+    # docker-compose.yml 의 MYSQL_ROOT_PASSWORD 와 같은 값이어야 한다.
+    password: ${DB_PASSWORD:local}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+
+app:
+  frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+  login-success-url: ${LOGIN_SUCCESS_URL:http://localhost:5173/jungsan}
+  # http 라 secure 쿠키를 쓰면 브라우저가 저장하지 않는다.
+  cookie-secure: false
+
+kakao:
+  # 카카오 콘솔에 로컬 Redirect URI 를 따로 등록해둬야 한다(운영용과 함께 여러 개 등록 가능).
+  client-id: ${KAKAO_CLIENT_ID:}
+  client-secret: ${KAKAO_CLIENT_SECRET:}
+  redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
+
+jwt:
+  # 로컬 전용. 운영은 application-prod.yml 이 환경변수를 강제한다.
+  secret: ${JWT_SECRET:local-only-dev-secret-please-change-32b}
+
+logging:
+  level:
+    liquibase: INFO
+    org.hibernate.SQL: DEBUG
