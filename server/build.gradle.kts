@@ -44,6 +44,13 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
+    // 카카오 로그인 자체 발급 토큰(JWT). Spring Security 는 안 쓴다 — 세션 기반 OAuth2 Client
+    // 오토컨피그가 우리가 원하는 "완전 무상태" 방향과 안 맞아서, RestClient 로 카카오 토큰/사용자
+    // 정보를 직접 호출하고 우리 JWT 만 발급하는 얇은 구현으로 간다.
+    implementation(libs.jjwt.api)
+    runtimeOnly(libs.jjwt.impl)
+    runtimeOnly(libs.jjwt.jackson)
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation(libs.kotest.runner.junit5)
     testImplementation(libs.kotest.assertions.core)
