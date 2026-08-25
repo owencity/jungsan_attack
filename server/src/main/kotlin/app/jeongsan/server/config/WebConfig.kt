@@ -1,7 +1,9 @@
 package app.jeongsan.server.config
 
+import app.jeongsan.server.common.LoginUserArgumentResolver
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Configuration
+import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
@@ -13,11 +15,18 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 @Configuration
 class WebConfig(
     @Value("\${app.frontend-origin}") private val frontendOrigin: String,
+    private val loginUserArgumentResolver: LoginUserArgumentResolver,
 ) : WebMvcConfigurer {
+
     override fun addCorsMappings(registry: CorsRegistry) {
         registry.addMapping("/api/**")
             .allowedOrigins(frontendOrigin)
             .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
             .allowCredentials(true)
+    }
+
+    /** `@LoginUser Long` 파라미터를 쿠키에서 채운다. */
+    override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
+        resolvers.add(loginUserArgumentResolver)
     }
 }
