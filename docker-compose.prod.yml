@@ -1,0 +1,67 @@
+# OCI 배포 구성 (ADR-006 — 단일 VM + docker compose).
+# 로컬 개발용 docker-compose.yml 과 별개다. 그쪽은 MySQL 하나만 띄운다.
+#
+# 실행은 GitHub Actions 가 SSH 로 한다:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# 환경변수는 같은 디렉터리의 .env 에서 읽는다. .env 는 저장소에 없고
+# OCI 서버에 직접 만들어둔다 — 카카오 시크릿·DB 비밀번호가 들어가기 때문이다.
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: jeongsan
+    volumes:
+      - mysql-data:/var/lib/mysql
+    # 포트를 호스트에 열지 않는다. 같은 compose 네트워크의 app 만 접근하면 된다 —
+    # 3306 을 인터넷에 노출하면 스캐너가 바로 두드린다.
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  app:
+    image: jeongsan-server:latest
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: jeongsan
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      LOGIN_SUCCESS_URL: ${LOGIN_SUCCESS_URL}
+    ports:
+      # 127.0.0.1 에만 바인딩한다. 외부 노출은 Cloudflare Tunnel 또는
+      # 리버스 프록시가 맡는다 — 앱을 인터넷에 직접 열지 않는다.
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1500m
+
+volumes:
+  mysql-data:
