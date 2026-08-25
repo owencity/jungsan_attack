@@ -1,4 +1,23 @@
-# 정산어택 — API 계약 · v2
+# 정산어택 — API 계약 · v3
+
+> **v3 변경(2026-08-26)** — **구현이 계약을 앞지른 부분을 문서에 반영했다.**
+> 이 문서는 "합의하는 형식"인데, 인증을 먼저 구현하면서 계약과 어긋난 채로
+> 두면 웹·앱 클라이언트가 잘못된 문서를 보고 만들게 된다.
+>
+> | 절 | 바뀐 것 |
+> |---|---|
+> | §0, §2 | 인증이 `Authorization: Bearer` → **httpOnly 쿠키** |
+> | §2.1 | 로그인이 `POST {code}` → **서버사이드 리다이렉트** |
+> | §2.3 | 토큰 저장이 localStorage → 쿠키. CSRF 대가를 명시 |
+> | §3-b | 모임에 `groupType`(FLASH/RECURRING). 번개는 술자리 1개를 함께 생성 |
+> | §1.4 | `FLASH_GROUP_HAS_GATHERING` 추가 |
+>
+> **채팅(§5-b)은 손대지 않았다** — `ADR-014` 로 MVP 범위에서 빠졌지만,
+> 설계는 그대로 유효하고 발동 조건이 오면 쓴다.
+>
+> ⚠️ **아직 남은 불일치** — §2.3 토큰 만료가 문서 14일 / 구현 30일이다.
+> 그리고 이 문서 전반이 `Gathering`을 "모임"이라 부르는데,
+> 지금 용어는 **모임=`Group` · 술자리=`Gathering`** 이다(DB 코멘트는 정리됨).
 
 > **v2 변경** (`ADR-009`~`013`) — `Group`(영구 모임)·실시간 채팅·MSA(k3s) 를
 > 반영했다. 기존 번호(§0~11)는 그대로 두고 `SPEC.md` v4 와 같은 방식으로
@@ -31,7 +50,7 @@
 | id | JSON `number` | ↓ §0.1 |
 | 시각 | ISO-8601 + offset (`2026-08-17T21:40:00+09:00`) | 서버는 UTC로 쓰고 읽는다(`ERD.md` §0). 직렬화 형식은 DB 컬럼 타입과 무관 |
 | 날짜 | `YYYY-MM-DD` (모임 날짜) | 시각이 아니다. UTC 변환 금지 — ↓ §0.2 |
-| 인증 | `Authorization: Bearer <jwt>` | ↓ §2 |
+| 인증 | **httpOnly 쿠키** (`jeongsan_token`) | ↓ §2 |
 | 문자셋 | UTF-8 | |
 
 ### 0.1 id 를 number 로 보내는 이유
@@ -204,48 +223,48 @@ GET /api/v1/gatherings
 | `NOT_GROUP_OWNER` | 403 | 그룹 관리 기능은 OWNER 전용 (§3-b) |
 | `ALREADY_GROUP_MEMBER` | 409 | 이미 그룹 멤버 (§3-b) |
 | `INVALID_GROUP_TOKEN` | 404 | 그룹 초대 링크가 틀리거나 재발급됨 (§3-b) |
+| `FLASH_GROUP_HAS_GATHERING` | 409 | 번개 모임에는 술자리를 하나만 둔다 (§3-b.2) |
 
 ---
 
 ## 2. 인증
 
-### 2.1 로그인 — `POST /api/v1/auth/{provider}`
+> **v3 변경(2026-08-26)** — 이 절은 **구현에 맞춰 다시 썼다.**
+> 원래 계약은 프론트가 카카오 SDK 로 인가코드를 받아 `POST /auth/kakao` 로 넘기면
+> 서버가 `{token, user, firstLogin}` 을 **body 로** 주는 방식이었다.
+> 실제 구현은 **서버사이드 리다이렉트 + httpOnly 쿠키**로 갔다. 이유는 §2.3 참조.
 
-`{provider}` 는 `kakao` | `google`.
+### 2.1 로그인 — `GET /api/v1/auth/kakao/login`
 
-```
-POST /api/v1/auth/kakao
-{
-  "code": "3xY...",
-  "redirectUri": "https://jungsan.devkdk.com/auth/callback"
-}
-```
+**브라우저를 이 주소로 보내면 된다.** 프론트는 카카오 SDK 를 붙이지 않는다.
 
 ```
-200
-{
-  "token": "eyJhbGciOi...",
-  "expiresAt": "2026-08-31T21:40:00+09:00",
-  "user": {
-    "id": 12,
-    "nickname": "🌸봄이🌸",
-    "profileImage": "https://k.kakaocdn.net/...",
-    "provider": "kakao",
-    "tier": "FREE"
-  },
-  "firstLogin": true
-}
+GET /api/v1/auth/kakao/login
+302 → https://kauth.kakao.com/oauth/authorize?client_id=...&redirect_uri=...
 ```
 
-**`redirectUri` 를 요청에 담는 이유** — 카카오는 토큰 교환 시 인증 때 쓴 것과
-**같은 redirect_uri** 를 요구한다. 로컬(`localhost:5173`)·본배포
-(`jungsan.devkdk.com`)·포트폴리오(`www.devkdk.com`) 세 곳이 다르므로
-서버가 고정값을 쓰면 로컬에서 로그인이 안 된다.
+사용자가 카카오에서 로그인·동의하면 카카오가 아래로 되돌려보낸다.
 
-> **서버는 이 값을 검증한다.** 등록된 화이트리스트에 없으면 `400 MALFORMED_REQUEST`.
-> 검증 없이 그대로 카카오에 넘기면 공격자가 자기 서버로 code 를 받게 만들 수 있다.
+```
+GET /api/v1/auth/kakao/callback?code=3xY...
+302 → {app.login-success-url}
+Set-Cookie: jeongsan_token=eyJ...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000
+```
 
-**`code`·`클라이언트 시크릿`은 서버만 다룬다.** 프론트는 `code` 를 넘기는 것까지다.
+**서버가 하는 일** — 인가코드를 카카오 토큰으로 교환하고, 사용자 정보를 조회해
+`users` 를 UPSERT(`provider` + `providerId` 유니크)한 뒤, 자체 JWT 를 쿠키로 내린다.
+
+**`redirectUri` 를 프론트가 보내지 않는다.** 콜백이 **서버 자신의 주소**라
+환경변수(`KAKAO_REDIRECT_URI`) 하나로 끝난다. 원래 계약은 프론트가 이 값을 보내는
+전제여서 화이트리스트 검증이 필요했는데, 이 방식에서는 그 공격면 자체가 없다.
+
+**`code`·클라이언트 시크릿은 서버만 다룬다.** 프론트는 아무것도 다루지 않는다.
+
+> **`firstLogin` 이 없어졌다.** 리다이렉트에는 body 가 없기 때문이다.
+> 최초 로그인 안내가 필요해지면 `GET /auth/me` 응답에 얹거나
+> 리다이렉트 URL 에 쿼리 파라미터로 붙인다. **아직 정하지 않았다.**
+
+> **구글은 아직 없다.** `users.provider` 에 자리는 있으나 구현은 카카오뿐이다.
 
 **`firstLogin` 을 주는 이유** — 최초 로그인이면 화면이 안내를 더 보여줄 수 있다.
 UPSERT 결과를 서버는 알지만 프론트는 알 수 없다.
@@ -253,31 +272,48 @@ UPSERT 결과를 서버는 알지만 프론트는 알 수 없다.
 ### 2.2 내 정보 — `GET /api/v1/auth/me`
 
 ```
-200   { "id": 12, "nickname": "🌸봄이🌸", ... }      // 2.1 의 user 와 같은 모양
-401   TOKEN_EXPIRED
+GET /api/v1/auth/me
+Cookie: jeongsan_token=eyJ...          ← 브라우저가 자동으로 붙인다
+
+200   { "id": 12, "nickname": "🌸봄이🌸", "profileImageUrl": "https://..." }
+401   쿠키가 없거나 서명이 안 맞거나 만료됨
 ```
 
-**새로고침할 때마다 프론트가 이걸 부른다.** localStorage 의 토큰이 아직 유효한지
-서버만 알 수 있고, 만료된 토큰으로 화면을 그려두면 첫 조작에서 튕긴다.
+**새로고침할 때마다 프론트가 이걸 부른다.** 쿠키가 httpOnly 라 JS 가 읽을 수 없어
+**로그인 여부를 프론트가 스스로 알 방법이 없다** — 서버에 물어봐야 한다.
+
+**응답에 닉네임·프로필이 있는 이유** — 토큰에는 `userId` 만 담기 때문이다(§2.3).
+화면에 이름을 보여주려면 매번 DB 에서 읽어야 하고, 그래야 카카오에서 닉네임을
+바꿨을 때 바로 반영된다.
 
 ### 2.3 토큰 정책
 
 ```
-방식        JWT (HS256) · Authorization: Bearer
-저장        localStorage
-만료        14일
+방식        JWT (HS256) · httpOnly 쿠키 (jeongsan_token)
+저장        브라우저 쿠키 저장소 — JS 는 읽을 수 없다
+만료        14일  ⚠️ 구현은 현재 30일 (JWT_EXPIRATION_DAYS 기본값) — 아래 참조
 갱신        없다 — 만료되면 다시 로그인
-담는 것     userId, provider, exp        ← 닉네임·프로필은 담지 않는다
+담는 것     sub(userId), iat, exp        ← 닉네임·프로필·provider 는 담지 않는다
+쿠키 속성    HttpOnly · SameSite=Lax · Secure(운영만) · Path=/
 ```
 
-**localStorage 를 쓰는 이유** — 쿠키를 쓰면 `jungsan.devkdk.com`(프론트)과
-API 호스트가 다르므로 크로스 사이트 쿠키가 되고, `SameSite=None; Secure` +
-`credentials: include` + CORS `allow-credentials` 가 전부 맞아야 한다.
-**MVP에서 이 조합은 디버깅 비용이 크다.** 헤더로 보내면 CORS 가 단순해진다.
+**쿠키로 바꾼 이유** — 원래는 localStorage 였다. 크로스 사이트 쿠키 설정이
+번거롭다는 게 근거였는데, **API 를 `api.jungsan.devkdk.com` 서브도메인에 두면
+same-site 가 되어 그 문제가 사라진다.** SameSite 판정은 등록 도메인(`devkdk.com`)
+기준이라 서브도메인끼리는 같은 사이트로 본다.
 
-> 대가는 **XSS 에 노출된다**는 것이다. 다만 이 앱은 금액을 표시할 뿐
-> **송금을 실행하지 않고**(SPEC §9), 담는 정보도 닉네임·프로필 사진뿐이다.
-> 결제를 붙이는 날 이 결정을 다시 봐야 한다.
+그래서 `SameSite=None` 도, 그에 딸린 복잡함도 필요 없어졌고, **XSS 로 토큰을
+훔칠 수 없다는 이득만 남았다.** localStorage 는 스크립트가 읽을 수 있지만
+httpOnly 쿠키는 읽을 수 없다.
+
+> **대가는 CSRF 다.** 쿠키가 자동으로 실리므로 상태를 바꾸는 요청은 보호가 필요하다.
+> `SameSite=Lax` 가 크로스 사이트 POST 를 막아주지만 **완전한 방어는 아니다.**
+> 지금은 CORS `allowedOrigins` 를 프론트 origin 하나로 좁혀둔 상태다.
+> **CSRF 토큰은 아직 없다 — 결제나 송금을 붙이는 날 반드시 다시 봐야 한다.**
+
+> **웹이 아닌 클라이언트(안드로이드·iOS)** 는 쿠키를 쓰기 번거로울 수 있다.
+> 그때는 같은 JWT 를 `Authorization: Bearer` 로도 받도록 서버를 넓히면 된다 —
+> 토큰 형식이 같아서 발급 로직은 그대로다. **아직 구현하지 않았다.**
 
 **갱신 토큰을 만들지 않는다 (확정).** refresh 토큰은 저장·회전·폐기 설계가 딸려온다.
 **이 앱이 들고 있는 것은 닉네임·프로필 사진·모임 금액뿐이고 송금을 실행하지 않는다.**
@@ -290,8 +326,13 @@ API 호스트가 다르므로 크로스 사이트 쿠키가 되고, `SameSite=No
 > 입금 확인이 며칠에 걸쳐 끝난다. 그보다 짧으면 정산 도중에 튕기고,
 > 갱신이 없으므로 길게 잡을수록 탈취된 토큰이 오래 살아 있다.
 
+> ⚠️ **문서와 구현이 어긋나 있다.** 구현(`application.yml` 의
+> `JWT_EXPIRATION_DAYS` 기본값)은 **30일**이다. 근거를 갖고 고른 값이 아니라
+> 구현할 때 임의로 넣은 값이다. 위 14일 논거가 여전히 맞다면 구현을 14로 내려야 한다.
+> **아직 정하지 않았다.**
+
 **닉네임을 토큰에 담지 않는 이유** — 사용자가 카카오에서 닉네임을 바꾸면
-토큰 안의 값이 14일 동안 낡은 채로 남는다.
+토큰 안의 값이 만료될 때까지 낡은 채로 남는다.
 
 ---
 
@@ -465,25 +506,78 @@ deleteScheduledAt: string | null      // null 이면 정상. 값이 있으면 �
 뿌리는 것이 아니라 **이미 아는 사람들끼리** 쓰는 것이라 우선순위가 낮다.
 필요해지면 그때 `ADR-007`과 같은 패턴을 적용한다.
 
+> **v3 추가(2026-08-26) — 모임에 두 종류가 생겼다.**
+>
+> | | `RECURRING` (주기) | `FLASH` (번개) |
+> |---|---|---|
+> | 뜻 | 계속 만나는 고정 멤버 | 1회성 |
+> | 소속 술자리 | 여러 개 | **딱 1개** (더 못 만든다) |
+> | 수명 | 무한 | **정산 확정 +14일 뒤 목록에서 사라짐** |
+>
+> 새 테이블을 만들지 않고 `groups.group_type` 컬럼 하나로 처리한다 —
+> `ADR-009` 가 "이름·구조를 바꾸지 않는다"고 못박은 이유가 여기도 적용된다.
+
 ### 3-b.1 목록 — `GET /groups`
 
 ```
-200   [ { "id": 100, "name": "신림팸", "memberCount": 4, "gatheringCount": 3 }, ... ]
+200
+[
+  { "id": 100, "name": "신림팸", "groupType": "RECURRING",
+    "memberCount": 4, "gatheringCount": 3 },
+  { "id": 101, "name": "8/26 번개", "groupType": "FLASH",
+    "memberCount": 3, "gatheringCount": 1 }
+]
 ```
+
+**소프트 삭제된 모임은 빠진다** (`deleted_at IS NULL`). 목록에서만 사라질 뿐
+결제 내역(id 로 직접 접근)에서는 계속 보인다 — 지난 정산 기록이 증발하면 안 된다.
 
 ### 3-b.2 생성 — `POST /groups`
 
 ```
 POST /groups
-{ "name": "신림팸" }
+{ "name": "신림팸", "groupType": "RECURRING" }
 ```
 
 ```
-201   { "id": 100, "name": "신림팸", "shareToken": "...", "role": "OWNER" }
+201   { "id": 100, "name": "신림팸", "groupType": "RECURRING",
+        "shareToken": "aB3xY9...", "role": "OWNER", "gatheringId": null }
 ```
 
-**서버가 같이 하는 일** — 생성자를 `GroupMember(role=OWNER)`로 즉시 등록한다.
-`Gathering`의 `hostParticipantId`와 같은 이유다 — 주인 없는 그룹은 없다.
+**번개는 술자리까지 함께 만든다.**
+
+```
+POST /groups
+{ "name": "8/26 번개", "groupType": "FLASH",
+  "gatheringDate": "2026-08-26", "expectedCount": 5 }
+```
+
+```
+201   { "id": 101, "name": "8/26 번개", "groupType": "FLASH",
+        "shareToken": "kR7mQ2...", "role": "OWNER", "gatheringId": 55 }
+```
+
+**서버가 같이 하는 일**
+
+1. 생성자를 `GroupMember(role=OWNER)` 로 즉시 등록한다 — 주인 없는 그룹은 없다
+   (`Gathering` 의 `hostParticipantId` 와 같은 이유).
+2. `groupType=FLASH` 면 **같은 트랜잭션에서 `Gathering` 을 1개 만들고** 그 id 를
+   `gatheringId` 로 돌려준다. 번개는 "오늘 한 번" 쓰는 것이라 모임을 만들고
+   술자리를 또 만들라고 하면 번거롭다 — 화면 한 단계를 줄인다.
+
+| 필드 | RECURRING | FLASH |
+|---|---|---|
+| `gatheringDate` | 무시된다 | **필수** |
+| `expectedCount` | 무시된다 | **필수** — 본인 포함 예상 인원 |
+| 응답 `gatheringId` | `null` | 생성된 술자리 id |
+
+> **`expectedCount` 를 여기서 받는 이유** — `gatherings.expected_count` 가 NOT NULL 이고,
+> 정원 초과 시 참여 승인 게이트(§5.2)의 기준이 되는 값이다. 임의의 기본값을 넣으면
+> 그 게이트가 무의미해지므로 만들 때 함께 받는다.
+
+> **FLASH 모임에는 술자리를 더 못 만든다.** `POST /gatherings` 에 `groupId` 로
+> FLASH 모임을 지정하면 `409 FLASH_GROUP_HAS_GATHERING` 을 돌려준다.
+> 1회성이라는 정의가 곧 이 제약이다.
 
 ### 3-b.3 상세 — `GET /groups/{id}`
 
@@ -510,7 +604,7 @@ GET /gr/{token}
 404   INVALID_GROUP_TOKEN
 
 POST /gr/{token}/join
-Authorization: Bearer <jwt>
+Cookie: jeongsan_token=<jwt>     # 브라우저가 자동으로 붙인다
 201   { "groupId": 100, "role": "MEMBER" }
 409   ALREADY_GROUP_MEMBER
 404   INVALID_GROUP_TOKEN
@@ -727,7 +821,7 @@ Bucket4j (SPEC §10)         연속 404 5회 → 10분    토큰 유효성을 �
 
 ```
 POST /g/{token}/join
-Authorization: Bearer <jwt>
+Cookie: jeongsan_token=<jwt>     # 브라우저가 자동으로 붙인다
 { "name": "봄이" }
 ```
 
