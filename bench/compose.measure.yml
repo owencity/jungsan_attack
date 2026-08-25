@@ -1,0 +1,87 @@
+# 12GB 한 대에 무엇까지 올라가는지 실측하기 위한 구성.
+#
+# 목적은 배포가 아니라 측정이다. ADR-002 가 "브로커 대신 아웃박스" 를 택할 때
+# 근거는 "운영 대상이 하나 는다" 였는데, 여기에 "메모리가 부족하다" 를 덧붙인 것은
+# 측정하지 않은 유추였다. 그것을 확인한다.
+#
+# 재는 것
+#   1. 유휴 상태 RSS       각 컨테이너가 아무 일도 안 할 때 쓰는 양
+#   2. Kafka 포함/제외 차이  ADR-002 를 다시 판단할 근거
+#   3. 12GB 대비 여유       앱(JVM 약 1GB)을 얹을 자리가 남는가
+#
+# 상한을 일부러 건다. 상한이 없으면 Prometheus 가 부풀어 앱을 죽인다는 것이
+# SPEC §10 의 주장이고, 상한을 걸었을 때 실제로 동작하는지도 같이 본다.
+
+name: jeongsan-bench
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: bench
+      POSTGRES_DB: jeongsan
+    command: >
+      postgres -c shared_buffers=256MB -c max_connections=100
+    deploy:
+      resources:
+        limits: { memory: 2g }
+    ports: ["5432:5432"]
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits: { memory: 512m }
+    ports: ["6379:6379"]
+
+  # KRaft 모드 — ZooKeeper 가 없다. 예전 구성보다 컨테이너 하나, 메모리 한 덩이가 줄었다.
+  kafka:
+    image: apache/kafka:3.8.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      # 단일 브로커에 맞춰 힙을 낮춘다. 기본값 1G 가 이 규모에 맞는지도 같이 본다.
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms512m"
+    deploy:
+      resources:
+        limits: { memory: 1500m }
+    ports: ["9092:9092"]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    deploy:
+      resources:
+        limits: { memory: 1500m }
+    ports: ["9090:9090"]
+
+  loki:
+    image: grafana/loki:3.1.1
+    command: -config.file=/etc/loki/local-config.yaml
+    deploy:
+      resources:
+        limits: { memory: 1g }
+    ports: ["3100:3100"]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_SECURITY_ADMIN_PASSWORD: bench
+    deploy:
+      resources:
+        limits: { memory: 512m }
+    ports: ["3000:3000"]
