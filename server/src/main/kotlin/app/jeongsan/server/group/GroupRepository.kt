@@ -29,4 +29,18 @@ interface GroupMemberRepository : JpaRepository<GroupMember, GroupMemberId> {
     fun findByIdGroupId(groupId: Long): List<GroupMember>
     fun countByIdGroupId(groupId: Long): Long
     fun existsByIdGroupIdAndIdUserId(groupId: Long, userId: Long): Boolean
+
+    /** 내 소속 전부. 목록 화면에서 모임별 역할(총무/참여자)을 붙이는 데 쓴다. */
+    fun findByIdUserId(userId: Long): List<GroupMember>
+
+    /** 모임별 멤버 수를 한 번에 센다 — 모임마다 count 를 날리면 N+1 이 된다. */
+    @Query(
+        """
+        SELECT m.id.groupId, COUNT(m)
+        FROM GroupMember m
+        WHERE m.id.groupId IN :groupIds
+        GROUP BY m.id.groupId
+        """,
+    )
+    fun countByGroupIds(@Param("groupIds") groupIds: Collection<Long>): List<Array<Any>>
 }

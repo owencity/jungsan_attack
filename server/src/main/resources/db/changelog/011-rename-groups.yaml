@@ -1,0 +1,39 @@
+databaseChangeLog:
+  # groups → user_groups.
+  #
+  # 왜 바꾸나 — **GROUPS 는 MySQL 예약어다.** 8.0 에서 윈도우 함수 프레임(GROUPS BETWEEN ...)
+  # 용으로 추가됐다. INFORMATION_SCHEMA.KEYWORDS 에서 RESERVED=1 로 확인된다.
+  #
+  # 002-groups.yaml 의 주석은 "USER 가 예약어라 복수형 users 를 쓰듯 GROUP 도 groups 로
+  # 피한다"고 적었는데 **그 전제가 틀렸다.** USERS 는 예약어가 아니라 통했지만
+  # GROUPS 는 복수형도 예약어다.
+  #
+  # Liquibase 는 식별자를 인용해서 테이블 생성·조작이 다 성공했다. 그래서 스키마를
+  # 만들 때는 아무 문제가 없었고, Hibernate 가 인용 없이 `from groups g1_0` 을 만들면서
+  # **조회 시점에 처음 터졌다.**
+  #
+  # @Table 에 백틱을 넣어 우회할 수도 있고 실제로 잠깐 그렇게 뒀다. 다만 손으로 SQL 을
+  # 짤 때마다 백틱을 기억해야 하고, 식별자를 인용하지 않는 도구를 붙이면 또 걸린다.
+  # 데이터가 거의 없는 지금이 가장 싼 시점이라 이름 자체를 바꾼다.
+  #
+  # user_groups 를 고른 이유 — KEYWORDS 테이블에 아예 없어 어떤 버전에서도 안전하고,
+  # "사용자들의 모임"이라는 뜻이 그대로 읽힌다.
+  # FK·인덱스 이름은 그대로 둔다(fk_groups_created_by_user 등) — 이름만 옛것이지
+  # 동작에 영향이 없고, 바꾸면 변경 범위만 넓어진다.
+
+  - changeSet:
+      id: 017-rename-groups-to-user-groups
+      author: jeongsan
+      comment: >-
+        GROUPS 가 MySQL 예약어라 테이블명을 user_groups 로 바꾼다.
+        Hibernate 가 인용 없이 SQL 을 만들 때 문법 오류가 났다.
+      changes:
+        - renameTable:
+            oldTableName: groups
+            newTableName: user_groups
+        - setTableRemarks:
+            tableName: user_groups
+            remarks: >-
+              모임 — 술자리(Gathering)를 묶는 컨테이너. 번개(FLASH)와 주기(RECURRING) 두 종류다.
+              참여는 자동화하지 않는다(ADR-009) — group_members 는 소속만 기록한다.
+              테이블명이 user_groups 인 이유는 GROUPS 가 MySQL 예약어이기 때문이다(011 참조).

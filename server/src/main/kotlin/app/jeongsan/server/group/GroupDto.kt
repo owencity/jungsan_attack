@@ -41,6 +41,10 @@ data class GroupSummaryResponse(
     val id: Long,
     val name: String,
     val groupType: GroupType,
+    /** 이 모임에서 내 역할. 화면이 "총무인 모임"과 "참여 중인 모임"을 갈라 보여준다. */
+    val role: GroupRole,
+    /** 총무 닉네임. 참여 중인 모임에서 "누가 총무인지"를 보여주는 데 쓴다. */
+    val ownerName: String,
     val memberCount: Long,
     val gatheringCount: Long,
 )
@@ -56,6 +60,8 @@ data class GroupDetailResponse(
 
 data class GroupMemberResponse(
     val userId: Long,
+    /** 로그인 시점 닉네임. `users` 에서 매번 읽는다 — 바뀌면 바로 반영돼야 한다. */
+    val nickname: String,
     val role: GroupRole,
 )
 

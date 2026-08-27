@@ -19,16 +19,12 @@ import java.time.Instant
  * 모임 안에 술자리(`Gathering`)가 들어간다. 번개(FLASH)는 술자리를 **하나만** 갖는다.
  */
 /*
- * ⚠️ 테이블명을 백틱으로 감싼다. **`GROUPS` 는 MySQL 예약어다**
- * (8.0 에서 윈도우 함수 프레임용으로 추가됐다 — INFORMATION_SCHEMA.KEYWORDS 에서 RESERVED=1).
- *
- * `002-groups.yaml` 의 주석은 "USER 가 예약어라 복수형 users 를 쓰듯 GROUP 도 groups 로
- * 피한다"고 적었는데, **그 전제가 틀렸다.** USERS 는 예약어가 아니라 통했지만
- * GROUPS 는 복수형도 예약어다. Liquibase 는 식별자를 인용해서 테이블 생성은 성공했고,
- * Hibernate 가 인용 없이 `from groups g1_0` 을 만들면서 그때 터졌다.
+ * 테이블명이 `user_groups` 인 이유 — **GROUPS 가 MySQL 예약어다**(011 changelog 참조).
+ * 클래스명은 `Group` 그대로 둔다. 자바 예약어가 아니고, 도메인 용어가 "모임"이라
+ * 코드에서는 이 이름이 맞다.
  */
 @Entity
-@Table(name = "`groups`")
+@Table(name = "user_groups")
 class Group(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

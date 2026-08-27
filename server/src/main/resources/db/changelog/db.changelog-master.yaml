@@ -22,3 +22,5 @@ databaseChangeLog:
       file: db/changelog/009-group-type-and-lifecycle.yaml
   - include:
       file: db/changelog/010-table-korean-names.yaml
+  - include:
+      file: db/changelog/011-rename-groups.yaml

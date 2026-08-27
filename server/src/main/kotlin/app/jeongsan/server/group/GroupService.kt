@@ -5,6 +5,7 @@ import app.jeongsan.server.common.NotFoundException
 import app.jeongsan.server.common.ShareToken
 import app.jeongsan.server.gathering.Gathering
 import app.jeongsan.server.gathering.GatheringRepository
+import app.jeongsan.server.user.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -20,19 +21,47 @@ class GroupService(
     private val groupRepository: GroupRepository,
     private val groupMemberRepository: GroupMemberRepository,
     private val gatheringRepository: GatheringRepository,
+    private val userRepository: UserRepository,
 ) {
 
+    /**
+     * 내 모임 목록.
+     *
+     * **모임마다 count 를 따로 날리지 않는다** — 모임이 20개면 쿼리가 41번 나간다(N+1).
+     * 집계는 groupId 목록으로 한 번씩만 조회하고 메모리에서 맞춘다.
+     */
     @Transactional(readOnly = true)
-    fun listMyGroups(userId: Long): List<GroupSummaryResponse> =
-        groupRepository.findMyGroups(userId).map { group ->
+    fun listMyGroups(userId: Long): List<GroupSummaryResponse> {
+        val groups = groupRepository.findMyGroups(userId)
+        if (groups.isEmpty()) return emptyList()
+
+        val ids = groups.map { it.id }
+        // 내 역할(OWNER/MEMBER). 화면에서 "총무인 모임"과 "참여 중인 모임"을 갈라 보여준다.
+        val myRoles = groupMemberRepository.findByIdUserId(userId)
+            .associate { it.id.groupId to it.role }
+        val memberCounts = groupMemberRepository.countByGroupIds(ids).toCountMap()
+        val gatheringCounts = gatheringRepository.countByGroupIds(ids).toCountMap()
+        // 총무 닉네임 — 참여 중인 모임 카드에 "누가 총무인지"를 띄운다.
+        // OWNER 양도 기능이 없으므로 createdByUserId 가 곧 총무다(API.md §3-b.5).
+        val ownerNames = userRepository.findAllById(groups.map { it.createdByUserId })
+            .associate { it.id to it.nickname }
+
+        return groups.map { group ->
             GroupSummaryResponse(
                 id = group.id,
                 name = group.name,
                 groupType = group.groupType,
-                memberCount = groupMemberRepository.countByIdGroupId(group.id),
-                gatheringCount = gatheringRepository.countByGroupId(group.id),
+                role = myRoles[group.id] ?: GroupRole.MEMBER,
+                ownerName = ownerNames[group.createdByUserId] ?: "알 수 없음",
+                memberCount = memberCounts[group.id] ?: 0,
+                gatheringCount = gatheringCounts[group.id] ?: 0,
             )
         }
+    }
+
+    /** `SELECT id, COUNT(*) ... GROUP BY id` 결과를 Map 으로. */
+    private fun List<Array<Any>>.toCountMap(): Map<Long, Long> =
+        associate { (it[0] as Number).toLong() to (it[1] as Number).toLong() }
 
     /**
      * 모임 생성.
@@ -116,13 +145,23 @@ class GroupService(
         }
         val group = groupRepository.findById(groupId).orElseThrow { NotFoundException("모임을 찾을 수 없습니다.") }
 
+        val members = groupMemberRepository.findByIdGroupId(groupId)
+        // 닉네임을 한 번에 가져온다 — 멤버마다 findById 를 돌면 N+1 이다.
+        val nicknames = userRepository.findAllById(members.map { it.id.userId })
+            .associate { it.id to it.nickname }
+
         return GroupDetailResponse(
             id = group.id,
             name = group.name,
             groupType = group.groupType,
             shareToken = group.shareToken,
-            members = groupMemberRepository.findByIdGroupId(groupId).map {
-                GroupMemberResponse(userId = it.id.userId, role = it.role)
+            members = members.map {
+                GroupMemberResponse(
+                    userId = it.id.userId,
+                    // 탈퇴 등으로 사용자 행이 없으면 화면이 비어 보이지 않게 대체 문구를 준다.
+                    nickname = nicknames[it.id.userId] ?: "알 수 없음",
+                    role = it.role,
+                )
             },
             gatherings = gatheringRepository.findByGroupIdOrderByGatheringDateDesc(groupId).map {
                 GroupGatheringResponse(id = it.id, name = it.name, date = it.gatheringDate, status = it.status)
