@@ -18,17 +18,28 @@
 `ADR-011`로 PostgreSQL → MySQL로 옮기면서, 예전에 확정했던 타입 결정 두 가지를
 다시 봐야 했다.
 
-### 예약어 충돌 — `user`, `group`을 복수형으로 피한다
+### 예약어 충돌 — `user`, `group`을 복수형으로 피한다 (단, `GROUPS`는 실패했다)
 
 **`USER`와 `GROUP`은 둘 다 MySQL 예약어다.** `USER`는 `CURRENT_USER()`·`GRANT` 등에,
 `GROUP`은 `GROUP BY`에 쓰인다. 테이블명으로 그대로 쓰면 매 쿼리마다 백틱
 (`` `user` ``)을 강제로 붙여야 한다.
 
-**테이블명을 전부 복수형으로 통일해 피한다** — `users`, `groups`,
+**테이블명을 복수형으로 바꿔 피하는 전략을 썼다** — `users`, `groups`,
 `gatherings`, `participants`, `rounds`, `extra_items`, `attendances` 등.
-`USERS`·`GROUPS`는 예약어가 아니다. API 경로가 이미 복수형(`/gatherings`,
-`/participants`)이라 REST 관례와도 맞는다. 도메인 개념 이름(`User`, `Group`)은
-코드·문서에서 단수형 그대로 쓴다 — 바뀐 것은 물리 테이블명뿐이다.
+API 경로가 이미 복수형(`/gatherings`, `/participants`)이라 REST 관례와도 맞는다.
+
+**단, 전제가 하나 틀렸다.** `USERS`는 예약어가 아니라 통했지만, **`GROUPS`는
+복수형도 예약어다**(8.0의 윈도우 함수 프레임 `GROUPS BETWEEN ...` 용,
+`INFORMATION_SCHEMA.KEYWORDS`에서 `RESERVED=1`로 확인). Liquibase는 식별자를
+인용해서 스키마 생성까지는 문제없이 통과했고, Hibernate가 인용 없이
+`from groups g1_0`을 만드는 **조회 시점에 처음 터졌다.** 데이터가 거의 없던
+시점에 테이블을 통째로 `user_groups`로 리네임했다(migration `011`,
+`KEYWORDS`에 아예 없는 이름이라 어떤 버전에서도 안전하다). FK·인덱스 이름은
+`fk_groups_created_by_user`처럼 옛 이름 그대로 남아 있다 — 동작에 영향이
+없고, 바꾸면 변경 범위만 넓어진다.
+
+도메인 개념 이름(`User`, `Group`)은 코드·문서에서 단수형 그대로 쓴다 —
+바뀐 것은 물리 테이블명뿐이다.
 
 ### 시각 — `TIMESTAMPTZ` 대신 `DATETIME` + 애플리케이션 UTC 규율
 
@@ -65,10 +76,10 @@ DATETIME    변환 없이 입력값 그대로 저장. 1000~9999 범위. 시간�
 
 ```mermaid
 erDiagram
-    users ||--o{ groups : "created_by"
+    users ||--o{ user_groups : "created_by"
     users ||--o{ group_members : ""
-    groups ||--o{ group_members : ""
-    groups ||--o{ gatherings : "0개 이상"
+    user_groups ||--o{ group_members : ""
+    user_groups ||--o{ gatherings : "0개 이상"
     users ||--o{ gatherings : "host"
     users ||--o{ participants : ""
     gatherings ||--o{ participants : ""
@@ -93,7 +104,7 @@ erDiagram
         datetime tier_expires_at
         datetime created_at
     }
-    groups {
+    user_groups {
         bigint id PK
         varchar name
         varchar group_type "FLASH | RECURRING"
@@ -259,6 +270,13 @@ docker rm -f jeongsan-mysql-test && docker network rm jeongsan-test-net
 
 - [x] Docker 켜고 `liquibase update` 실행 — 완료(§0 상단 참조)
 - [x] `docs/table-spec.xlsx` 생성 — 완료
-- [ ] `server` 모듈을 `settings.gradle.kts`에 `include(":server")`로 추가하고
-      실제 Spring Boot 부트스트랩(`build.gradle.kts`, `application.yml`) 작성
-- [ ] `API.md` 엔드포인트 재구성(`/groups/{id}/gatherings/{id}/*`) 반영
+- [x] `server` 모듈 부트스트랩(Spring Boot, `application.yml`) — 완료, 카카오 로그인·
+      `Group`/`Gathering` API 까지 붙어 실제로 돈다
+- [x] ~~`API.md` 엔드포인트 재구성(`/groups/{id}/gatherings/{id}/*`)~~ — 채택 안 함.
+      `gatherings`는 `group_id`(nullable)만 들고 계속 최상위 `/gatherings`에
+      남는다. 대신 `/groups`(§3-b)가 그 위에 얇게 얹힌다 — 번개(FLASH) 생성 시
+      `POST /groups`가 술자리 1개를 같이 만든다(`API.md` §3-b.2). 중첩 URL로
+      바꾸면 기존 `/gatherings/{id}/*` 엔드포인트 전부를 다시 써야 해서 이득보다
+      비용이 컸다
+- [ ] `groups` → `user_groups` 리네임(migration `011`)에 맞춰 `docs/table-spec.xlsx`
+      갱신 — 엑셀은 이 문서와 달리 손으로 열어 고쳐야 한다, 아직 안 함

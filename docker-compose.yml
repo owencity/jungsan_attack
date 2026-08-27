@@ -1,4 +1,6 @@
-# 로컬 개발용. OCI 배포 구성(k3s)과는 별개다 — ADR-013 의 매니페스트가 실제 배포를 담당한다.
+# 로컬 개발용. OCI 배포 구성과는 별개다 — 실제 배포는 docker-compose.prod.yml +
+# .github/workflows/deploy.yml(단일 VM, ADR-006)이 담당한다. ADR-013(k3s/MSA)은
+# 보류 상태다(ADR-014) — 재검토 조건이 오기 전엔 그 매니페스트를 쓰지 않는다.
 # 이 파일은 로컬에서 server 모듈을 돌리기 위한 MySQL 하나만 띄운다.
 services:
   mysql:
