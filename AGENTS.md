@@ -70,6 +70,10 @@ MVP 플로우 (채팅은 보류):
 > 서비스" 같은 오래된 주석이 남아 있는데(예: `GatheringController.kt`), 013이 유효하던
 > 시점에 쓴 것이고 지금은 014가 대체했다. **보류된 ADR에 설계가 있다는 이유로 구현하지 마라.**
 
+> 일부 ADR이 `report/flow.md`를 참조하는데 **그 파일은 이 저장소에 없다**(초기 기획
+> 산출물이라 옮겨오지 않았다). 링크가 깨진 거지 네가 잘못 찾은 게 아니니, 찾아 헤매지 말고
+> `SPEC.md`를 기준으로 삼아라.
+
 ---
 
 ## 3. 지금 상태 (2026-08-27 스냅샷)
@@ -91,6 +95,12 @@ MVP 플로우 (채팅은 보류):
 
 **컨트롤러는 지금 3개뿐이다** — `AuthController`, `GroupController`, `GatheringController`.
 그 외 `API.md`에 적힌 모든 엔드포인트는 아직 없다.
+
+> **표의 경로는 축약형이다 — 실제 매핑은 전부 `/api/v1` 프리픽스가 붙는다.**
+> (`GroupController`는 `@RequestMapping("/api/v1/groups")`) 새 컨트롤러도 반드시
+> `/api/v1/...`로 매핑해라. CORS가 `WebConfig`에서 `/api/**`에만 걸려 있어,
+> 프리픽스를 빼면 프론트에서 CORS로 막힌다.
+> `common/LoginUser.kt`의 KDoc 예시가 `@GetMapping("/groups")`로 축약돼 있는데 그건 예시일 뿐이다.
 
 ---
 
@@ -121,12 +131,23 @@ MVP 플로우 (채팅은 보류):
    `localStorage` 토큰 방식을 새로 만들지 않는다. `api.jungsan.devkdk.com`과
    `jungsan.devkdk.com`이 같은 등록 도메인(`devkdk.com`)을 공유해 `SameSite=Lax`가
    same-site로 동작한다는 전제가 깔려 있다 — 도메인 구조를 바꾸는 변경은 이 전제를 다시 봐야 한다.
-8. **`application-prod.yml`에 기본값을 넣지 않는다.** 환경변수가 없으면 부팅이 즉시
+
+   > ⚠️ **인증 필터가 없다. 기본값은 "공개"다.** Spring Security를 안 쓰므로 요청을
+   > 가로채 검사하는 계층이 없고, 인증은 오직 `@LoginUser` 파라미터 리졸버뿐이다.
+   > **`@LoginUser`를 안 붙인 핸들러는 누구나 부를 수 있다.** 실제로
+   > `GatheringController`가 안 붙여서 `findAll()`로 전 사용자의 술자리가 나가고 있다.
+   > 로그인이 필요한 엔드포인트에는 **반드시** `@LoginUser userId: Long`을 받아라.
+
+8. **`API.md`에 `⚠️ 아직 정하지 않았다`로 표시된 결정을 임의로 정리하지 마라.**
+   문서와 구현이 어긋난 채로 **일부러 열어둔** 지점들이다(예: JWT 만료가 문서 14일 /
+   구현 30일 — `API.md` §2.3). 지나가는 김에 한쪽으로 맞추면 CTO의 미결 결정이
+   리뷰 없이 확정된다. 발견하면 고치지 말고 PR 설명에 "여기 미결이 있다"고만 적어라.
+9. **`application-prod.yml`에 기본값을 넣지 않는다.** 환경변수가 없으면 부팅이 즉시
    실패해야 한다(fail-fast). 빈 값으로 떠서 나중에 조용히 깨지는 게 훨씬 나쁘다.
-9. **N+1을 만들지 않는다.** 목록에 여러 항목이 있으면 항목마다 쿼리를 날리지 말고
+10. **N+1을 만들지 않는다.** 목록에 여러 항목이 있으면 항목마다 쿼리를 날리지 말고
    `IN :ids` + `GROUP BY` 배치로 한 번에 모은다
    (`GroupRepository.kt`의 `countByGroupIds`, `GroupService.listMyGroups` 참고).
-10. **새 의존성을 임의로 추가하지 않는다.** 이 저장소는 스택 선택을 ADR로 관리한다.
+11. **새 의존성을 임의로 추가하지 않는다.** 이 저장소는 스택 선택을 ADR로 관리한다.
     라이브러리가 필요하면 추가하지 말고 PR 설명에 "무엇이·왜 필요한지"를 적어 물어라.
 
 ---
@@ -135,11 +156,24 @@ MVP 플로우 (채팅은 보류):
 
 실제로 걸렸던 것들이다.
 
+- **이미 적용된 changelog 파일을 절대 수정하지 마라.** Liquibase는 changeSet 내용의
+  checksum을 `DATABASECHANGELOG`에 저장해 두고, 다음 기동 때 파일이 바뀌었으면
+  `ValidationFailedException`을 던진다 — **앱이 아예 안 뜬다.** 주석 한 글자도 마찬가지다.
+  바꿀 게 있으면 **항상 새 changeSet을 추가**해라.
+
+  > ⚠️ **바로 아래 항목이 이 함정으로 유인한다.** `002-groups.yaml`에는 아직
+  > `tableName: groups`와 "USERS가 예약어라 복수형을 쓰듯…"이라는 **틀린 주석**이
+  > 남아 있다. 고치고 싶어지겠지만 **고치면 안 된다.** 그래서 `011`이 002를 건드리는
+  > 대신 `renameTable`이라는 새 changeSet으로 처리한 것이다.
+
 - **`GROUPS`는 MySQL 예약어다.** `USERS`는 통했는데 `GROUPS`는 복수형도 예약어라서
   (윈도우 함수 프레임용) 테이블을 `user_groups`로 리네임해야 했다(changelog `011`).
   엔티티는 `@Table(name = "user_groups")`이지만 클래스명은 `Group` 그대로다.
   **테이블명을 새로 지을 때 "복수형이니 안전하겠지"라고 가정하지 말고
   `SELECT * FROM INFORMATION_SCHEMA.KEYWORDS WHERE WORD='...' AND RESERVED=1`로 확인해라.**
+- **CORS `allowedMethods`에 `PATCH`가 빠져 있다.** `WebConfig`는 현재
+  `GET, POST, PUT, DELETE, OPTIONS`만 허용한다. `API.md` §3.3의
+  `PATCH /gatherings/{id}`를 구현하면 여기도 같이 추가해야 프론트에서 부를 수 있다.
 - **Kotlin의 non-null `Long`은 primitive `long`으로 컴파일된다.**
   `HandlerMethodArgumentResolver`에서 타입을 볼 때 `Long::class.java` 하나만 보면 놓친다.
   `Long::class.javaPrimitiveType`과 `javaObjectType` 둘 다 봐야 한다
@@ -193,6 +227,19 @@ sealed interface SettlementOutcome {
 주의: `settle()`은 내부에서 `Validator.validate(input, CONFIRM)`을 이미 부른다.
 저장 시점 검증이 필요하면 `SAVE` phase로 따로 호출해라.
 
+> ⚠️ **`SettlementResult`를 그대로 응답 바디로 쓰지 마라.** 안에 `Rational` 타입이
+> 그대로 박혀 있고(`rawTotal`, `foodShare`, `alcoholShare`, `amount`, `share`),
+> `Rational`은 `numerator`/`denominator`가 public이라 Jackson이
+> `{"numerator":123400,"denominator":3}` 같은 걸 뱉는다. `API.md`는 그 자리에 **정수 원**을
+> 기대한다. 응답 DTO를 따로 만들고 표시용 금액(`Long`)으로 변환해서 내보내라 —
+> 어떤 값이 반올림된 표시용이고 어떤 게 원본 유리수인지는 `CALC_RULES.md`가 정한다.
+
+> `SettlementOutcome.Failure`를 HTTP로 바꾸는 경로는 **아직 코드에 없다.** 현재
+> `GlobalExceptionHandler`의 `FieldErrorDetail`은 `{code, message, field}` 모양인데
+> `API.md` §1.2는 정산 오류에 `{code, message, roundId, extraId, participantId}`를
+> 요구한다. 확정/정산 엔드포인트를 만드는 PR에서 이 변환을 함께 설계하고,
+> 어떤 모양으로 했는지 PR 설명에 적어라.
+
 ---
 
 ## 7. Liquibase changelog 작성 규칙
@@ -238,6 +285,16 @@ sealed interface SettlementOutcome {
 - 기존 설계·컨벤션과 다른 방향인데 왜 바꾸는지 설명이 없을 때
 - 요청이 두 가지 이상으로 해석 가능해 임의로 골라야 할 때
 
+**반대로 아래는 그냥 바로 해라.** 여기까지 되물으면 규칙 자체가 무시당한다.
+
+- 오탈자·포맷팅·네이밍·import 정리 같은 기계적 수정
+- 이미 ADR이나 DEVLOG에 이유가 적혀 있는 작업의 연장선
+- "이유 됐고 그냥 해줘"라고 명시했을 때
+
+**질문은 PR당 최대 2개.** 아래 네 가지 중 상황에 맞는 것만 짧게 골라 쓴다.
+① 정확히 어떤 문제를 푸는가 ② 다른 방법도 있나 ③ 왜 이걸 골랐나·트레이드오프는
+④ 나중에 아쉬울 지점이 보이나
+
 **너는 즉답을 못 받으므로 멈추는 대신 이렇게 한다:** 가장 그럴듯한 해석 하나를 고르고,
 **되돌리기 쉬운 최소 구현**으로 짜고, PR 설명 맨 위에 이렇게 적는다.
 
@@ -281,8 +338,12 @@ sealed interface SettlementOutcome {
   걸려 있으니 인프라는 준비돼 있다. **새 엔드포인트를 만들면 최소한
   성공 1건 + 실패(권한/검증) 1건은 테스트를 붙여라.** 없던 관례를 만드는 것이므로,
   첫 PR에서 어떤 방식(MockMvc / `@SpringBootTest`)을 골랐는지 PR 설명에 적어라.
-- **테스트를 지우거나 `@Disabled`로 막아서 통과시키지 마라.** 깨졌으면 원인을 고치거나,
+- **테스트를 지우거나 비활성화해서 통과시키지 마라.** 깨졌으면 원인을 고치거나,
   못 고치겠으면 그대로 두고 PR에 적어라.
+
+  > ⚠️ Kotest는 **테스트 이름 앞에 `!` 한 글자**만 붙이면 그 테스트를 건너뛰고
+  > 빌드가 초록으로 통과한다(`"!T7 · …"`). diff에서 눈에 거의 안 띄는데
+  > 배포 워크플로가 돌리는 `:core:test`까지 조용히 통과시킨다. 절대 쓰지 마라.
 
 ---
 
@@ -316,6 +377,9 @@ sealed interface SettlementOutcome {
       `db.changelog-master.yaml` include 추가 + 엔티티가 그걸 따라감(거꾸로 아님) +
       모든 컬럼에 `remarks`
 - [ ] API를 바꿨다면 `docs/API.md`를 같은 PR에서 갱신. 스키마를 바꿨다면 `docs/ERD.md`도.
+      **`API.md`는 버전 문서다** — 해당 절만 덮어쓰지 말고, 제목의 `v{n}`을 올리고
+      상단에 `> **v{n} 변경(날짜)**` 블록 + 바뀐 절 표를 추가해라. **이전 버전 블록은 지우지 않는다.**
+      프론트는 별도 저장소라 이 표만 보고 따라온다.
 - [ ] 새 목록/집계 조회에 N+1이 없음
 - [ ] `application-prod.yml`에 기본값을 추가하지 않았음
 - [ ] 새 의존성을 임의로 추가하지 않았음
