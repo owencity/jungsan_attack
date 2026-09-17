@@ -8,7 +8,11 @@
 
 - **CTO(사용자)** — 방향을 정하고 우선순위를 매긴다.
 - **시니어(Claude)** — PR을 리뷰하고, 애매한 요청을 구체화하고, 최종 병합 여부를 판단한다.
-- **Codex(너)** — 브랜치에서 구현한다. **`main`에 직접 커밋·푸시하지 않는다.**
+  **지적마다 고치는 방법까지 추천한다** — "뭐가 문제다"에서 끝내지 않는다. 단, **실제로
+  고치는 건 CTO가 결정한 뒤**다. 리뷰가 곧 수정 허가는 아니다.
+- **Codex(너)** — **초기 구현은 항상 네가 먼저 한다.** 비용 효율 때문에 Claude는
+  리뷰·리팩토링 단계에만 투입한다 — 처음부터 Claude가 짜지 않는다고 해서 검토가
+  약한 게 아니다. 브랜치에서 구현한다. **`main`에 직접 커밋·푸시하지 않는다.**
   항상 새 브랜치 → PR. 병합은 CTO·시니어가 리뷰한 뒤에만 한다.
 
 **너는 대화형으로 즉답을 못 받는다.** 애매한 지점을 만나면 추측으로 밀어붙이지 말고,
@@ -41,29 +45,33 @@ MVP 플로우 (채팅은 보류):
 스키마상 열려 있다(`ADR-009`가 기존 `Gathering` 구조를 안 바꾸기로 한 결과). 코드를
 쓸 때 `group_id`가 항상 있다고 가정하지 마라.
 
-제품 정의 전체는 [`docs/SPEC.md`](docs/SPEC.md), 특히 **§9 "만들지 않는 것"** —
-거기 적힌 걸 구현하면 범위 위반이다.
+새 제품 정의는 [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)가 기준이다.
+[`docs/SPEC.md`](docs/SPEC.md)는 현재 구현 계약을 설명하는 레거시 v4이며, 새 요구사항과
+충돌하는 부분이 있다. 요구사항만 보고 코드를 먼저 바꾸지 말고 계산 규칙·스키마·API
+계약을 순서대로 개정한 뒤 구현한다.
 
 ---
 
 ## 2. 읽는 순서
 
-1. [`docs/SPEC.md`](docs/SPEC.md) — 제품 정의, 도메인 모델, 화면, 상태 전이
-2. [`docs/ERD.md`](docs/ERD.md) — 스키마 요약. **진실은 `server/src/main/resources/db/changelog/`의
+1. [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) — 새 제품 요구사항, 유비쿼터스 언어,
+   역할·권한, 상태 전이. **앞으로 만들 제품의 기준**
+2. [`docs/SPEC.md`](docs/SPEC.md) — 현재 구현 기준 제품 명세. 새 요구사항과 충돌하는 절은 개정 예정
+3. [`docs/ERD.md`](docs/ERD.md) — 스키마 요약. **진실은 `server/src/main/resources/db/changelog/`의
    Liquibase YAML이다** — ERD.md는 그걸 사람이 읽기 좋게 옮긴 것이다. 스키마를 바꿀 땐
    changelog를 먼저 고치고 ERD.md를 그에 맞춰 갱신한다.
-3. [`docs/CALC_RULES.md`](docs/CALC_RULES.md) — 계산 규칙 + 검증된 테스트 케이스.
+4. [`docs/CALC_RULES.md`](docs/CALC_RULES.md) — 계산 규칙 + 검증된 테스트 케이스.
    **`core` 모듈 작업은 여기서 시작한다.**
-4. [`docs/API.md`](docs/API.md) — 엔드포인트·요청·응답·오류 코드 계약.
+5. [`docs/API.md`](docs/API.md) — 엔드포인트·요청·응답·오류 코드 계약.
    **`server` 모듈 작업은 여기서 시작한다.**
-5. [`docs/ADR/000-index.md`](docs/ADR/000-index.md) — 왜 이렇게 정했는지.
+6. [`docs/ADR/000-index.md`](docs/ADR/000-index.md) — 왜 이렇게 정했는지.
    특히 [001](docs/ADR/001-rational-not-bigdecimal.md)(BigDecimal 금지),
    [005](docs/ADR/005-no-stored-settlement.md)(계산 결과 미저장),
    [006](docs/ADR/006-single-vm-no-kubernetes.md)(단일 VM 배포),
    [009](docs/ADR/009-group-persistent-membership.md)(Group을 얹은 방식),
    [014](docs/ADR/014-monolith-first-feature-package.md)(모놀리스·feature 패키지 — **가장 최근 결정**)
-6. [`DEVLOG.md`](DEVLOG.md) — 최근 결정 이력
-7. [`docs/DEPLOY.md`](docs/DEPLOY.md) — 배포 절차 (배포를 건드릴 때만)
+7. [`DEVLOG.md`](DEVLOG.md) — 최근 결정 이력
+8. [`docs/DEPLOY.md`](docs/DEPLOY.md) — 배포 절차 (배포를 건드릴 때만)
 
 > **ADR-013(MSA)과 ADR-010(채팅 분리)은 "보류"이지 "폐기"가 아니다.** 설계는 살아
 > 있지만 **지금 코드는 014(모놀리스) 기준으로 쓴다.** 저장소 안에 "ADR-013의 REST API
@@ -82,8 +90,8 @@ MVP 플로우 (채팅은 보류):
 
 | 영역 | 상태 |
 |---|---|
-| `core` 계산 엔진 | ✅ 완성. `Settlement.settle()` 동작, Kotest 5개 스펙 통과 |
-| DB 스키마 | ✅ changelog 011까지 적용. 실제 MySQL 8.4에서 실행 검증됨 |
+| `core` 계산 엔진 | ✅ v2 구현 완료. 차수별 면제·총무별 수취·1원 올림, Kotest 44개 통과 |
+| DB 스키마 | 🚧 changelog 014까지 작성. `001~011 → 014` 업그레이드는 MySQL 8.4에서 검증됨 |
 | 카카오 로그인 | ✅ 동작. OAuth2 → httpOnly JWT 쿠키(`jeongsan_token`) → `GET /auth/me` |
 | `Group` (모임) | ✅ `GET/POST /api/v1/groups`, `GET /api/v1/groups/{id}`. FLASH 생성 시 술자리 1개 동시 생성 |
 | 모임 가입 `/gr/{token}` | ❌ `API.md` §3-b.4에 계약만 있고 컨트롤러 없음 |
@@ -137,6 +145,13 @@ MVP 플로우 (채팅은 보류):
    > **`@LoginUser`를 안 붙인 핸들러는 누구나 부를 수 있다.** 실제로
    > `GatheringController`가 안 붙여서 `findAll()`로 전 사용자의 술자리가 나가고 있다.
    > 로그인이 필요한 엔드포인트에는 **반드시** `@LoginUser userId: Long`을 받아라.
+   >
+   > **이 함정을 사람 기억에 의존하지 않는다.** `server/src/test`에 인증 가드
+   > 테스트를 하나 둔다 — 로그인 없이 호출돼도 되는 엔드포인트를 화이트리스트로
+   > 명시하고, 그 외 모든 컨트롤러 핸들러가 `@LoginUser`(또는 동등한 인증
+   > 파라미터)를 갖는지 리플렉션으로 순회 검증한다. 새 컨트롤러·핸들러를
+   > 추가하는 PR은 이 테스트를 통과해야 하고, 화이트리스트에 새 항목을
+   > 추가한다면 PR 설명에 왜 공개여야 하는지 적는다.
 
 8. **`API.md`에 `⚠️ 아직 정하지 않았다`로 표시된 결정을 임의로 정리하지 마라.**
    문서와 구현이 어긋난 채로 **일부러 열어둔** 지점들이다(예: JWT 만료가 문서 14일 /
@@ -165,6 +180,12 @@ MVP 플로우 (채팅은 보류):
   > `tableName: groups`와 "USERS가 예약어라 복수형을 쓰듯…"이라는 **틀린 주석**이
   > 남아 있다. 고치고 싶어지겠지만 **고치면 안 된다.** 그래서 `011`이 002를 건드리는
   > 대신 `renameTable`이라는 새 changeSet으로 처리한 것이다.
+
+- **MySQL에서 컬럼 제약과 주석을 순차 변경하면 서로 지워질 수 있다.** 실제로 `018`의
+  `addNotNullConstraint`가 `admin_user_id` 주석을 지웠고, `021`의
+  `setColumnRemarks`는 반대로 `NOT NULL`을 풀었다. 둘 다 필요하면 후속 changeSet의
+  단일 `ALTER TABLE ... MODIFY COLUMN ... NOT NULL COMMENT ...`에서 전체 정의를 함께
+  선언하고, `information_schema.columns`로 최종 상태를 확인해라(`014` 참조).
 
 - **`GROUPS`는 MySQL 예약어다.** `USERS`는 통했는데 `GROUPS`는 복수형도 예약어라서
   (윈도우 함수 프레임용) 테이블을 `user_groups`로 리네임해야 했다(changelog `011`).
@@ -256,9 +277,12 @@ sealed interface SettlementOutcome {
 009-group-type-and-lifecycle.yaml  →  id: 013, 014, 015   (3개)
 010-table-korean-names.yaml        →  id: 016
 011-rename-groups.yaml             →  id: 017
+012-group-management-foundation.yaml → id: 018, 019, 020   (3개)
+013-restore-group-admin-remarks.yaml → id: 021
+014-enforce-group-admin-definition.yaml → id: 022
 ```
 
-**따라서 다음 파일은 `012-*.yaml`이고, 그 안의 첫 changeSet id는 `018-...`이다.**
+**따라서 다음 파일은 `015-*.yaml`이고, 그 안의 첫 changeSet id는 `023-...`이다.**
 파일 번호를 id에 그대로 쓰면 이미 적용된 번호와 충돌한다.
 
 그 외:
@@ -373,6 +397,8 @@ sealed interface SettlementOutcome {
       (`core`는 경고도 오류다 — 컴파일 경고가 나면 빌드가 깨진다)
 - [ ] `./gradlew :server:compileKotlin` 통과
 - [ ] 새 엔드포인트를 만들었으면 테스트 추가(성공 1 + 실패 1)
+- [ ] 새 컨트롤러 핸들러를 추가했다면 인증 가드 테스트(화이트리스트 외
+      전부 `@LoginUser` 보유 검증, §4-7)가 통과함
 - [ ] 스키마를 바꿨다면: 새 changelog + **전역 연속 changeSet id**(§7) +
       `db.changelog-master.yaml` include 추가 + 엔티티가 그걸 따라감(거꾸로 아님) +
       모든 컬럼에 `remarks`
