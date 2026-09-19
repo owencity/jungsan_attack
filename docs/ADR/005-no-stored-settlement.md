@@ -1,6 +1,11 @@
 # ADR-005 · 계산 결과를 저장하지 않되 `paidAmount`로 차액을 낸다
 
-**상태** 확정 · **관련** `SPEC.md` §4, §5-b, §5-c
+**상태** ⚠️ 일부 대체 · **관련** `SPEC.md` §4, §5-b, §5-c,
+[`ADR-015`](015-immutable-confirmed-transfer-snapshot.md)
+
+> Core v1의 재정산·대표결제자 모델에 대한 기록으로 보존한다. Core v2부터는 미리보기
+> 결과는 계속 저장하지 않지만, 금액 확정 시 transfer 명세를 불변 스냅샷으로 저장한다.
+> `paidAmount` 방식은 ADR-015가 대체한다.
 
 ## 맥락
 
