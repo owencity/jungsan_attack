@@ -1,4 +1,14 @@
-# 정산어택 — API 계약 · v3
+# 정산어택 — API 계약 · v4
+
+> **v4 변경(2026-09-24)** — Core v2의 검증 오류 계약을 반영했다.
+>
+> | 절 | 바뀐 것 |
+> |---|---|
+> | §1.4 | `ErrorCode`를 Core v2의 15개 enum과 동기화 |
+> | §3.2, §4.3, §5.4 | 제거된 v1 오류 코드 예시를 v2 코드로 교체 |
+>
+> 이 버전은 Core 검증 계약만 먼저 갱신한다. `roundingUnit`·기타 항목·참석 요청처럼
+> 아직 v3 모양으로 남은 Gathering 엔드포인트는 server 구현 PR 전에 별도로 개정한다.
 
 > **v3 변경(2026-08-26)** — **구현이 계약을 앞지른 부분을 문서에 반영했다.**
 > 이 문서는 "합의하는 형식"인데, 인증을 먼저 구현하면서 계약과 어긋난 채로
@@ -33,7 +43,7 @@
 이 문서는 **프론트와 백엔드가 코드를 짜기 전에 합의하는 형식**이다.
 
 계약이 없으면 필드 이름 하나(`alcohol` vs `alcoholAmount`)가 어긋나도 양쪽을 다시 쓴다.
-그리고 `core/Validation.kt` 가 이미 갖고 있는 18개 오류 코드가 화면의 어느 문구로
+그리고 `core/Validation.kt` 가 이미 갖고 있는 15개 오류 코드가 화면의 어느 문구로
 이어지는지 아무 데도 정해져 있지 않다. 그 두 가지를 여기서 못 박는다.
 
 **읽기 응답의 형태는 `src/jeongsan/types.ts` 가 이미 확정한 것이다.** 이 문서가 새로
@@ -174,7 +184,7 @@ GET /api/v1/gatherings
 
 ### 1.4 오류 코드 — 전체 목록
 
-**계산 엔진에서 오는 것 (18개)** — `core/Validation.kt` 의 `ErrorCode` 를 그대로 쓴다.
+**계산 엔진에서 오는 것 (15개)** — `core/Validation.kt` 의 `ErrorCode` 를 그대로 쓴다.
 문자열이 하나라도 어긋나면 프론트가 처리하지 못하므로 **직접 적지 말고 enum 이름을 쓴다.**
 
 | 코드 | 시점 | 뜻 |
@@ -183,24 +193,21 @@ GET /api/v1/gatherings
 | `ALCOHOL_NEGATIVE` | 저장 | 술값이 음수 |
 | `ALCOHOL_EXCEEDS_TOTAL` | 저장 | 술값 > 총액 |
 | `PAYER_NOT_FOUND` | 저장 | 결제자가 참여자에 없음 |
-| `BEARER_NOT_FOUND` | 저장 | 부담자가 참여자에 없음 |
 | `INVALID_DRINK_ITEM` | 저장 | 병 수·단가가 1 미만 |
-| `INVALID_ROUNDING_UNIT` | 저장 | 10·100 이 아님 |
-| `DRANK_WITHOUT_ATTEND` | 저장 | 불참인데 음주 |
-| `DUPLICATE_ID` | 저장 | 참여자·차수·기타항목 id 중복 |
+| `DRINK_ITEM_ROUND_NOT_FOUND` | 저장 | 술 항목이 존재하지 않는 차수를 참조 |
+| `ATTENDANCE_REFERENCE_NOT_FOUND` | 저장 | 응답이 존재하지 않는 참여자·차수를 참조 |
+| `MISSING_ATTENDANCE` | **확정** | 참여자의 차수 응답이 없음 |
+| `DUPLICATE_ID` | 저장 | 참여자·차수 id 중복 |
 | `DUPLICATE_ROUND_SEQ` | 저장 | 차수 순번 중복 |
 | `AMOUNT_TOO_LARGE` | 저장 | 1조 원 초과 (0을 더 찍은 것) |
 | `TOO_FEW_PARTICIPANTS` | **확정** | 2명 미만 |
-| `NO_ATTENDEE` | **확정** | 그 차수에 참석자 0명 |
-| `NO_NON_EXEMPT_ATTENDEE` | **확정** | 참석자가 전원 면제 |
+| `NO_ATTENDEE` | **확정** | 그 차수에 비용을 부담할 참석자 0명 |
 | `NO_DRINKER_WITH_ALCOHOL` | **확정** | 술값이 있는데 음주자 0명 |
-| `NO_NON_EXEMPT_BEARER` | **확정** | 기타항목 부담자가 없음 |
-| `ALL_EXEMPT` | **확정** | 전원 면제 |
-| `NEGATIVE_FINAL_AMOUNT` | **확정** | 대표결제자 몫이 음수 |
+| `NEGATIVE_ADJUSTED_AMOUNT` | **확정** | 수취인별 잔액 조정자 몫이 음수 |
 
 **저장(SAVE)과 확정(CONFIRM)의 검증 범위가 다르다.** 저장 시점에 인원·배분까지
 검증하면 **아직 아무도 체크하지 않아 참석자가 0명이므로 주최자가 차수를 입력조차
-못 한다** (`CALC_RULES.md` §4). 그래서 쓰기 API 는 `SAVE`, 확정 API 는 `CONFIRM` 으로 검증한다.
+못 한다** (`CALC_RULES_V2.md` §5). 그래서 쓰기 API 는 `SAVE`, 확정 API 는 `CONFIRM` 으로 검증한다.
 
 **API 계층에서 나오는 것**
 
@@ -363,7 +370,7 @@ POST /gatherings
 
 ```
 201   Gathering                   // shareToken 포함. 프론트는 이걸로 링크를 만든다
-400   VALIDATION_FAILED           // INVALID_ROUNDING_UNIT 등
+400   VALIDATION_FAILED           // 요청 값 형식 오류
 403   NOT_GROUP_OWNER              // groupId 를 보냈는데 그 그룹 멤버가 아님
 ```
 
@@ -672,7 +679,7 @@ PATCH /gatherings/1/rounds/2
 ```
 
 **그 차수의 `Attendance` 도 같이 지운다.** 남겨두면 계산에는 안 쓰이지만
-`DRANK_WITHOUT_ATTEND` 같은 검증이 유령 데이터에 걸린다.
+`ATTENDANCE_REFERENCE_NOT_FOUND` 검증이 유령 데이터에 걸린다.
 
 **`seq` 를 다시 매기지 않는다.** `1, 3, 4` 가 되어도 `label` 이 사람이 읽는 이름이고,
 `seq` 는 정렬용이다. 다시 매기면 다른 사람이 보고 있던 화면의 번호가 바뀐다.
@@ -711,7 +718,8 @@ DELETE /gatherings/{id}/extras/{extraId}                                        
 **`bearerIds` 는 통째로 교체한다.** 부담자 추가/제거를 따로 두면 "수아만 부담" →
 "수아·지원 부담" 이 두 요청이 되고, 화면의 체크박스와 모양이 맞지 않는다.
 
-**`bearerIds` 가 빈 배열이면 저장은 되고 확정에서 막힌다** (`NO_NON_EXEMPT_BEARER`).
+**`bearerIds` 가 빈 배열이면 저장은 되고 확정에서 막힌다.** 이 절은 v3 계약이며,
+Core v2의 MVP에서는 기타 항목을 계산하지 않는다.
 택시비를 먼저 적고 누가 탔는지 나중에 고르는 순서를 허용해야 한다.
 
 ---
@@ -886,7 +894,7 @@ PUT /gatherings/1/participants/91/attendance
 
 ```
 200   Gathering                    // 갱신된 전체를 돌려준다
-400   VALIDATION_FAILED            // DRANK_WITHOUT_ATTEND
+400   VALIDATION_FAILED            // MISSING_ATTENDANCE 등
 403   NOT_SELF                     // 본인도 주최자도 아님
 409   GATHERING_CONFIRMED
 ```
