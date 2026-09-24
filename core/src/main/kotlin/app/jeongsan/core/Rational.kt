@@ -9,7 +9,7 @@ import java.math.RoundingMode
  *
  * `Double`은 물론 `BigDecimal`도 쓰지 않는 이유는 ADR-001에 있다. 요약하면
  * `1/3`은 어떤 진법에서도 유한 자릿수로 쓸 수 없어서 나누는 순간 반드시 정보가 버려지고,
- * 마지막 [ceilTo]가 그 티끌만한 오차를 한 단위(10원·100원)로 증폭시킨다.
+ * 마지막 [ceilTo]가 그 티끌만한 오차를 올림 단위 전체로 증폭시킨다.
  * 랜덤 정산 30,000건 중 210건(0.70%)에서 `BigDecimal`은 다른 금액을 냈다.
  * 정밀도를 100자리로 올려도 결과는 바뀌지 않는다 — 오차의 *크기*가 아니라 *존재*가 문제이기 때문이다.
  *
@@ -45,7 +45,7 @@ class Rational private constructor(
      * 정확한 유리수에서 정수로 내려오는 **유일한 지점**이다.
      */
     fun ceilTo(unit: Int): Long {
-        require(unit > 0) { "반올림 단위는 양수여야 한다: $unit" }
+        require(unit > 0) { "올림 단위는 양수여야 한다: $unit" }
         val u = BigInteger.valueOf(unit.toLong())
         return (ceilDiv(numerator, denominator * u) * u).longValueExact()
     }
