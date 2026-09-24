@@ -1,7 +1,7 @@
 package app.jeongsan.core
 
 /**
- * 계산 엔진의 결과. **예외를 던지지 않는다** — `CALC_RULES.md` §4.
+ * 계산 엔진의 결과. **예외를 던지지 않는다** — `CALC_RULES_V2.md` §5.
  * HTTP 상태 코드 매핑은 API 계층의 몫이다.
  */
 sealed interface SettlementOutcome {
@@ -10,31 +10,35 @@ sealed interface SettlementOutcome {
 }
 
 data class SettlementResult(
-    /** 면제자를 제외하고 결제 총액이 가장 큰 참여자. 동률이면 id 사전순 첫 번째. */
-    val mainPayerId: Long,
+    /** 각 참여자의 최종 부담액. 결제액이 아니라 정산 후 그 사람이 부담해야 할 몫이다. */
     val amounts: Map<Long, Long>,
-    /** 근거 화면(W2)용. **계산만 하고 버리지 말 것** — `CALC_RULES.md` §1. */
+    /** 근거 화면(W2)용. **계산만 하고 버리지 말 것** — `CALC_RULES_V2.md` §4. */
     val breakdown: Map<Long, ParticipantBreakdown>,
+    /** 차수 총무별 결제액·참여자 배정액·잔액 조정 결과. */
+    val recipients: Map<Long, RecipientSettlement>,
+    /** 서로 다른 총무 사이를 상계하지 않은 실제 송금 지시 목록. */
     val transfers: List<Transfer>,
     val grandTotal: Long,
-    /** 실제로 적용된 반올림 단위. 대표결제자 음수를 피하려 강등됐을 수 있다. */
-    val appliedRoundingUnit: Int,
-    /** 요청한 단위가 대표결제자를 음수로 만들어 10원으로 강등된 경우 `true` — `CALC_RULES.md` T7. */
-    val roundingUnitDowngraded: Boolean,
 )
 
 data class ParticipantBreakdown(
     val participantId: Long,
     val name: String,
-    val isExempt: Boolean,
-    val isMainPayer: Boolean,
     val rounds: List<RoundBreakdown>,
-    val extras: List<ExtraBreakdown>,
-    /** 반올림 전 원부담. 차수·기타 항목 몫의 정확한 합이다. */
+    /** 1원 올림 전 차수 몫의 정확한 합이다. */
     val rawTotal: Rational,
     val finalAmount: Long,
-    /** 이 사람이 결제한 총액 (차수 + 기타 항목). */
+    /** 이 사람이 차수 총무로 결제한 총액. */
     val paidTotal: Long,
+)
+
+data class RecipientSettlement(
+    val recipientId: Long,
+    val paidTotal: Long,
+    val participantAmounts: Map<Long, Long>,
+    val ownShare: Long,
+    val incomingTotal: Long,
+    val adjustmentParticipantId: Long,
 )
 
 /**
@@ -50,6 +54,8 @@ data class RoundBreakdown(
     val label: String,
     val attended: Boolean,
     val drank: Boolean,
+    /** 참석했지만 이 차수의 모든 부담과 분모에서 제외됐는지 나타낸다. */
+    val exempt: Boolean,
     val foodTotal: Long,
     val attendeeCount: Int,
     val foodShare: Rational,
@@ -59,14 +65,6 @@ data class RoundBreakdown(
 ) {
     val amount: Rational get() = foodShare + alcoholShare
 }
-
-data class ExtraBreakdown(
-    val extraId: Long,
-    val label: String,
-    val amount: Long,
-    val bearerCount: Int,
-    val share: Rational,
-)
 
 /** `from`이 `to`에게 보낸다. */
 data class Transfer(val fromId: Long, val toId: Long, val amount: Long)
