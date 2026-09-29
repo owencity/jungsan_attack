@@ -30,6 +30,9 @@
 8. 정산하기 순간 Core 결과의 송금 명세를 스냅샷으로 저장한다(`ADR-015`).
    스냅샷은 수정하지 않는다 — 되돌리기는 스냅샷을 **통째로 폐기**하는 것이다.
 9. 중복 참여·중복 요청은 분산 락이 아니라 DB 유니크 제약과 조건부 갱신으로 막는다.
+10. 정산방마다 타임라인(`timeline_entries`)이 있고 술자리와 함께 삭제된다. 스푼은
+    **술자리별 기록**(`gathering_spoons`, 함께 삭제)과 **사용자 누적**(`users.spoon_count`,
+    남음)으로 나눠 저장한다.
 
 ---
 
@@ -44,6 +47,8 @@ flowchart LR
     R --> DI[DrinkItem]
     GA --> S[Settlement]
     S --> T[SettlementTransfer]
+    GA --> TL[TimelineEntry]
+    GA --> SP[GatheringSpoon]
 ```
 
 | 애그리거트 | 책임 | 주요 불변식 |
@@ -53,6 +58,8 @@ flowchart LR
 | `Round` | 금액, 술 항목, 결제자 | 결제자는 활성 참여자이며 차수당 한 명 |
 | `Settlement` | 정산 시점 입력 버전과 송금 스냅샷 | 술자리당 최대 한 건 |
 | `SettlementTransfer` | 송금·수취 확인 | 송금자 ≠ 수취인, 금액 > 0 |
+| `TimelineEntry` | 정산방 대화와 시스템 소식 | 술자리와 함께 삭제 |
+| `GatheringSpoon` | 술자리별 스푼 기록 | 참여자당 술자리에 1개, 총무 본인 불가 |
 
 `Settlement`는 별도의 계산 엔진이 아니다. 계산은 `core`만 수행하고 서버는 정산 시점
 결과와 송금 진행 상태만 보존한다.
@@ -114,6 +121,7 @@ CONFIRMED ──수취인 확인 취소──▶ WAITING   (술자리가 SETTLIN
 | 로그인 식별자 | 유지 |
 | `display_name` | 추가. 카카오 닉네임 기본값, 사용자가 한 번 확인·수정 |
 | 받을 계좌 | `payout_bank`, `payout_account_no`, `payout_holder` 추가. 암호화·마스킹은 §9 |
+| `spoon_count` | 추가. 받은 스푼 누적 수(`INT NOT NULL DEFAULT 0`). 술자리가 삭제돼도 줄지 않는다. 칭호는 이 값에서 계산하며 저장하지 않는다 |
 | 탈퇴 | 개인정보 삭제. 술자리가 일회용이라 정산 FK 보존용 익명화는 필요 없다 — 탈퇴 전 진행 중 술자리 처리는 §9 미결 |
 
 #### `user_groups`, `group_members` — **폐기**
@@ -217,6 +225,38 @@ UNIQUE (settlement_id, sender_participant_id, recipient_participant_id)
 **`sent_at`과 `confirmed_at`은 상태가 되돌아가도 지우지 않는다.** 정산 되돌리기 가능
 여부("돈이 움직이기 시작했는가")를 이 두 컬럼으로 판단하기 때문이다.
 
+#### `timeline_entries`
+
+```text
+id                      PK
+gathering_id            FK ON DELETE CASCADE
+type                    MESSAGE | SYSTEM | SPOON
+author_participant_id   NULL 가능   — SYSTEM이면 NULL
+system_code             NULL 가능   — SETTLED, AUTO_RESPONDED, SENT, CONFIRMED,
+                                      NOT_RECEIVED, SETTLE_UNDONE, COMPLETED, JOINED ...
+body                    VARCHAR(500) — MESSAGE: 사용자 입력 / SYSTEM: 표시 인자(JSON)
+created_at
+
+INDEX (gathering_id, id)
+```
+
+- **시스템 소식은 해당 상태 변경과 같은 트랜잭션에서 삽입한다** — 정산하기가 커밋됐는데
+  타임라인에 "정산했어요"가 없는 상태가 생기지 않게.
+- 실시간 전달은 WebSocket이다(`ADR-014` — 모놀리스 안에 얹는다). **저장의 진실은 이
+  테이블**이고, 클라이언트는 재접속 시 마지막으로 받은 `id` 이후를 조회해 빈틈을 메운다.
+- 메시지 길이(500자)·전송 속도 제한은 서버가 검증한다. 이미지·파일은 없다.
+
+#### `gathering_spoons`
+
+```text
+gathering_id            PK, FK ON DELETE CASCADE
+giver_participant_id    PK, FK
+created_at
+```
+
+- 복합 PK가 "참여자당 술자리에 1스푼"을 DB에서 보장한다.
+- 받는 사람은 항상 그 술자리의 총무라 따로 저장하지 않는다. 총무 본인은 줄 수 없다(서버 검증).
+
 #### `notifications`
 
 ```text
@@ -232,6 +272,9 @@ title, body, read_at, created_at
 이전판에 있던 `group_bans`, `payment_status_histories`, `disputes`, `dispute_messages`는
 **만들지 않는다.** 모임·이의제기 절차가 없고, 송금 상태 이력은 7일이면 사라지는 데이터라
 감사 테이블을 둘 이유가 없다.
+
+`timeline_entries`는 이전판의 `dispute_messages`와 다르다 — 이의제기 당사자 둘만 보는
+조율 채널이 아니라, 참여자 전원이 보는 한 줄 대화와 정산 소식이다.
 
 ---
 
@@ -262,7 +305,27 @@ title, body, read_at, created_at
 5. 술자리를 `OPEN`으로 조건부 갱신하고 `input_revision`을 올린다.
 6. 전원에게 알림.
 
-### 5.3 삭제 배치
+### 5.3 완료 처리 (총무 기본 스푼)
+
+완료로 가는 모든 경로 — 마지막 송금 확인, [정산 끝내기], §5.1의 송금 0건 — 가 같은 순서를 탄다.
+
+1. 술자리를 `SETTLING → COMPLETED`로 조건부 갱신한다(송금 0건이면 `OPEN → COMPLETED`).
+   **이 갱신은 한 번만 성공한다.**
+2. 갱신이 성공했고 활성 참여자가 **2명 이상**이면 총무의 `users.spoon_count`를 1 올린다
+   (`UPDATE … SET spoon_count = spoon_count + 1` — 원자적 증가).
+3. `completed_at`을 채우고, 타임라인 `SYSTEM(COMPLETED)`와 알림을 삽입한다.
+
+1이 한 번만 성공하므로 기본 스푼도 한 번만 지급된다.
+
+### 5.4 스푼 주기
+
+1. 술자리가 `SETTLING` 또는 `COMPLETED`인지, 주는 사람이 총무가 아닌 활성 참여자인지 확인한다.
+2. `gathering_spoons`에 삽입한다. PK 충돌이면 **이미 준 것**이므로 멱등 성공으로 끝낸다.
+3. **새로 삽입된 경우에만** 총무의 `users.spoon_count`를 1 올린다.
+4. 타임라인 `SPOON`과 총무 알림을 삽입한다.
+5. 커밋한다.
+
+### 5.5 삭제 배치
 
 `server`의 `@Scheduled` 작업이다. `core`에는 넣지 않는다(시간 의존).
 
@@ -292,6 +355,9 @@ DELETE FROM gatherings WHERE status <> 'COMPLETED' AND last_activity_at < NOW() 
 | 정산 되돌리기와 [보냈어요] 동시 실행 | 되돌리기는 `sent_at IS NULL` 조건부 삭제, [보냈어요]는 `SETTLING` 조건부 갱신 — 한쪽만 성공 |
 | [보냈어요]·[확인] 더블클릭 | 현재 상태를 조건으로 update, 같은 상태면 멱등 성공 |
 | 삭제 배치와 진행 중 요청 | 삭제 조건이 `COMPLETED`·장기 방치뿐이라 실사용 요청과 겹치지 않음 |
+| 스푼 더블클릭 | `gathering_spoons` 복합 PK. 새로 삽입된 경우에만 누적 증가 |
+| 마지막 송금 확인과 [정산 끝내기] 동시 실행 | `COMPLETED` 조건부 갱신이 한 번만 성공 → 기본 스푼도 한 번 |
+| 누적 스푼 동시 증가 | `spoon_count = spoon_count + 1` 원자적 갱신 (읽고-쓰기 금지) |
 
 **분산 락을 쓰지 않는다.** 잠금 경로는 `gatherings → rounds/participants` 순서를 지킨다.
 트랜잭션 안에서 카카오·FCM 같은 외부 호출을 하지 않는다.
@@ -306,10 +372,10 @@ DELETE FROM gatherings WHERE status <> 'COMPLETED' AND last_activity_at < NOW() 
 | ADR-005 계산 결과 미저장 | 015가 이미 좁힘. 유지 |
 | ADR-008 정원 잠금·PENDING | 정원 개념 삭제로 불필요. 중복 참여 유니크만 유지 |
 | ADR-009 지속 모임(`Group`) | **ADR-019가 대체.** 모임 계층 제거 |
-| ADR-010 실시간 채팅 | 보류 유지. v3에 채팅 없음 |
+| ADR-010 실시간 채팅 | **정산방 타임라인으로 되살아남.** `ADR-014`대로 모놀리스 안 WebSocket + MySQL 저장으로 시작. 채팅 프로세스 분리(ADR-010 원안)는 `ADR-014` 재검토 조건(재배포로 연결이 끊기는 게 실제 불편으로 보고될 때)이 오면 |
 | ADR-015 확정 송금 스냅샷 | 유지. 단 되돌리기 시 통째로 폐기, 7일 뒤 삭제 |
 | ADR-016 Redis | 모임 비밀번호 시도 제한 용도가 사라짐. 남은 용도로 재검토 (`ADR-016` 참조) |
-| ADR-017 Kafka | 채팅 소비자 제거. 알림·영수증 소비자로 유지 |
+| ADR-017 Kafka | 타임라인으로 "한 이벤트 → 타임라인 전송·푸시·스푼 집계" 모양이 생겼다. 단 **모놀리스 안에서는 스프링 내부 이벤트로 충분**하다. Kafka가 꼭 필요해지는 건 채팅(WebSocket)을 별도 프로세스로 떼거나 영수증을 서버 워커로 처리할 때다 — 백엔드 결정(CTO) |
 
 ADR 문서를 조용히 덮어쓰지 않는다. 대체·개정은 각 ADR 상단에 표기한다.
 
@@ -323,12 +389,14 @@ ADR 문서를 조용히 덮어쓰지 않는다. 대체·개정은 각 ADR 상단
    시작한다. `018`~`022`는 재사용하지 않는다.
 2. 새 changelog로 스키마를 v3로 옮긴다 — FK 해제 → 모임 테이블 삭제 → 술자리·참여자·
    차수·응답 컬럼 정리 → `settlements`·`settlement_transfers`·`notifications` 생성 →
-   `users` 컬럼 추가 → 기타 항목 테이블 삭제. 모든 테이블·컬럼에 `remarks`.
+   `users` 컬럼(표시 이름·계좌·`spoon_count`) 추가 → `timeline_entries`·`gathering_spoons` 생성 →
+   기타 항목 테이블 삭제. 모든 테이블·컬럼에 `remarks`.
 3. MySQL 8.4에서 빈 DB 전체 migration과 기존 `001`~`011` DB 업그레이드를 둘 다 검증한다.
 4. `ERD.md`를 실제 changelog에 맞춰 갱신한다.
 5. 서버 entity/repository를 v3 도메인으로 전환하고, `server/group` 패키지를 제거한다.
 6. API 순서: 술자리 생성·참여 → 차수·술 항목·결제자·면제 → 응답 → 미리보기·정산하기·
-   되돌리기 → 송금 상태 → 끝내기 → 삭제 배치 → 알림.
+   되돌리기 → 송금 상태 → 끝내기(완료·기본 스푼) → 타임라인(조회·메시지·WebSocket) →
+   스푼 → 삭제 배치 → 알림.
 7. 상태 전이·권한·동시성 테스트를 추가한다(엔드포인트마다 성공 1 + 실패 1, 인증 가드 테스트).
 8. `API.md` 버전을 올리고 계약을 개정한다.
 
@@ -342,7 +410,9 @@ ADR 문서를 조용히 덮어쓰지 않는다. 대체·개정은 각 ADR 상단
 - [x] 자동응답을 정산 트랜잭션 안에서 채우고 해시에 포함했다.
 - [x] 정산 되돌리기 가능 조건을 `sent_at`·`confirmed_at`으로 정했다.
 - [x] 완료 7일·방치 30일 삭제를 CASCADE와 배치로 정했다.
-- [x] 이의제기·채팅·모임 차단 테이블을 만들지 않기로 했다.
+- [x] 이의제기·모임 차단 테이블을 만들지 않기로 했다(타임라인은 별개).
+- [x] 스푼을 술자리별 기록(삭제됨)과 사용자 누적(남음)으로 나눴다.
+- [x] 시스템 소식을 상태 변경과 같은 트랜잭션에 넣기로 했다.
 - [ ] 계좌번호 저장 시 암호화·조회 권한·로그 마스킹을 확정한다.
 - [ ] 탈퇴하려는 사용자가 진행 중인 술자리의 총무·결제자일 때의 처리를 정한다.
-- [ ] 영수증 인식 방식과 이미지 보관 여부를 실측 후 정한다(`REQUIREMENTS.md` §8).
+- [ ] 영수증 인식 방식과 이미지 보관 여부를 실측 후 정한다(`REQUIREMENTS.md` §9).
