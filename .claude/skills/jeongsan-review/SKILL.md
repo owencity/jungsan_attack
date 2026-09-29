@@ -83,11 +83,29 @@ description: 정산어택 백엔드(core·server) PR을 이 저장소의 표준(
 - Liquibase changelog 없이 엔티티 컬럼만 바뀌지 않았는가(스키마는
   changelog가 먼저)
 
-### 2. v1 → v2 전환 오염 (`ARCHITECTURE.md` §8)
+### 2. 전환 오염 — Core v1→v2, 제품 v2→v3 (`ARCHITECTURE.md` §8)
 
-**이 프로젝트의 지금 가장 위험한 지점이다.** 설계(`CALC_RULES_V2.md`,
-`DOMAIN_DB_DESIGN_V2.md`)는 확정됐지만 술자리·차수·응답·정산 확정은
-아직 v1 계약대로 유지하기로 돼 있다.
+**이 프로젝트의 지금 가장 위험한 지점이다.** 전환이 두 겹이다 — 계산 엔진은
+v1→v2(`CALC_RULES_V2.md`), 제품은 v2→v3(`REQUIREMENTS.md` v3, `ADR-019`:
+모임 제거·일회용 술자리). 설계는 확정됐고 구현이 따라가는 중이다.
+
+**제품 v3 기준으로 먼저 본다.**
+
+- 모임(`Group`·`GroupMember`·`GroupBan`) 코드를 **새로 참조하거나 확장**하지
+  않았는가? `server/group`은 제거 대상이다. 모임 코드 패턴을 복사해 온 것도 본다.
+- `disputes`·`dispute_messages`·`group_bans`·`payment_status_histories` 같은
+  **v3가 만들지 않기로 한 테이블**이 changelog에 들어오지 않았는가
+  (`DOMAIN_DB_DESIGN_V2.md` §4.3).
+- 술자리 상태가 `OPEN | SETTLING | COMPLETED` 셋인가? v2의 `ROSTER_OPEN`·
+  `ROUND_CONFIRMING` 같은 상태나 차수별 확정 단계가 되살아나지 않았는가.
+- 면제(`EXEMPT`)를 **총무만** 쓸 수 있게 막았는가(응답 `source = HOST`).
+  참여자가 스스로 면제를 설정할 수 있으면 지적 대상이다.
+- 정산 되돌리기가 `sent_at`·`confirmed_at` 조건을 지키는가. 상태만 보고
+  되돌리면 이미 돈이 오간 정산이 풀린다.
+- 새 changelog가 `012`~`014` 파일명이나 changeSet `018`~`022`를 **재사용하지
+  않았는가**(`AGENTS.md` §7 — 소진된 번호).
+
+**그다음 Core v1→v2를 본다.**
 
 - PR이 `core`의 `Settlement`/`Validation`/`Model`을 건드린다면: v1 계약을
   부분적으로만 v2로 바꾸고 있지 않은가? (예: `payerId`는 그대로 두고
@@ -99,8 +117,8 @@ description: 정산어택 백엔드(core·server) PR을 이 저장소의 표준(
   `gatherings`의 `expected_count`/`rounding_unit`, `extra_items`류 —
   이 컬럼들에 새로 의존하는 코드가 추가됐다면 그 자체가 지적 대상이다
   (`DOMAIN_DB_DESIGN_V2.md` §4.1이 폐기 대상으로 이미 정했다).
-- ADR 없이 `ADR-004`/`008`/`010`의 기존 서술과 어긋나는 동작을 구현하지
-  않았는가(`DOMAIN_DB_DESIGN_V2.md` §7이 지목한 세 개).
+- 기존 ADR과 어긋나는 동작을 ADR 없이 구현하지 않았는가 —
+  `DOMAIN_DB_DESIGN_V2.md` §7 표가 각 ADR의 v3 판단을 정리해뒀다.
 
 ### 3. 이 저장소가 이미 걸렸던 함정 (`AGENTS.md` §5)
 

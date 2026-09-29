@@ -13,10 +13,10 @@
 
 ## 1. 컨텍스트·제약
 
-**정산어택**은 술자리 정산 서비스다. 총무 혼자 참여자의 참석·음주 여부를
-입력하지 않는다 — 참여자 각자 응답하고, 차수마다 결제자(총무)가 따로 있고,
-수취인별로 송금액이 갈라진다. 제품 규칙의 단일 출처는
-[`REQUIREMENTS.md`](REQUIREMENTS.md)다.
+**정산어택**은 **일회용** 술자리 정산 서비스다. 총무 혼자 참여자의 참석·음주
+여부를 입력하지 않는다 — 참여자 각자 버튼으로 응답하고, 차수마다 결제자가 따로
+있을 수 있고, 수취인별로 송금액이 갈라진다. 정산이 끝나면 7일 뒤 사라진다.
+제품 규칙의 단일 출처는 [`REQUIREMENTS.md`](REQUIREMENTS.md) v3다.
 
 **움직이지 않는 제약**
 
@@ -26,8 +26,8 @@
   자료로 쓴다. "측정으로 정당화한 결정"과 "트레이드오프를 인지하고 미룬 결정"을
   구분해 남기는 이유가 여기 있다 — ADR과 DEVLOG가 그 기록이다.
 - **2~3개월 MVP 스프린트.** 원래 1개월이었으나 REQUIREMENTS.md v2로 범위가
-  늘며(영수증·OCR·AI 보조 입력, 1:1 이의제기 채팅) 2~3개월로 늘렸다
-  (`DEVLOG.md` 2026-09-13). 기간이 늘어도 구조는 지금 필요한 만큼만 올린다는
+  늘며(영수증·OCR·AI 보조 입력) 2~3개월로 늘렸다(`DEVLOG.md` 2026-09-13).
+  이후 v3(2026-09-29)에서 모임·이의제기 채팅이 빠지며 범위가 다시 줄었다. 기간이 늘어도 구조는 지금 필요한 만큼만 올린다는
   원칙은 그대로다. MSA·k3s로 갔다가([ADR-013](ADR/013-msa-spring-cloud-k3s.md))
   "학습 목적"이었다는 걸 인정하고 모놀리스로 되돌린 전례가 있다
   ([ADR-014](ADR/014-monolith-first-feature-package.md)).
@@ -68,8 +68,8 @@ Rational (분자/분모 BigInteger)  → 정확히 20000/3 × 3 = 20,000원 (정
 ### 2.2 모놀리스 · feature 패키지
 
 배포 단위는 하나(`server` 모듈)지만, 내부는 **layer가 아니라 feature로**
-나눈다 — `server/user`, `server/group`, `server/gathering`, `server/common`,
-`server/config`. `controller/`·`service/`·`repository/` 같은 최상위
+나눈다 — `server/user`, `server/gathering`, `server/common`, `server/config`.
+(`server/group`은 `ADR-019`로 제거 대상이다.) `controller/`·`service/`·`repository/` 같은 최상위
 레이어 패키지는 만들지 않는다([ADR-014](ADR/014-monolith-first-feature-package.md)).
 
 ### 2.3 스키마가 코드를 이끈다
@@ -109,14 +109,14 @@ REQUIREMENTS.md (제품 규칙)
 ```mermaid
 flowchart TB
     subgraph client [클라이언트]
-        Web[참여자 웹\nprofile 저장소]
-        App[KMP 앱\njungsan_app 저장소]
+        Web[웹\nprofile 저장소 · 수동 입력]
+        App[KMP 앱 iOS·Android\njungsan_app 저장소 · 영수증 촬영]
     end
 
     subgraph server [server 모듈 — Spring Boot]
-        Auth[user\n카카오 로그인 · JWT 쿠키]
-        Group[group\n모임 · 멤버 · 차단]
-        Gathering[gathering\n술자리 · 차수]
+        Auth[user\n카카오 로그인 · JWT 쿠키 · 계좌]
+        Gathering[gathering\n술자리 · 차수 · 응답 · 정산하기 · 송금]
+        Purge[삭제 배치\n완료 7일 · 방치 30일]
         Common[common\n@LoginUser · ApiException]
     end
 
@@ -125,13 +125,12 @@ flowchart TB
     DB[(MySQL 8.4\nLiquibase changelog)]
 
     Web -->|httpOnly 쿠키| Auth
-    App -->|"Bearer 헤더 (미도입)"| Auth
+    App -->|"인증 방식 미정 (§8)"| Auth
     Auth --> Common
-    Group --> Common
     Gathering --> Common
     Gathering -->|계산 위임| Core
+    Purge --> DB
     Common --> DB
-    Group --> DB
     Gathering --> DB
 ```
 
@@ -144,14 +143,14 @@ Settlement.settle(input: SettlementInput): SettlementOutcome
 ```
 
 예외를 던지지 않는다 — 실패도 `SettlementOutcome.Failure`라는 반환값이다.
-지금 구현(v1)은 **전역 대표결제자 + greedy 상계** 규칙
-([`CALC_RULES.md`](CALC_RULES.md))이고, 설계가 끝난 v2는 **차수 총무별
-수취인 분리, 상계 없음**으로 완전히 다른 계산 모델이다
-([`CALC_RULES_V2.md`](CALC_RULES_V2.md)). v2 전환은 진행 중이며 §8 참고.
+`main`의 구현은 아직 v1 — **전역 대표결제자 + greedy 상계** 규칙
+([`CALC_RULES.md`](CALC_RULES.md))이다. v2는 **결제자별 수취인 분리, 상계 없음,
+1원 올림**으로 완전히 다른 계산 모델이다([`CALC_RULES_V2.md`](CALC_RULES_V2.md)).
+제품 v3(일회용 술자리)에서도 계산 규칙은 v2 그대로다. v2 구현 상태는 §8 참고.
 
 ### `server` — HTTP·영속성 계층
 
-컨트롤러는 실제로 3개뿐이다 — `AuthController`, `GroupController`,
+컨트롤러는 실제로 3개뿐이다 — `AuthController`, `GroupController`(제거 대상),
 `GatheringController`. 그 외 API.md에 계약만 있고 구현이 없는
 엔드포인트가 많다. 인증은 **Spring Security 없이** `@LoginUser` 커스텀
 파라미터 리졸버 하나로 처리한다 — 이 말은 **그 애너테이션을 안 붙인
@@ -160,12 +159,12 @@ Settlement.settle(input: SettlementInput): SettlementOutcome
 
 ### DB — MySQL 8.4
 
-`user_groups`(`groups`는 예약어라 리네임), `group_members`, `group_bans`,
-`gatherings`, `participants`, `rounds`, `drink_items`, `attendances`,
-`notification_outbox`까지가 현재 changelog(`001`~`014`)가 만든 테이블이다.
-v2가 설계한 `settlements`/`settlement_transfers`/`disputes`/
-`dispute_messages`/`notifications`는 아직 changelog로 안 들어갔다
-(`DOMAIN_DB_DESIGN_V2.md` §4.2).
+`main`의 changelog(`001`~`011`)가 만든 테이블은 `users`, `user_groups`
+(`groups`는 예약어라 리네임), `group_members`, `gatherings`, `participants`,
+`rounds`, `drink_items`, `attendances`, `extra_items`, `notification_outbox` 등이다.
+v3는 모임 테이블과 기타 항목 테이블을 **삭제**하고, `attendances`를
+`round_responses`로 정리하고, `settlements`·`settlement_transfers`·`notifications`를
+새로 만든다(`DOMAIN_DB_DESIGN_V2.md` §4). 이의제기·모임 차단 테이블은 만들지 않는다.
 
 ---
 
@@ -245,48 +244,49 @@ GitHub push (main)
 - **배포**: `006`(단일 VM) → `013`(MSA로 전환, 근거가 "학습 목적"이었음이
   드러남) → `014`(`006`을 되살리고 `013`을 보류). **지금은 `014`·`006`이
   유효하다.**
-- **저장 정책**: `005`(계산 결과 미저장) → `015`(확정 시점 송금 스냅샷만
-  예외적으로 저장). **`015`가 `005`를 완전히 대체하지 않고 좁힌다** —
-  미리보기는 여전히 미저장, 확정 순간의 송금 명세만 불변 스냅샷.
-- **채팅**: `010`(Netty+WebSocket+MongoDB, REST와 별도 프로세스) →
-  `014`가 모놀리스로 합치며 보류. `DOMAIN_DB_DESIGN_V2.md`가 범위를
-  "이의제기 당사자 1:1 텍스트 채팅"으로 좁혀 MySQL 안에서 부활시켰다 —
-  `010`을 대체하는 새 ADR이 아직 없다(§8 참고).
+- **도메인 구조**: `009`(1회성 술자리 위에 지속 모임을 얹음) → `019`(모임 계층
+  제거, 술자리를 일회용으로). **지금은 `019`가 유효하다** — 술자리가 최상위다.
+- **저장 정책**: `005`(계산 결과 미저장) → `015`(정산 시점 송금 스냅샷만
+  예외적으로 저장) → `019`(스냅샷 포함 전부 완료 7일 뒤 삭제). 미리보기는 여전히
+  미저장, 정산 순간의 송금 명세는 "송금이 진행되는 동안의 증거"다.
+- **채팅**: `010`(Netty+WebSocket+MongoDB) → `014`가 모놀리스로 합치며 보류 →
+  v3에서 이의제기 채팅 자체가 사라짐. **v3에는 채팅이 없다.** `010`은 보류 상태로 남는다.
+- **인프라 확장**: `016`(Redis)·`017`(Kafka)·`018`(k3s)은 `019` 이후 모두
+  **"영수증을 서버에서 처리하는가"에 달려 재검토 중**이다(§8).
 
 ---
 
 ## 8. 진행 중인 전환 · 리스크
 
-**Core v1 → v2.** 설계(`CALC_RULES_V2.md`, `DOMAIN_DB_DESIGN_V2.md`)는
-확정됐고, 모임 관리 기반(changelog `012`~`014`: 관리자·비밀번호·구성원
-상태·차단)은 구현·검증까지 끝났다. **술자리·차수·응답·정산 확정은 아직
-v1 계약 그대로다.** `core`의 `Settlement`/`Validation`/`Model`이 지금
-이 시점에 활발히 수정되고 있다면, 그건 v2 전환 작업 중이라는 뜻이다 —
-병합 전에 `CALC_RULES_V2.md` §8 체크리스트와 대조해라.
+**Core v1 → v2 — 커밋되지 않은 채 로컬에만 있다. 가장 큰 리스크다.**
+`main`의 `core`는 아직 v1이다. v2 계산 엔진(결제자별 수취·1원 올림)은 로컬 작업
+트리의 미커밋 변경으로만 존재한다. 폴더가 날아가면 v2 엔진이 사라진다. 최우선으로
+`:core:test` 통과를 확인하고 커밋·병합해야 한다. 병합 전에 `CALC_RULES_V2.md` §8
+체크리스트와 대조해라.
 
-정산 확정 트랜잭션의 순서·동시성 규칙 자체는 이미 확정 설계다 — **설계가
-아니라 구현만 남았다.** 순서는 `DOMAIN_DB_DESIGN_V2.md` §5, 동시성 규칙은
-같은 문서 §6에 있다(§6 횡단 관심사 표에도 링크).
+**제품 v2 → v3 (2026-09-29, `ADR-019`).** 모임 계층·모임 관리·이의제기 절차를
+제거하고 술자리를 일회용으로 만들었다. 설계(`REQUIREMENTS.md` v3,
+`DOMAIN_DB_DESIGN_V2.md` 개정판)는 확정, 구현은 아직이다. 병합되지 않은 모임 관리
+기반(changelog `012`~`014`, changeSet `018`~`022`)은 **쓰지 않으며 번호도 재사용하지
+않는다**(`AGENTS.md` §7). 정산하기·되돌리기·삭제 배치의 순서와 동시성 규칙은
+`DOMAIN_DB_DESIGN_V2.md` §5·§6에 있다 — **설계가 아니라 구현만 남았다.**
 
-**v2가 아직 새 ADR로 안 남은 결정 3개.** `DOMAIN_DB_DESIGN_V2.md` §7이
-직접 지목한다 — 조용히 덮어쓰지 말라는 경고다.
+**인프라 ADR 세 개가 한 결정에 묶여 있다.** `016`(Redis)·`017`(Kafka)·`018`(k3s)의
+남은 근거가 모두 "영수증을 서버에서 외부 API로 처리한다"에 기대고 있다. 영수증 인식
+방식을 실제 영수증 샘플로 측정해 정하는 순간 세 ADR을 함께 확정하거나 기각한다.
 
-- `ADR-004`(2단계 확정) — 유지되지만 "재확정" 관련 서술은 폐기 대상
-- `ADR-008`(정원 잠금·PENDING) — 정원 요구 자체가 사라져 단순화 필요
-- `ADR-010`(실시간 채팅 보류) — 위에서 설명한 대로 범위를 좁혀 부활하는
-  중인데 그 결정이 아직 문서화 안 됨
+**인증 확장 — 앱 개발이 시작되며 곧 막힌다.** 지금 규칙(httpOnly 쿠키뿐)은 웹
+전용 전제다. KMP 앱(`jungsan_app`)은 카카오 로그인 콜백을 브라우저(커스텀 탭)에서
+받으므로 쿠키가 앱의 HTTP 클라이언트로 넘어오지 않는다 — 콜백에서 앱으로 토큰을
+넘기는 경로(예: 딥링크 + 일회용 코드 교환)가 필요하다. 아직 설계도 구현도 없다.
+`AGENTS.md` §4-7을 그대로 둔 채 앱을 붙이면 그 규칙이 가로막는다. **CTO 결정이 필요한
+항목이다.** 앱이 목데이터로 도는 동안은 막히지 않는다.
 
-**인증 확장.** 지금 규칙(httpOnly 쿠키뿐)은 웹 전용 전제다. KMP
-앱(`jungsan_app` 저장소)이 붙으면 앱은 쿠키를 못 쓰니 Authorization
-헤더 경로가 필요해진다 — "웹은 쿠키, 앱은 헤더" 이원화는 아직 설계도
-구현도 안 됐다. `AGENTS.md` §4-7을 그대로 둔 채 앱을 붙이면 그 규칙이
-가로막는다.
-
-**폐기 후보 컬럼·테이블.** `participants`의 `exempt`/`responded*`/
-`payment_status`/`paid_amount`, `gatherings`의 `expected_count`/
-`rounding_unit`, `extra_items`/`extra_item_bearers` 전체 — v2 전환
-migration에서 정리 대상이다(`DOMAIN_DB_DESIGN_V2.md` §4.1). 지금 이
-컬럼에 의존하는 코드를 새로 짜지 마라.
+**폐기 대상 컬럼·테이블.** 모임 테이블(`user_groups`·`group_members`),
+`gatherings`의 `group_id`/`expected_count`/`rounding_unit`/`group_type`,
+`participants`의 `exempt`/`responded*`/`payment_status`/`paid_amount`/계좌,
+`extra_items`/`extra_item_bearers` — v3 migration에서 정리한다
+(`DOMAIN_DB_DESIGN_V2.md` §4.1). 지금 이 컬럼에 의존하는 코드를 새로 짜지 마라.
 
 ---
 
