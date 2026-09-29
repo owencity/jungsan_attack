@@ -24,3 +24,9 @@ databaseChangeLog:
       file: db/changelog/010-table-korean-names.yaml
   - include:
       file: db/changelog/011-rename-groups.yaml
+  - include:
+      file: db/changelog/012-group-management-foundation.yaml
+  - include:
+      file: db/changelog/013-restore-group-admin-remarks.yaml
+  - include:
+      file: db/changelog/014-enforce-group-admin-definition.yaml

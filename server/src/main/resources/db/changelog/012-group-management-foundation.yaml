@@ -1,0 +1,147 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-add-user-groups-admin-and-password
+      author: jeongsan
+      comment: >-
+        모임 생성 이력과 현재 관리자 권한을 분리하고, 검색·초대 링크 어느 경로에서도
+        같은 가입 비밀번호를 검증할 저장 공간을 만든다. 기존 모임 관리자는 생성자로 채운다.
+      changes:
+        - addColumn:
+            tableName: user_groups
+            columns:
+              - column:
+                  name: admin_user_id
+                  type: BIGINT
+                  remarks: >-
+                    현재 유일한 모임 관리자. created_by_user_id는 생성 이력이고 권한 판단은
+                    이 컬럼만 사용한다. 관리자를 넘겨도 생성자는 바뀌지 않는다.
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_user_groups_admin_user
+                    references: users(id)
+              - column:
+                  name: password_hash
+                  type: VARCHAR(255)
+                  remarks: >-
+                    모임 가입 비밀번호의 단방향 해시. 기존 행 호환을 위해 nullable로 시작하며,
+                    신규 생성 API가 비밀번호를 받기 시작하면 항상 채운다. 평문은 저장하지 않는다.
+                  constraints:
+                    nullable: true
+        - sql:
+            comment: "기존 모임은 생성자가 현재 관리자였으므로 의미를 보존해 채운다"
+            sql: >-
+              UPDATE user_groups
+              SET admin_user_id = created_by_user_id
+              WHERE admin_user_id IS NULL
+        - addNotNullConstraint:
+            tableName: user_groups
+            columnName: admin_user_id
+            columnDataType: BIGINT
+        - createIndex:
+            tableName: user_groups
+            indexName: idx_user_groups_admin_user_id
+            columns:
+              - column:
+                  name: admin_user_id
+
+  - changeSet:
+      id: 019-add-group-member-lifecycle
+      author: jeongsan
+      comment: >-
+        탈퇴·강퇴 때 소속 행을 삭제하지 않고 상태를 남긴다. 복합 PK를 유지해 같은 사용자의
+        동시 중복 가입을 막고, 재가입은 기존 행 상태를 ACTIVE로 되돌리는 방식으로 처리한다.
+      changes:
+        - addColumn:
+            tableName: group_members
+            columns:
+              - column:
+                  name: status
+                  type: VARCHAR(10)
+                  defaultValue: ACTIVE
+                  remarks: >-
+                    ACTIVE | LEFT | KICKED. 현재 소속 여부와 탈퇴·강퇴 결과를 나타낸다.
+                    값 검증과 상태 전이는 애플리케이션 계층에서 수행한다.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: left_at
+                  type: DATETIME
+                  remarks: "탈퇴 또는 강퇴된 시각(UTC). ACTIVE이면 NULL"
+                  constraints:
+                    nullable: true
+        - createIndex:
+            tableName: group_members
+            indexName: idx_group_members_group_status
+            columns:
+              - column:
+                  name: group_id
+              - column:
+                  name: status
+
+  - changeSet:
+      id: 020-create-group-bans
+      author: jeongsan
+      comment: >-
+        강퇴된 사용자는 검색·비밀번호·초대 링크 어느 경로로도 다시 가입하지 못한다.
+        구성원 상태와 별도로 차단을 두어 관리자가 명시적으로 해제하기 전까지 유지한다.
+      changes:
+        - createTable:
+            tableName: group_bans
+            remarks: >-
+              모임 차단 — 강퇴된 회원의 재가입을 막는다. 해제해도 행을 남겨 누가 언제
+              차단하고 해제했는지 확인할 수 있다.
+            columns:
+              - column:
+                  name: group_id
+                  type: BIGINT
+                  remarks: "차단이 적용되는 모임"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_group_bans_group
+                    references: user_groups(id)
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  remarks: "차단된 로그인 사용자. 외부 참여자는 모임 차단 대상이 아니다"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_group_bans_user
+                    references: users(id)
+              - column:
+                  name: banned_by_user_id
+                  type: BIGINT
+                  remarks: "차단을 실행한 당시 모임 관리자"
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_group_bans_banned_by_user
+                    references: users(id)
+              - column:
+                  name: banned_at
+                  type: DATETIME
+                  remarks: "차단 시각. UTC"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: released_by_user_id
+                  type: BIGINT
+                  remarks: "차단을 해제한 관리자. 아직 차단 중이면 NULL"
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_group_bans_released_by_user
+                    references: users(id)
+              - column:
+                  name: released_at
+                  type: DATETIME
+                  remarks: "차단 해제 시각. NULL이면 현재 차단 중"
+                  constraints:
+                    nullable: true
+        - addPrimaryKey:
+            tableName: group_bans
+            columnNames: group_id, user_id
+            constraintName: pk_group_bans
+        - createIndex:
+            tableName: group_bans
+            indexName: idx_group_bans_user_id
+            columns:
+              - column:
+                  name: user_id
