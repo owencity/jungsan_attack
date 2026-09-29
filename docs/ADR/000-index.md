@@ -13,16 +13,17 @@
 | [006](006-single-vm-no-kubernetes.md) | 단일 VM에 docker compose로 배포한다. K8s·ArgoCD·Jenkins를 쓰지 않는다 | ✅ 유효 (MVP 배포) |
 | [007](007-backend-serves-og.md) | 공유 링크를 백엔드 호스트에 두고 OG 태그가 든 HTML로 응답한다 | 확정 |
 | [008](008-join-concurrency.md) | 참여 동시성을 `gathering` 행 잠금과 복합 유니크로 나눠 막는다 | 확정 |
-| [009](009-group-persistent-membership.md) | `Group`(영구 모임)을 `Gathering` 위에 얹는다. 이름은 바꾸지 않는다 | 확정 |
+| [009](009-group-persistent-membership.md) | `Group`(영구 모임)을 `Gathering` 위에 얹는다. 이름은 바꾸지 않는다 | ❌ 대체됨 ([019](019-onetime-gathering-no-group.md)) |
 | [010](010-realtime-chat-netty-mongo.md) | 실시간 채팅은 Netty+WebSocket+MongoDB, REST 서버와 별도 프로세스 | ⏸️ 부분 보류 ([014](014-monolith-first-feature-package.md)) |
 | [011](011-mysql-over-postgresql.md) | 핵심 트랜잭션 저장소를 MySQL로 (PG 벤치마크 프로젝트와는 별개 판단) | 확정 |
 | [012](012-offload-heavy-stateful-stores.md) | MongoDB·Elasticsearch는 관리형 무료 티어로 오프로드/유예한다 | ⚠️ Redis 용도만 대체 ([016](016-redis-scope.md)) |
 | [013](013-msa-spring-cloud-k3s.md) | Spring Cloud + k3s 위에서 MSA로 전환한다 | ⏸️ 보류 — k3s 부분만 발동 검토 중 ([018](018-activate-k3s.md)) |
 | [014](014-monolith-first-feature-package.md) | MVP는 모놀리스로 간다. 내부는 feature 패키지로 나눈다 | 확정 |
-| [015](015-immutable-confirmed-transfer-snapshot.md) | 확정된 송금 명세를 불변 스냅샷으로 저장한다 | 확정 |
-| [016](016-redis-scope.md) | Redis를 도입하되 용도를 시도 제한·쿼터·토큰 무효화·캐시로 한정한다 | 확정 |
-| [017](017-kafka-behind-outbox.md) | 아웃박스를 유지한 채 그 뒤에 Kafka를 붙인다 | 확정 |
+| [015](015-immutable-confirmed-transfer-snapshot.md) | 확정된 송금 명세를 불변 스냅샷으로 저장한다 | 확정 (범위 조정: 되돌리기 시 폐기, 7일 뒤 삭제) |
+| [016](016-redis-scope.md) | Redis를 도입하되 용도를 쿼터·토큰 무효화·캐시로 한정한다 | ⚠️ 재검토 중 — 영수증 처리 방식에 달림 |
+| [017](017-kafka-behind-outbox.md) | 아웃박스를 유지한 채 그 뒤에 Kafka를 붙인다 | ⚠️ 재검토 중 — 영수증 처리 방식에 달림 |
 | [018](018-activate-k3s.md) | `013`의 k3s 부분을 발동한다 (MSA 전환은 아님) | 🕓 제안 — Kamal 비교·메모리 실측 후 확정 |
+| [019](019-onetime-gathering-no-group.md) | 술자리는 일회용이다. 모임 계층을 걷어내고 완료 7일 뒤 삭제한다 | 확정 |
 
 > **`006` → `013` → `014` 이력.** `013`이 한때 `006`을 대체했으나, 그 근거가
 > "실제 필요"가 아니라 **"학습 목적"** 이었다. `014`가 이를 뒤집어 MVP를 모놀리스로
@@ -37,6 +38,11 @@
 > OCR·AI가 MVP로 들어오며 소비자와 외부 과금 호출이 생겼다). 반면 `018`(k3s)은
 > **아직 반론이 살아 있어 제안 상태다** — `ADR-006`이 지정한 Kamal과 비교
 > 실측하기 전에는 확정하지 않는다.
+>
+> **`019` 이후 `016`·`017`·`018`은 모두 "영수증을 서버에서 처리하는가"에 달려 있다.**
+> 모임 계층과 이의제기 채팅이 사라지며 세 ADR의 다른 근거가 줄었기 때문이다. 영수증
+> 처리 방식을 실측으로 정하는 순간 세 ADR을 함께 확정하거나 기각한다. 근거가 줄었다는
+> 사실을 숨기지 않고 각 문서 상단에 적어뒀다.
 
 ## 형식
 

@@ -1,8 +1,9 @@
 # AGENTS.md — 정산어택 백엔드 (jungsan_attack)
 
 이 문서는 이 저장소에서 코드를 쓰는 에이전트(Codex)를 위한 것이다.
-**대상은 `server`·`core` 모듈, 즉 백엔드뿐이다.** 참여자 웹 프론트엔드는 별도
-저장소(`profile`)에 있고 사람이 직접 작업한다 — 이 저장소 안에 프론트 코드는 없다.
+**대상은 `server`·`core` 모듈, 즉 백엔드뿐이다.** 프론트엔드는 별도 저장소 두 곳에
+있고 Claude가 작업한다 — 웹은 `profile`(React), 앱은 `jungsan_app`(Kotlin Multiplatform,
+iOS·Android). 이 저장소 안에 프론트 코드는 없다.
 
 ## 역할 관계
 
@@ -24,55 +25,54 @@
 
 ## 1. 무엇을 만드는가
 
-**정산어택** — 술자리 정산 서비스. 총무 혼자 정산 몫을 입력하지 않는다. 참여자
-각자가 링크로 들어와 "몇 차까지 있었는지 · 술을 마셨는지"를 체크하면, 서버가
-차수별로 계산해서 **금액과 근거를 함께** 보여준다. N빵이 아니다.
+**정산어택** — **일회용** 술자리 정산 서비스. 총무가 술자리를 만들어 링크를 뿌리면,
+참여자가 자기 차수별 참석·음주를 버튼으로 체크하고, 서버가 차수별로 계산해 **금액과
+근거를 함께** 보여준다. N빵이 아니다. 정산이 끝나면 7일 뒤 사라진다.
 
-MVP 플로우 (채팅은 보류):
+MVP 플로우 (제품 v3, 2026-09-29):
 
 ```
-로그인(카카오)
-  → 총무: 모임(Group) 생성 — 번개(FLASH, 1회성) or 주기(RECURRING, 지속)
-  → 참여자: 공유 링크로 모임 참여
-  → 모임 안에서 술자리(Gathering)가 열리고, 차수·기타항목을 총무가 입력
-  → 참여자가 각자 출석/음주 체크
-  → 확정(2단계: 미리보기 → 수락) → 결과·입금 상태 확인
+총무:   로그인(카카오) → [새 술자리] → 차수별 금액·술 항목·결제자 입력
+        → [링크 공유] → 응답 현황 → [정산하기] → 입금 확인 → 완료(7일 뒤 삭제)
+참여자: 링크 → 로그인 → 차수별 [불참]/[논알코올]/[알코올] → 금액 확인
+        → 송금 → [보냈어요]
 ```
 
-**용어 — `Group` = 모임, `Gathering` = 술자리.** 모임 하나가 술자리 여러 개를 담고,
-번개(FLASH)만 예외로 정확히 하나만 담는다.
+**용어 — `Gathering` = 술자리가 최상위다. 모임(`Group`)은 없다**(`ADR-019`가 `ADR-009`를
+대체). 차수마다 돈을 낸 사람은 **결제자(`Payer`)**다 — v2의 "차수 총무"라는 말은 쓰지 않는다.
 
-단, **`gatherings.group_id`는 nullable이다.** 모임 없이 술자리 하나만 만드는 경로가
-스키마상 열려 있다(`ADR-009`가 기존 `Gathering` 구조를 안 바꾸기로 한 결과). 코드를
-쓸 때 `group_id`가 항상 있다고 가정하지 마라.
+> ⚠️ **`main`에는 아직 모임 코드가 남아 있다** — `server/group` 패키지, `GroupController`,
+> `user_groups`·`group_members` 테이블, `gatherings.group_id`. 전부 **제거 대상**이다
+> (`DOMAIN_DB_DESIGN_V2.md` §4.1·§8). 모임 코드를 참고해 새 기능을 짜지 마라.
 
-새 제품 정의는 [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)가 기준이다.
-[`docs/SPEC.md`](docs/SPEC.md)는 현재 구현 계약을 설명하는 레거시 v4이며, 새 요구사항과
-충돌하는 부분이 있다. 요구사항만 보고 코드를 먼저 바꾸지 말고 계산 규칙·스키마·API
-계약을 순서대로 개정한 뒤 구현한다.
+제품 정의는 [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) **v3**가 기준이다.
+[`docs/SPEC.md`](docs/SPEC.md)는 레거시 명세라 충돌하면 REQUIREMENTS가 이긴다.
+요구사항만 보고 코드를 먼저 바꾸지 말고 계산 규칙·스키마·API 계약을 순서대로 개정한 뒤
+구현한다.
 
 ---
 
 ## 2. 읽는 순서
 
-1. [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) — 새 제품 요구사항, 유비쿼터스 언어,
-   역할·권한, 상태 전이. **앞으로 만들 제품의 기준**
-2. [`docs/SPEC.md`](docs/SPEC.md) — 현재 구현 기준 제품 명세. 새 요구사항과 충돌하는 절은 개정 예정
-3. [`docs/ERD.md`](docs/ERD.md) — 스키마 요약. **진실은 `server/src/main/resources/db/changelog/`의
-   Liquibase YAML이다** — ERD.md는 그걸 사람이 읽기 좋게 옮긴 것이다. 스키마를 바꿀 땐
-   changelog를 먼저 고치고 ERD.md를 그에 맞춰 갱신한다.
-4. [`docs/CALC_RULES.md`](docs/CALC_RULES.md) — 계산 규칙 + 검증된 테스트 케이스.
-   **`core` 모듈 작업은 여기서 시작한다.**
-5. [`docs/API.md`](docs/API.md) — 엔드포인트·요청·응답·오류 코드 계약.
-   **`server` 모듈 작업은 여기서 시작한다.**
-6. [`docs/ADR/000-index.md`](docs/ADR/000-index.md) — 왜 이렇게 정했는지.
+1. [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) — 제품 요구사항 **v3**, 용어, 역할·권한,
+   상태. **앞으로 만들 제품의 기준**
+2. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — 시스템이 지금 어떤 모양인지 한눈에
+3. [`docs/DOMAIN_DB_DESIGN_V2.md`](docs/DOMAIN_DB_DESIGN_V2.md) — v3 도메인·상태·논리 스키마·
+   트랜잭션·동시성. **스키마·도메인 작업은 여기서 시작한다**
+4. [`docs/CALC_RULES_V2.md`](docs/CALC_RULES_V2.md) — 결제자별 수취·1원 올림 계산 규칙.
+   **`core` 작업은 여기서 시작한다.** (`CALC_RULES.md`는 v1 회귀 기준으로만 남아 있다)
+5. [`docs/ERD.md`](docs/ERD.md) — 스키마 요약. **진실은 `server/src/main/resources/db/changelog/`의
+   Liquibase YAML이다** — 스키마를 바꿀 땐 changelog를 먼저 고치고 ERD.md를 맞춰 갱신한다.
+6. [`docs/API.md`](docs/API.md) — 엔드포인트·요청·응답·오류 코드 계약. v3 개정 전이라 모임
+   관련 절은 폐기 대상이다. **`server` 작업 시 API.md를 같은 PR에서 v3로 개정한다.**
+7. [`docs/ADR/000-index.md`](docs/ADR/000-index.md) — 왜 이렇게 정했는지.
    특히 [001](docs/ADR/001-rational-not-bigdecimal.md)(BigDecimal 금지),
-   [005](docs/ADR/005-no-stored-settlement.md)(계산 결과 미저장),
-   [006](docs/ADR/006-single-vm-no-kubernetes.md)(단일 VM 배포),
-   [009](docs/ADR/009-group-persistent-membership.md)(Group을 얹은 방식),
-   [014](docs/ADR/014-monolith-first-feature-package.md)(모놀리스·feature 패키지 — **가장 최근 결정**)
-7. [`DEVLOG.md`](DEVLOG.md) — 최근 결정 이력
-8. [`docs/DEPLOY.md`](docs/DEPLOY.md) — 배포 절차 (배포를 건드릴 때만)
+   [004](docs/ADR/004-two-step-confirm.md)(`inputHash` 2단계 확정),
+   [014](docs/ADR/014-monolith-first-feature-package.md)(모놀리스·feature 패키지),
+   [015](docs/ADR/015-immutable-confirmed-transfer-snapshot.md)(송금 스냅샷),
+   [019](docs/ADR/019-onetime-gathering-no-group.md)(일회용 술자리·모임 제거 — **가장 최근 결정**)
+8. [`DEVLOG.md`](DEVLOG.md) — 최근 결정 이력
+9. [`docs/DEPLOY.md`](docs/DEPLOY.md) — 배포 절차 (배포를 건드릴 때만)
 
 > **ADR-013(MSA)과 ADR-010(채팅 분리)은 "보류"이지 "폐기"가 아니다.** 설계는 살아
 > 있지만 **지금 코드는 014(모놀리스) 기준으로 쓴다.** 저장소 안에 "ADR-013의 REST API
@@ -85,25 +85,22 @@ MVP 플로우 (채팅은 보류):
 
 ---
 
-## 3. 지금 상태 (2026-08-27 스냅샷)
+## 3. 지금 상태 (2026-09-29 스냅샷)
 
 이 표는 며칠이면 낡는다. 작업 전에 `git log --oneline -10`과 실제 컨트롤러 파일로 교차 확인해라.
 
-| 영역 | 상태 |
+| 영역 | 상태 (`main` 기준) |
 |---|---|
-| `core` 계산 엔진 | ✅ v2 구현 완료. 차수별 면제·총무별 수취·1원 올림, Kotest 44개 통과 |
-| DB 스키마 | 🚧 changelog 014까지 작성. `001~011 → 014` 업그레이드는 MySQL 8.4에서 검증됨 |
+| `core` 계산 엔진 | ⚠️ **`main`은 아직 v1**(전역 대표결제자 + greedy 상계). v2(결제자별 수취·1원 올림)는 로컬 작업 트리에만 있고 **커밋된 적이 없다** — 최우선으로 검증·커밋할 대상 |
+| DB 스키마 | 🚧 changelog `011`(changeSet `017`)까지. 모임 관리 기반 `012`~`014`는 병합 안 됐고 v3에서 쓰지 않는다 |
 | 카카오 로그인 | ✅ 동작. OAuth2 → httpOnly JWT 쿠키(`jeongsan_token`) → `GET /auth/me` |
-| `Group` (모임) | ✅ `GET/POST /api/v1/groups`, `GET /api/v1/groups/{id}`. FLASH 생성 시 술자리 1개 동시 생성 |
-| 모임 가입 `/gr/{token}` | ❌ `API.md` §3-b.4에 계약만 있고 컨트롤러 없음 |
-| 멤버 제거 `DELETE /groups/{id}/members/{userId}` | ❌ 계약만 있음 |
-| `Gathering` (술자리) | 🚧 `GET /api/v1/gatherings`만 존재. **인증 안 걸림 + 응답 필드 4개뿐**인 옛 뼈대 코드 — 계약(`API.md` §3.1)에 한참 못 미친다 |
-| 차수·기타항목·출석 체크·확정·정산·입금 | ❌ 엔드포인트 없음. 프론트는 전부 목데이터로 동작 중 |
-| 실시간 채팅 | ⏸️ 보류(`ADR-010`) |
+| `Group` (모임) | ❌ **제거 대상**(`ADR-019`). `GroupController`와 테이블이 남아 있다 |
+| `Gathering` (술자리) | 🚧 `GET /api/v1/gatherings`만 존재. **인증 안 걸림 + 응답 필드 4개뿐**인 옛 뼈대 코드 |
+| 차수·응답·정산하기·송금·삭제 배치 | ❌ 엔드포인트 없음. 프론트는 전부 목데이터로 동작 중 |
+| 실시간 채팅 | ⏸️ 보류(`ADR-010`). v3에 채팅 없음 |
 | 배포 | 🚧 GitHub Actions → OCI SSH 파이프라인 작성·로컬 검증 완료. **실제 배포는 아직 안 함** |
 
-**컨트롤러는 지금 3개뿐이다** — `AuthController`, `GroupController`, `GatheringController`.
-그 외 `API.md`에 적힌 모든 엔드포인트는 아직 없다.
+**컨트롤러는 지금 3개뿐이다** — `AuthController`, `GroupController`(제거 대상), `GatheringController`.
 
 > **표의 경로는 축약형이다 — 실제 매핑은 전부 `/api/v1` 프리픽스가 붙는다.**
 > (`GroupController`는 `@RequestMapping("/api/v1/groups")`) 새 컨트롤러도 반드시
@@ -162,7 +159,8 @@ MVP 플로우 (채팅은 보류):
    실패해야 한다(fail-fast). 빈 값으로 떠서 나중에 조용히 깨지는 게 훨씬 나쁘다.
 10. **N+1을 만들지 않는다.** 목록에 여러 항목이 있으면 항목마다 쿼리를 날리지 말고
    `IN :ids` + `GROUP BY` 배치로 한 번에 모은다
-   (`GroupRepository.kt`의 `countByGroupIds`, `GroupService.listMyGroups` 참고).
+   (현재 예시는 `GroupRepository.kt`의 `countByGroupIds` — 모임 코드는 제거 대상이지만
+   **패턴은 그대로 쓴다.** 예: 술자리 목록의 참여자 수·응답 수를 한 쿼리로 모으기).
 11. **새 의존성을 임의로 추가하지 않는다.** 이 저장소는 스택 선택을 ADR로 관리한다.
     라이브러리가 필요하면 추가하지 말고 PR 설명에 "무엇이·왜 필요한지"를 적어 물어라.
 
@@ -277,14 +275,17 @@ sealed interface SettlementOutcome {
 ```
 009-group-type-and-lifecycle.yaml  →  id: 013, 014, 015   (3개)
 010-table-korean-names.yaml        →  id: 016
-011-rename-groups.yaml             →  id: 017
-012-group-management-foundation.yaml → id: 018, 019, 020   (3개)
+011-rename-groups.yaml             →  id: 017          ← main의 마지막
+─ 아래는 main에 병합된 적 없음. v3에서 쓰지 않음(ADR-019) ─
+012-group-management-foundation.yaml → id: 018, 019, 020
 013-restore-group-admin-remarks.yaml → id: 021
 014-enforce-group-admin-definition.yaml → id: 022
 ```
 
-**따라서 다음 파일은 `015-*.yaml`이고, 그 안의 첫 changeSet id는 `023-...`이다.**
-파일 번호를 id에 그대로 쓰면 이미 적용된 번호와 충돌한다.
+**`012`~`014` 파일명과 changeSet `018`~`022`는 "소진됨"으로 취급한다.** `main`엔 없지만
+누군가의 로컬 DB에 적용됐을 수 있다 — 같은 번호로 다른 내용을 만들면 그 DB에서
+checksum이 깨진다. **따라서 다음 파일은 `015-*.yaml`이고, 그 안의 첫 changeSet id는
+`023-...`이다.** 파일 번호를 id에 그대로 쓰면 이미 적용된 번호와 충돌한다.
 
 그 외:
 
@@ -439,9 +440,12 @@ docker compose up -d              # MySQL 하나만 뜬다
 
 ## 13. 하지 않는 것
 
-`docs/SPEC.md` §9와 동일하다. 특히:
+`docs/REQUIREMENTS.md` §11 "만들지 않는 것"이 기준이다. 특히:
 
-- 참여자용 네이티브 앱 (`ADR-003` — 참여자는 웹에 남는다)
+- **모임(`Group`) 기능 전부** — 관리자·가입·검색·비밀번호·강퇴·차단·보관 (`ADR-019`)
+- **정산 기록 보관·검색** — 완료 7일 뒤 삭제가 원칙이다 (`ADR-019`)
+- **이의제기 절차** — 1:1 채팅·협상·오프라인 조율. v3는 [아직 안 들어왔어요] 버튼 하나다
+- 참여자에게 앱 설치를 요구하는 것 (`ADR-003` — 링크로 웹에서 끝까지 가능해야 한다)
 - 실시간 채팅 (`ADR-010` 보류 — 재검토 조건 전엔 손대지 않는다)
 - MSA·k3s 전환 (`ADR-013` 보류 — `ADR-014` 재검토 조건 전엔 손대지 않는다)
 - 계산 결과를 DB에 저장하는 모든 형태 (`ADR-005`)
