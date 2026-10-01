@@ -71,8 +71,13 @@ MVP 플로우 (제품 v3, 2026-09-29):
    [014](docs/ADR/014-monolith-first-feature-package.md)(모놀리스·feature 패키지),
    [015](docs/ADR/015-immutable-confirmed-transfer-snapshot.md)(송금 스냅샷),
    [019](docs/ADR/019-onetime-gathering-no-group.md)(일회용 술자리·모임 제거 — **가장 최근 결정**)
-8. [`DEVLOG.md`](DEVLOG.md) — 최근 결정 이력
-9. [`docs/DEPLOY.md`](docs/DEPLOY.md) — 배포 절차 (배포를 건드릴 때만)
+8. [`docs/flow-changes/`](docs/flow-changes/README.md) — **프론트가 만들며 바뀐 흐름 중 서버가 알아야
+   하는 것.** 웹·Android·iOS는 목데이터로 먼저 만들고 흐름을 계속 고친다. **API·스키마 작업을 시작하기
+   전에 목록에서 `열림` 항목을 읽고, 이번 작업과 관련 있으면 같이 반영한다.** `결정 필요` 항목은
+   CTO 결정 전이라 근거로 구현하지 않는다. 반영했으면 그 항목의 상태를 `반영됨`으로 바꾸고 어디에
+   반영했는지 적는다(같은 PR에서).
+9. [`DEVLOG.md`](DEVLOG.md) — 최근 결정 이력
+10. [`docs/DEPLOY.md`](docs/DEPLOY.md) — 배포 절차 (배포를 건드릴 때만)
 
 > **ADR-013(MSA)과 ADR-010(채팅 분리)은 "보류"이지 "폐기"가 아니다.** 설계는 살아
 > 있지만 **지금 코드는 014(모놀리스) 기준으로 쓴다.** 저장소 안에 "ADR-013의 REST API
