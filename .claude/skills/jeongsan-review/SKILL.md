@@ -151,6 +151,8 @@ v1→v2(`CALC_RULES_V2.md`), 제품은 v2→v3(`REQUIREMENTS.md` v3, `ADR-019`:
 - 스키마가 바뀌었는데 `docs/ERD.md`가 그대로인가
 - `core/Validation.kt`의 `ErrorCode` enum이 바뀌었는데 `API.md` §1.4가
   그대로인가
+- `docs/flow-changes/`의 `열림` 항목 중 이 PR이 건드리는 API·스키마와 관련된 것을 놓쳤는가.
+  반영했다면 그 항목 상태를 `반영됨`으로 바꿨는가. `결정 필요` 항목을 근거로 구현하지 않았는가
 
 ### 5. 테스트
 
