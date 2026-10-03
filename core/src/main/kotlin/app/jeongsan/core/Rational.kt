@@ -45,7 +45,7 @@ class Rational private constructor(
      * 정확한 유리수에서 정수로 내려오는 **유일한 지점**이다.
      */
     fun ceilTo(unit: Int): Long {
-        require(unit > 0) { "반올림 단위는 양수여야 한다: $unit" }
+        require(unit > 0) { "올림 단위는 양수여야 한다: $unit" }
         val u = BigInteger.valueOf(unit.toLong())
         return (ceilDiv(numerator, denominator * u) * u).longValueExact()
     }

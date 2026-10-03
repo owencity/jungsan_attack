@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 import kotlin.random.Random
 
 /**
- * `CALC_RULES.md` §5 불변식 테스트.
+ * `CALC_RULES_V2.md` §7 불변식 테스트.
  *
  * T1~T11은 **아는 케이스**만 막는다. 여기서는 랜덤 입력 30,000건에 대해
  * 세 가지가 항상 참인지 확인한다. 시드가 고정돼 있어 실패는 항상 재현된다.
@@ -25,45 +25,45 @@ class InvariantSpec : StringSpec({
         verified shouldBeGreaterThan cases / 2
     }
 
-    "모든 최종 금액이 0 이상이다 — 대표결제자 포함 (T7 회귀)" {
+    "모든 최종 금액이 0 이상이다 — 잔액 조정자 포함" {
         var verified = 0
         repeat(cases) { seed ->
             val result = scenario(seed).settleOrNull() ?: return@repeat
             val negative = result.amounts.filterValues { it < 0 }
             if (negative.isNotEmpty()) {
-                error("seed=$seed 에서 음수 금액: $negative (unit=${result.appliedRoundingUnit})")
+                error("seed=$seed 에서 음수 금액: $negative")
             }
             verified++
         }
         verified shouldBeGreaterThan cases / 2
     }
 
-    "같은 입력은 항상 같은 출력을 낸다 — 금액·대표결제자·송금 순서 전부" {
+    "같은 입력은 항상 같은 출력을 낸다 — 금액·수취인·송금 순서 전부" {
         repeat(2_000) { seed ->
             val input = scenario(seed)
             val a = input.settleOrNull() ?: return@repeat
             val b = input.settleOrNull() ?: return@repeat
-            a.mainPayerId shouldBe b.mainPayerId
             a.amounts shouldBe b.amounts
+            a.recipients shouldBe b.recipients
             a.transfers shouldBe b.transfers
         }
     }
 
-    "송금 목록의 총액은 채권자들이 받아야 할 금액과 일치한다" {
+    "수취인별 자기 부담과 들어오는 송금의 합은 결제 원금과 일치한다" {
         repeat(5_000) { seed ->
             val result = scenario(seed).settleOrNull() ?: return@repeat
-            val net = result.breakdown.values.associate {
-                it.participantId to (it.paidTotal - it.finalAmount)
+            result.recipients.values.forEach { recipient ->
+                recipient.ownShare + recipient.incomingTotal shouldBe recipient.paidTotal
+                recipient.participantAmounts.values.sum() shouldBe recipient.paidTotal
             }
-            // 보내는 쪽은 줄고(−), 받는 쪽은 는다(+). 순잔액과 부호가 같아야 한다.
-            val moved = mutableMapOf<Long, Long>()
-            result.transfers.forEach {
-                moved[it.fromId] = (moved[it.fromId] ?: 0L) - it.amount
-                moved[it.toId] = (moved[it.toId] ?: 0L) + it.amount
-            }
-            net.forEach { (id, balance) ->
-                (moved[id] ?: 0L) shouldBe balance
-            }
+        }
+    }
+
+    "송금에는 자기 송금과 중복 송금자·수취인 조합이 없다" {
+        repeat(5_000) { seed ->
+            val result = scenario(seed).settleOrNull() ?: return@repeat
+            result.transfers.all { it.fromId != it.toId && it.amount > 0 } shouldBe true
+            result.transfers.map { it.fromId to it.toId }.distinct().size shouldBe result.transfers.size
         }
     }
 })
@@ -94,6 +94,7 @@ private fun scenario(seed: Int): SettlementInput {
         ps.forEach { p ->
             att[AttendanceKey(p.id, roundId)] = when {
                 p in drinkers -> Attendance.DRANK
+                p in attendees && rnd.nextDouble() < 0.1 -> Attendance.EXEMPT
                 p in attendees -> Attendance.SOBER
                 else -> Attendance.ABSENT
             }
@@ -104,6 +105,5 @@ private fun scenario(seed: Int): SettlementInput {
         participants = ps,
         rounds = rounds,
         attendance = att,
-        roundingUnit = if (rnd.nextBoolean()) 10 else 100,
     )
 }
