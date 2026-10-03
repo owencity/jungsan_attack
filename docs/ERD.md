@@ -4,11 +4,13 @@
 > **스키마가 바뀌면 이 문서가 아니라 changelog를 먼저 고치고, 이 문서를 그에 맞춰
 > 갱신한다** (`00-README.md` — 명세서는 손으로 쓰지 않는다의 정신을 ERD에도 적용).
 >
-> ✅ **실행 검증 완료 (2026-08-21).** MySQL 8.4 컨테이너 + Liquibase 공식 이미지로
-> 실제 migration을 돌렸다. `information_schema`로 대조해 테이블 11개·컬럼 77개·
-> FK 17개·인덱스 16개가 이 문서·엑셀 명세와 정확히 일치함을 확인했다. 그 과정에서
-> `gathering_date` 컬럼 코멘트에 개행이 섞여 들어간 실제 버그를 찾아 고쳤다.
-> 검증에 쓴 컨테이너·네트워크는 삭제했다 — 재현하려면 §5의 명령을 다시 실행할 것.
+> ✅ **실행 검증 완료 (2026-09-12).** MySQL 8.4에서 기존 `001~011` DB를 `014`까지
+> 올리는 경로와 빈 DB에 `001~014`를 적용하는 경로를 모두 검증했다.
+> `information_schema` 대조 결과 도메인 테이블 12개·컬럼 91개·FK 22개·
+> 비-PRIMARY 인덱스 24개다. 검증용 DB는 확인 후 삭제했다.
+>
+> 현재 ERD는 모임 관리 기반(`012~014`)까지만 v2가 반영된 과도기 스키마다.
+> 술자리·참여자·차수·응답과 확정 송금 스냅샷은 후속 migration에서 전환한다.
 
 ---
 
@@ -76,8 +78,11 @@ DATETIME    변환 없이 입력값 그대로 저장. 1000~9999 범위. 시간�
 ```mermaid
 erDiagram
     users ||--o{ user_groups : "created_by"
+    users ||--o{ user_groups : "admin"
     users ||--o{ group_members : ""
     user_groups ||--o{ group_members : ""
+    users ||--o{ group_bans : "banned/audit"
+    user_groups ||--o{ group_bans : ""
     user_groups ||--o{ gatherings : "0개 이상"
     users ||--o{ gatherings : "host"
     users ||--o{ participants : ""
@@ -109,6 +114,8 @@ erDiagram
         varchar group_type "FLASH | RECURRING"
         varchar share_token UK "모임 가입 링크 /gr/{token}"
         bigint created_by_user_id FK
+        bigint admin_user_id FK "현재 유일한 관리자"
+        varchar password_hash "가입 비밀번호 단방향 해시"
         datetime created_at
         datetime delete_scheduled_at "FLASH 만 — 확정 +14일"
         datetime deleted_at "소프트 삭제. 목록에서만 숨김"
@@ -118,6 +125,16 @@ erDiagram
         bigint user_id PK,FK
         varchar role "OWNER|MEMBER"
         datetime joined_at
+        varchar status "ACTIVE|LEFT|KICKED"
+        datetime left_at "ACTIVE이면 NULL"
+    }
+    group_bans {
+        bigint group_id PK,FK
+        bigint user_id PK,FK
+        bigint banned_by_user_id FK
+        datetime banned_at
+        bigint released_by_user_id FK "현재 차단이면 NULL"
+        datetime released_at "현재 차단이면 NULL"
     }
     gatherings {
         bigint id PK
@@ -268,6 +285,7 @@ docker rm -f jeongsan-mysql-test && docker network rm jeongsan-test-net
 ## 6. 다음 단계
 
 - [x] Docker 켜고 `liquibase update` 실행 — 완료(§0 상단 참조)
+- [x] `012~014` 모임 관리 기반을 기존 DB 업그레이드와 빈 DB 전체 적용으로 검증
 - [x] `docs/table-spec.xlsx` 생성 — 완료
 - [x] `server` 모듈 부트스트랩(Spring Boot, `application.yml`) — 완료, 카카오 로그인·
       `Group`/`Gathering` API 까지 붙어 실제로 돈다

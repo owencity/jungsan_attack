@@ -250,7 +250,7 @@ erDiagram
 
 | | 항목 | 상태 |
 |---|---|---|
-| ✅ | 계산 엔진 | 구현·테스트 완료 (46건 전부 통과) |
+| ✅ | 계산 엔진 | Core v2 구현·테스트 완료 (44건 전부 통과) |
 | ✅ | 설계 문서 | SPEC · CALC_RULES · API 계약 · ADR 13건 |
 | ✅ | 스키마 | Liquibase · ERD · 엑셀 명세, 실제 MySQL 실행 검증 완료 |
 | ✅ | 웹 프론트 | 화면 12개, 실제 도메인에 배포 (백엔드 연동 전이라 목 데이터로 동작) |
@@ -269,6 +269,7 @@ erDiagram
 | 문서 | 내용 |
 |---|---|
 | [`docs/00-README.md`](docs/00-README.md) | 문서 읽는 순서, 구현 원칙 |
+| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | 새 제품 요구사항, 유비쿼터스 언어, 역할·권한, 상태 전이 |
 | [`docs/SPEC.md`](docs/SPEC.md) | 제품 명세 — 도메인 모델, 화면, 상태 전이 |
 | [`docs/CALC_RULES.md`](docs/CALC_RULES.md) | 계산 규칙과 검증된 테스트 케이스 |
 | [`docs/API.md`](docs/API.md) | API 계약 — 엔드포인트 33개, 오류 코드 37종 |
