@@ -44,3 +44,7 @@ interface GroupMemberRepository : JpaRepository<GroupMember, GroupMemberId> {
     )
     fun countByGroupIds(@Param("groupIds") groupIds: Collection<Long>): List<Array<Any>>
 }
+
+interface GroupBanRepository : JpaRepository<GroupBan, GroupBanId> {
+    fun existsByIdGroupIdAndIdUserIdAndReleasedAtIsNull(groupId: Long, userId: Long): Boolean
+}

@@ -11,10 +11,7 @@ import jakarta.persistence.Table
 import java.time.Instant
 
 /**
- * `groups` 테이블 매핑 — 한글명 **모임**.
- *
- * 컬럼 목록은 `db/changelog/002-groups.yaml` + `009-group-type-and-lifecycle.yaml` 이
- * 유일한 진실이다. 이 엔티티가 그것을 따라간다, 거꾸로가 아니다(`ddl-auto: none`).
+ * `user_groups` 테이블의 진실은 changelog `002`, `009`, `011`~`014`이다.
  *
  * 모임 안에 술자리(`Gathering`)가 들어간다. 번개(FLASH)는 술자리를 **하나만** 갖는다.
  */
@@ -41,6 +38,14 @@ class Group(
 
     @Column(name = "created_by_user_id")
     var createdByUserId: Long = 0,
+
+    /** 현재 유일한 관리자. 생성 이력인 createdByUserId와 달리 관리자 양도 때 바뀐다. */
+    @Column(name = "admin_user_id")
+    var adminUserId: Long = 0,
+
+    /** 가입 비밀번호의 단방향 해시. 기존 모임은 API 전환 전까지 null일 수 있다. */
+    @Column(name = "password_hash")
+    var passwordHash: String? = null,
 
     @Column(name = "created_at")
     var createdAt: Instant = Instant.now(),

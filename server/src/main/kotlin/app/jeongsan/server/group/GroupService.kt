@@ -94,6 +94,7 @@ class GroupService(
                 groupType = request.groupType,
                 shareToken = ShareToken.generate(),
                 createdByUserId = userId,
+                adminUserId = userId,
                 createdAt = Instant.now(),
             ),
         )
