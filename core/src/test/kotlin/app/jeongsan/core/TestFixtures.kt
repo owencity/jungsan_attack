@@ -13,8 +13,6 @@ package app.jeongsan.core
 fun participants(vararg names: String): List<Participant> =
     names.mapIndexed { i, name -> Participant(id = (i + 1).toLong(), name = name) }
 
-fun Participant.exempted(): Participant = copy(exempt = true)
-
 /** 이름으로 id를 찾는다. 픽스처 밖에서는 쓰지 않는다. */
 fun List<Participant>.id(name: String): Long =
     first { it.name == name }.id
@@ -36,6 +34,7 @@ class AttendanceBuilder(private val ps: List<Participant>) {
 
     fun drank(roundId: Long, vararg names: String) = mark(roundId, Attendance.DRANK, names)
     fun sober(roundId: Long, vararg names: String) = mark(roundId, Attendance.SOBER, names)
+    fun exempt(roundId: Long, vararg names: String) = mark(roundId, Attendance.EXEMPT, names)
     fun absent(roundId: Long, vararg names: String) = mark(roundId, Attendance.ABSENT, names)
 
     private fun mark(roundId: Long, value: Attendance, names: Array<out String>) = apply {
@@ -68,8 +67,6 @@ fun List<ValidationError>.codes(): Set<ErrorCode> = map { it.code }.toSet()
 
 fun SettlementResult.amountsByName(ps: List<Participant>): Map<String, Long> =
     ps.associate { it.name to amounts.getValue(it.id) }
-
-fun SettlementResult.mainPayerName(ps: List<Participant>): String = ps.name(mainPayerId)
 
 /** `"B→A 3340"` 형태. 순서까지 검증하려면 리스트를 그대로 비교한다. */
 fun SettlementResult.transfersByName(ps: List<Participant>): List<String> =
