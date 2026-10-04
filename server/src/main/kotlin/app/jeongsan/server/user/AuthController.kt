@@ -1,5 +1,6 @@
 package app.jeongsan.server.user
 
+import app.jeongsan.server.common.LoginUser
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -7,7 +8,6 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
 import org.springframework.util.LinkedMultiValueMap
-import org.springframework.web.bind.annotation.CookieValue
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -31,6 +31,7 @@ import java.time.Duration
 class AuthController(
     private val userRepository: UserRepository,
     private val jwtService: JwtService,
+    private val userService: UserService,
     @Value("\${kakao.client-id}") private val kakaoClientId: String,
     @Value("\${kakao.client-secret}") private val kakaoClientSecret: String,
     @Value("\${kakao.redirect-uri}") private val kakaoRedirectUri: String,
@@ -93,13 +94,7 @@ class AuthController(
     }
 
     @GetMapping("/api/v1/auth/me")
-    fun me(@CookieValue(name = COOKIE_NAME, required = false) token: String?): ResponseEntity<MeResponse> {
-        val userId = token?.let { jwtService.parseUserId(it) }
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-        val user = userRepository.findById(userId).orElse(null)
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-        return ResponseEntity.ok(MeResponse(user.id, user.nickname, user.profileImageUrl))
-    }
+    fun me(@LoginUser userId: Long): MeResponse = userService.me(userId)
 
     private fun exchangeToken(code: String): KakaoTokenResponse =
         kakaoAuth.post()
@@ -130,5 +125,3 @@ class AuthController(
         const val COOKIE_NAME = "jeongsan_token"
     }
 }
-
-data class MeResponse(val id: Long, val nickname: String, val profileImageUrl: String?)

@@ -30,6 +30,10 @@ class NotFoundException(message: String = "찾을 수 없습니다.") :
 class MalformedRequestException(message: String) :
     ApiException("MALFORMED_REQUEST", HttpStatus.BAD_REQUEST, message)
 
+/** 409 — FC-013 실명은 최초 등록 후 변경하지 않는다. 같은 값 재시도는 서비스에서 성공한다. */
+class DisplayNameAlreadySetException :
+    ApiException("DISPLAY_NAME_ALREADY_SET", HttpStatus.CONFLICT, "한 번 정한 이름은 바꿀 수 없어요")
+
 /** 409 — 번개 모임은 술자리를 하나만 둔다(`API.md` §3-b.2). */
 class FlashGroupHasGatheringException :
     ApiException(

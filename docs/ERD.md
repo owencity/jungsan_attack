@@ -98,6 +98,7 @@ erDiagram
         varchar provider "KAKAO|GOOGLE"
         varchar provider_id
         varchar nickname
+        varchar display_name "NULL=미입력 실명, 최초 등록 후 불변(015)"
         varchar profile_image_url
         varchar tier "FREE|PRO"
         datetime tier_expires_at

@@ -1,6 +1,6 @@
 package app.jeongsan.server.gathering
 
-import org.springframework.data.domain.Sort
+import app.jeongsan.server.common.LoginUser
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -13,8 +13,7 @@ import java.time.LocalDate
  * 구현했다. `participantCount`·`respondedCount`·`paidCount`·`payableCount` 는
  * `Participant` 조립이 필요해 이번 뼈대에 없다 — 다음 작업이다.
  *
- * ⚠ 인증(§2)도 아직 안 걸었다. 지금은 전체 모임을 반환한다.
- * 실제로 붙이기 전에 로그인한 사용자(`hostUserId`) 기준으로 필터링해야 한다.
+ * v3 참여자 목록 구현 전에도 타인의 데이터를 공개하지 않도록 총무 본인의 행만 반환한다.
  */
 @RestController
 @RequestMapping("/api/v1/gatherings")
@@ -22,8 +21,8 @@ class GatheringController(
     private val gatheringRepository: GatheringRepository,
 ) {
     @GetMapping
-    fun list(): List<GatheringSummaryResponse> =
-        gatheringRepository.findAll(Sort.by(Sort.Direction.DESC, "gatheringDate"))
+    fun list(@LoginUser userId: Long): List<GatheringSummaryResponse> =
+        gatheringRepository.findByHostUserIdOrderByGatheringDateDesc(userId)
             .map { it.toSummary() }
 }
 

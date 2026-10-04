@@ -24,3 +24,5 @@ databaseChangeLog:
       file: db/changelog/010-table-korean-names.yaml
   - include:
       file: db/changelog/011-rename-groups.yaml
+  - include:
+      file: db/changelog/015-user-display-name.yaml

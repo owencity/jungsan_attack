@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface GatheringRepository : JpaRepository<Gathering, Long> {
+    fun findByHostUserIdOrderByGatheringDateDesc(hostUserId: Long): List<Gathering>
     fun findByGroupIdOrderByGatheringDateDesc(groupId: Long): List<Gathering>
 
     /** 번개 모임에 술자리가 이미 있는지 — FLASH 는 하나만 갖는다(`API.md` §3-b.2). */
