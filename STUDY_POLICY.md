@@ -25,9 +25,13 @@ PR의 변경 코드 → 이해에 필요한 개념 → 책 항목은 STUDY_CATAL
 1. Java 기본기
 2. Effective Java
 3. 함수형 Java
-4. 기술별 학습 포인트
+4. Kotlin 기본
+5. Kotlin 고급
+6. 기술별 학습 포인트
 
-앞의 세 카테고리는 `STUDY_CATALOG.md`에 등록된 책 데이터를 사용한다. 기술별 학습
+앞의 다섯 카테고리는 `STUDY_CATALOG.md`에 등록된 책·강의 데이터를 사용한다. 이 저장소의 `server`·`core`와
+앱이 Kotlin이므로 언어 기능(null 처리, data/sealed class, object, scope function, 위임, 제네릭 변성, inline 등)은
+Java 책보다 Kotlin 기본·고급 항목에 먼저 대조한다. 기술별 학습
 포인트는 Kafka, Spring, DB, Network, Security, Docker, Redis, Netty, Kubernetes 등
 실제 diff에서 확인된 기술을 기준으로 동적으로 선정하며 Catalog 등록을 요구하지 않는다.
 
@@ -50,8 +54,8 @@ PR의 변경 코드 → 이해에 필요한 개념 → 책 항목은 STUDY_CATAL
 
 1. PR diff에서 개발자가 새로 사용하거나 변경한 문법, API, 애너테이션, 설정, 설계와
    동작 원리를 찾고 사용된 기술을 식별한다.
-2. Java 기본기, Effective Java, 함수형 Java 후보는 `STUDY_CATALOG.md`의 ID, 키워드,
-   `mapping_hint`와 대조하고 정확히 대응하는 항목만 연결한다.
+2. Java 기본기, Effective Java, 함수형 Java, Kotlin 기본, Kotlin 고급 후보는 `STUDY_CATALOG.md`의 ID,
+   키워드, `mapping_hint`와 대조하고 정확히 대응하는 항목만 연결한다.
 3. 식별한 각 기술에 대해 "현재 코드의 동작·설계·장애 가능성을 이해하려면 이 기술의
    어떤 부분을 알아야 하는가?"를 묻고 세부 학습 포인트를 선정한다.
 4. 기술명 자체가 아니라 실제 호출·설정·실행 경로와 직접 연결되는 하위 개념을 남긴다.
@@ -71,8 +75,8 @@ PR의 변경 코드 → 이해에 필요한 개념 → 책 항목은 STUDY_CATAL
 - 각 항목의 설명은 관련 코드와 왜 지금 보면 좋은지를 포함해 한 줄만 적는다.
 - 일반적인 Best Practice를 코드 근거 없이 학습 주제로 만들지 않는다.
 - 책의 Item, Chapter, Section을 비슷해 보인다는 이유로 연결하지 않는다.
-- Effective Java와 함수형 Java는 `STUDY_CATALOG.md`에 없는 Item, Chapter, Section 또는
-  제목을 만들어내지 않는다.
+- Effective Java, 함수형 Java, Kotlin 기본·고급은 `STUDY_CATALOG.md`에 없는 Item, Chapter, Section,
+  강의 번호 또는 제목을 만들어내지 않는다.
 - 일반 기술의 세부 학습 포인트는 Catalog에 없다는 이유로 생략하지 않는다. 대신 실제
   diff의 구체적인 기술 사용과 직접 연결돼야 한다.
 - 일반 기술의 전체 목차를 `STUDY_CATALOG.md`에 사전 등록하거나 기존 책 데이터를 바꾸지 않는다.
@@ -101,6 +105,20 @@ PR의 변경 코드 → 이해에 필요한 개념 → 책 항목은 STUDY_CATAL
   추가되거나 의미 있게 변경됐을 때만 추천한다.
 - 단순 컬렉션 사용을 Stream 학습으로 확대하지 않는다.
 - Catalog에 정확한 Chapter 또는 Section이 있을 때만 연결한다.
+
+#### Kotlin 기본
+
+- 변경 코드를 읽기 위한 언어 선수 지식 관점에서 추천한다(변수·null·타입, 제어문·예외·함수, 클래스·상속·object,
+  data/enum/sealed class, 컬렉션·람다, scope function).
+- Kotlin 문법이 등장했다는 사실만으로 매번 추천하지 않는다. 그 문법을 모르면 변경 코드의 동작(널 처리 경로,
+  분기 누락, 반환 객체, 상속·프록시 가능 여부)을 오해할 수 있을 때만 추천한다.
+
+#### Kotlin 고급
+
+- 제네릭 변성·타입 소거, lateinit·lazy·위임, 고차 함수·inline·SAM, 연산자 오버로딩·DSL, 어노테이션·리플렉션,
+  표준 라이브러리 함수·value class 같은 기능이 실제 diff에 추가되거나 의미 있게 바뀌었을 때만 추천한다.
+- 특히 어노테이션 적용 대상(`@field:` 등), 위임 프로퍼티의 초기화·스레드 안전성, inline 람다의 return 동작처럼
+  Spring·JPA·동시성 동작에 영향을 주는 경우를 우선한다.
 
 #### 기술별 학습 포인트
 
@@ -136,6 +154,12 @@ PR의 변경 코드 → 이해에 필요한 개념 → 책 항목은 STUDY_CATAL
 ### 함수형 Java
 - Chapter {번호} / Section {번호}, {Catalog title} — `{관련 코드}`: {이 PR에서 지금 보면 좋은 이유}
 
+### Kotlin 기본
+- {강의 번호}강, {Catalog title} — `{관련 코드}`: {이 PR에서 지금 보면 좋은 이유}
+
+### Kotlin 고급
+- {강의 번호}강, {Catalog title} — `{관련 코드}`: {이 PR에서 지금 보면 좋은 이유}
+
 ### 기술별 학습 포인트
 #### {기술명}
 - {세부 학습 포인트} — `{관련 코드}`: {현재 코드의 동작·설계·장애 가능성과 연결되는 이유}
@@ -143,14 +167,14 @@ PR의 변경 코드 → 이해에 필요한 개념 → 책 항목은 STUDY_CATAL
 
 규칙은 다음과 같다.
 
-- 네 카테고리는 항상 위 순서로 표시한다.
+- 여섯 카테고리는 항상 위 순서로 표시한다.
 - 관련 항목이 없는 카테고리에는 `- 해당 없음`이라고 적는다.
 - 각 항목에 `관련 코드`와 지금 볼 이유를 한 줄 안에 함께 작성한다.
 - Catalog ID 자체는 내부 대조에 사용할 수 있지만 결과에는 사람이 읽는 title과 위치를
   우선 표시한다.
 - 카테고리를 채우기 위해 관련성이 약한 항목을 붙이지 않는다.
 - 기술별 학습 포인트에서는 기술명을 하위 제목으로 쓰고, 그 아래에 세부 개념을 항목으로 적는다.
-- 네 카테고리 모두 관련 항목이 없으면 카테고리 목록 대신 다음 문장만 사용한다.
+- 여섯 카테고리 모두 관련 항목이 없으면 카테고리 목록 대신 다음 문장만 사용한다.
 
 > 이번 PR에서는 별도의 핵심 학습 주제 없음
 
@@ -168,6 +192,15 @@ PR의 변경 코드 → 이해에 필요한 개념 → 책 항목은 STUDY_CATAL
 ### 함수형 Java
 
 - Chapter 6 / Section 6.3, Stream으로 데이터 수집하기 — `UserService.java`의 `filter → map → toList`: 이번 PR에 추가된 Stream 파이프라인의 수집 동작을 이해하는 데 필요하기 때문
+
+### Kotlin 기본
+
+- 2강, 코틀린에서 null을 다루는 방법 — `UserService.kt`의 `displayName ?: return`: 실명이 없을 때 조기 반환하는 경로가 등록 여부 판단을 결정하기 때문
+- 14강, 코틀린에서 다양한 클래스를 다루는 방법 — `sealed interface SettlementOutcome`: 정산 결과를 성공·실패로 나눈 모델이 `when` 분기 누락 검사와 연결되기 때문
+
+### Kotlin 고급
+
+- 20강, 코틀린의 어노테이션 — `@field:NotBlank val displayName`: 어노테이션 적용 대상에 따라 검증이 실제로 동작하는지가 달라지기 때문
 
 ### 기술별 학습 포인트
 
