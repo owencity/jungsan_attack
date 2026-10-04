@@ -191,7 +191,7 @@ Java 책보다 Kotlin 기본·고급 항목에 먼저 대조한다. 기술별 �
 
 ### 함수형 Java
 
-- Chapter 6 / Section 6.3, Stream으로 데이터 수집하기 — `UserService.java`의 `filter → map → toList`: 이번 PR에 추가된 Stream 파이프라인의 수집 동작을 이해하는 데 필요하기 때문
+- Chapter 6 / Section 6.3, 스트림 파이프라인 구축하기 — `UserService.java`의 `filter → map → toList`: 이번 PR에 추가된 Stream 파이프라인의 수집 동작을 이해하는 데 필요하기 때문
 
 ### Kotlin 기본
 
