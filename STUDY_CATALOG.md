@@ -14,6 +14,8 @@ AI는 이 Catalog에 등록된 Item, Chapter, Section만 추천할 수 있다. �
 - Effective Java와 함수형 프로그래밍 with 자바는 사용자가 제공한 실제 목차(2026-09-29)로 전체를 등록했다 —
   Effective Java 아이템 1~90(`EJ-01`~`EJ-90`), 함수형 프로그래밍 with 자바 15장 71개 절(`FJ-01-01`~`FJ-15-04`,
   '핵심 요약' 제외). 번호·제목·장은 원문 그대로이며, `keywords`·`mapping_hint`는 diff 대조용으로 덧붙인 것이다.
+- 자바의 정석은 사용자가 고른 6~16장 선별 목차(2026-09-29) 233개 소절을 장·절·소절·페이지와 함께 등록했다(`JST-06-01-01`~
+  `JST-16-02-03`). Java 기본기 카테고리에서 읽을 위치(페이지)를 알려주는 데 쓴다.
 - 목차에 없는 번호·제목은 등록하지 않는다. 새 자료를 추가할 때도 제공된 목차 원문의 범위까지만 등록한다.
 - Kotlin 기본·고급은 사용자가 제공한 강의 목차(2026-10-04) 전체를 강의 단위로 등록했다(`KB-01`~`KB-20`,
   `KA-01`~`KA-26`). 강의 번호와 제목은 원문 그대로이며, `keywords`·`mapping_hint`는 diff 대조용으로 덧붙인 것이다.
@@ -3244,3 +3246,4620 @@ AI는 이 Catalog에 등록된 Item, Chapter, Section만 추천할 수 있다. �
   - ktlint
 - mapping_hint:
   코틀린 빌드·분석 도구(kapt/ksp, 린트 등) 설정이 diff에서 바뀔 때 참고한다.
+
+---
+
+## 8. 자바의 정석
+
+출처: 사용자가 제공한 선별 목차(2026-09-29). 1~5장(변수·연산자·조건문·배열 등 기초)은 사용자가 제외했다. 장·절·소절 번호, 제목, 페이지는 원문 그대로이며 형식만 정리했다(`6 변수의 초기화` → 6절, `Future903` → `Future` p.903, `Optional〈T〉` → `Optional<T>`). 결과에는 `자바의 정석 {장}장 {절}.{소절} {title} (p.{page})`로 표시한다.
+
+### JST-06-01-01
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 1. 객체지향언어
+- subsection: 1.1
+- title: 객체지향 언어의 역사
+- page: 254
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '객체지향 언어의 역사'(p.254)를 참고한다.
+
+### JST-06-01-02
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 1. 객체지향언어
+- subsection: 1.2
+- title: 객체지향언어
+- page: 254
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '객체지향언어'(p.254)를 참고한다.
+
+### JST-06-02-01
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 2. 클래스와 객체
+- subsection: 2.1
+- title: 클래스와 객체의 정의와 용도
+- page: 255
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '클래스와 객체의 정의와 용도'(p.255)를 참고한다.
+
+### JST-06-02-02
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 2. 클래스와 객체
+- subsection: 2.2
+- title: 객체와 인스턴스
+- page: 256
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '객체와 인스턴스'(p.256)를 참고한다.
+
+### JST-06-02-03
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 2. 클래스와 객체
+- subsection: 2.3
+- title: 객체의 구성요소 - 속성과 기능
+- page: 257
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '객체의 구성요소 - 속성과 기능'(p.257)를 참고한다.
+
+### JST-06-02-04
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 2. 클래스와 객체
+- subsection: 2.4
+- title: 인스턴스의 생성과 사용
+- page: 258
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '인스턴스의 생성과 사용'(p.258)를 참고한다.
+
+### JST-06-02-05
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 2. 클래스와 객체
+- subsection: 2.5
+- title: 객체 배열
+- page: 264
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '객체 배열'(p.264)를 참고한다.
+
+### JST-06-02-06
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 2. 클래스와 객체
+- subsection: 2.6
+- title: 클래스의 또 다른 정의
+- page: 266
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '클래스의 또 다른 정의'(p.266)를 참고한다.
+
+### JST-06-03-01
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.1
+- title: 선언위치에 따른 변수의 종류
+- page: 270
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '선언위치에 따른 변수의 종류'(p.270)를 참고한다.
+
+### JST-06-03-02
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.2
+- title: 클래스 변수와 인스턴스 변수
+- page: 271
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '클래스 변수와 인스턴스 변수'(p.271)를 참고한다.
+
+### JST-06-03-03
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.3
+- title: 메서드
+- page: 273
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '메서드'(p.273)를 참고한다.
+
+### JST-06-03-04
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.4
+- title: 메서드의 선언과 구현
+- page: 276
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '메서드의 선언과 구현'(p.276)를 참고한다.
+
+### JST-06-03-05
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.5
+- title: 메서드의 호출
+- page: 278
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '메서드의 호출'(p.278)를 참고한다.
+
+### JST-06-03-06
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.6
+- title: return문
+- page: 282
+- keywords:
+  - return
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 'return문'(p.282)를 참고한다.
+
+### JST-06-03-07
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.7
+- title: JVM의 메모리 구조
+- page: 285
+- keywords:
+  - JVM
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 'JVM의 메모리 구조'(p.285)를 참고한다.
+
+### JST-06-03-08
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.8
+- title: 기본형 매개변수와 참조형 매개변수
+- page: 288
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '기본형 매개변수와 참조형 매개변수'(p.288)를 참고한다.
+
+### JST-06-03-09
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.9
+- title: 참조형 반환타입
+- page: 292
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '참조형 반환타입'(p.292)를 참고한다.
+
+### JST-06-03-10
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.10
+- title: 재귀 호출(recursive call)
+- page: 294
+- keywords:
+  - recursive call
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '재귀 호출(recursive call)'(p.294)를 참고한다.
+
+### JST-06-03-11
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.11
+- title: 클래스 메서드와 인스턴스 메서드
+- page: 301
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '클래스 메서드와 인스턴스 메서드'(p.301)를 참고한다.
+
+### JST-06-03-12
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 3. 변수와 메서드
+- subsection: 3.12
+- title: 클래스 멤버와 인스턴스 멤버 간의 참조와 호출
+- page: 304
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '클래스 멤버와 인스턴스 멤버 간의 참조와 호출'(p.304)를 참고한다.
+
+### JST-06-04-01
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 4. 오버로딩(overloading)
+- subsection: 4.1
+- title: 오버로딩이란?
+- page: 307
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '오버로딩이란?'(p.307)를 참고한다.
+
+### JST-06-04-02
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 4. 오버로딩(overloading)
+- subsection: 4.2
+- title: 오버로딩의 조건
+- page: 307
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '오버로딩의 조건'(p.307)를 참고한다.
+
+### JST-06-04-03
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 4. 오버로딩(overloading)
+- subsection: 4.3
+- title: 오버로딩의 예
+- page: 307
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '오버로딩의 예'(p.307)를 참고한다.
+
+### JST-06-04-04
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 4. 오버로딩(overloading)
+- subsection: 4.4
+- title: 오버로딩의 장점
+- page: 309
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '오버로딩의 장점'(p.309)를 참고한다.
+
+### JST-06-04-05
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 4. 오버로딩(overloading)
+- subsection: 4.5
+- title: 가변인자(varargs)와 오버로딩
+- page: 311
+- keywords:
+  - varargs
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '가변인자(varargs)와 오버로딩'(p.311)를 참고한다.
+
+### JST-06-05-01
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 5. 생성자(Constructor)
+- subsection: 5.1
+- title: 생성자란?
+- page: 315
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '생성자란?'(p.315)를 참고한다.
+
+### JST-06-05-02
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 5. 생성자(Constructor)
+- subsection: 5.2
+- title: 기본 생성자(default constructor)
+- page: 316
+- keywords:
+  - default constructor
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '기본 생성자(default constructor)'(p.316)를 참고한다.
+
+### JST-06-05-03
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 5. 생성자(Constructor)
+- subsection: 5.3
+- title: 매개변수가 있는 생성자
+- page: 318
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '매개변수가 있는 생성자'(p.318)를 참고한다.
+
+### JST-06-05-04
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 5. 생성자(Constructor)
+- subsection: 5.4
+- title: 생성자에서 다른 생성자 호출하기 - this(), this
+- page: 319
+- keywords:
+  - this
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '생성자에서 다른 생성자 호출하기 - this(), this'(p.319)를 참고한다.
+
+### JST-06-05-05
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 5. 생성자(Constructor)
+- subsection: 5.5
+- title: 생성자를 이용한 인스턴스의 복사
+- page: 322
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '생성자를 이용한 인스턴스의 복사'(p.322)를 참고한다.
+
+### JST-06-06-01
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 6. 변수의 초기화
+- subsection: 6.1
+- title: 변수의 초기화
+- page: 324
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '변수의 초기화'(p.324)를 참고한다.
+
+### JST-06-06-02
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 6. 변수의 초기화
+- subsection: 6.2
+- title: 명시적 초기화(explicit initialization)
+- page: 325
+- keywords:
+  - explicit initialization
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '명시적 초기화(explicit initialization)'(p.325)를 참고한다.
+
+### JST-06-06-03
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 6. 변수의 초기화
+- subsection: 6.3
+- title: 초기화 블럭(initialization block)
+- page: 326
+- keywords:
+  - initialization block
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '초기화 블럭(initialization block)'(p.326)를 참고한다.
+
+### JST-06-06-04
+
+- source: 자바의 정석
+- chapter: 6장 객체지향 프로그래밍 I
+- section: 6. 변수의 초기화
+- subsection: 6.4
+- title: 멤버변수의 초기화 시기와 순서
+- page: 328
+- keywords:
+  - class
+  - object
+  - instance
+  - method
+  - constructor
+  - JVM memory
+  - overloading
+  - initialization
+- mapping_hint:
+  클래스·객체·메서드·생성자·초기화 순서처럼 객체의 기본 구조가 diff에서 추가·변경될 때 '멤버변수의 초기화 시기와 순서'(p.328)를 참고한다.
+
+### JST-07-01-01
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 1. 상속(inheritance)
+- subsection: 1.1
+- title: 상속의 정의와 장점
+- page: 334
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '상속의 정의와 장점'(p.334)를 참고한다.
+
+### JST-07-01-02
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 1. 상속(inheritance)
+- subsection: 1.2
+- title: 클래스간의 관계 - 포함 관계
+- page: 340
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '클래스간의 관계 - 포함 관계'(p.340)를 참고한다.
+
+### JST-07-01-03
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 1. 상속(inheritance)
+- subsection: 1.3
+- title: 클래스간의 관계 결정하기
+- page: 341
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '클래스간의 관계 결정하기'(p.341)를 참고한다.
+
+### JST-07-01-04
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 1. 상속(inheritance)
+- subsection: 1.4
+- title: 단일 상속(single inheritance)
+- page: 347
+- keywords:
+  - single inheritance
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '단일 상속(single inheritance)'(p.347)를 참고한다.
+
+### JST-07-01-05
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 1. 상속(inheritance)
+- subsection: 1.5
+- title: Object클래스 - 모든 클래스의 조상
+- page: 349
+- keywords:
+  - Object
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 'Object클래스 - 모든 클래스의 조상'(p.349)를 참고한다.
+
+### JST-07-02-01
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 2. 오버라이딩(overriding)
+- subsection: 2.1
+- title: 오버라이딩이란?
+- page: 351
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '오버라이딩이란?'(p.351)를 참고한다.
+
+### JST-07-02-02
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 2. 오버라이딩(overriding)
+- subsection: 2.2
+- title: 오버라이딩의 조건
+- page: 352
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '오버라이딩의 조건'(p.352)를 참고한다.
+
+### JST-07-02-03
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 2. 오버라이딩(overriding)
+- subsection: 2.3
+- title: 오버로딩 vs. 오버라이딩
+- page: 353
+- keywords:
+  - vs.
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '오버로딩 vs. 오버라이딩'(p.353)를 참고한다.
+
+### JST-07-02-04
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 2. 오버라이딩(overriding)
+- subsection: 2.4
+- title: super
+- page: 354
+- keywords:
+  - super
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 'super'(p.354)를 참고한다.
+
+### JST-07-02-05
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 2. 오버라이딩(overriding)
+- subsection: 2.5
+- title: super() - 조상 클래스의 생성자
+- page: 356
+- keywords:
+  - super
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 'super() - 조상 클래스의 생성자'(p.356)를 참고한다.
+
+### JST-07-03-01
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 3. package와 import
+- subsection: 3.1
+- title: 패키지(package)
+- page: 360
+- keywords:
+  - package
+  - inheritance
+  - override
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '패키지(package)'(p.360)를 참고한다.
+
+### JST-07-03-02
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 3. package와 import
+- subsection: 3.2
+- title: 패키지의 선언
+- page: 361
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '패키지의 선언'(p.361)를 참고한다.
+
+### JST-07-03-03
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 3. package와 import
+- subsection: 3.3
+- title: import문
+- page: 364
+- keywords:
+  - import
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 'import문'(p.364)를 참고한다.
+
+### JST-07-03-04
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 3. package와 import
+- subsection: 3.4
+- title: import문의 선언
+- page: 364
+- keywords:
+  - import
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 'import문의 선언'(p.364)를 참고한다.
+
+### JST-07-03-05
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 3. package와 import
+- subsection: 3.5
+- title: static import문
+- page: 366
+- keywords:
+  - static
+  - import
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 'static import문'(p.366)를 참고한다.
+
+### JST-07-04-01
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 4. 제어자(modifier)
+- subsection: 4.1
+- title: 제어자란?
+- page: 368
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '제어자란?'(p.368)를 참고한다.
+
+### JST-07-04-02
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 4. 제어자(modifier)
+- subsection: 4.2
+- title: static - 클래스의, 공통적인
+- page: 368
+- keywords:
+  - static
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 'static - 클래스의, 공통적인'(p.368)를 참고한다.
+
+### JST-07-04-03
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 4. 제어자(modifier)
+- subsection: 4.3
+- title: final - 마지막의, 변경될 수 없는
+- page: 369
+- keywords:
+  - final
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 'final - 마지막의, 변경될 수 없는'(p.369)를 참고한다.
+
+### JST-07-04-04
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 4. 제어자(modifier)
+- subsection: 4.4
+- title: abstract - 추상의, 미완성의
+- page: 371
+- keywords:
+  - abstract
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 'abstract - 추상의, 미완성의'(p.371)를 참고한다.
+
+### JST-07-04-05
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 4. 제어자(modifier)
+- subsection: 4.5
+- title: 접근 제어자(access modifier)
+- page: 372
+- keywords:
+  - access modifier
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '접근 제어자(access modifier)'(p.372)를 참고한다.
+
+### JST-07-04-06
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 4. 제어자(modifier)
+- subsection: 4.6
+- title: 제어자(modifier)의 조합
+- page: 377
+- keywords:
+  - modifier
+  - inheritance
+  - override
+  - package
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '제어자(modifier)의 조합'(p.377)를 참고한다.
+
+### JST-07-05-01
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 5. 다형성(polymorphism)
+- subsection: 5.1
+- title: 다형성이란?
+- page: 378
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '다형성이란?'(p.378)를 참고한다.
+
+### JST-07-05-02
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 5. 다형성(polymorphism)
+- subsection: 5.2
+- title: 참조변수의 형변환
+- page: 380
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '참조변수의 형변환'(p.380)를 참고한다.
+
+### JST-07-05-03
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 5. 다형성(polymorphism)
+- subsection: 5.3
+- title: instanceof 연산자
+- page: 386
+- keywords:
+  - instanceof
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 'instanceof 연산자'(p.386)를 참고한다.
+
+### JST-07-05-04
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 5. 다형성(polymorphism)
+- subsection: 5.4
+- title: 참조변수와 인스턴스의 연결
+- page: 394
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '참조변수와 인스턴스의 연결'(p.394)를 참고한다.
+
+### JST-07-05-05
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 5. 다형성(polymorphism)
+- subsection: 5.5
+- title: 매개변수의 다형성
+- page: 397
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '매개변수의 다형성'(p.397)를 참고한다.
+
+### JST-07-05-06
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 5. 다형성(polymorphism)
+- subsection: 5.6
+- title: 여러 종류의 객체를 배열로 다루기
+- page: 400
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '여러 종류의 객체를 배열로 다루기'(p.400)를 참고한다.
+
+### JST-07-06-01
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 6. 추상클래스(abstract class)
+- subsection: 6.1
+- title: 추상 클래스란?
+- page: 405
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '추상 클래스란?'(p.405)를 참고한다.
+
+### JST-07-06-02
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 6. 추상클래스(abstract class)
+- subsection: 6.2
+- title: 추상 메서드(abstract method)
+- page: 405
+- keywords:
+  - abstract method
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '추상 메서드(abstract method)'(p.405)를 참고한다.
+
+### JST-07-06-03
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 6. 추상클래스(abstract class)
+- subsection: 6.3
+- title: 추상 클래스의 작성
+- page: 407
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '추상 클래스의 작성'(p.407)를 참고한다.
+
+### JST-07-07-01
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 7. 인터페이스(interface)
+- subsection: 7.1
+- title: 인터페이스란?
+- page: 411
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '인터페이스란?'(p.411)를 참고한다.
+
+### JST-07-07-02
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 7. 인터페이스(interface)
+- subsection: 7.2
+- title: 인터페이스의 작성
+- page: 411
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '인터페이스의 작성'(p.411)를 참고한다.
+
+### JST-07-07-03
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 7. 인터페이스(interface)
+- subsection: 7.3
+- title: 인터페이스의 상속
+- page: 412
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '인터페이스의 상속'(p.412)를 참고한다.
+
+### JST-07-07-04
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 7. 인터페이스(interface)
+- subsection: 7.4
+- title: 인터페이스의 구현
+- page: 412
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '인터페이스의 구현'(p.412)를 참고한다.
+
+### JST-07-07-05
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 7. 인터페이스(interface)
+- subsection: 7.5
+- title: 인터페이스를 이용한 다중 상속
+- page: 415
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '인터페이스를 이용한 다중 상속'(p.415)를 참고한다.
+
+### JST-07-07-06
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 7. 인터페이스(interface)
+- subsection: 7.6
+- title: 인터페이스를 이용한 다형성
+- page: 417
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '인터페이스를 이용한 다형성'(p.417)를 참고한다.
+
+### JST-07-07-07
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 7. 인터페이스(interface)
+- subsection: 7.7
+- title: 인터페이스의 장점
+- page: 420
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '인터페이스의 장점'(p.420)를 참고한다.
+
+### JST-07-07-08
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 7. 인터페이스(interface)
+- subsection: 7.8
+- title: 인터페이스의 이해
+- page: 426
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '인터페이스의 이해'(p.426)를 참고한다.
+
+### JST-07-07-09
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 7. 인터페이스(interface)
+- subsection: 7.9
+- title: 디폴트 메서드, static메서드, private메서드
+- page: 430
+- keywords:
+  - static
+  - private
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '디폴트 메서드, static메서드, private메서드'(p.430)를 참고한다.
+
+### JST-07-08-01
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 8. 내부 클래스(inner class)
+- subsection: 8.1
+- title: 내부 클래스란?
+- page: 434
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '내부 클래스란?'(p.434)를 참고한다.
+
+### JST-07-08-02
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 8. 내부 클래스(inner class)
+- subsection: 8.2
+- title: 내부 클래스의 종류와 특징
+- page: 435
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '내부 클래스의 종류와 특징'(p.435)를 참고한다.
+
+### JST-07-08-03
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 8. 내부 클래스(inner class)
+- subsection: 8.3
+- title: 내부 클래스의 선언
+- page: 435
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '내부 클래스의 선언'(p.435)를 참고한다.
+
+### JST-07-08-04
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 8. 내부 클래스(inner class)
+- subsection: 8.4
+- title: 내부 클래스의 제어자와 접근성
+- page: 436
+- keywords:
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+  - inner class
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '내부 클래스의 제어자와 접근성'(p.436)를 참고한다.
+
+### JST-07-08-05
+
+- source: 자바의 정석
+- chapter: 7장 객체지향 프로그래밍 II
+- section: 8. 내부 클래스(inner class)
+- subsection: 8.5
+- title: 익명 클래스(anonymous class)
+- page: 441
+- keywords:
+  - anonymous class
+  - inheritance
+  - override
+  - package
+  - modifier
+  - polymorphism
+  - abstract
+  - interface
+- mapping_hint:
+  상속·재정의·가시성 제어자·다형성·추상 클래스·인터페이스·내부 클래스 구조가 diff에서 바뀔 때 '익명 클래스(anonymous class)'(p.441)를 참고한다.
+
+### JST-08-01-01
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.1
+- title: 프로그램 오류
+- page: 444
+- keywords:
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+  - custom exception
+  - chained exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 '프로그램 오류'(p.444)를 참고한다.
+
+### JST-08-01-02
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.2
+- title: 예외 클래스의 계층구조
+- page: 445
+- keywords:
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+  - custom exception
+  - chained exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 '예외 클래스의 계층구조'(p.445)를 참고한다.
+
+### JST-08-01-03
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.3
+- title: 예외 처리하기 - try-catch문
+- page: 446
+- keywords:
+  - try
+  - catch
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+  - custom exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 '예외 처리하기 - try-catch문'(p.446)를 참고한다.
+
+### JST-08-01-04
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.4
+- title: try-catch문에서의 흐름
+- page: 449
+- keywords:
+  - try
+  - catch
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+  - custom exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 'try-catch문에서의 흐름'(p.449)를 참고한다.
+
+### JST-08-01-05
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.5
+- title: 예외의 발생과 catch블럭
+- page: 450
+- keywords:
+  - catch
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+  - custom exception
+  - chained exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 '예외의 발생과 catch블럭'(p.450)를 참고한다.
+
+### JST-08-01-06
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.6
+- title: 예외 발생시키기
+- page: 454
+- keywords:
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+  - custom exception
+  - chained exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 '예외 발생시키기'(p.454)를 참고한다.
+
+### JST-08-01-07
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.7
+- title: 메서드에 예외 선언하기
+- page: 457
+- keywords:
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+  - custom exception
+  - chained exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 '메서드에 예외 선언하기'(p.457)를 참고한다.
+
+### JST-08-01-08
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.8
+- title: finally블럭
+- page: 464
+- keywords:
+  - finally
+  - exception
+  - try-catch
+  - throw
+  - try-with-resources
+  - custom exception
+  - chained exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 'finally블럭'(p.464)를 참고한다.
+
+### JST-08-01-09
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.9
+- title: 자동 자원 반환 - try-with-resources문
+- page: 466
+- keywords:
+  - try
+  - with
+  - resources
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 '자동 자원 반환 - try-with-resources문'(p.466)를 참고한다.
+
+### JST-08-01-10
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.10
+- title: 사용자정의 예외 만들기
+- page: 469
+- keywords:
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+  - custom exception
+  - chained exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 '사용자정의 예외 만들기'(p.469)를 참고한다.
+
+### JST-08-01-11
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.11
+- title: 예외 되던지기(exception re-throwing)
+- page: 472
+- keywords:
+  - exception re-throwing
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+  - custom exception
+  - chained exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 '예외 되던지기(exception re-throwing)'(p.472)를 참고한다.
+
+### JST-08-01-12
+
+- source: 자바의 정석
+- chapter: 8장 예외 처리(exception handling)
+- section: 1. 예외 처리(exception handling)
+- subsection: 1.12
+- title: 연결된 예외(chained exception)
+- page: 474
+- keywords:
+  - chained exception
+  - exception
+  - try-catch
+  - throw
+  - finally
+  - try-with-resources
+  - custom exception
+- mapping_hint:
+  예외 발생·전파·변환, 자원 정리, 사용자 정의 예외가 diff에서 추가·변경될 때 '연결된 예외(chained exception)'(p.474)를 참고한다.
+
+### JST-09-01-01
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 1. java.lang패키지
+- subsection: 1.1
+- title: Object클래스
+- page: 480
+- keywords:
+  - Object
+  - String
+  - StringBuilder
+  - wrapper
+  - Objects
+  - regex
+  - BigInteger
+  - BigDecimal
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 'Object클래스'(p.480)를 참고한다.
+
+### JST-09-01-02
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 1. java.lang패키지
+- subsection: 1.2
+- title: String클래스
+- page: 494
+- keywords:
+  - String
+  - Object
+  - StringBuilder
+  - wrapper
+  - Objects
+  - regex
+  - BigInteger
+  - BigDecimal
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 'String클래스'(p.494)를 참고한다.
+
+### JST-09-01-03
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 1. java.lang패키지
+- subsection: 1.3
+- title: StringBuffer와 StringBuilder
+- page: 508
+- keywords:
+  - StringBuffer
+  - StringBuilder
+  - Object
+  - String
+  - wrapper
+  - Objects
+  - regex
+  - BigInteger
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 'StringBuffer와 StringBuilder'(p.508)를 참고한다.
+
+### JST-09-01-04
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 1. java.lang패키지
+- subsection: 1.4
+- title: Math클래스
+- page: 514
+- keywords:
+  - Math
+  - Object
+  - String
+  - StringBuilder
+  - wrapper
+  - Objects
+  - regex
+  - BigInteger
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 'Math클래스'(p.514)를 참고한다.
+
+### JST-09-01-05
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 1. java.lang패키지
+- subsection: 1.5
+- title: 래퍼(wrapper) 클래스
+- page: 521
+- keywords:
+  - wrapper
+  - Object
+  - String
+  - StringBuilder
+  - Objects
+  - regex
+  - BigInteger
+  - BigDecimal
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 '래퍼(wrapper) 클래스'(p.521)를 참고한다.
+
+### JST-09-02-01
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 2. 유용한 클래스
+- subsection: 2.1
+- title: java.util.Objects클래스
+- page: 526
+- keywords:
+  - java.util.Objects
+  - Object
+  - String
+  - StringBuilder
+  - wrapper
+  - Objects
+  - regex
+  - BigInteger
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 'java.util.Objects클래스'(p.526)를 참고한다.
+
+### JST-09-02-02
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 2. 유용한 클래스
+- subsection: 2.2
+- title: java.util.Random클래스
+- page: 530
+- keywords:
+  - java.util.Random
+  - Object
+  - String
+  - StringBuilder
+  - wrapper
+  - Objects
+  - regex
+  - BigInteger
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 'java.util.Random클래스'(p.530)를 참고한다.
+
+### JST-09-02-03
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 2. 유용한 클래스
+- subsection: 2.3
+- title: 정규식(Regular Expression) - java.util.regex
+- page: 535
+- keywords:
+  - Regular Expression
+  - java.util.regex
+  - Object
+  - String
+  - StringBuilder
+  - wrapper
+  - Objects
+  - regex
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 '정규식(Regular Expression) - java.util.regex'(p.535)를 참고한다.
+
+### JST-09-02-04
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 2. 유용한 클래스
+- subsection: 2.4
+- title: java.util.Scanner클래스
+- page: 540
+- keywords:
+  - java.util.Scanner
+  - Object
+  - String
+  - StringBuilder
+  - wrapper
+  - Objects
+  - regex
+  - BigInteger
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 'java.util.Scanner클래스'(p.540)를 참고한다.
+
+### JST-09-02-05
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 2. 유용한 클래스
+- subsection: 2.5
+- title: java.util.StringTokenizer클래스
+- page: 543
+- keywords:
+  - java.util.StringTokenizer
+  - Object
+  - String
+  - StringBuilder
+  - wrapper
+  - Objects
+  - regex
+  - BigInteger
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 'java.util.StringTokenizer클래스'(p.543)를 참고한다.
+
+### JST-09-02-06
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 2. 유용한 클래스
+- subsection: 2.6
+- title: java.math.BigInteger클래스
+- page: 548
+- keywords:
+  - java.math.BigInteger
+  - Object
+  - String
+  - StringBuilder
+  - wrapper
+  - Objects
+  - regex
+  - BigInteger
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 'java.math.BigInteger클래스'(p.548)를 참고한다.
+
+### JST-09-02-07
+
+- source: 자바의 정석
+- chapter: 9장 java.lang패키지와 유용한 클래스
+- section: 2. 유용한 클래스
+- subsection: 2.7
+- title: java.math.BigDecimal클래스
+- page: 551
+- keywords:
+  - java.math.BigDecimal
+  - Object
+  - String
+  - StringBuilder
+  - wrapper
+  - Objects
+  - regex
+  - BigInteger
+- mapping_hint:
+  Object 메서드·문자열·래퍼 타입·정규식·큰 수(BigInteger/BigDecimal) 연산이 diff에 쓰일 때 'java.math.BigDecimal클래스'(p.551)를 참고한다.
+
+### JST-10-01-01
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 1. 날짜와 시간
+- subsection: 1.1
+- title: Calendar와 Date
+- page: 558
+- keywords:
+  - Calendar
+  - Date
+  - date
+  - time
+  - LocalDate
+  - Instant
+  - ZonedDateTime
+  - Duration
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'Calendar와 Date'(p.558)를 참고한다.
+
+### JST-10-02-01
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 2. 형식화 클래스
+- subsection: 2.1
+- title: DecimalFormat
+- page: 570
+- keywords:
+  - DecimalFormat
+  - date
+  - time
+  - LocalDate
+  - Instant
+  - ZonedDateTime
+  - Duration
+  - format
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'DecimalFormat'(p.570)를 참고한다.
+
+### JST-10-02-02
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 2. 형식화 클래스
+- subsection: 2.2
+- title: SimpleDateFormat
+- page: 574
+- keywords:
+  - SimpleDateFormat
+  - date
+  - time
+  - LocalDate
+  - Instant
+  - ZonedDateTime
+  - Duration
+  - format
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'SimpleDateFormat'(p.574)를 참고한다.
+
+### JST-10-02-03
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 2. 형식화 클래스
+- subsection: 2.3
+- title: ChoiceFormat
+- page: 578
+- keywords:
+  - ChoiceFormat
+  - date
+  - time
+  - LocalDate
+  - Instant
+  - ZonedDateTime
+  - Duration
+  - format
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'ChoiceFormat'(p.578)를 참고한다.
+
+### JST-10-02-04
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 2. 형식화 클래스
+- subsection: 2.4
+- title: MessageFormat
+- page: 579
+- keywords:
+  - MessageFormat
+  - date
+  - time
+  - LocalDate
+  - Instant
+  - ZonedDateTime
+  - Duration
+  - format
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'MessageFormat'(p.579)를 참고한다.
+
+### JST-10-03-01
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 3. java.time패키지
+- subsection: 3.1
+- title: java.time패키지의 핵심 클래스
+- page: 582
+- keywords:
+  - java.time
+  - date
+  - time
+  - LocalDate
+  - Instant
+  - ZonedDateTime
+  - Duration
+  - format
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'java.time패키지의 핵심 클래스'(p.582)를 참고한다.
+
+### JST-10-03-02
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 3. java.time패키지
+- subsection: 3.2
+- title: LocalDate와 LocalTime
+- page: 585
+- keywords:
+  - LocalDate
+  - LocalTime
+  - date
+  - time
+  - Instant
+  - ZonedDateTime
+  - Duration
+  - format
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'LocalDate와 LocalTime'(p.585)를 참고한다.
+
+### JST-10-03-03
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 3. java.time패키지
+- subsection: 3.3
+- title: Instant
+- page: 590
+- keywords:
+  - Instant
+  - date
+  - time
+  - LocalDate
+  - ZonedDateTime
+  - Duration
+  - format
+  - parse
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'Instant'(p.590)를 참고한다.
+
+### JST-10-03-04
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 3. java.time패키지
+- subsection: 3.4
+- title: LocalDateTime과 ZonedDateTime
+- page: 591
+- keywords:
+  - LocalDateTime
+  - ZonedDateTime
+  - date
+  - time
+  - LocalDate
+  - Instant
+  - Duration
+  - format
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'LocalDateTime과 ZonedDateTime'(p.591)를 참고한다.
+
+### JST-10-03-05
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 3. java.time패키지
+- subsection: 3.5
+- title: TemporalAdjusters
+- page: 595
+- keywords:
+  - TemporalAdjusters
+  - date
+  - time
+  - LocalDate
+  - Instant
+  - ZonedDateTime
+  - Duration
+  - format
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'TemporalAdjusters'(p.595)를 참고한다.
+
+### JST-10-03-06
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 3. java.time패키지
+- subsection: 3.6
+- title: Period와 Duration
+- page: 597
+- keywords:
+  - Period
+  - Duration
+  - date
+  - time
+  - LocalDate
+  - Instant
+  - ZonedDateTime
+  - format
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 'Period와 Duration'(p.597)를 참고한다.
+
+### JST-10-03-07
+
+- source: 자바의 정석
+- chapter: 10장 날짜와 시간 & 형식
+- section: 3. java.time패키지
+- subsection: 3.7
+- title: 파싱과 포맷
+- page: 602
+- keywords:
+  - date
+  - time
+  - LocalDate
+  - Instant
+  - ZonedDateTime
+  - Duration
+  - format
+  - parse
+- mapping_hint:
+  날짜·시각·시간대(UTC/KST)·기간 계산과 형식화가 diff에 쓰일 때 '파싱과 포맷'(p.602)를 참고한다.
+
+### JST-11-01-01
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.1
+- title: 컬렉션 프레임웍의 핵심 인터페이스
+- page: 608
+- keywords:
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+  - Comparator
+  - Iterator
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 '컬렉션 프레임웍의 핵심 인터페이스'(p.608)를 참고한다.
+
+### JST-11-01-02
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.2
+- title: ArrayList와 Vector
+- page: 615
+- keywords:
+  - ArrayList
+  - Vector
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'ArrayList와 Vector'(p.615)를 참고한다.
+
+### JST-11-01-03
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.3
+- title: LinkedList
+- page: 626
+- keywords:
+  - LinkedList
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+  - Comparator
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'LinkedList'(p.626)를 참고한다.
+
+### JST-11-01-04
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.4
+- title: Stack과 Queue
+- page: 634
+- keywords:
+  - Stack
+  - Queue
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'Stack과 Queue'(p.634)를 참고한다.
+
+### JST-11-01-05
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.5
+- title: Iterator, ListIterator, Enumeration
+- page: 644
+- keywords:
+  - Iterator
+  - ListIterator
+  - Enumeration
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'Iterator, ListIterator, Enumeration'(p.644)를 참고한다.
+
+### JST-11-01-06
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.6
+- title: Arrays
+- page: 654
+- keywords:
+  - Arrays
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+  - Comparator
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'Arrays'(p.654)를 참고한다.
+
+### JST-11-01-07
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.7
+- title: Comparator와 Comparable
+- page: 658
+- keywords:
+  - Comparator
+  - Comparable
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'Comparator와 Comparable'(p.658)를 참고한다.
+
+### JST-11-01-08
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.8
+- title: HashSet
+- page: 661
+- keywords:
+  - HashSet
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+  - Comparator
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'HashSet'(p.661)를 참고한다.
+
+### JST-11-01-09
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.9
+- title: TreeSet
+- page: 668
+- keywords:
+  - TreeSet
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+  - Comparator
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'TreeSet'(p.668)를 참고한다.
+
+### JST-11-01-10
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.10
+- title: HashMap과 Hashtable
+- page: 674
+- keywords:
+  - HashMap
+  - Hashtable
+  - collection
+  - List
+  - Set
+  - Map
+  - TreeMap
+  - Comparator
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'HashMap과 Hashtable'(p.674)를 참고한다.
+
+### JST-11-01-11
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.11
+- title: TreeMap
+- page: 684
+- keywords:
+  - TreeMap
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - Comparator
+  - Iterator
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'TreeMap'(p.684)를 참고한다.
+
+### JST-11-01-12
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.12
+- title: Properties
+- page: 688
+- keywords:
+  - Properties
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+  - Comparator
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'Properties'(p.688)를 참고한다.
+
+### JST-11-01-13
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.13
+- title: Collections
+- page: 694
+- keywords:
+  - Collections
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+  - Comparator
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 'Collections'(p.694)를 참고한다.
+
+### JST-11-01-14
+
+- source: 자바의 정석
+- chapter: 11장 컬렉션 프레임웍
+- section: 1. 컬렉션 프레임웍(collections framework)
+- subsection: 1.14
+- title: 컬렉션 클래스 정리 & 요약
+- page: 699
+- keywords:
+  - collection
+  - List
+  - Set
+  - Map
+  - HashMap
+  - TreeMap
+  - Comparator
+  - Iterator
+- mapping_hint:
+  List/Set/Map 구현 선택, 정렬 기준, 순회 방식이 diff에서 바뀔 때 '컬렉션 클래스 정리 & 요약'(p.699)를 참고한다.
+
+### JST-12-01-01
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 1. 지네릭스(generics)
+- subsection: 1.1
+- title: 지네릭스란?
+- page: 702
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '지네릭스란?'(p.702)를 참고한다.
+
+### JST-12-01-02
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 1. 지네릭스(generics)
+- subsection: 1.2
+- title: 지네릭 클래스의 선언
+- page: 703
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '지네릭 클래스의 선언'(p.703)를 참고한다.
+
+### JST-12-01-03
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 1. 지네릭스(generics)
+- subsection: 1.3
+- title: 지네릭 클래스의 객체 생성과 사용
+- page: 706
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '지네릭 클래스의 객체 생성과 사용'(p.706)를 참고한다.
+
+### JST-12-01-04
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 1. 지네릭스(generics)
+- subsection: 1.4
+- title: 제한된 지네릭 클래스
+- page: 709
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '제한된 지네릭 클래스'(p.709)를 참고한다.
+
+### JST-12-01-05
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 1. 지네릭스(generics)
+- subsection: 1.5
+- title: 와일드 카드
+- page: 711
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '와일드 카드'(p.711)를 참고한다.
+
+### JST-12-01-06
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 1. 지네릭스(generics)
+- subsection: 1.6
+- title: 지네릭 메서드
+- page: 717
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '지네릭 메서드'(p.717)를 참고한다.
+
+### JST-12-01-07
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 1. 지네릭스(generics)
+- subsection: 1.7
+- title: 지네릭 타입의 형변환
+- page: 720
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '지네릭 타입의 형변환'(p.720)를 참고한다.
+
+### JST-12-01-08
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 1. 지네릭스(generics)
+- subsection: 1.8
+- title: 지네릭 타입의 제거
+- page: 722
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '지네릭 타입의 제거'(p.722)를 참고한다.
+
+### JST-12-02-01
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 2. 열거형
+- subsection: 2.1
+- title: 열거형이란?
+- page: 724
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '열거형이란?'(p.724)를 참고한다.
+
+### JST-12-02-02
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 2. 열거형
+- subsection: 2.2
+- title: 열거형의 정의와 사용
+- page: 725
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '열거형의 정의와 사용'(p.725)를 참고한다.
+
+### JST-12-02-03
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 2. 열거형
+- subsection: 2.3
+- title: 열거형에 멤버 추가하기
+- page: 728
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '열거형에 멤버 추가하기'(p.728)를 참고한다.
+
+### JST-12-02-04
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 2. 열거형
+- subsection: 2.4
+- title: 열거형의 이해
+- page: 731
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '열거형의 이해'(p.731)를 참고한다.
+
+### JST-12-03-01
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 3. 애너테이션(annotation)
+- subsection: 3.1
+- title: 애너테이션이란?
+- page: 735
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '애너테이션이란?'(p.735)를 참고한다.
+
+### JST-12-03-02
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 3. 애너테이션(annotation)
+- subsection: 3.2
+- title: 표준 애너테이션
+- page: 736
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '표준 애너테이션'(p.736)를 참고한다.
+
+### JST-12-03-03
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 3. 애너테이션(annotation)
+- subsection: 3.3
+- title: 메타 애너테이션
+- page: 744
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '메타 애너테이션'(p.744)를 참고한다.
+
+### JST-12-03-04
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 3. 애너테이션(annotation)
+- subsection: 3.4
+- title: 애너테이션 타입 정의하기
+- page: 748
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '애너테이션 타입 정의하기'(p.748)를 참고한다.
+
+### JST-12-04-01
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 4. 레코드(record)
+- subsection: 4.1
+- title: 레코드란?
+- page: 754
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '레코드란?'(p.754)를 참고한다.
+
+### JST-12-04-02
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 4. 레코드(record)
+- subsection: 4.2
+- title: 레코드의 특징
+- page: 755
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '레코드의 특징'(p.755)를 참고한다.
+
+### JST-12-04-03
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 4. 레코드(record)
+- subsection: 4.3
+- title: 레코드의 중첩
+- page: 760
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '레코드의 중첩'(p.760)를 참고한다.
+
+### JST-12-04-04
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 4. 레코드(record)
+- subsection: 4.4
+- title: 지네릭 레코드
+- page: 762
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '지네릭 레코드'(p.762)를 참고한다.
+
+### JST-12-04-05
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 4. 레코드(record)
+- subsection: 4.5
+- title: 레코드와 애너테이션
+- page: 764
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '레코드와 애너테이션'(p.764)를 참고한다.
+
+### JST-12-05-01
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 5. 실드 클래스(sealed class)
+- subsection: 5.1
+- title: 실드 클래스란?
+- page: 766
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '실드 클래스란?'(p.766)를 참고한다.
+
+### JST-12-05-02
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 5. 실드 클래스(sealed class)
+- subsection: 5.2
+- title: 실드 클래스의 제약 조건
+- page: 767
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '실드 클래스의 제약 조건'(p.767)를 참고한다.
+
+### JST-12-05-03
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 5. 실드 클래스(sealed class)
+- subsection: 5.3
+- title: 실드 클래스와 switch식
+- page: 769
+- keywords:
+  - switch
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '실드 클래스와 switch식'(p.769)를 참고한다.
+
+### JST-12-06-01
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 6. 모듈(module)
+- subsection: 6.1
+- title: 모듈이란?
+- page: 774
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '모듈이란?'(p.774)를 참고한다.
+
+### JST-12-06-02
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 6. 모듈(module)
+- subsection: 6.2
+- title: 모듈 설명자 - module-info.java
+- page: 776
+- keywords:
+  - module
+  - info.java
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '모듈 설명자 - module-info.java'(p.776)를 참고한다.
+
+### JST-12-06-03
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 6. 모듈(module)
+- subsection: 6.3
+- title: 이름없는 모듈과 java.base모듈
+- page: 779
+- keywords:
+  - java.base
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '이름없는 모듈과 java.base모듈'(p.779)를 참고한다.
+
+### JST-12-06-04
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 6. 모듈(module)
+- subsection: 6.4
+- title: 전이적 의존성과 순환 의존성
+- page: 786
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '전이적 의존성과 순환 의존성'(p.786)를 참고한다.
+
+### JST-12-06-05
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 6. 모듈(module)
+- subsection: 6.5
+- title: 모듈의 컴파일과 실행
+- page: 788
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '모듈의 컴파일과 실행'(p.788)를 참고한다.
+
+### JST-12-06-06
+
+- source: 자바의 정석
+- chapter: 12장 모던 자바 기능
+- section: 6. 모듈(module)
+- subsection: 6.6
+- title: 자동 모듈
+- page: 793
+- keywords:
+  - generics
+  - wildcard
+  - enum
+  - annotation
+  - record
+  - sealed
+  - module
+- mapping_hint:
+  제네릭·열거형·애너테이션·record·sealed class가 diff에서 추가·변경될 때 '자동 모듈'(p.793)를 참고한다.
+
+### JST-13-01-01
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 1. 쓰레드
+- subsection: 1.1
+- title: 프로세스와 쓰레드
+- page: 796
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '프로세스와 쓰레드'(p.796)를 참고한다.
+
+### JST-13-01-02
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 1. 쓰레드
+- subsection: 1.2
+- title: 쓰레드의 구현과 실행
+- page: 798
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '쓰레드의 구현과 실행'(p.798)를 참고한다.
+
+### JST-13-01-03
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 1. 쓰레드
+- subsection: 1.3
+- title: start()와 run()
+- page: 802
+- keywords:
+  - start
+  - run
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'start()와 run()'(p.802)를 참고한다.
+
+### JST-13-01-04
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 1. 쓰레드
+- subsection: 1.4
+- title: 싱글쓰레드와 멀티쓰레드
+- page: 806
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '싱글쓰레드와 멀티쓰레드'(p.806)를 참고한다.
+
+### JST-13-01-05
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 1. 쓰레드
+- subsection: 1.5
+- title: 쓰레드의 우선순위
+- page: 812
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '쓰레드의 우선순위'(p.812)를 참고한다.
+
+### JST-13-01-06
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 1. 쓰레드
+- subsection: 1.6
+- title: 쓰레드 그룹(thread group)
+- page: 815
+- keywords:
+  - thread group
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '쓰레드 그룹(thread group)'(p.815)를 참고한다.
+
+### JST-13-01-07
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 1. 쓰레드
+- subsection: 1.7
+- title: 데몬 쓰레드(daemon thread)
+- page: 818
+- keywords:
+  - daemon thread
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '데몬 쓰레드(daemon thread)'(p.818)를 참고한다.
+
+### JST-13-01-08
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 1. 쓰레드
+- subsection: 1.8
+- title: 쓰레드의 실행제어
+- page: 822
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '쓰레드의 실행제어'(p.822)를 참고한다.
+
+### JST-13-02-01
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 2. 쓰레드의 동기화
+- subsection: 2.1
+- title: synchronized를 이용한 동기화
+- page: 841
+- keywords:
+  - synchronized
+  - thread
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'synchronized를 이용한 동기화'(p.841)를 참고한다.
+
+### JST-13-02-02
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 2. 쓰레드의 동기화
+- subsection: 2.2
+- title: wait()과 notify()
+- page: 845
+- keywords:
+  - wait
+  - notify
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'wait()과 notify()'(p.845)를 참고한다.
+
+### JST-13-02-03
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 2. 쓰레드의 동기화
+- subsection: 2.3
+- title: Lock과 Condition을 이용한 동기화
+- page: 853
+- keywords:
+  - Lock
+  - Condition
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'Lock과 Condition을 이용한 동기화'(p.853)를 참고한다.
+
+### JST-13-02-04
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 2. 쓰레드의 동기화
+- subsection: 2.4
+- title: volatile
+- page: 860
+- keywords:
+  - volatile
+  - thread
+  - synchronized
+  - lock
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'volatile'(p.860)를 참고한다.
+
+### JST-13-02-05
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 2. 쓰레드의 동기화
+- subsection: 2.5
+- title: fork & join 프레임웍
+- page: 862
+- keywords:
+  - fork
+  - join
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'fork & join 프레임웍'(p.862)를 참고한다.
+
+### JST-13-03-01
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 3. 가상 쓰레드(virtual thread)
+- subsection: 3.1
+- title: 가상 쓰레드란?
+- page: 867
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '가상 쓰레드란?'(p.867)를 참고한다.
+
+### JST-13-03-02
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 3. 가상 쓰레드(virtual thread)
+- subsection: 3.2
+- title: 가상 쓰레드의 생성과 사용
+- page: 868
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '가상 쓰레드의 생성과 사용'(p.868)를 참고한다.
+
+### JST-13-03-03
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 3. 가상 쓰레드(virtual thread)
+- subsection: 3.3
+- title: 가상 쓰레드의 특징
+- page: 869
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '가상 쓰레드의 특징'(p.869)를 참고한다.
+
+### JST-13-03-04
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 3. 가상 쓰레드(virtual thread)
+- subsection: 3.4
+- title: 플랫폼 쓰레드와 가상 쓰레드
+- page: 871
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '플랫폼 쓰레드와 가상 쓰레드'(p.871)를 참고한다.
+
+### JST-13-03-05
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 3. 가상 쓰레드(virtual thread)
+- subsection: 3.5
+- title: 가상 쓰레드의 상태
+- page: 878
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '가상 쓰레드의 상태'(p.878)를 참고한다.
+
+### JST-13-03-06
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 3. 가상 쓰레드(virtual thread)
+- subsection: 3.6
+- title: 가상 쓰레드 작성시 주의사항
+- page: 884
+- keywords:
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '가상 쓰레드 작성시 주의사항'(p.884)를 참고한다.
+
+### JST-13-03-07
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 3. 가상 쓰레드(virtual thread)
+- subsection: 3.7
+- title: Continuation과 StackChunk
+- page: 885
+- keywords:
+  - Continuation
+  - StackChunk
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'Continuation과 StackChunk'(p.885)를 참고한다.
+
+### JST-13-04-01
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 4. Executor와 ExecutorService
+- subsection: 4.1
+- title: Executor
+- page: 889
+- keywords:
+  - Executor
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'Executor'(p.889)를 참고한다.
+
+### JST-13-04-02
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 4. Executor와 ExecutorService
+- subsection: 4.2
+- title: ThreadFactory
+- page: 890
+- keywords:
+  - ThreadFactory
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'ThreadFactory'(p.890)를 참고한다.
+
+### JST-13-04-03
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 4. Executor와 ExecutorService
+- subsection: 4.3
+- title: ExecutorService
+- page: 892
+- keywords:
+  - ExecutorService
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'ExecutorService'(p.892)를 참고한다.
+
+### JST-13-04-04
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 4. Executor와 ExecutorService
+- subsection: 4.4
+- title: 쓰레드 풀(thread pool)
+- page: 898
+- keywords:
+  - thread pool
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - Future
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 '쓰레드 풀(thread pool)'(p.898)를 참고한다.
+
+### JST-13-04-05
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 4. Executor와 ExecutorService
+- subsection: 4.5
+- title: Future
+- page: 903
+- keywords:
+  - Future
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - CompletableFuture
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'Future'(p.903)를 참고한다.
+
+### JST-13-04-06
+
+- source: 자바의 정석
+- chapter: 13장 쓰레드
+- section: 4. Executor와 ExecutorService
+- subsection: 4.6
+- title: CompletableFuture
+- page: 913
+- keywords:
+  - CompletableFuture
+  - thread
+  - synchronized
+  - lock
+  - volatile
+  - executor
+  - thread pool
+  - Future
+- mapping_hint:
+  동시 실행·동기화·락·스레드 풀·비동기 작업이 diff에 들어오거나 동시성 문제가 쟁점일 때 'CompletableFuture'(p.913)를 참고한다.
+
+### JST-14-01-01
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 1. 람다식(Lambda expression)
+- subsection: 1.1
+- title: 람다식이란?
+- page: 928
+- keywords:
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 '람다식이란?'(p.928)를 참고한다.
+
+### JST-14-01-02
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 1. 람다식(Lambda expression)
+- subsection: 1.2
+- title: 람다식 작성하기
+- page: 929
+- keywords:
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 '람다식 작성하기'(p.929)를 참고한다.
+
+### JST-14-01-03
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 1. 람다식(Lambda expression)
+- subsection: 1.3
+- title: 함수형 인터페이스(Functional Interface)
+- page: 931
+- keywords:
+  - Functional Interface
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 '함수형 인터페이스(Functional Interface)'(p.931)를 참고한다.
+
+### JST-14-01-04
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 1. 람다식(Lambda expression)
+- subsection: 1.4
+- title: java.util.function패키지
+- page: 936
+- keywords:
+  - java.util.function
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 'java.util.function패키지'(p.936)를 참고한다.
+
+### JST-14-01-05
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 1. 람다식(Lambda expression)
+- subsection: 1.5
+- title: Function의 합성과 Predicate의 결합
+- page: 942
+- keywords:
+  - Function
+  - Predicate
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 'Function의 합성과 Predicate의 결합'(p.942)를 참고한다.
+
+### JST-14-01-06
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 1. 람다식(Lambda expression)
+- subsection: 1.6
+- title: 메서드 참조
+- page: 946
+- keywords:
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 '메서드 참조'(p.946)를 참고한다.
+
+### JST-14-02-01
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 2. 스트림(stream)
+- subsection: 2.1
+- title: 스트림이란?
+- page: 948
+- keywords:
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 '스트림이란?'(p.948)를 참고한다.
+
+### JST-14-02-02
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 2. 스트림(stream)
+- subsection: 2.2
+- title: 스트림 만들기
+- page: 953
+- keywords:
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 '스트림 만들기'(p.953)를 참고한다.
+
+### JST-14-02-03
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 2. 스트림(stream)
+- subsection: 2.3
+- title: 스트림의 중간연산
+- page: 958
+- keywords:
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 '스트림의 중간연산'(p.958)를 참고한다.
+
+### JST-14-02-04
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 2. 스트림(stream)
+- subsection: 2.4
+- title: Optional<T>와 OptionalInt
+- page: 971
+- keywords:
+  - Optional<T>
+  - OptionalInt
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 'Optional<T>와 OptionalInt'(p.971)를 참고한다.
+
+### JST-14-02-05
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 2. 스트림(stream)
+- subsection: 2.5
+- title: 스트림의 최종연산
+- page: 976
+- keywords:
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 '스트림의 최종연산'(p.976)를 참고한다.
+
+### JST-14-02-06
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 2. 스트림(stream)
+- subsection: 2.6
+- title: collect()
+- page: 980
+- keywords:
+  - collect
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 'collect()'(p.980)를 참고한다.
+
+### JST-14-02-07
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 2. 스트림(stream)
+- subsection: 2.7
+- title: Collector구현하기
+- page: 997
+- keywords:
+  - Collector
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 'Collector구현하기'(p.997)를 참고한다.
+
+### JST-14-02-08
+
+- source: 자바의 정석
+- chapter: 14장 람다와 스트림
+- section: 2. 스트림(stream)
+- subsection: 2.8
+- title: 스트림의 변환
+- page: 1000
+- keywords:
+  - lambda
+  - functional interface
+  - method reference
+  - stream
+  - Optional
+  - collect
+  - Collector
+- mapping_hint:
+  람다·함수형 인터페이스·스트림 연산·Optional·collect가 diff에 추가·변경될 때 '스트림의 변환'(p.1000)를 참고한다.
+
+### JST-15-01-01
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 1. 자바에서의 입출력
+- subsection: 1.1
+- title: 입출력이란?
+- page: 1004
+- keywords:
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 '입출력이란?'(p.1004)를 참고한다.
+
+### JST-15-01-02
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 1. 자바에서의 입출력
+- subsection: 1.2
+- title: 스트림(stream)
+- page: 1004
+- keywords:
+  - stream
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 '스트림(stream)'(p.1004)를 참고한다.
+
+### JST-15-01-03
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 1. 자바에서의 입출력
+- subsection: 1.3
+- title: 바이트 기반 스트림 - InputStream, OutputStream
+- page: 1005
+- keywords:
+  - InputStream
+  - OutputStream
+  - I/O
+  - Reader
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 '바이트 기반 스트림 - InputStream, OutputStream'(p.1005)를 참고한다.
+
+### JST-15-01-04
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 1. 자바에서의 입출력
+- subsection: 1.4
+- title: 보조 스트림
+- page: 1007
+- keywords:
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 '보조 스트림'(p.1007)를 참고한다.
+
+### JST-15-01-05
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 1. 자바에서의 입출력
+- subsection: 1.5
+- title: 문자 기반 스트림 - Reader, Writer
+- page: 1008
+- keywords:
+  - Reader
+  - Writer
+  - I/O
+  - InputStream
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 '문자 기반 스트림 - Reader, Writer'(p.1008)를 참고한다.
+
+### JST-15-02-01
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 2. 바이트기반 스트림
+- subsection: 2.1
+- title: InputStream과 OutputStream
+- page: 1010
+- keywords:
+  - InputStream
+  - OutputStream
+  - I/O
+  - Reader
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'InputStream과 OutputStream'(p.1010)를 참고한다.
+
+### JST-15-02-02
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 2. 바이트기반 스트림
+- subsection: 2.2
+- title: ByteArrayInputStream과 ByteArrayOutputStream
+- page: 1012
+- keywords:
+  - ByteArrayInputStream
+  - ByteArrayOutputStream
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'ByteArrayInputStream과 ByteArrayOutputStream'(p.1012)를 참고한다.
+
+### JST-15-02-03
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 2. 바이트기반 스트림
+- subsection: 2.3
+- title: FileInputStream과 FileOutputStream
+- page: 1016
+- keywords:
+  - FileInputStream
+  - FileOutputStream
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'FileInputStream과 FileOutputStream'(p.1016)를 참고한다.
+
+### JST-15-03-01
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 3. 바이트 기반의 보조 스트림
+- subsection: 3.1
+- title: FilterInputStream과 FilterOutputStream
+- page: 1019
+- keywords:
+  - FilterInputStream
+  - FilterOutputStream
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'FilterInputStream과 FilterOutputStream'(p.1019)를 참고한다.
+
+### JST-15-03-02
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 3. 바이트 기반의 보조 스트림
+- subsection: 3.2
+- title: BufferedInputStream과 BufferedOutputStream
+- page: 1020
+- keywords:
+  - BufferedInputStream
+  - BufferedOutputStream
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'BufferedInputStream과 BufferedOutputStream'(p.1020)를 참고한다.
+
+### JST-15-03-03
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 3. 바이트 기반의 보조 스트림
+- subsection: 3.3
+- title: DataInputStream과 DataOutputStream
+- page: 1023
+- keywords:
+  - DataInputStream
+  - DataOutputStream
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'DataInputStream과 DataOutputStream'(p.1023)를 참고한다.
+
+### JST-15-03-04
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 3. 바이트 기반의 보조 스트림
+- subsection: 3.4
+- title: SequenceInputStream
+- page: 1029
+- keywords:
+  - SequenceInputStream
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'SequenceInputStream'(p.1029)를 참고한다.
+
+### JST-15-03-05
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 3. 바이트 기반의 보조 스트림
+- subsection: 3.5
+- title: PrintStream
+- page: 1031
+- keywords:
+  - PrintStream
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'PrintStream'(p.1031)를 참고한다.
+
+### JST-15-04-01
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 4. 문자기반 스트림
+- subsection: 4.1
+- title: Reader와 Writer
+- page: 1035
+- keywords:
+  - Reader
+  - Writer
+  - I/O
+  - InputStream
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'Reader와 Writer'(p.1035)를 참고한다.
+
+### JST-15-04-02
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 4. 문자기반 스트림
+- subsection: 4.2
+- title: FileReader와 FileWriter
+- page: 1037
+- keywords:
+  - FileReader
+  - FileWriter
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'FileReader와 FileWriter'(p.1037)를 참고한다.
+
+### JST-15-04-03
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 4. 문자기반 스트림
+- subsection: 4.3
+- title: PipedReader와 PipedWriter
+- page: 1039
+- keywords:
+  - PipedReader
+  - PipedWriter
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'PipedReader와 PipedWriter'(p.1039)를 참고한다.
+
+### JST-15-04-04
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 4. 문자기반 스트림
+- subsection: 4.4
+- title: StringReader와 StringWriter
+- page: 1041
+- keywords:
+  - StringReader
+  - StringWriter
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'StringReader와 StringWriter'(p.1041)를 참고한다.
+
+### JST-15-05-01
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 5. 문자기반의 보조스트림
+- subsection: 5.1
+- title: BufferedReader와 BufferedWriter
+- page: 1042
+- keywords:
+  - BufferedReader
+  - BufferedWriter
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'BufferedReader와 BufferedWriter'(p.1042)를 참고한다.
+
+### JST-15-05-02
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 5. 문자기반의 보조스트림
+- subsection: 5.2
+- title: InputStreamReader와 OutputStreamWriter
+- page: 1043
+- keywords:
+  - InputStreamReader
+  - OutputStreamWriter
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'InputStreamReader와 OutputStreamWriter'(p.1043)를 참고한다.
+
+### JST-15-06-01
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 6. 표준 입출력과 File
+- subsection: 6.1
+- title: 표준 입출력 - System.in, System.out, System.err
+- page: 1045
+- keywords:
+  - System.in
+  - System.out
+  - System.err
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 '표준 입출력 - System.in, System.out, System.err'(p.1045)를 참고한다.
+
+### JST-15-06-02
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 6. 표준 입출력과 File
+- subsection: 6.2
+- title: 표준입출력의 대상변경 - setOut(), setErr(), setIn()
+- page: 1047
+- keywords:
+  - setOut
+  - setErr
+  - setIn
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 '표준입출력의 대상변경 - setOut(), setErr(), setIn()'(p.1047)를 참고한다.
+
+### JST-15-06-03
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 6. 표준 입출력과 File
+- subsection: 6.3
+- title: RandomAccessFile
+- page: 1049
+- keywords:
+  - RandomAccessFile
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'RandomAccessFile'(p.1049)를 참고한다.
+
+### JST-15-06-04
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 6. 표준 입출력과 File
+- subsection: 6.4
+- title: File
+- page: 1053
+- keywords:
+  - File
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'File'(p.1053)를 참고한다.
+
+### JST-15-07-01
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 7. 직렬화(Serialization)
+- subsection: 7.1
+- title: 직렬화란?
+- page: 1072
+- keywords:
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 '직렬화란?'(p.1072)를 참고한다.
+
+### JST-15-07-02
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 7. 직렬화(Serialization)
+- subsection: 7.2
+- title: ObjectInputStream, ObjectOutputStream
+- page: 1073
+- keywords:
+  - ObjectInputStream
+  - ObjectOutputStream
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 'ObjectInputStream, ObjectOutputStream'(p.1073)를 참고한다.
+
+### JST-15-07-03
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 7. 직렬화(Serialization)
+- subsection: 7.3
+- title: 직렬화 가능한 클래스 만들기 - Serializable, transient
+- page: 1075
+- keywords:
+  - Serializable
+  - transient
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 '직렬화 가능한 클래스 만들기 - Serializable, transient'(p.1075)를 참고한다.
+
+### JST-15-07-04
+
+- source: 자바의 정석
+- chapter: 15장 입출력(I/O)
+- section: 7. 직렬화(Serialization)
+- subsection: 7.4
+- title: 직렬화가능한 클래스의 버전관리
+- page: 1081
+- keywords:
+  - I/O
+  - InputStream
+  - Reader
+  - Buffered
+  - File
+  - serialization
+  - Serializable
+- mapping_hint:
+  파일·바이트/문자 스트림 입출력, 직렬화가 diff에 쓰일 때 '직렬화가능한 클래스의 버전관리'(p.1081)를 참고한다.
+
+### JST-16-01-01
+
+- source: 자바의 정석
+- chapter: 16장 네트워킹(networking)
+- section: 1. 네트워킹(networking)
+- subsection: 1.1
+- title: 클라이언트/서버(client/server)
+- page: 1084
+- keywords:
+  - client/server
+  - network
+  - IP
+  - URL
+  - URI
+  - socket
+  - TCP
+  - UDP
+- mapping_hint:
+  외부 서버 호출·URL/URI 처리·소켓·TCP/UDP 같은 네트워크 동작이 diff에 쓰일 때 '클라이언트/서버(client/server)'(p.1084)를 참고한다.
+
+### JST-16-01-02
+
+- source: 자바의 정석
+- chapter: 16장 네트워킹(networking)
+- section: 1. 네트워킹(networking)
+- subsection: 1.2
+- title: IP주소(IP address)
+- page: 1086
+- keywords:
+  - IP address
+  - IP
+  - network
+  - client/server
+  - URL
+  - URI
+  - socket
+  - TCP
+- mapping_hint:
+  외부 서버 호출·URL/URI 처리·소켓·TCP/UDP 같은 네트워크 동작이 diff에 쓰일 때 'IP주소(IP address)'(p.1086)를 참고한다.
+
+### JST-16-01-03
+
+- source: 자바의 정석
+- chapter: 16장 네트워킹(networking)
+- section: 1. 네트워킹(networking)
+- subsection: 1.3
+- title: InetAddress
+- page: 1087
+- keywords:
+  - InetAddress
+  - network
+  - client/server
+  - IP
+  - URL
+  - URI
+  - socket
+  - TCP
+- mapping_hint:
+  외부 서버 호출·URL/URI 처리·소켓·TCP/UDP 같은 네트워크 동작이 diff에 쓰일 때 'InetAddress'(p.1087)를 참고한다.
+
+### JST-16-01-04
+
+- source: 자바의 정석
+- chapter: 16장 네트워킹(networking)
+- section: 1. 네트워킹(networking)
+- subsection: 1.4
+- title: URL과 URI
+- page: 1089
+- keywords:
+  - URL
+  - URI
+  - network
+  - client/server
+  - IP
+  - socket
+  - TCP
+  - UDP
+- mapping_hint:
+  외부 서버 호출·URL/URI 처리·소켓·TCP/UDP 같은 네트워크 동작이 diff에 쓰일 때 'URL과 URI'(p.1089)를 참고한다.
+
+### JST-16-01-05
+
+- source: 자바의 정석
+- chapter: 16장 네트워킹(networking)
+- section: 1. 네트워킹(networking)
+- subsection: 1.5
+- title: URLConnection
+- page: 1092
+- keywords:
+  - URLConnection
+  - network
+  - client/server
+  - IP
+  - URL
+  - URI
+  - socket
+  - TCP
+- mapping_hint:
+  외부 서버 호출·URL/URI 처리·소켓·TCP/UDP 같은 네트워크 동작이 diff에 쓰일 때 'URLConnection'(p.1092)를 참고한다.
+
+### JST-16-02-01
+
+- source: 자바의 정석
+- chapter: 16장 네트워킹(networking)
+- section: 2. 소켓 프로그래밍
+- subsection: 2.1
+- title: TCP와 UDP
+- page: 1097
+- keywords:
+  - TCP
+  - UDP
+  - network
+  - client/server
+  - IP
+  - URL
+  - URI
+  - socket
+- mapping_hint:
+  외부 서버 호출·URL/URI 처리·소켓·TCP/UDP 같은 네트워크 동작이 diff에 쓰일 때 'TCP와 UDP'(p.1097)를 참고한다.
+
+### JST-16-02-02
+
+- source: 자바의 정석
+- chapter: 16장 네트워킹(networking)
+- section: 2. 소켓 프로그래밍
+- subsection: 2.2
+- title: TCP소켓 프로그래밍
+- page: 1098
+- keywords:
+  - TCP
+  - network
+  - client/server
+  - IP
+  - URL
+  - URI
+  - socket
+  - UDP
+- mapping_hint:
+  외부 서버 호출·URL/URI 처리·소켓·TCP/UDP 같은 네트워크 동작이 diff에 쓰일 때 'TCP소켓 프로그래밍'(p.1098)를 참고한다.
+
+### JST-16-02-03
+
+- source: 자바의 정석
+- chapter: 16장 네트워킹(networking)
+- section: 2. 소켓 프로그래밍
+- subsection: 2.3
+- title: UDP소켓 프로그래밍
+- page: 1116
+- keywords:
+  - UDP
+  - network
+  - client/server
+  - IP
+  - URL
+  - URI
+  - socket
+  - TCP
+- mapping_hint:
+  외부 서버 호출·URL/URI 처리·소켓·TCP/UDP 같은 네트워크 동작이 diff에 쓰일 때 'UDP소켓 프로그래밍'(p.1116)를 참고한다.
