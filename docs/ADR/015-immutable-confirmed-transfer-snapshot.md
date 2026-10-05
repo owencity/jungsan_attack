@@ -1,5 +1,9 @@
 # ADR-015 · 확정된 송금 명세를 불변 스냅샷으로 저장한다
 
+> **2026-10-06 범위 개정 — [ADR-020](020-independent-settlement-units.md):**
+> snapshot의 소유권·되돌리기는 총무별 정산 단위에 적용한다. 다른 단위의 snapshot을 지우거나
+> 동일 수취인이라는 이유로 합치지 않는다. 불변성·일회용 전체 삭제 정책은 유지한다.
+
 **상태** 확정 (2026-09-29 범위 조정, `ADR-019`) · **대체** `ADR-005`의 `paidAmount` 방식 · **관련** `REQUIREMENTS.md`,
 `CALC_RULES_V2.md`, `DOMAIN_DB_DESIGN_V2.md`, `ADR-004`
 

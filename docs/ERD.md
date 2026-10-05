@@ -1,5 +1,10 @@
 # 정산어택 — ERD
 
+> **제품 v4 설계와 구분(2026-10-06):** 총무별 단위·명단·snapshot의 논리 스키마는
+> [SETTLEMENT_UNITS §3](SETTLEMENT_UNITS.md#3-논리-스키마--아직-적용되지-않음)에 있다.
+> 이번 계약 PR에는 migration이 없으므로 아래 실제 ERD에 미래 테이블을 적용된 것처럼 추가하지 않는다.
+> 후속 신규 Liquibase PR에서 이 실제 ERD를 함께 갱신한다.
+
 > `server/src/main/resources/db/changelog/`의 Liquibase YAML을 손으로 옮긴 것이다.
 > **스키마가 바뀌면 이 문서가 아니라 changelog를 먼저 고치고, 이 문서를 그에 맞춰
 > 갱신한다** (`00-README.md` — 명세서는 손으로 쓰지 않는다의 정신을 ERD에도 적용).

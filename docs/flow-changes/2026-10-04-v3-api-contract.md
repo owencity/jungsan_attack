@@ -1,5 +1,13 @@
 # 2026-10-04 — v3 API: 프론트가 붙이는 계약 한 장
 
+> **2026-10-06 FC-015 개정:** [같은 술자리·독립 정산 계약](../SETTLEMENT_UNITS.md) §4가
+> 아래의 전역 host/status/inputRevision/열람·명단 제외·정산 API를 대체한다.
+> 응답은 `settlementUnits`와 round/transfer의 `settlementUnitId`를 포함하며 관리·응답·정산은 단위 ID를 지정한다.
+> D1 상세와 같은 목록, D2 송금 근거, D3 대리 응답, D4 표시 이름은 유지한다.
+> D5의 “봤음” 기록은 복수 정산을 구분하도록 `settlement_unit_members.settlement_viewed_at`로 이동한다.
+> D6·D7 인증/탈퇴는 별도 작업이다. 앱 Bearer 제안과 쿠키 전용 ADR의 충돌은 이번 계약에서 해결하지 않는다.
+> 아래 본문은 v3 화면 계약의 기록이며 단위 분리가 필요한 부분은 위 계약을 우선한다.
+
 출시 일정(`docs/RELEASE_2026_10_11.md`)에 맞춰 웹·Android·iOS가 목데이터를 API로 바꾼다. 세 플랫폼은 이미
 목데이터로 모든 화면이 돈다 — **이 문서의 응답 모양이 곧 프론트 모델(웹 `v3/model.ts`, 앱 `v3/Model.kt`)이다.**
 모양이 같으면 프론트는 목데이터를 API 호출로 바꾸기만 하면 된다.
