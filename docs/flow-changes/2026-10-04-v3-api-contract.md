@@ -31,6 +31,8 @@
 
 이미 있는 것: 카카오 로그인(웹 쿠키), `GET /auth/me`(`displayName`·`nickname`·`needsName`), `PUT /users/me/display-name`(FC-013).
 
+**`/auth/me`에 더 필요한 것(2026-10-06 추가):** `spoonCount`(H1 내 캐릭터·칭호 칩), `payout`(§9, 본인 것), `unreadNotificationCount`(§12).
+
 **1-1. 앱 로그인 (새로 필요, P0).** 앱은 카카오 SDK 없이 **서버 OAuth 를 앱 안 브라우저로** 연다
 (Android Custom Tabs, iOS `ASWebAuthenticationSession`). 그런데 쿠키는 그 브라우저에 남지 앱으로 오지 않는다. 그래서:
 
@@ -104,7 +106,7 @@ Apple 은 이름을 첫 로그인에만 주고 안 줄 수도 있다 — 어차�
 
 | 요청 | 규칙 |
 |---|---|
-| `POST /api/v1/gatherings` (본문 없음) → 201 `Gathering` | 제목 `M/d 술자리`, 날짜 오늘(KST), 만든 사람이 총무이자 첫 참여자, `shareToken` 발급, 타임라인 `CREATED` |
+| `POST /api/v1/gatherings` `{ title? }` → 201 `Gathering` | 제목은 주면 그 값(1~20자, FC-015 다음 차 새 술자리), 없으면 `M/d 술자리`, 날짜 오늘(KST), 만든 사람이 총무이자 첫 참여자, `shareToken` 발급, 타임라인 `CREATED` |
 | `PATCH /gatherings/{id}` `{ title?, date? }` | 총무, `OPEN`만. 제목 1~20자 |
 | `POST /gatherings/{id}/rounds` `{ total, payerParticipantId, drinks[] }` → 201 `Round` | 총무, `OPEN`. `seq` = 마지막+1. `total` ≥ 0, 결제자는 ACTIVE 참여자. 기존 참여자의 새 차수 칸은 **빈칸**(응답 행 없음) |
 | `PUT /gatherings/{id}/rounds/{rid}` (같은 본문) | 총무, `OPEN` |
