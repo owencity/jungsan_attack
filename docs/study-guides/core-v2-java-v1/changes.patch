@@ -1,0 +1,832 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index af4a5fa895b6a3a83ff7c808380627b9be786c36..2f44caf5b79767efb159f7474fa103ecc5b20244 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -344,6 +344,15 @@ checksum이 깨진다. **따라서 다음 파일은 `015-*.yaml`이고, 그 안
+ 
+ ## 9. 코드 관례
+ 
++### 같은 기능의 Java·Kotlin 구현과 학습 기록
++
++- 학습용 프로젝트이므로 같은 기능을 `.java`와 `.kt` 양쪽에서 실제 구현한다. 한쪽을 호출하기만 하는 래퍼는 별도 구현으로 세지 않는다.
++- 같은 JVM 클래스명은 별도 패키지로 구분한다. Core의 Java 기준은 `app.jeongsan.core.javaimpl`이며 기존 Kotlin 진입점은 유지한다.
++- 같은 입력으로 성공 결과의 금액·근거·송금 순서와 실패 결과의 오류 코드·메시지·식별자를 비교한다. 두 구현이 같다는 것과 명세에 맞다는 것은 별도로 검증한다.
++- 구현 완료 → PR → 리뷰 및 스터디 가이드 순서로 진행한다. 목차와 정책은 작업 브랜치가 아니라 최신 `origin/main:STUDY_CATALOG.md`·`origin/main:STUDY_POLICY.md`에서 읽는다.
++- 가이드는 등록된 자료의 장·절·페이지, 클래스·함수·diff 줄, 볼 관점 한 줄을 연결한다. Java 항목은 Java 구현을, Kotlin 항목은 Kotlin 구현을 근거로 삼는다.
++- 개발이 끝나도 학습을 이어갈 수 있게 기준 commit·diff·가이드·사용한 목차 commit을 보존한다. 학습 완료 여부는 사용자가 기록하고, 기존 가이드 버전은 덮어쓰지 않는다.
++
+ **린터가 없다**(ktlint·detekt 모두 미도입). 스타일의 기준은 **주변 코드**뿐이니
+ 새 파일을 만들기 전에 같은 패키지의 기존 파일을 먼저 읽어라.
+ 
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 67cea27283513e94b39ad028a5e5187395bfe9bb..005181ac69e17d51019f11725292095ecc99d970 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -5,6 +5,15 @@
+ 
+ ---
+ 
++## [2026-10-05] Core v2를 Java와 Kotlin에서 각각 구현하고 전체 결과를 비교한다
++
++- **문제:** 학습용으로 같은 기능을 두 언어에서 구현하기로 했지만 기존 Core v2 PR에는 Kotlin 구현만 있어 Java diff를 읽으며 학습할 수 없었다.
++- **고려한 대안:** Kotlin 호출 래퍼, 별도 Java 모듈, 같은 core 모듈의 별도 Java 패키지에서 독립 구현.
++- **선택 이유 / 트레이드오프:** 같은 모듈의 `javaimpl` 패키지로 JVM 이름 충돌을 피하고 새 의존성 없이 구현한다. Kotlin 구현은 유지하며 두 엔진의 모든 결과 필드·오류 순서와 고정 seed 2,000건을 비교한다. Java record의 컬렉션에는 방어적 복사를 추가한다.
++- **아쉬운 점:** 두 구현을 함께 유지해야 하고 동일한 결함은 비교만으로 찾을 수 없다. 그래서 명세 예제의 기대값도 별도로 검사한다. 전체 총액 상한이 Kotlin에서 CONFIRM에만 적용되는 기존 명세 차이는 이번 구현에서도 유지하고 PR 확인 사항으로 남긴다. 서버 기능의 Java 보완은 다음 작업이다.
++
++---
++
+ ## [2026-10-03] 제품 v3 기준에서 Core v2만 선별 보존한다
+ 
+ - **문제:** WIP에는 Core v2와 제품 v3에서 폐기한 Group 관리 기반이 섞여 있어 전체 병합하면 구형 제품 방향이 다시 들어온다.
+diff --git a/README.md b/README.md
+index 4042754fee10fa4cd9e0e74bd91f5eb506bd605f..46a49238a7ca639bb25124e6d4ec8741fca3c052 100644
+--- a/README.md
++++ b/README.md
+@@ -18,6 +18,10 @@
+ 
+ ## 왜 만들었나
+ 
++학습용 Core v2는 같은 기능을 Kotlin과 Java로 각각 구현한다. 입력·정산·검증·결과·유리수의
++파일 대응과 실행 방법은 [두 언어 구현 안내](docs/CORE_DUAL_IMPLEMENTATION.md)를 참고한다.
++두 구현의 금액·근거·송금 순서·오류를 비교하는 테스트와 [스터디 가이드](docs/study-guides/core-v2-java-v1/guide.md)를 함께 둔다.
++
+ 술자리 정산은 나눗셈 문제가 아니라 **기록 문제**다.
+ 
+ 1차는 다섯 명이 갔는데 2차는 셋만 갔다. 한 명은 술을 안 마셨고, 택시비는 두 명만
+diff --git a/core/src/main/java/app/jeongsan/core/javaimpl/Model.java b/core/src/main/java/app/jeongsan/core/javaimpl/Model.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..49b8ca5f5c5c54bf8bf01fc4024f2bc35996af03
+--- /dev/null
++++ b/core/src/main/java/app/jeongsan/core/javaimpl/Model.java
+@@ -0,0 +1,78 @@
++package app.jeongsan.core.javaimpl;
++
++import java.math.BigInteger;
++import java.util.Collections;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.stream.Collectors;
++
++/** 같은 파일명의 Kotlin 타입과 JVM 이름이 충돌하지 않도록 Java 입력 타입을 묶는다. */
++public final class Model {
++    private Model() {}
++
++    public record SettlementInput(List<Participant> participants, List<Round> rounds,
++                                  Map<AttendanceKey, Attendance> attendance, List<DrinkItem> drinkItems) {
++        public SettlementInput {
++            participants = List.copyOf(participants);
++            rounds = List.copyOf(rounds);
++            // 오류 순서도 비교 대상이므로 Map.copyOf의 미정 순서 대신 삽입 순서를 보존한다.
++            attendance = Collections.unmodifiableMap(new LinkedHashMap<>(attendance));
++            drinkItems = List.copyOf(drinkItems);
++        }
++
++        public SettlementInput(List<Participant> participants, List<Round> rounds) {
++            this(participants, rounds, Map.of(), List.of());
++        }
++
++        public SettlementInput(List<Participant> participants, List<Round> rounds,
++                               Map<AttendanceKey, Attendance> attendance) {
++            this(participants, rounds, attendance, List.of());
++        }
++
++        public Attendance attendanceOf(long participantId, long roundId) {
++            return attendance.getOrDefault(new AttendanceKey(participantId, roundId), Attendance.ABSENT);
++        }
++
++        public List<Round> effectiveRounds() {
++            if (drinkItems.isEmpty()) return rounds;
++            Map<Long, List<DrinkItem>> byRound = drinkItems.stream()
++                    .collect(Collectors.groupingBy(DrinkItem::roundId));
++            return rounds.stream().map(round -> {
++                List<DrinkItem> items = byRound.get(round.id());
++                if (items == null) return round;
++                BigInteger sum = items.stream()
++                        .map(item -> BigInteger.valueOf(item.bottleCount()).multiply(BigInteger.valueOf(item.unitPrice())))
++                        .reduce(BigInteger.ZERO, BigInteger::add);
++                // Kotlin과 동일하게 포화시켜 이후 검증이 사용자 오류를 반환하게 한다.
++                long alcohol = sum.max(BigInteger.valueOf(Long.MIN_VALUE))
++                        .min(BigInteger.valueOf(Long.MAX_VALUE)).longValueExact();
++                return new Round(round.id(), round.seq(), round.label(), round.total(), alcohol, round.payerId());
++            }).toList();
++        }
++    }
++
++    public record Participant(long id, String name) {}
++    public record Round(long id, int seq, String label, long total, long alcohol, long payerId) {}
++    public record DrinkItem(long roundId, String name, int bottleCount, long unitPrice) {}
++    public record AttendanceKey(long participantId, long roundId) {}
++
++    public enum Attendance {
++        ABSENT(false, false, false), EXEMPT(true, false, true),
++        SOBER(true, false, false), DRANK(true, true, false);
++
++        private final boolean attended;
++        private final boolean drank;
++        private final boolean exempt;
++
++        Attendance(boolean attended, boolean drank, boolean exempt) {
++            this.attended = attended;
++            this.drank = drank;
++            this.exempt = exempt;
++        }
++
++        public boolean attended() { return attended; }
++        public boolean drank() { return drank; }
++        public boolean exempt() { return exempt; }
++    }
++}
+diff --git a/core/src/main/java/app/jeongsan/core/javaimpl/Rational.java b/core/src/main/java/app/jeongsan/core/javaimpl/Rational.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..e5d9be8bdd606a0be39381e11767fdf72bdce64d
+--- /dev/null
++++ b/core/src/main/java/app/jeongsan/core/javaimpl/Rational.java
+@@ -0,0 +1,82 @@
++package app.jeongsan.core.javaimpl;
++
++import java.math.BigDecimal;
++import java.math.BigInteger;
++import java.math.RoundingMode;
++
++/** ADR-001: 나눗셈의 정보 손실이 마지막 올림을 바꾸지 않도록 분수 그대로 계산한다. */
++public final class Rational implements Comparable<Rational> {
++    public static final Rational ZERO = of(0);
++    private final BigInteger numerator;
++    private final BigInteger denominator;
++
++    private Rational(BigInteger numerator, BigInteger denominator) {
++        this.numerator = numerator;
++        this.denominator = denominator;
++    }
++
++    public static Rational of(long value) {
++        return new Rational(BigInteger.valueOf(value), BigInteger.ONE);
++    }
++
++    public static Rational of(BigInteger numerator, BigInteger denominator) {
++        if (denominator.signum() == 0) throw new IllegalArgumentException("분모가 0이다");
++        if (denominator.signum() < 0) {
++            numerator = numerator.negate();
++            denominator = denominator.negate();
++        }
++        BigInteger gcd = numerator.gcd(denominator);
++        return new Rational(numerator.divide(gcd), denominator.divide(gcd));
++    }
++
++    public BigInteger numerator() { return numerator; }
++    public BigInteger denominator() { return denominator; }
++    public int signum() { return numerator.signum(); }
++    public boolean isZero() { return signum() == 0; }
++
++    public Rational plus(Rational other) {
++        return of(numerator.multiply(other.denominator).add(other.numerator.multiply(denominator)),
++                denominator.multiply(other.denominator));
++    }
++
++    public Rational minus(Rational other) {
++        return of(numerator.multiply(other.denominator).subtract(other.numerator.multiply(denominator)),
++                denominator.multiply(other.denominator));
++    }
++
++    public Rational divide(int divisor) {
++        if (divisor == 0) throw new IllegalArgumentException("0으로 나눌 수 없다");
++        return of(numerator, denominator.multiply(BigInteger.valueOf(divisor)));
++    }
++
++    public long ceilTo(int unit) {
++        if (unit <= 0) throw new IllegalArgumentException("올림 단위는 양수여야 한다: " + unit);
++        BigInteger u = BigInteger.valueOf(unit);
++        BigInteger[] qr = numerator.divideAndRemainder(denominator.multiply(u));
++        // BigInteger는 0 방향으로 절단하므로 음수의 나머지는 보정하지 않는다.
++        BigInteger ceil = qr[1].signum() > 0 ? qr[0].add(BigInteger.ONE) : qr[0];
++        return ceil.multiply(u).longValueExact();
++    }
++
++    /** 표시 문자열은 계산 입력으로 되돌리지 않는다. */
++    public String toDisplayString(int decimals) {
++        return new BigDecimal(numerator).divide(new BigDecimal(denominator), decimals, RoundingMode.HALF_UP)
++                .stripTrailingZeros().toPlainString();
++    }
++
++    public String toDisplayString() { return toDisplayString(2); }
++
++    @Override public int compareTo(Rational other) {
++        return numerator.multiply(other.denominator).compareTo(other.numerator.multiply(denominator));
++    }
++
++    @Override public boolean equals(Object other) {
++        return other instanceof Rational r && numerator.equals(r.numerator) && denominator.equals(r.denominator);
++    }
++
++    @Override public int hashCode() { return 31 * numerator.hashCode() + denominator.hashCode(); }
++
++    @Override public String toString() {
++        return denominator.equals(BigInteger.ONE) ? numerator.toString() : numerator + "/" + denominator;
++    }
++}
+diff --git a/core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java b/core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..1b56ab97ae54373d0f8979238f821508ec73d56c
+--- /dev/null
++++ b/core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java
+@@ -0,0 +1,117 @@
++package app.jeongsan.core.javaimpl;
++
++import java.util.ArrayList;
++import java.util.Comparator;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++import java.util.TreeMap;
++import java.util.stream.Collectors;
++import app.jeongsan.core.javaimpl.Model.*;
++import app.jeongsan.core.javaimpl.SettlementResult.*;
++import app.jeongsan.core.javaimpl.Validation.*;
++
++/** Kotlin 구현을 호출하지 않는 독립적인 Core v2 계산기다. */
++public final class Settlement {
++    private Settlement() {}
++
++    public static SettlementOutcome settle(SettlementInput input) {
++        List<ValidationError> errors = Validation.validate(input, ValidationPhase.CONFIRM);
++        if (!errors.isEmpty()) return new Failure(errors);
++        SettlementResult result = compute(input);
++        for (RecipientSettlement recipient : result.recipients().values()) {
++            for (Map.Entry<Long, Long> entry : recipient.participantAmounts().entrySet()) {
++                if (entry.getValue() < 0) {
++                    return new Failure(List.of(new ValidationError(ErrorCode.NEGATIVE_ADJUSTED_AMOUNT,
++                            "결제 금액이 참여 인원에 비해 너무 작아 잔액 조정자의 부담이 음수가 됩니다. ("
++                                    + entry.getKey() + ": " + entry.getValue()
++                                    + "원) 인원을 줄이거나 금액을 확인해주세요.", null, entry.getKey())));
++                }
++            }
++        }
++        return new Success(result);
++    }
++
++    private static SettlementResult compute(SettlementInput input) {
++        List<Round> rounds = input.effectiveRounds();
++        Map<Long, List<RoundBreakdown>> lines = new LinkedHashMap<>();
++        input.participants().forEach(p -> lines.put(p.id(), new ArrayList<>()));
++        for (Round round : rounds.stream().sorted(Comparator.comparingInt(Round::seq)).toList()) {
++            Set<Long> attendees = input.participants().stream().filter(p -> {
++                Attendance a = input.attendanceOf(p.id(), round.id());
++                return a.attended() && !a.exempt();
++            }).map(Participant::id).collect(Collectors.toSet());
++            Set<Long> drinkers = input.participants().stream()
++                    .filter(p -> input.attendanceOf(p.id(), round.id()).drank())
++                    .map(Participant::id).collect(Collectors.toSet());
++            long food = round.total() - round.alcohol();
++            Rational foodShare = attendees.isEmpty() ? Rational.ZERO : Rational.of(food).divide(attendees.size());
++            Rational alcoholShare = drinkers.isEmpty() ? Rational.ZERO : Rational.of(round.alcohol()).divide(drinkers.size());
++            for (Participant p : input.participants()) {
++                Attendance a = input.attendanceOf(p.id(), round.id());
++                lines.get(p.id()).add(new RoundBreakdown(round.id(), round.seq(), round.label(),
++                        a.attended(), a.drank(), a.exempt(), food, attendees.size(),
++                        attendees.contains(p.id()) ? foodShare : Rational.ZERO, round.alcohol(), drinkers.size(),
++                        drinkers.contains(p.id()) ? alcoholShare : Rational.ZERO));
++            }
++        }
++
++        Map<Long, Long> paid = new LinkedHashMap<>();
++        input.participants().forEach(p -> paid.put(p.id(), 0L));
++        rounds.forEach(round -> paid.merge(round.payerId(), round.total(), Long::sum));
++        Map<Long, List<Round>> byRecipient = rounds.stream()
++                .collect(Collectors.groupingBy(Round::payerId, TreeMap::new, Collectors.toList()));
++        Map<Long, RecipientSettlement> recipients = new LinkedHashMap<>();
++        for (Map.Entry<Long, List<Round>> group : byRecipient.entrySet()) {
++            long recipientId = group.getKey();
++            Set<Long> roundIds = group.getValue().stream().map(Round::id).collect(Collectors.toSet());
++            Map<Long, Rational> raw = new LinkedHashMap<>();
++            input.participants().forEach(p -> raw.put(p.id(), lines.get(p.id()).stream()
++                    .filter(line -> roundIds.contains(line.roundId())).map(RoundBreakdown::amount)
++                    .reduce(Rational.ZERO, Rational::plus)));
++            long adjustmentId = recipientId;
++            if (raw.get(recipientId).signum() <= 0) {
++                adjustmentId = raw.entrySet().stream().filter(entry -> entry.getValue().signum() > 0)
++                        .sorted(Map.Entry.<Long, Rational>comparingByValue().reversed()
++                                .thenComparing(Map.Entry.comparingByKey()))
++                        .findFirst().orElseThrow().getKey();
++            }
++
++            Map<Long, Long> amounts = new LinkedHashMap<>();
++            for (Participant p : input.participants()) {
++                amounts.put(p.id(), p.id() == adjustmentId ? 0L : raw.get(p.id()).ceilTo(1));
++            }
++            long paidTotal = group.getValue().stream().mapToLong(Round::total).sum();
++            // 차수별 올림 대신 결제자별 원부담 합계를 한 번 올리고 잔액을 조정한다.
++            amounts.put(adjustmentId, paidTotal - amounts.values().stream().mapToLong(Long::longValue).sum());
++            long incomingTotal = amounts.entrySet().stream().filter(entry -> entry.getKey() != recipientId)
++                    .mapToLong(Map.Entry::getValue).sum();
++            recipients.put(recipientId, new RecipientSettlement(recipientId, paidTotal, amounts,
++                    amounts.get(recipientId), incomingTotal, adjustmentId));
++        }
++
++        Map<Long, Long> amounts = new LinkedHashMap<>();
++        Map<Long, ParticipantBreakdown> breakdown = new LinkedHashMap<>();
++        for (Participant p : input.participants()) {
++            long amount = recipients.values().stream().mapToLong(r -> r.participantAmounts().get(p.id())).sum();
++            amounts.put(p.id(), amount);
++            Rational rawTotal = lines.get(p.id()).stream().map(RoundBreakdown::amount).reduce(Rational.ZERO, Rational::plus);
++            breakdown.put(p.id(), new ParticipantBreakdown(p.id(), p.name(), lines.get(p.id()), rawTotal, amount, paid.get(p.id())));
++        }
++        return new SettlementResult(amounts, breakdown, recipients, buildTransfers(recipients),
++                rounds.stream().mapToLong(Round::total).sum());
++    }
++
++    /** 결제자 간 상계를 하지 않고 수취인 id, 송금자 id 순으로 보존한다. */
++    private static List<Transfer> buildTransfers(Map<Long, RecipientSettlement> recipients) {
++        List<Transfer> transfers = new ArrayList<>();
++        for (RecipientSettlement recipient : recipients.values()) {
++            recipient.participantAmounts().entrySet().stream()
++                    .filter(entry -> entry.getKey() != recipient.recipientId() && entry.getValue() > 0)
++                    .sorted(Map.Entry.comparingByKey())
++                    .forEach(entry -> transfers.add(new Transfer(entry.getKey(), recipient.recipientId(), entry.getValue())));
++        }
++        return transfers;
++    }
++}
+diff --git a/core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java b/core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..04c45b65298fd7c3f4a8c72917919751acd90174
+--- /dev/null
++++ b/core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java
+@@ -0,0 +1,47 @@
++package app.jeongsan.core.javaimpl;
++
++import java.util.Collections;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import app.jeongsan.core.javaimpl.Validation.ValidationError;
++
++/** 근거와 송금 지시까지 비교하기 위해 Kotlin 결과의 모든 필드를 유지한다. */
++public record SettlementResult(Map<Long, Long> amounts, Map<Long, ParticipantBreakdown> breakdown,
++                               Map<Long, RecipientSettlement> recipients, List<Transfer> transfers,
++                               long grandTotal) {
++    public SettlementResult {
++        amounts = freeze(amounts);
++        breakdown = freeze(breakdown);
++        recipients = freeze(recipients);
++        transfers = List.copyOf(transfers);
++    }
++
++    public sealed interface SettlementOutcome permits Success, Failure {}
++    public record Success(SettlementResult result) implements SettlementOutcome {}
++    public record Failure(List<ValidationError> errors) implements SettlementOutcome {
++        public Failure { errors = List.copyOf(errors); }
++    }
++
++    public record ParticipantBreakdown(long participantId, String name, List<RoundBreakdown> rounds,
++                                       Rational rawTotal, long finalAmount, long paidTotal) {
++        public ParticipantBreakdown { rounds = List.copyOf(rounds); }
++    }
++
++    public record RecipientSettlement(long recipientId, long paidTotal, Map<Long, Long> participantAmounts,
++                                      long ownShare, long incomingTotal, long adjustmentParticipantId) {
++        public RecipientSettlement { participantAmounts = freeze(participantAmounts); }
++    }
++
++    public record RoundBreakdown(long roundId, int seq, String label, boolean attended, boolean drank,
++                                 boolean exempt, long foodTotal, int attendeeCount, Rational foodShare,
++                                 long alcoholTotal, int drinkerCount, Rational alcoholShare) {
++        public Rational amount() { return foodShare.plus(alcoholShare); }
++    }
++
++    public record Transfer(long fromId, long toId, long amount) {}
++
++    private static <K, V> Map<K, V> freeze(Map<K, V> source) {
++        return Collections.unmodifiableMap(new LinkedHashMap<>(source));
++    }
++}
+diff --git a/core/src/main/java/app/jeongsan/core/javaimpl/Validation.java b/core/src/main/java/app/jeongsan/core/javaimpl/Validation.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..af500dce6d7f0e5ea9c83bbdee57e258c0a3eb69
+--- /dev/null
++++ b/core/src/main/java/app/jeongsan/core/javaimpl/Validation.java
+@@ -0,0 +1,155 @@
++package app.jeongsan.core.javaimpl;
++
++import java.math.BigInteger;
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.LinkedHashSet;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++import app.jeongsan.core.javaimpl.Model.*;
++
++/** 저장 중인 미완성 입력과 확정 가능한 입력을 구분한다(CALC_RULES_V2 §5). */
++public final class Validation {
++    public static final long MAX_AMOUNT = 1_000_000_000_000L;
++    private static final BigInteger MAX_AMOUNT_BIG = BigInteger.valueOf(MAX_AMOUNT);
++
++    private Validation() {}
++
++    public enum ValidationPhase { SAVE, CONFIRM }
++    public enum ErrorCode {
++        TOTAL_NOT_POSITIVE, ALCOHOL_NEGATIVE, ALCOHOL_EXCEEDS_TOTAL, PAYER_NOT_FOUND,
++        INVALID_DRINK_ITEM, DRINK_ITEM_ROUND_NOT_FOUND, ATTENDANCE_REFERENCE_NOT_FOUND,
++        MISSING_ATTENDANCE, DUPLICATE_ID, DUPLICATE_ROUND_SEQ, AMOUNT_TOO_LARGE,
++        TOO_FEW_PARTICIPANTS, NO_ATTENDEE, NO_DRINKER_WITH_ALCOHOL, NEGATIVE_ADJUSTED_AMOUNT
++    }
++
++    public record ValidationError(ErrorCode code, String message, Long roundId, Long participantId) {}
++
++    public static List<ValidationError> validate(SettlementInput input, ValidationPhase phase) {
++        List<ValidationError> errors = new ArrayList<>();
++        List<Round> rounds = input.effectiveRounds();
++        Set<Long> ids = new LinkedHashSet<>();
++        input.participants().forEach(p -> ids.add(p.id()));
++        validateAlways(input, rounds, ids, errors);
++        if (phase == ValidationPhase.CONFIRM) validateOnConfirm(input, rounds, errors);
++        return List.copyOf(errors);
++    }
++
++    private static <T> Set<T> duplicatesOf(List<T> values) {
++        Map<T, Integer> counts = new LinkedHashMap<>();
++        values.forEach(value -> counts.merge(value, 1, Integer::sum));
++        Set<T> duplicates = new LinkedHashSet<>();
++        counts.forEach((value, count) -> { if (count > 1) duplicates.add(value); });
++        return duplicates;
++    }
++
++    private static void validateAlways(SettlementInput input, List<Round> rounds, Set<Long> ids,
++                                       List<ValidationError> errors) {
++        duplicatesOf(input.participants().stream().map(Participant::id).toList()).forEach(id ->
++                errors.add(new ValidationError(ErrorCode.DUPLICATE_ID,
++                        "참여자 id가 중복되었습니다: " + id, null, id)));
++        duplicatesOf(input.rounds().stream().map(Round::id).toList()).forEach(id ->
++                errors.add(new ValidationError(ErrorCode.DUPLICATE_ID,
++                        "차수 id가 중복되었습니다: " + id, id, null)));
++        duplicatesOf(input.rounds().stream().map(Round::seq).toList()).forEach(seq ->
++                errors.add(new ValidationError(ErrorCode.DUPLICATE_ROUND_SEQ,
++                        "차수 순번이 중복되었습니다: " + seq + "차. 근거 화면의 차수 순서가 흔들립니다.", null, null)));
++
++        Set<Long> roundIds = new LinkedHashSet<>();
++        input.rounds().forEach(round -> roundIds.add(round.id()));
++        for (DrinkItem item : input.drinkItems()) {
++            if (item.bottleCount() <= 0 || item.unitPrice() <= 0) {
++                errors.add(new ValidationError(ErrorCode.INVALID_DRINK_ITEM,
++                        "'" + item.name() + "'의 병 수와 단가는 1 이상이어야 합니다. ("
++                                + item.bottleCount() + "병 × " + item.unitPrice() + "원)", item.roundId(), null));
++            } else {
++                BigInteger itemAmount = BigInteger.valueOf(item.bottleCount())
++                        .multiply(BigInteger.valueOf(item.unitPrice()));
++                if (itemAmount.compareTo(MAX_AMOUNT_BIG) > 0) {
++                    errors.add(new ValidationError(ErrorCode.AMOUNT_TOO_LARGE,
++                            "'" + item.name() + "'의 술값이 너무 큽니다. 병 수와 단가를 확인해주세요.", item.roundId(), null));
++                }
++            }
++            if (!roundIds.contains(item.roundId())) {
++                errors.add(new ValidationError(ErrorCode.DRINK_ITEM_ROUND_NOT_FOUND,
++                        "'" + item.name() + "'이 존재하지 않는 차수를 참조합니다.", item.roundId(), null));
++            }
++        }
++
++        for (Round round : rounds) {
++            if (round.total() <= 0) {
++                errors.add(new ValidationError(ErrorCode.TOTAL_NOT_POSITIVE,
++                        round.label() + "의 총액은 1원 이상이어야 합니다.", round.id(), null));
++            }
++            if (round.alcohol() < 0) {
++                errors.add(new ValidationError(ErrorCode.ALCOHOL_NEGATIVE,
++                        round.label() + "의 술값이 음수입니다.", round.id(), null));
++            }
++            if (round.alcohol() > round.total()) {
++                errors.add(new ValidationError(ErrorCode.ALCOHOL_EXCEEDS_TOTAL,
++                        round.label() + "의 술값(" + round.alcohol() + "원)이 총액(" + round.total()
++                                + "원)보다 큽니다.", round.id(), null));
++            }
++            if (round.total() > MAX_AMOUNT) {
++                errors.add(new ValidationError(ErrorCode.AMOUNT_TOO_LARGE,
++                        round.label() + "의 총액이 너무 큽니다. 0을 하나 더 찍지 않았는지 확인해주세요.", round.id(), null));
++            }
++            if (round.alcohol() > MAX_AMOUNT) {
++                errors.add(new ValidationError(ErrorCode.AMOUNT_TOO_LARGE,
++                        round.label() + "의 술값이 너무 큽니다. 병 수와 단가를 확인해주세요.", round.id(), null));
++            }
++            if (!ids.contains(round.payerId())) {
++                errors.add(new ValidationError(ErrorCode.PAYER_NOT_FOUND,
++                        round.label() + "의 결제자가 참여자 목록에 없습니다.", round.id(), round.payerId()));
++            }
++        }
++
++        for (AttendanceKey key : input.attendance().keySet()) {
++            if (!ids.contains(key.participantId()) || !roundIds.contains(key.roundId())) {
++                errors.add(new ValidationError(ErrorCode.ATTENDANCE_REFERENCE_NOT_FOUND,
++                        "참여 응답이 존재하지 않는 참여자 또는 차수를 참조합니다.", key.roundId(), key.participantId()));
++            }
++        }
++    }
++
++    private static void validateOnConfirm(SettlementInput input, List<Round> rounds,
++                                          List<ValidationError> errors) {
++        // 기존 Kotlin과 같은 시점을 유지한다. SAVE 총합 상한의 명세 차이는 별도 검토 사항이다.
++        BigInteger grandTotal = rounds.stream().map(round -> BigInteger.valueOf(round.total()))
++                .reduce(BigInteger.ZERO, BigInteger::add);
++        if (grandTotal.compareTo(MAX_AMOUNT_BIG) > 0) {
++            errors.add(new ValidationError(ErrorCode.AMOUNT_TOO_LARGE,
++                    "전체 총액이 너무 큽니다. (" + grandTotal + "원)", null, null));
++        }
++        if (input.participants().size() < 2) {
++            errors.add(new ValidationError(ErrorCode.TOO_FEW_PARTICIPANTS,
++                    "참여자가 2명 이상이어야 정산할 수 있습니다.", null, null));
++            return;
++        }
++
++        for (Round round : rounds) {
++            for (Participant participant : input.participants()) {
++                if (!input.attendance().containsKey(new AttendanceKey(participant.id(), round.id()))) {
++                    errors.add(new ValidationError(ErrorCode.MISSING_ATTENDANCE,
++                            round.label() + "에 '" + participant.name() + "'의 응답이 없습니다.", round.id(), participant.id()));
++                }
++            }
++            boolean hasAttendee = input.participants().stream().anyMatch(participant -> {
++                Attendance a = input.attendanceOf(participant.id(), round.id());
++                return a.attended() && !a.exempt();
++            });
++            if (!hasAttendee) {
++                errors.add(new ValidationError(ErrorCode.NO_ATTENDEE,
++                        round.label() + "에 비용을 부담할 참석자가 없습니다.", round.id(), null));
++                continue;
++            }
++            if (round.alcohol() > 0 && input.participants().stream()
++                    .noneMatch(participant -> input.attendanceOf(participant.id(), round.id()).drank())) {
++                errors.add(new ValidationError(ErrorCode.NO_DRINKER_WITH_ALCOHOL,
++                        round.label() + "에 술값 " + round.alcohol() + "원이 있는데 술 마신 사람이 없습니다. "
++                                + "술값을 0으로 하거나 음주자를 지정해주세요.", round.id(), null));
++            }
++        }
++    }
++}
+diff --git a/core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt b/core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..5b3969321bcd0f11854263a83821f7ead0fdac49
+--- /dev/null
++++ b/core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt
+@@ -0,0 +1,201 @@
++package app.jeongsan.core
++
++import app.jeongsan.core.javaimpl.Model as JModel
++import app.jeongsan.core.javaimpl.Rational as JRational
++import app.jeongsan.core.javaimpl.Settlement as JSettlement
++import app.jeongsan.core.javaimpl.SettlementResult as JResult
++import app.jeongsan.core.javaimpl.Validation as JValidation
++import io.kotest.assertions.throwables.shouldThrow
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++import java.math.BigInteger
++import kotlin.random.Random
++
++/** 금액만 같아도 틀릴 수 있어 근거의 유리수, 오류 위치, 송금 순서까지 비교한다. */
++class JavaParitySpec : StringSpec({
++    "유리수의 정규화·음수 올림·표시·비교와 계약 위반이 두 언어에서 같다" {
++        for (n in -40L..40L) for (d in 1L..17L) {
++            val k = Rational.of(BigInteger.valueOf(n), BigInteger.valueOf(-d))
++            val j = JRational.of(BigInteger.valueOf(n), BigInteger.valueOf(-d))
++            j.toKotlin() shouldBe k
++            j.hashCode() shouldBe k.hashCode()
++            j.signum() shouldBe k.signum
++            j.isZero() shouldBe k.isZero
++            j.toString() shouldBe k.toString()
++            for (unit in listOf(1, 10, 100)) j.ceilTo(unit) shouldBe k.ceilTo(unit)
++            for (decimals in listOf(0, 2, 6)) j.toDisplayString(decimals) shouldBe k.toDisplayString(decimals)
++            j.plus(JRational.of(7)).toKotlin() shouldBe k + Rational.of(7)
++            j.minus(JRational.of(7)).toKotlin() shouldBe k - Rational.of(7)
++            j.divide(-3).toKotlin() shouldBe k / -3
++            j.compareTo(JRational.of(1)).coerceIn(-1, 1) shouldBe k.compareTo(Rational.of(1)).coerceIn(-1, 1)
++            j shouldBe JRational.of(BigInteger.valueOf(n * 3), BigInteger.valueOf(-d * 3))
++        }
++        shouldThrow<IllegalArgumentException> { JRational.of(BigInteger.ONE, BigInteger.ZERO) }
++        shouldThrow<IllegalArgumentException> { JRational.ZERO.divide(0) }
++        shouldThrow<IllegalArgumentException> { JRational.ZERO.ceilTo(0) }
++        shouldThrow<ArithmeticException> { JRational.of(BigInteger.ONE.shiftLeft(100), BigInteger.ONE).ceilTo(1) }
++        JRational.of(Long.MAX_VALUE).ceilTo(1) shouldBe Long.MAX_VALUE
++        JRational.of(Long.MIN_VALUE).ceilTo(1) shouldBe Long.MIN_VALUE
++    }
++
++    "동일 결제자의 차수 몫을 합친 뒤 올림하고 반대 방향 송금을 상계하지 않는다" {
++        val ps = listOf(Participant(10, "결제자"), Participant(2, "B"), Participant(30, "C"))
++        val rounds = listOf(round(200, 2, 10, 0, 10), round(100, 1, 10, 0, 10))
++        val input = completeInput(ps, rounds)
++        assertParity(input)
++        val result = input.succeed()
++        result.amounts shouldBe mapOf(10L to 6L, 2L to 7L, 30L to 7L)
++        result.breakdown.getValue(2).rounds.map { it.roundId } shouldBe listOf(100L, 200L)
++
++        val twoPayers = completeInput(ps.take(2), listOf(round(1, 1, 100, 0, 10), round(2, 2, 100, 0, 2)))
++        assertParity(twoPayers)
++        twoPayers.succeed().transfers shouldBe listOf(Transfer(10, 2, 50), Transfer(2, 10, 50))
++    }
++
++    "결제자가 불참·면제이면 최대 원부담자의 숫자 id 동률 규칙을 적용하고 음수 조정은 실패한다" {
++        val ps = listOf(Participant(10, "A"), Participant(2, "B"), Participant(30, "결제자"))
++        for (payerAttendance in listOf(Attendance.ABSENT, Attendance.EXEMPT)) {
++            val input = completeInput(ps, listOf(round(1, 1, 11, 0, 30))).copy(
++                attendance = mapOf(AttendanceKey(10, 1) to Attendance.SOBER,
++                    AttendanceKey(2, 1) to Attendance.SOBER, AttendanceKey(30, 1) to payerAttendance),
++            )
++            assertParity(input)
++            input.succeed().recipients.getValue(30).adjustmentParticipantId shouldBe 2L
++            input.succeed().amounts shouldBe mapOf(10L to 6L, 2L to 5L, 30L to 0L)
++        }
++        val tiny = completeInput(ps, listOf(round(1, 1, 1, 0, 30)))
++        assertParity(tiny)
++        tiny.fail().single().code shouldBe ErrorCode.NEGATIVE_ADJUSTED_AMOUNT
++    }
++
++    "검증 단계별 오류 코드·메시지·식별자·발생 순서와 술병 오버플로가 같다" {
++        val ps = participants("A", "B", "C")
++        val valid = completeInput(ps, listOf(round(1, 1, 100, 20, 1)))
++        val cases = listOf(
++            valid, SettlementInput(emptyList(), emptyList()), valid.copy(participants = ps.take(1)),
++            valid.copy(participants = ps + ps.first()), valid.copy(rounds = valid.rounds + valid.rounds.first()),
++            valid.copy(rounds = valid.rounds + round(2, 1, 100, 0, 1)),
++            valid.copy(rounds = listOf(round(1, 1, 0, -1, 99))),
++            valid.copy(rounds = listOf(round(1, 1, 10, 11, 1))),
++            valid.copy(attendance = emptyMap()),
++            valid.copy(attendance = valid.attendance + (AttendanceKey(99, 98) to Attendance.SOBER)),
++            valid.copy(attendance = ps.associate { AttendanceKey(it.id, 1) to Attendance.EXEMPT }),
++            valid.copy(attendance = ps.associate { AttendanceKey(it.id, 1) to Attendance.SOBER }),
++            valid.copy(drinkItems = listOf(DrinkItem(99, "잘못된 병", 0, -1))),
++            valid.copy(drinkItems = listOf(DrinkItem(1, "정상 병", 2, 10))),
++            valid.copy(drinkItems = listOf(DrinkItem(1, "곱셈 넘침", Int.MAX_VALUE, Long.MAX_VALUE))),
++            valid.copy(drinkItems = listOf(DrinkItem(1, "음수 넘침", Int.MAX_VALUE, Long.MIN_VALUE))),
++            valid.copy(drinkItems = listOf(DrinkItem(1, "누적 넘침", 1, Long.MAX_VALUE),
++                DrinkItem(1, "누적 넘침2", 1, Long.MAX_VALUE))),
++            completeInput(ps, listOf(round(1, 1, Long.MAX_VALUE, 0, 1), round(2, 2, Long.MAX_VALUE, 0, 1))),
++            completeInput(ps, listOf(round(1, 1, Validator.MAX_AMOUNT, 0, 1))),
++            completeInput(ps, listOf(round(1, 1, Validator.MAX_AMOUNT, 0, 1), round(2, 2, 1, 0, 1))),
++            completeInput(ps, listOf(round(1, 1, 1, 0, 1))),
++        )
++        val seen = mutableSetOf<ErrorCode>()
++        for (input in cases) {
++            assertParity(input)
++            for (phase in ValidationPhase.entries) seen += Validator.validate(input, phase).map { it.code }
++            val outcome = Settlement.settle(input)
++            if (outcome is SettlementOutcome.Failure) seen += outcome.errors.map { it.code }
++        }
++        seen shouldBe ErrorCode.entries.toSet()
++        Validator.validate(valid.copy(attendance = emptyMap()), ValidationPhase.SAVE) shouldBe emptyList()
++    }
++
++    "고정 seed 2000건의 정상·미소 금액 입력에서 전체 결과와 저장·확정 검증이 같다" {
++        val random = Random(20261005)
++        var successes = 0
++        var negatives = 0
++        repeat(2_000) { case ->
++            val ps = (0 until random.nextInt(2, 9)).map { Participant((it * 10 + 2).toLong(), "P$it") }.shuffled(random)
++            val rounds = (1..random.nextInt(1, 7)).map { seq ->
++                val total = if (case % 7 == 0) 1L else random.nextLong(1, 1_000_000)
++                round(seq.toLong(), seq, total, random.nextLong(0, total + 1), ps.random(random).id)
++            }.shuffled(random)
++            val attendance = rounds.flatMap { r -> ps.mapIndexed { index, p ->
++                AttendanceKey(p.id, r.id) to if (index == 0) Attendance.DRANK else Attendance.entries.random(random)
++            } }.toMap()
++            val items = rounds.filter { it.alcohol > 0 && random.nextBoolean() }
++                .map { DrinkItem(it.id, "소주", 1, it.alcohol) }
++            val input = SettlementInput(ps, rounds, attendance, items)
++            assertParity(input)
++            when (val outcome = Settlement.settle(input)) {
++                is SettlementOutcome.Success -> {
++                    successes++
++                    outcome.result.amounts.values.sum() shouldBe rounds.sumOf { it.total }
++                    outcome.result.recipients.values.forEach { r -> r.participantAmounts.values.sum() shouldBe r.paidTotal }
++                }
++                is SettlementOutcome.Failure -> {
++                    negatives++
++                    outcome.errors.single().code shouldBe ErrorCode.NEGATIVE_ADJUSTED_AMOUNT
++                }
++            }
++        }
++        (successes > 1_000) shouldBe true
++        (negatives > 0) shouldBe true
++    }
++
++    "Java 입력과 결과의 컬렉션은 외부 변경으로 다음 계산을 바꾸지 않는다" {
++        val ps = mutableListOf(JModel.Participant(1, "A"), JModel.Participant(2, "B"))
++        val rounds = mutableListOf(JModel.Round(1, 1, "1차", 10, 0, 1))
++        val attendance = linkedMapOf(JModel.AttendanceKey(1, 1) to JModel.Attendance.SOBER,
++            JModel.AttendanceKey(2, 1) to JModel.Attendance.SOBER)
++        val input = JModel.SettlementInput(ps, rounds, attendance)
++        ps.clear(); rounds.clear(); attendance.clear()
++        val result = (JSettlement.settle(input) as JResult.Success).result()
++        result.amounts() shouldBe mapOf(1L to 5L, 2L to 5L)
++        shouldThrow<UnsupportedOperationException> { result.amounts()[1L] = 99L }
++        shouldThrow<UnsupportedOperationException> { result.recipients().getValue(1).participantAmounts()[1L] = 99L }
++        shouldThrow<UnsupportedOperationException> { result.breakdown().getValue(1).rounds().clear() }
++        JSettlement.settle(input) shouldBe JResult.Success(result)
++    }
++})
++
++private fun completeInput(ps: List<Participant>, rounds: List<Round>): SettlementInput = SettlementInput(
++    ps, rounds, rounds.flatMap { round -> ps.map { AttendanceKey(it.id, round.id) to Attendance.DRANK } }.toMap(),
++)
++
++private fun SettlementInput.toJava() = JModel.SettlementInput(
++    participants.map { JModel.Participant(it.id, it.name) },
++    rounds.map { JModel.Round(it.id, it.seq, it.label, it.total, it.alcohol, it.payerId) },
++    attendance.entries.associate { JModel.AttendanceKey(it.key.participantId, it.key.roundId) to JModel.Attendance.valueOf(it.value.name) },
++    drinkItems.map { JModel.DrinkItem(it.roundId, it.name, it.bottleCount, it.unitPrice) },
++)
++
++private fun JRational.toKotlin() = Rational.of(numerator(), denominator())
++private fun JValidation.ValidationError.toKotlin() = ValidationError(ErrorCode.valueOf(code().name), message(), roundId(), participantId())
++
++private fun JResult.toKotlin() = SettlementResult(
++    amounts(),
++    breakdown().mapValues { (_, p) -> ParticipantBreakdown(p.participantId(), p.name(), p.rounds().map { r ->
++        RoundBreakdown(r.roundId(), r.seq(), r.label(), r.attended(), r.drank(), r.exempt(),
++            r.foodTotal(), r.attendeeCount(), r.foodShare().toKotlin(), r.alcoholTotal(), r.drinkerCount(), r.alcoholShare().toKotlin())
++    }, p.rawTotal().toKotlin(), p.finalAmount(), p.paidTotal()) },
++    recipients().mapValues { (_, r) -> RecipientSettlement(r.recipientId(), r.paidTotal(), r.participantAmounts(),
++        r.ownShare(), r.incomingTotal(), r.adjustmentParticipantId()) },
++    transfers().map { Transfer(it.fromId(), it.toId(), it.amount()) }, grandTotal(),
++)
++
++private fun assertParity(input: SettlementInput) {
++    val javaInput = input.toJava()
++    javaInput.effectiveRounds().map { Round(it.id(), it.seq(), it.label(), it.total(), it.alcohol(), it.payerId()) } shouldBe input.effectiveRounds()
++    for (phase in ValidationPhase.entries) {
++        JValidation.validate(javaInput, JValidation.ValidationPhase.valueOf(phase.name)).map { it.toKotlin() } shouldBe Validator.validate(input, phase)
++    }
++    val kotlinOutcome = Settlement.settle(input)
++    when (val javaOutcome = JSettlement.settle(javaInput)) {
++        is JResult.Failure -> SettlementOutcome.Failure(javaOutcome.errors().map { it.toKotlin() }) shouldBe kotlinOutcome
++        is JResult.Success -> {
++            val result = javaOutcome.result().toKotlin()
++            SettlementOutcome.Success(result) shouldBe kotlinOutcome
++            val expected = (kotlinOutcome as SettlementOutcome.Success).result
++            result.recipients.keys.toList() shouldBe expected.recipients.keys.toList()
++            result.amounts.keys.toList() shouldBe expected.amounts.keys.toList()
++            result.breakdown.keys.toList() shouldBe expected.breakdown.keys.toList()
++            result.recipients.forEach { (id, r) ->
++                r.participantAmounts.keys.toList() shouldBe expected.recipients.getValue(id).participantAmounts.keys.toList()
++            }
++        }
++    }
++}
+diff --git a/docs/CORE_DUAL_IMPLEMENTATION.md b/docs/CORE_DUAL_IMPLEMENTATION.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..d596fbc2eea785d41cb55cd4ca8a2b523713d33d
+--- /dev/null
++++ b/docs/CORE_DUAL_IMPLEMENTATION.md
+@@ -0,0 +1,55 @@
++# Core v2의 Java·Kotlin 구현
++
++같은 계산 규칙을 두 언어에서 각각 구현한다. Java는 Kotlin 계산기를 호출하지 않으며,
++서버의 기존 Kotlin 진입점 `Settlement.settle(input)`을 유지한다. 면제 계산은 기존 엔진의
++호환성을 위해 유지한다. 면제 API·화면의 보류 결정은 그대로다.
++
++## 파일 대응
++
++Kotlin은 `core/src/main/kotlin/app/jeongsan/core/`, Java는
++`core/src/main/java/app/jeongsan/core/javaimpl/`에 있다.
++
++| 기능 | Kotlin 파일·타입 | Java 파일·타입 |
++|---|---|---|
++| 입력·출석·술병 합산 | `Model.kt` / `SettlementInput` 등 | `Model.java` / `Model.SettlementInput` 등 |
++| 정확한 유리수 | `Rational.kt` / `Rational` | `Rational.java` / `Rational` |
++| SAVE·CONFIRM 검증 | `Validation.kt` / `Validator` | `Validation.java` / `Validation` |
++| 결제자별 정산·송금 | `Settlement.kt` / `Settlement` | `Settlement.java` / `Settlement` |
++| 결과·근거·성공/실패 | `SettlementResult.kt` | `SettlementResult.java` / 내부 record·sealed interface |
++
++Java 호출 예: `app.jeongsan.core.javaimpl.Settlement.settle(Model.SettlementInput)`.
++같은 JVM 이름의 충돌을 별도 패키지로 피한다. Java의 여러 공개 입력·결과 타입은 같은
++기능 파일을 비교할 수 있도록 내부 record로 묶었다. Java record도 내부 컬렉션까지
++불변으로 만들지는 않으므로 입력·결과의 리스트와 맵은 방어적 복사한다.
++
++## 검증
++
++`./gradlew :core:test :server:compileKotlin`으로 실행한다.
++`JavaParitySpec.kt`는 Java 입력으로 변환해 두 엔진을 실제 호출하고 결과를 Kotlin
++값 객체로 정규화하여 **모든 필드**를 비교한다. 유리수는 문자열이 아닌 정확한
++분자·분모로 비교한다. 오류 메시지·식별자·순서와 맵 키·송금 순서도 확인한다.
++
++기존 48건 + 비교 스펙 6건 = 54건 통과(실패·건너뛰기 0).
++비교 스펙에는 고정 seed `20261005`의 2,000개 입력, 15개 오류 코드 전체,
++음수/Long 경계의 유리수, 결제자 불참·면제, 숫자 id 동률, 차수 합산 후 올림,
++양방향 송금, 병 수 곱셈·누적 오버플로, 컬렉션 변경 방지가 포함된다.
++비교만으로 공통 결함을 찾을 수 없으므로 대표 명세 예제의 금액·송금 기대값도 검사한다.
++
++## 확인이 필요한 기존 동작
++
++`CALC_RULES_V2.md` §5.1은 전체 총액 상한을 SAVE·CONFIRM 공통 검증으로 설명하지만,
++PR #7의 `Validator.validateOnConfirm`은 CONFIRM에서만 검사한다.
++이번 Java 구현은 Kotlin과의 호환성을 위해 그 시점을 유지한다.
++두 언어가 같다는 테스트 결과가 이 명세 차이를 해소하지는 않는다.
++
++## PR과 학습
++
++이 작업의 기반은 PR #7의 `7cd7ff1c8e8442733d11590df17eea119fc63a27`이다.
++PR #7이 미병합 상태여서 추가 변경만 검토할 수 있도록 PR 대상 브랜치도
++`feat/core-v2-v3`로 둔다. PR #7의 상태가 바뀌면 사용자가 병합 전에 대상 브랜치를 점검한다.
++
++[스터디 가이드](study-guides/core-v2-java-v1/guide.md)는 최신 origin/main의 실제
++목차에서 읽을 위치를 가져오고, 이번 Java 추가 diff와 기존 Kotlin 대응 함수를 구분한다.
++Kotlin 비교 테스트에서 새로 사용한 문법도 별도 항목으로 기록한다.
++리뷰 후 가이드가 달라지면 새 버전으로 보존한다. n8n·Slack 전달은 기존 흐름을 사용하며,
++이 PR에서는 워크플로 설정을 바꾸지 않는다.

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "created_on": "2026-10-05",
+  "base_sha": "7cd7ff1c8e8442733d11590df17eea119fc63a27",
+  "code_head_sha": "36526853b4532df1a6926e13a640fbb6169fbd61",
+  "catalog_sha": "d5feb4677f71c9fe973e31118fd3b82d27eb2788",
+  "policy_sha": "d5feb4677f71c9fe973e31118fd3b82d27eb2788",
+  "head_scope": "구현 커밋. 이후 가이드 전용 커밋은 코드 기준에서 제외.",
+  "language_pair_status": "IMPLEMENTED_CORE_ONLY",
+  "study_status": "UNRECORDED",
+  "tests": {
+    "total": 54,
+    "failures": 0,
+    "skipped": 0,
+    "generated_cases": 2000,
+    "error_codes": 15
+  },
+  "guide": "guide.md",
+  "diff": "changes.patch",
+  "catalog_source_url": "https://github.com/owencity/jungsan_attack/blob/d5feb4677f71c9fe973e31118fd3b82d27eb2788/STUDY_CATALOG.md",
+  "catalog_source_sha256": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+  "catalog_snapshot_scope": "가이드가 참조한 항목의 원문 발췌. 전체 원문은 고정 Git commit과 SHA256으로 보존."
+}
