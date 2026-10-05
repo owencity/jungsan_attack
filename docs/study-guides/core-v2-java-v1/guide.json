@@ -1,0 +1,352 @@
+{
+  "change_summary": "Core v2의 Java 독립 구현을 추가하고 Kotlin과 전체 결과를 비교한다.",
+  "review_findings": [
+    {
+      "severity": "확인 필요",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Validation.java",
+      "symbol": "validateOnConfirm",
+      "finding": "전체 총액 상한 검증 시점의 기존 명세 차이를 호환성을 위해 유지했다."
+    }
+  ],
+  "study_recommendations": [
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java",
+      "symbol": "SettlementInput compact constructor",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java:17",
+      "catalog_reference": "JST-06-03-08",
+      "catalog_title": "자바의 정석 6장 3.8 기본형 매개변수와 참조형 매개변수 (p.288)",
+      "study_angle": "생성자에 받은 리스트와 원본 참조를 끊는 지점을 확인한다.",
+      "reason": "생성자에 받은 리스트와 원본 참조를 끊는 지점을 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java",
+      "symbol": "SettlementInput overloaded constructor",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java:25",
+      "catalog_reference": "JST-06-05-04",
+      "catalog_title": "자바의 정석 6장 5.4 생성자에서 다른 생성자 호출하기 - this(), this (p.319)",
+      "study_angle": "세 생성자의 기본 컬렉션이 어느 생성자에서 공통 처리되는지 확인한다.",
+      "reason": "세 생성자의 기본 컬렉션이 어느 생성자에서 공통 처리되는지 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java",
+      "symbol": "settle",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java:19",
+      "catalog_reference": "JST-07-04-02",
+      "catalog_title": "자바의 정석 7장 4.2 static - 클래스의, 공통적인 (p.368)",
+      "study_angle": "인스턴스 상태 없이 호출하는 계산 진입점과 Kotlin object 진입점을 비교한다.",
+      "reason": "인스턴스 상태 없이 호출하는 계산 진입점과 Kotlin object 진입점을 비교한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java",
+      "symbol": "SettlementOutcome",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java:20",
+      "catalog_reference": "JST-07-07-01",
+      "catalog_title": "자바의 정석 7장 7.1 인터페이스란? (p.411)",
+      "study_angle": "성공·실패 타입이 같은 반환 계약을 구현하는 관계를 확인한다.",
+      "reason": "성공·실패 타입이 같은 반환 계약을 구현하는 관계를 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java",
+      "symbol": "Model.Participant",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java:55",
+      "catalog_reference": "JST-07-08-02",
+      "catalog_title": "자바의 정석 7장 8.2 내부 클래스의 종류와 특징 (p.435)",
+      "study_angle": "같은 기능 파일에 묶인 중첩 타입의 접근 이름을 확인한다.",
+      "reason": "같은 기능 파일에 묶인 중첩 타입의 접근 이름을 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Rational.java",
+      "symbol": "equals / hashCode",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Rational.java:73",
+      "catalog_reference": "JST-09-01-01",
+      "catalog_title": "자바의 정석 9장 1.1 Object클래스 (p.480)",
+      "study_angle": "약분된 유리수가 객체 동등성과 해시 키에서 같은 값으로 취급되는지 확인한다.",
+      "reason": "약분된 유리수가 객체 동등성과 해시 키에서 같은 값으로 취급되는지 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java",
+      "symbol": "effectiveRounds",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java:44",
+      "catalog_reference": "JST-09-02-06",
+      "catalog_title": "자바의 정석 9장 2.6 java.math.BigInteger클래스 (p.548)",
+      "study_angle": "병 수 곱셈과 누적을 long으로 축소하기 전 계산하는 위치를 확인한다.",
+      "reason": "병 수 곱셈과 누적을 long으로 축소하기 전 계산하는 위치를 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java",
+      "symbol": "adjustment participant comparator",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java:76",
+      "catalog_reference": "JST-11-01-07",
+      "catalog_title": "자바의 정석 11장 1.7 Comparator와 Comparable (p.658)",
+      "study_angle": "원부담 내림차순 뒤 숫자 id 오름차순을 적용하는지 확인한다.",
+      "reason": "원부담 내림차순 뒤 숫자 id 오름차순을 적용하는지 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Validation.java",
+      "symbol": "duplicatesOf",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Validation.java:40",
+      "catalog_reference": "JST-11-01-10",
+      "catalog_title": "자바의 정석 11장 1.10 HashMap과 Hashtable (p.674)",
+      "study_angle": "중복 오류가 첫 등장 순서를 유지하는 이유를 맵 구현과 연결한다.",
+      "reason": "중복 오류가 첫 등장 순서를 유지하는 이유를 맵 구현과 연결한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java",
+      "symbol": "recipient grouping",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java:64",
+      "catalog_reference": "JST-11-01-11",
+      "catalog_title": "자바의 정석 11장 1.11 TreeMap (p.684)",
+      "study_angle": "수취인 정렬이 송금 목록의 순서까지 결정하는지 확인한다.",
+      "reason": "수취인 정렬이 송금 목록의 순서까지 결정하는지 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java",
+      "symbol": "freeze",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java:45",
+      "catalog_reference": "JST-11-01-13",
+      "catalog_title": "자바의 정석 11장 1.13 Collections (p.694)",
+      "study_angle": "읽기 전용 래퍼와 원본 복사를 각각 수행하는 위치를 확인한다.",
+      "reason": "읽기 전용 래퍼와 원본 복사를 각각 수행하는 위치를 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java",
+      "symbol": "freeze",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java:44",
+      "catalog_reference": "JST-12-01-06",
+      "catalog_title": "자바의 정석 12장 1.6 지네릭 메서드 (p.717)",
+      "study_angle": "입력·결과의 서로 다른 맵 타입을 같은 제네릭 메서드로 복사하는 경로를 확인한다.",
+      "reason": "입력·결과의 서로 다른 맵 타입을 같은 제네릭 메서드로 복사하는 경로를 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java",
+      "symbol": "Attendance",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java:68",
+      "catalog_reference": "JST-12-02-03",
+      "catalog_title": "자바의 정석 12장 2.3 열거형에 멤버 추가하기 (p.728)",
+      "study_angle": "네 enum 상수의 참석·음주·면제 필드가 배분 분모를 결정하는지 확인한다.",
+      "reason": "네 enum 상수의 참석·음주·면제 필드가 배분 분모를 결정하는지 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java",
+      "symbol": "buildTransfers",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java:111",
+      "catalog_reference": "JST-14-02-03",
+      "catalog_title": "자바의 정석 14장 2.3 스트림의 중간연산 (p.958)",
+      "study_angle": "자기 송금과 0원 송금을 걸러낸 뒤 송금자 순으로 정렬하는지 확인한다.",
+      "reason": "자기 송금과 0원 송금을 걸러낸 뒤 송금자 순으로 정렬하는지 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java",
+      "symbol": "effectiveRounds",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java:46",
+      "catalog_reference": "JST-14-02-05",
+      "catalog_title": "자바의 정석 14장 2.5 스트림의 최종연산 (p.976)",
+      "study_angle": "합산의 초기값과 연산이 오버플로 없이 최종 금액을 만드는지 확인한다.",
+      "reason": "합산의 초기값과 연산이 오버플로 없이 최종 금액을 만드는지 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java",
+      "symbol": "recipient grouping",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java:64",
+      "catalog_reference": "JST-14-02-06",
+      "catalog_title": "자바의 정석 14장 2.6 collect() (p.980)",
+      "study_angle": "차수를 결제자별로 묶은 후에만 원부담을 올리는 실행 순서를 확인한다.",
+      "reason": "차수를 결제자별로 묶은 후에만 원부담을 올리는 실행 순서를 확인한다."
+    },
+    {
+      "category": "Effective Java",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Rational.java",
+      "symbol": "of",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Rational.java:22",
+      "catalog_reference": "EJ-01",
+      "catalog_title": "Item 1, 생성자 대신 정적 팩터리 메서드를 고려하라",
+      "study_angle": "모든 연산 결과가 정규화 팩터리를 거치는지 확인한다.",
+      "reason": "모든 연산 결과가 정규화 팩터리를 거치는지 확인한다."
+    },
+    {
+      "category": "Effective Java",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Rational.java",
+      "symbol": "equals",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Rational.java:73",
+      "catalog_reference": "EJ-10",
+      "catalog_title": "Item 10, equals는 일반 규약을 지켜 재정의하라",
+      "study_angle": "통분 가능한 다른 표현이 정규화 후 같은 값으로 비교되는지 확인한다.",
+      "reason": "통분 가능한 다른 표현이 정규화 후 같은 값으로 비교되는지 확인한다."
+    },
+    {
+      "category": "Effective Java",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Rational.java",
+      "symbol": "hashCode",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Rational.java:77",
+      "catalog_reference": "EJ-11",
+      "catalog_title": "Item 11, equals를 재정의하려거든 hashCode도 재정의하라",
+      "study_angle": "equals에서 비교한 두 필드가 hashCode에도 쓰이는지 확인한다.",
+      "reason": "equals에서 비교한 두 필드가 hashCode에도 쓰이는지 확인한다."
+    },
+    {
+      "category": "Effective Java",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Rational.java",
+      "symbol": "Rational",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Rational.java:10",
+      "catalog_reference": "EJ-17",
+      "catalog_title": "Item 17, 변경 가능성을 최소화하라",
+      "study_angle": "연산이 기존 값을 변경하지 않고 새 유리수를 반환하는지 확인한다.",
+      "reason": "연산이 기존 값을 변경하지 않고 새 유리수를 반환하는지 확인한다."
+    },
+    {
+      "category": "Effective Java",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java",
+      "symbol": "SettlementInput",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java:17",
+      "catalog_reference": "EJ-50",
+      "catalog_title": "Item 50, 적시에 방어적 복사본을 만들라",
+      "study_angle": "입력 컬렉션의 사후 변경으로 계산이 바뀌지 않도록 복사한 지점을 확인한다.",
+      "reason": "입력 컬렉션의 사후 변경으로 계산이 바뀌지 않도록 복사한 지점을 확인한다."
+    },
+    {
+      "category": "함수형 Java",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java",
+      "symbol": "freeze",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java:45",
+      "catalog_reference": "FJ-04-04",
+      "catalog_title": "Chapter 4 / Section 4.4, 불변성 만들기",
+      "study_angle": "결과 record 내부 맵까지 변경 불가능한지 확인한다.",
+      "reason": "결과 record 내부 맵까지 변경 불가능한지 확인한다."
+    },
+    {
+      "category": "함수형 Java",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java",
+      "symbol": "SettlementInput",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Model.java:14",
+      "catalog_reference": "FJ-05-02",
+      "catalog_title": "Chapter 5 / Section 5.2, 도움을 주기 위한 레코드",
+      "study_angle": "record의 값 비교와 compact constructor의 복사 책임을 구분해 확인한다.",
+      "reason": "record의 값 비교와 compact constructor의 복사 책임을 구분해 확인한다."
+    },
+    {
+      "category": "함수형 Java",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java",
+      "symbol": "raw amount pipeline",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java:71",
+      "catalog_reference": "FJ-06-03",
+      "catalog_title": "Chapter 6 / Section 6.3, 스트림 파이프라인 구축하기",
+      "study_angle": "차수 근거에서 해당 결제자의 원부담만 추출해 정확히 합산하는지 확인한다.",
+      "reason": "차수 근거에서 해당 결제자의 원부담만 추출해 정확히 합산하는지 확인한다."
+    },
+    {
+      "category": "함수형 Java",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java",
+      "symbol": "incomingTotal",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java:89",
+      "catalog_reference": "FJ-07-01",
+      "catalog_title": "Chapter 7 / Section 7.1, 원시 스트림",
+      "study_angle": "박싱된 맵 값을 원시형 스트림으로 합산하는 반환 타입을 확인한다.",
+      "reason": "박싱된 맵 값을 원시형 스트림으로 합산하는 반환 타입을 확인한다."
+    },
+    {
+      "category": "함수형 Java",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java",
+      "symbol": "recipient grouping",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/Settlement.java:64",
+      "catalog_reference": "FJ-07-09",
+      "catalog_title": "Chapter 7 / Section 7.9, 컬렉터 알아보기",
+      "study_angle": "그룹 맵 공급자를 TreeMap으로 지정한 효과를 확인한다.",
+      "reason": "그룹 맵 공급자를 TreeMap으로 지정한 효과를 확인한다."
+    },
+    {
+      "category": "Kotlin 기본",
+      "file": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt",
+      "symbol": "assertParity",
+      "code_point": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt:187",
+      "catalog_reference": "KB-03",
+      "catalog_title": "3강, 코틀린에서 Type을 다루는 방법",
+      "study_angle": "Java 결과의 타입 검사 뒤 접근 가능한 멤버와 Kotlin 결과 캐스팅을 확인한다.",
+      "reason": "Java 결과의 타입 검사 뒤 접근 가능한 멤버와 Kotlin 결과 캐스팅을 확인한다."
+    },
+    {
+      "category": "Kotlin 기본",
+      "file": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt",
+      "symbol": "SettlementInput.toJava",
+      "code_point": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt:159",
+      "catalog_reference": "KB-16",
+      "catalog_title": "16강, 코틀린에서 다양한 함수를 다루는 방법",
+      "study_angle": "확장 함수가 입력 어댑터 역할을 하고 실제 Java 엔진 호출과 구분되는지 확인한다.",
+      "reason": "확장 함수가 입력 어댑터 역할을 하고 실제 Java 엔진 호출과 구분되는지 확인한다."
+    },
+    {
+      "category": "Kotlin 기본",
+      "file": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt",
+      "symbol": "JResult.toKotlin",
+      "code_point": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt:171",
+      "catalog_reference": "KB-18",
+      "catalog_title": "18강, 코틀린에서 컬렉션을 함수형으로 다루는 방법",
+      "study_angle": "중첩된 Java 결과를 Kotlin 값 객체로 바꾸면서 빠뜨린 필드가 없는지 확인한다.",
+      "reason": "중첩된 Java 결과를 Kotlin 값 객체로 바꾸면서 빠뜨린 필드가 없는지 확인한다."
+    },
+    {
+      "category": "Kotlin 고급",
+      "file": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt",
+      "symbol": "Rational parity assertions",
+      "code_point": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt:27",
+      "catalog_reference": "KA-17",
+      "catalog_title": "17강, 연산자 오버로딩",
+      "study_angle": "Java plus 메서드와 Kotlin + 연산자 호출이 같은 결과를 내는지 확인한다.",
+      "reason": "Java plus 메서드와 Kotlin + 연산자 호출이 같은 결과를 내는지 확인한다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "file": "core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java",
+      "symbol": "Java 21 record / sealed permits",
+      "code_point": "core/src/main/java/app/jeongsan/core/javaimpl/SettlementResult.java:20",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "Java 21 record / sealed permits",
+      "study_angle": "record의 얕은 불변성과 sealed 반환 타입의 하위 타입 제한을 확인한다.",
+      "reason": "record의 얕은 불변성과 sealed 반환 타입의 하위 타입 제한을 확인한다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "file": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt",
+      "symbol": "differential test",
+      "code_point": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt:180",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "differential test",
+      "study_angle": "금액만이 아니라 정확한 근거·오류 위치·출력 순서를 비교하는 경계를 확인한다.",
+      "reason": "금액만이 아니라 정확한 근거·오류 위치·출력 순서를 비교하는 경계를 확인한다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "file": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt",
+      "symbol": "seeded generated cases",
+      "code_point": "core/src/test/kotlin/app/jeongsan/core/JavaParitySpec.kt:107",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "seeded generated cases",
+      "study_angle": "같은 입력 2,000건을 재현하고 성공과 음수 조정 실패가 모두 포함되는지 확인한다.",
+      "reason": "같은 입력 2,000건을 재현하고 성공과 음수 조정 실패가 모두 포함되는지 확인한다."
+    }
+  ],
+  "test_candidates": [
+    "결제자 불참·면제 시 숫자 id 동률 조정",
+    "동일 결제자 합산 후 올림",
+    "음수 조정 실패",
+    "양방향 송금 유지",
+    "SAVE/CONFIRM 모든 오류와 Long 곱셈·누적 경계",
+    "고정 seed 2,000 입력의 전체 결과 비교"
+  ]
+}
+
