@@ -1,4 +1,10 @@
-# 정산어택 — 도메인·DB 설계 (Core v2 · 제품 v3)
+# 정산어택 — 도메인·DB 설계 (Core v2 · 제품 v4 연결)
+
+> **2026-10-06 개정:** 총무별 독립 정산의 현재 계약은 [SETTLEMENT_UNITS](SETTLEMENT_UNITS.md) §1·§3·§5다.
+> 아래 본문은 **제품 v3 당시의 설계 기록**이다. 전역 host·OPEN 검사·input_revision·
+> `settlements.gathering_id UNIQUE`·전역 참가자 제외·잠금 순서·삭제 SQL은 현재 구현 근거로 쓰지 않는다.
+> 현재 계약은 공유 Participant + SettlementUnit + 단위 명단, 단위별 revision/hash/snapshot이다.
+> 면제 API는 보류, 스푼의 복수 총무 정책은 미결이다. 실제 DB는 아직 이 설계를 적용하지 않았다.
 
 > **상태:** 제품 v3(일회용 술자리) 기준 설계 확정 · 구현 전
 > **작성일:** 2026-09-03 · **개정:** 2026-09-29 (v3 단순화, `ADR-019`)

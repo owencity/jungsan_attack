@@ -1,5 +1,12 @@
 # AGENTS.md — 정산어택 백엔드 (jungsan_attack)
 
+> **2026-10-06 현재 제품 방향:** REQUIREMENTS v4와 [SETTLEMENT_UNITS](docs/SETTLEMENT_UNITS.md)를 먼저 읽는다.
+> 같은 Gathering의 링크·참여자 신원은 공유하고, 총무·명단·담당 차수·입력 버전·정산 상태는 단위별이다.
+> 아래 v3 스냅샷의 전역 관리·정산 표현을 신규 개발에 사용하지 않는다. Domain V2의 단일 총무 설계도 기록이다.
+> API v5는 설계 계약이며 실제 API·DB 구현 완료와 구분한다. 면제 API는 보류다.
+> 신규 기능은 Java와 Kotlin을 각각 독립 구현하고 결과를 비교한다. Java 학습 구현은 별도 패키지로 두어
+> Spring Bean·URL을 중복 등록하지 않는다. 학습 가이드는 origin/main의 정책·카탈로그와 확정 PR diff에서 뽑는다.
+
 이 문서는 이 저장소에서 코드를 쓰는 에이전트(Codex)를 위한 것이다.
 **대상은 `server`·`core` 모듈, 즉 백엔드뿐이다.** 프론트엔드는 별도 저장소 두 곳에
 있고 Claude가 작업한다 — 웹은 `profile`(React), 앱은 `jungsan_app`(Kotlin Multiplatform,
