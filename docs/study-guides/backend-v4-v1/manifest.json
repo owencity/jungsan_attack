@@ -17,7 +17,12 @@
     "upgradeChecks": 4,
     "skipped": 0
   },
-  "pr": null,
+  "pr": {
+    "number": 18,
+    "url": "https://github.com/owencity/jungsan_attack/pull/18",
+    "baseBranch": "docs/host-settlement-units",
+    "statusAtCreation": "draft"
+  },
   "sha256": {
     ".gitattributes": "8dcac780cbb28c6c332f023b4e05d1502a4b0eaf874c8124f8c3141b7807bdda",
     "catalog.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
