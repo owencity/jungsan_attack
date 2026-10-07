@@ -1,0 +1,38 @@
+{
+  "formatVersion": 1,
+  "sourceBase": "6269774cade6e032c762cdd568545246b6331002",
+  "sourceHead": "be7d4ee1a68c9eae5e095fa4d283c0923ae63fcb",
+  "catalogRef": "origin/main",
+  "catalogCommit": "d5feb4677f71c9fe973e31118fd3b82d27eb2788",
+  "policyCommit": "d5feb4677f71c9fe973e31118fd3b82d27eb2788",
+  "dependencies": [
+    "PR #10",
+    "PR #17",
+    "Core sources from origin/feat/core-v2-java (PR #16)"
+  ],
+  "verification": {
+    "core": 54,
+    "server": 79,
+    "httpChecks": 25,
+    "upgradeChecks": 4,
+    "skipped": 0
+  },
+  "pr": null,
+  "sha256": {
+    ".gitattributes": "e6fd1527a5d3508ea9c69830fd7a1bf00837d22deabeda793ca9e743fbfbd2af",
+    "catalog.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+    "changes.patch": "81e2cc5d76ac62eb8e191d5254f636f0c491230bf39ebc1098fae472582dc1eb",
+    "guide.json": "d59a00fd00955e9fadbd828a8ebf00e47a09a26a9293b35a2d36db0e52dfcf4a",
+    "guide.md": "3a5665cea14d4893ebef3a84f85c5aed46767fff7e4921f122d7f375c47faef2",
+    "n8n-format.json": "04262c18d4d507a64937c1e6c6dc9216cdff386b8c497213074e4e7d96867e5b",
+    "policy.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+    "progress.md": "1e951ed4e46e7d8cd5415af99c29f4df4cd4dec056c62da54b859dfef5a0e1a0",
+    "review.md": "a7a7b2276511cd0c143bba2e4c8bddd9b14f0c2831e9a1f44f0a128638c3f9f0",
+    "source/server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java": "d6b9b0690489028a21880e168e5cd0179a8ca16744a82a0bee5e9c59e199be5c",
+    "source/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt": "1b21a934c0e4f41c83f82cd7a131b4fc1d12609e758a4551da56d54f65ae909e",
+    "source/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt": "fcacad12aef21618b1a3b8df819211fab907c2e5a6bdd9de5512a1d48bae8f70",
+    "source/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringStore.kt": "50075b471df2568182587cbac5dda16ee905d92869b1b770e336af22cc1247e7",
+    "source/server/src/main/kotlin/app/jeongsan/server/gathering/PayoutCipher.kt": "79917264ef83df957ac8da6906baec9e0860cc5db8432cfa4d5bde4cac8be2a9",
+    "source/server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt": "1cef94f08348510915d3e67dc9f97c0c25bd743e7f71821267d8e3569060f946"
+  }
+}

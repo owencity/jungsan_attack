@@ -1,0 +1,293 @@
+{
+  "change_summary": "같은 술자리의 총무별 정산 단위·입력·송금 분리, Java/Kotlin 독립 금융 규칙, MySQL 잠금·알림·삭제 기반 구현",
+  "review_findings": [],
+  "study_recommendations": [
+    {
+      "category": "java-basic",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "SettlementWorkflow 생성자",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:12",
+      "catalog_reference": "JAVA-CONSTRUCTOR",
+      "catalog_title": "생성자",
+      "study_angle": "private 생성자가 계산용 객체 생성을 막는 지점을 diff에서 확인한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "SettlementWorkflow 생성자",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:12",
+      "catalog_reference": "JST-06-05-01",
+      "catalog_title": "생성자란?",
+      "study_angle": "private 생성자가 계산용 객체 생성을 막는 지점을 diff에서 확인한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "SettlementWorkflow 타입",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:11",
+      "catalog_reference": "JST-07-04-03",
+      "catalog_title": "final - 마지막의, 변경될 수 없는",
+      "study_angle": "상속을 막는 final과 private 생성자의 서로 다른 역할을 코드에서 구분한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "input",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:48",
+      "catalog_reference": "JST-11-01-10",
+      "catalog_title": "HashMap과 Hashtable",
+      "study_angle": "AttendanceKey를 키로 삼아 각 사람×차수 응답을 한 번씩 넣는 관점으로 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "input",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:45",
+      "catalog_reference": "JST-14-01-06",
+      "catalog_title": "메서드 참조",
+      "study_angle": "filter→sorted→toList에서 다른 단위 사람과 차수가 어느 단계에 제거되는지 추적한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "input",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:45",
+      "catalog_reference": "JST-14-02-03",
+      "catalog_title": "스트림의 중간연산",
+      "study_angle": "filter→sorted→toList에서 다른 단위 사람과 차수가 어느 단계에 제거되는지 추적한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "SettlementWorkflow 생성자",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:12",
+      "catalog_reference": "EJ-04",
+      "catalog_title": "인스턴스화를 막으려거든 private 생성자를 사용하라",
+      "study_angle": "인스턴스 상태 없는 static 기능 묶음의 생성 방지 의도가 실제 구조와 맞는지 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "UnitInput compact constructor",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:14",
+      "catalog_reference": "EJ-50",
+      "catalog_title": "적시에 방어적 복사본을 만들라",
+      "study_angle": "record 필드가 final이어도 외부 List 변경을 별도로 막아야 하는 지점을 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "payout",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:104",
+      "catalog_reference": "EJ-49",
+      "catalog_title": "매개변수가 유효한지 검사하라",
+      "study_angle": "은행·숫자·예금주를 암호화 전에 거절하는 인수 검증을 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "functional-java",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "UnitInput",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:13",
+      "catalog_reference": "FJ-05-02",
+      "catalog_title": "도움을 주기 위한 레코드",
+      "study_angle": "Java record의 입력 묶음과 Kotlin UnitInput의 data class를 같은 필드 기준으로 비교한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "functional-java",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "input",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:46",
+      "catalog_reference": "FJ-06-03",
+      "catalog_title": "스트림 파이프라인 구축하기",
+      "study_angle": "파이프라인 중 unitId 필터를 빼면 B의 실패가 A에 섞이는지 diff로 확인한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "functional-java",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "symbol": "RoundInput compact constructor",
+      "code_point": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java:19",
+      "catalog_reference": "FJ-04-04",
+      "catalog_title": "불변성 만들기",
+      "study_angle": "외부 술 항목 목록의 변경이 다음 계산에 들어오는지를 방어 복사 테스트와 대조한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "symbol": "preview",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt:74",
+      "catalog_reference": "KB-03",
+      "catalog_title": "코틀린에서 Type을 다루는 방법",
+      "study_angle": "when의 is 분기 뒤 outcome.result 접근을 Java의 instanceof 분기와 비교한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "symbol": "preview",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt:74",
+      "catalog_reference": "KB-05",
+      "catalog_title": "코틀린에서 제어문을 다루는 방법",
+      "study_angle": "when의 is 분기 뒤 outcome.result 접근을 Java의 instanceof 분기와 비교한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "symbol": "UnitInput",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt:9",
+      "catalog_reference": "KB-14",
+      "catalog_title": "코틀린에서 다양한 클래스를 다루는 방법",
+      "study_angle": "DB 행 전체 대신 계산 단위의 id·명단·상태·revision만 옮기는 타입 경계를 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "symbol": "SettlementWorkflow",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt:20",
+      "catalog_reference": "KB-12",
+      "catalog_title": "코틀린에서 object 키워드를 다루는 방법",
+      "study_angle": "Kotlin object와 Java final/private 생성자/static 묶음을 실제 호출 방식으로 비교한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "symbol": "input",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt:49",
+      "catalog_reference": "KB-18",
+      "catalog_title": "코틀린에서 컬렉션을 함수형으로 다루는 방법",
+      "study_angle": "명단×차수 조합과 미응답 DRANK 투영을 만드는 flatMap/toMap을 추적한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringStore.kt",
+      "symbol": "Map.instant 확장 함수",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringStore.kt:29",
+      "catalog_reference": "KB-16",
+      "catalog_title": "코틀린에서 다양한 함수를 다루는 방법",
+      "study_angle": "확장 함수가 DB Map 타입에 붙인 호출 문법과 실제 Timestamp/LocalDateTime 변환을 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "symbol": "authorize / 호출부",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt:37",
+      "catalog_reference": "KB-20",
+      "catalog_title": "코틀린의 scope function",
+      "study_angle": "also로 인가·OPEN 검사를 수행하고 원래 UnitInput을 반환하는 흐름을 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "kotlin-advanced",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt",
+      "symbol": "RoundRequest",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt:11",
+      "catalog_reference": "KA-20",
+      "catalog_title": "코틀린의 어노테이션",
+      "study_angle": "Kotlin 생성자 프로퍼티의 field 대상 어노테이션이 실제 Bean Validation에 적용되는지를 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "symbol": "settle / room",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt:173",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "MySQL FK 공유 잠금 뒤 FOR UPDATE 승격과 unit→Gathering 선행 배타 잠금의 교착 차이를 본다",
+      "study_angle": "MySQL FK 공유 잠금 뒤 FOR UPDATE 승격과 unit→Gathering 선행 배타 잠금의 교착 차이를 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "symbol": "settle",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt:172",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "preview 후 다른 응답이 들어오면 revision/hash 거절과 트랜잭션 rollback이 어디서 보장되는지 본다",
+      "study_angle": "preview 후 다른 응답이 들어오면 revision/hash 거절과 트랜잭션 rollback이 어디서 보장되는지 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "symbol": "reopen / transfer",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt:190",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "WAITING이어도 sentAt 이력이 있으면 취소할 수 없는 금융 상태와 DB 상태를 대조한다",
+      "study_angle": "WAITING이어도 sentAt 이력이 있으면 취소할 수 없는 금융 상태와 DB 상태를 대조한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "symbol": "deleteExpired",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt:276",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "단위 전체 잠금→방 잠금→새 단위·활동 재검사가 개인정보 삭제와 동시 요청에 어떤 경계를 주는지 본다",
+      "study_angle": "단위 전체 잠금→방 잠금→새 단위·활동 재검사가 개인정보 삭제와 동시 요청에 어떤 경계를 주는지 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringStore.kt",
+      "symbol": "GatheringStore / details",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringStore.kt:4",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "같은 DataSource의 Spring 트랜잭션 참여와 테이블별 IN 조회를 롤백·목록 테스트에서 확인한다",
+      "study_angle": "같은 DataSource의 Spring 트랜잭션 참여와 테이블별 IN 조회를 롤백·목록 테스트에서 확인한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/PayoutCipher.kt",
+      "symbol": "PayoutCipher.encrypt",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/PayoutCipher.kt:8",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "AES-GCM nonce가 매번 달라지고 변조를 거절하는지 Java/Kotlin 상호 복호화 테스트와 대조한다",
+      "study_angle": "AES-GCM nonce가 매번 달라지고 변조를 거절하는지 Java/Kotlin 상호 복호화 테스트와 대조한다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "symbol": "hash",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt:58",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "필드 구분자·개수·길이 접두사와 안정된 정렬이 같은 입력을 같은 hash로 만드는지 본다",
+      "study_angle": "필드 구분자·개수·길이 접두사와 안정된 정렬이 같은 입력을 같은 hash로 만드는지 본다",
+      "reason": "고정 sourceHead의 실제 추가/변경 줄에서 확인한 학습 포인트"
+    }
+  ],
+  "test_candidates": [
+    {
+      "scenario": "보냈어요와 해당 단위 정산 취소의 동시 요청",
+      "expected": "송금 이력과 취소가 함께 성공하지 않음",
+      "reason": "서로 같은 unit 잠금을 취하지만 실제 동시 경합을 별도로 검증할 필요"
+    },
+    {
+      "scenario": "삭제 배치와 신규 단위 생성/참여/응답의 동시 요청",
+      "expected": "새 단위·최신 활동이 생긴 방은 삭제를 건너뜀",
+      "reason": "후보 조회 이후 상태 변경과 FK 잠금을 실제 부하로 검증"
+    },
+    {
+      "scenario": "마지막 입금 확인과 추가 단위 생성의 동시 요청",
+      "expected": "OPEN 단위가 있으면 전체 삭제 예정일 없음",
+      "reason": "마지막 완료와 생성이 공유 방 요약을 동시에 바꿈"
+    }
+  ]
+}
