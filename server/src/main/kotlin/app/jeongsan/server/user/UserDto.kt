@@ -8,6 +8,9 @@ data class MeResponse(
     val profileImageUrl: String?,
     val displayName: String?,
     val needsName: Boolean,
+    val payout: Any? = null,
+    val spoonCount: Long = 0,
+    val unreadNotificationCount: Long = 0,
 )
 
 fun User.toMeResponse() = MeResponse(id, nickname, profileImageUrl, displayName, displayName == null)

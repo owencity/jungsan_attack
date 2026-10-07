@@ -113,3 +113,12 @@ docker compose -f docker-compose.prod.yml ps
 docker compose -f docker-compose.prod.yml logs -f app
 curl -s localhost:8080/actuator/health
 ```
+
+
+## backend-v4 배포 전 추가 조건
+
+- 운영 `.env`에 독립된 32바이트 AES 키의 Base64 값 `PAYOUT_ENCRYPTION_KEY`를 추가한다. 저장소의 공개 로컬 키를 사용하지 않는다.
+- 키를 바꾸면 기존 계좌 암호문을 읽을 수 없으므로 백업·키 회전 절차 없이 교체하지 않는다. 원문/키는 로그·PR에 쓰지 않는다.
+- v1 CONFIRMED 자료가 있으면 024가 기동을 중단한다. 운영 DB 현황과 별도 자료 처리 결정을 먼저 검토한다.
+- MySQL fresh migration과 기존 OPEN 자료 업그레이드 검증은 구분한다. 새 코드가 배포 가능한지 체크리스트와 PR 검증 결과를 확인한다.
+- 사용자 병합 전에는 운영 배포를 실행하지 않는다.

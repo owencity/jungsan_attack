@@ -14,6 +14,7 @@ class AuthenticationGuardSpec : StringSpec({
         val publicMethods = setOf(
             "app.jeongsan.server.user.AuthController#login",
             "app.jeongsan.server.user.AuthController#callback",
+            "app.jeongsan.server.gathering.JoinController#preview",
         )
         val scanner = ClassPathScanningCandidateComponentProvider(false)
         scanner.addIncludeFilter(AnnotationTypeFilter(RestController::class.java))

@@ -304,3 +304,13 @@ GitHub push (main)
 - 코드리뷰 기준으로 이 문서를 쓴다면: PR이 §2의 전략(functional
   core/imperative shell, feature 패키지, schema-first)에서 벗어나거나,
   §8에 적힌 "아직 v1"인 지점을 v2 방식으로 몰래 바꾸는지를 먼저 본다.
+
+
+## backend-v4 구현 체크포인트
+
+GatheringController·SettlementUnitController → GatheringService의 READ_COMMITTED 트랜잭션 → GatheringStore의 명시 JDBC.
+단위 입력은 SettlementWorkflow → 순수 core Settlement로 전달한다. 금융 계산·단위 인가/hash/상태/계좌 규칙의 Java 구현은
+각 javaimpl 패키지에 있으며 Kotlin을 호출하는 계산 래퍼가 아니다. 운영 Spring Bean과 HTTP/JDBC 배선은 Kotlin으로 공유한다.
+송금 스냅샷·내부 알림·공유 REST 타임라인·RetentionJob은 같은 서버 프로세스에서 동작한다.
+옛 GroupController/Service와 v1 Gathering JPA는 제거했으며 새 쿼리는 모임 코드를 참조하지 않는다.
+이 체크포인트는 작업 브랜치의 상태다. main 병합/운영 배포/실시간 타임라인 완료를 뜻하지 않는다.

@@ -7,9 +7,13 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class UserService(private val userRepository: UserRepository) {
+class UserService(private val userRepository: UserRepository, private val gatherings: app.jeongsan.server.gathering.GatheringService? = null) {
     @Transactional(readOnly = true)
-    fun me(userId: Long): MeResponse = findUser(userId).toMeResponse()
+    fun me(userId: Long): MeResponse {
+        val response=findUser(userId).toMeResponse()
+        val info=gatherings?.meInfo(userId) ?: return response
+        return response.copy(payout=info["payout"],spoonCount=info["spoonCount"] as Long,unreadNotificationCount=info["unreadNotificationCount"] as Long)
+    }
 
     @Transactional
     fun registerDisplayName(userId: Long, request: DisplayNameRequest): MeResponse {
