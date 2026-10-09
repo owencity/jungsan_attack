@@ -1,0 +1,368 @@
+[
+  {
+    "category": "Java 기본기",
+    "catalog_id": "JAVA-COLLECTION",
+    "catalog": {
+      "source": "Java 기본기",
+      "title": "컬렉션"
+    },
+    "code": {
+      "path": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java",
+      "line": 35,
+      "type_or_method": "AutoSettlementPolicy.plan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java#L35"
+    },
+    "viewpoint": "응답 키를 Set으로 모아 같은 참여자·차수 값으로 응답 완료를 찾는 관점"
+  },
+  {
+    "category": "Java 기본기",
+    "catalog_id": "JST-11-01-07",
+    "catalog": {
+      "source": "자바의 정석",
+      "chapter": "11장 컬렉션 프레임웍",
+      "section": "1. 컬렉션 프레임웍(collections framework)",
+      "subsection": "1.7",
+      "title": "Comparator와 Comparable",
+      "page": "658"
+    },
+    "code": {
+      "path": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java",
+      "line": 29,
+      "type_or_method": "AutoSettlementPolicy.plan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java#L29"
+    },
+    "viewpoint": "총무 우선·가입 시각·id 동률 순서가 최종 계산 대상자를 결정하는 관점"
+  },
+  {
+    "category": "Java 기본기",
+    "catalog_id": "JST-14-01-06",
+    "catalog": {
+      "source": "자바의 정석",
+      "chapter": "14장 람다와 스트림",
+      "section": "1. 람다식(Lambda expression)",
+      "subsection": "1.6",
+      "title": "메서드 참조",
+      "page": "946"
+    },
+    "code": {
+      "path": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java",
+      "line": 30,
+      "type_or_method": "AutoSettlementPolicy.plan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java#L30"
+    },
+    "viewpoint": "메서드 참조가 비교할 값을 전달하고 thenComparing이 동률을 처리하는 관점"
+  },
+  {
+    "category": "Java 기본기",
+    "catalog_id": "JST-14-02-03",
+    "catalog": {
+      "source": "자바의 정석",
+      "chapter": "14장 람다와 스트림",
+      "section": "2. 스트림(stream)",
+      "subsection": "2.3",
+      "title": "스트림의 중간연산",
+      "page": "958"
+    },
+    "code": {
+      "path": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java",
+      "line": 28,
+      "type_or_method": "AutoSettlementPolicy.plan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java#L28"
+    },
+    "viewpoint": "filter·sorted·map으로 명단 선택과 정렬을 조립하는 관점"
+  },
+  {
+    "category": "Java 기본기",
+    "catalog_id": "JST-14-02-06",
+    "catalog": {
+      "source": "자바의 정석",
+      "chapter": "14장 람다와 스트림",
+      "section": "2. 스트림(stream)",
+      "subsection": "2.6",
+      "title": "collect()",
+      "page": "980"
+    },
+    "code": {
+      "path": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java",
+      "line": 36,
+      "type_or_method": "AutoSettlementPolicy.plan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java#L36"
+    },
+    "viewpoint": "collect의 결과가 응답 완료 판정용 Set이 되는 관점"
+  },
+  {
+    "category": "Effective Java",
+    "catalog_id": "EJ-14",
+    "catalog": {
+      "source": "Effective Java",
+      "chapter": "3장 모든 객체의 공통 메서드",
+      "item": "14",
+      "title": "Comparable을 구현할지 고려하라"
+    },
+    "code": {
+      "path": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java",
+      "line": 29,
+      "type_or_method": "AutoSettlementPolicy.plan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java#L29"
+    },
+    "viewpoint": "동일 가입 시각에서도 id로 결정되어 재시도마다 명단이 바뀌지 않는 관점"
+  },
+  {
+    "category": "Effective Java",
+    "catalog_id": "EJ-17",
+    "catalog": {
+      "source": "Effective Java",
+      "chapter": "4장 클래스와 인터페이스",
+      "item": "17",
+      "title": "변경 가능성을 최소화하라"
+    },
+    "code": {
+      "path": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java",
+      "line": 34,
+      "type_or_method": "AutoSettlementPolicy.plan / Plan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java#L34"
+    },
+    "viewpoint": "record 프로퍼티와 결과 목록의 변경 가능성을 각각 확인하는 관점"
+  },
+  {
+    "category": "Effective Java",
+    "catalog_id": "EJ-49",
+    "catalog": {
+      "source": "Effective Java",
+      "chapter": "8장 메서드",
+      "item": "49",
+      "title": "매개변수가 유효한지 검사하라"
+    },
+    "code": {
+      "path": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java",
+      "line": 19,
+      "type_or_method": "AutoSettlementPolicy.validateHeadcount",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java#L19"
+    },
+    "viewpoint": "HTTP 검증을 우회한 직접 호출에도 인원 범위를 검사하는 관점"
+  },
+  {
+    "category": "함수형 Java",
+    "catalog_id": "FJ-02-02",
+    "catalog": {
+      "source": "함수형 프로그래밍 with 자바",
+      "part": "PART Ⅰ 함수형 기초",
+      "chapter": "2",
+      "chapter_title": "함수형 자바",
+      "section": "2.2",
+      "title": "람다의 실전 활용"
+    },
+    "code": {
+      "path": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java",
+      "line": 31,
+      "type_or_method": "AutoSettlementPolicy.plan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java#L31"
+    },
+    "viewpoint": "람다·메서드 참조가 실제 명단 필터와 ID 추출에 연결되는 관점"
+  },
+  {
+    "category": "함수형 Java",
+    "catalog_id": "FJ-15-03",
+    "catalog": {
+      "source": "함수형 프로그래밍 with 자바",
+      "part": "PART Ⅱ 함수형 접근 방식",
+      "chapter": "15",
+      "chapter_title": "자바를 위한 함수형 접근 방식",
+      "section": "15.3",
+      "title": "명령형 세계의 함수형 아키텍처"
+    },
+    "code": {
+      "path": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java",
+      "line": 24,
+      "type_or_method": "AutoSettlementPolicy.plan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java#L24"
+    },
+    "viewpoint": "판정은 입력으로만 계산하고 DB 잠금·알림·확정은 서비스에서 처리하는 경계 관점"
+  },
+  {
+    "category": "Kotlin 기본",
+    "catalog_id": "KB-02",
+    "catalog": {
+      "source": "Kotlin 기본",
+      "lecture": "2강",
+      "section": "섹션 2. 코틀린에서 변수와 타입, 연산자를 다루는 방법",
+      "title": "코틀린에서 null을 다루는 방법"
+    },
+    "code": {
+      "path": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "line": 263,
+      "type_or_method": "GatheringService.autoSettle",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt#L263"
+    },
+    "viewpoint": "미입력 인원 null이 자동 정산을 끄는 조건이며 숫자 0과 구분되는 관점"
+  },
+  {
+    "category": "Kotlin 기본",
+    "catalog_id": "KB-07",
+    "catalog": {
+      "source": "Kotlin 기본",
+      "lecture": "7강",
+      "section": "섹션 3. 코틀린에서 코드를 제어하는 방법",
+      "title": "코틀린에서 예외를 다루는 방법"
+    },
+    "code": {
+      "path": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "line": 274,
+      "type_or_method": "GatheringService.autoSettle",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt#L274"
+    },
+    "viewpoint": "Core 검증 오류만 보류하고 DB 실패는 전파되어 전체 트랜잭션이 취소되는 관점"
+  },
+  {
+    "category": "Kotlin 기본",
+    "catalog_id": "KB-14",
+    "catalog": {
+      "source": "Kotlin 기본",
+      "lecture": "14강",
+      "section": "섹션 4. 코틀린에서의 OOP",
+      "title": "코틀린에서 다양한 클래스를 다루는 방법"
+    },
+    "code": {
+      "path": "server/src/main/kotlin/app/jeongsan/server/gathering/AutoSettlementPolicy.kt",
+      "line": 6,
+      "type_or_method": "AutoSettlementPlan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/kotlin/app/jeongsan/server/gathering/AutoSettlementPolicy.kt#L6"
+    },
+    "viewpoint": "data class 결과의 includedIds·excludedIds·error와 Java Plan record를 대조하는 관점"
+  },
+  {
+    "category": "Kotlin 기본",
+    "catalog_id": "KB-18",
+    "catalog": {
+      "source": "Kotlin 기본",
+      "lecture": "18강",
+      "section": "섹션 5. 코틀린에서의 FP",
+      "title": "코틀린에서 컬렉션을 함수형으로 다루는 방법"
+    },
+    "code": {
+      "path": "server/src/main/kotlin/app/jeongsan/server/gathering/AutoSettlementPolicy.kt",
+      "line": 19,
+      "type_or_method": "AutoSettlementPolicy.plan",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/kotlin/app/jeongsan/server/gathering/AutoSettlementPolicy.kt#L19"
+    },
+    "viewpoint": "filter·정렬·take/drop이 인원 안·밖을 만들고 Java Stream과 같은 순서인지 보는 관점"
+  },
+  {
+    "category": "Kotlin 기본",
+    "catalog_id": "KB-19",
+    "catalog": {
+      "source": "Kotlin 기본",
+      "lecture": "19강",
+      "section": "섹션 6. 추가적으로 알아두어야 할 코틀린 특성",
+      "title": "코틀린의 이모저모"
+    },
+    "code": {
+      "path": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "line": 160,
+      "type_or_method": "GatheringService.respond",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt#L160"
+    },
+    "viewpoint": "return@forEach가 현재 응답 칸만 건너뛰며 함수 전체 반환과 다른 관점"
+  },
+  {
+    "category": "Kotlin 고급",
+    "catalog_id": "KA-20",
+    "catalog": {
+      "source": "Kotlin 고급",
+      "lecture": "20강",
+      "section": "섹션 6. 어노테이션과 리플렉션",
+      "title": "코틀린의 어노테이션"
+    },
+    "code": {
+      "path": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt",
+      "line": 8,
+      "type_or_method": "HeadcountRequest",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt#L8"
+    },
+    "viewpoint": "@field:Min/Max가 Bean Validation이 읽는 JVM 필드에 붙어 HTTP 범위를 검증하는 관점"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "catalog": {},
+    "code": {
+      "path": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "line": 260,
+      "type_or_method": "GatheringService.autoSettle / unit",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt#L260"
+    },
+    "viewpoint": "단위 FOR UPDATE 잠금과 settlements UNIQUE가 마지막 응답 경합에서 1회 확정을 보장하는 관점"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "catalog": {},
+    "code": {
+      "path": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "line": 281,
+      "type_or_method": "GatheringService.autoSettle / persistSettlement",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt#L281"
+    },
+    "viewpoint": "Core 성공 뒤에만 제외·스냅샷·알림을 쓰고 DB 실패 때 함께 rollback하는 관점"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "catalog": {},
+    "code": {
+      "path": "server/src/main/resources/application-local.yml",
+      "line": 9,
+      "type_or_method": "spring.datasource.url",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/resources/application-local.yml#L9"
+    },
+    "viewpoint": "JVM 시간대·JDBC 변환·DB 세션 UTC·JSON Z 표기를 각각 비교하는 관점"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "catalog": {},
+    "code": {
+      "path": "server/src/main/resources/db/changelog/018-auto-settlement.yaml",
+      "line": 3,
+      "type_or_method": "Liquibase changeSet 028",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/server/src/main/resources/db/changelog/018-auto-settlement.yaml#L3"
+    },
+    "viewpoint": "기존 checksum을 바꾸지 않고 nullable 인원 컬럼을 추가해 기존 단위의 동작을 유지하는 관점"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "catalog": {},
+    "code": {
+      "path": "scripts/deploy/health.sh",
+      "line": 13,
+      "type_or_method": "health.sh",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/scripts/deploy/health.sh#L13"
+    },
+    "viewpoint": "다른 서비스의 HTTP UP과 실제 배포 이미지·컨테이너·포트의 일치를 구분하는 관점"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "catalog": {},
+    "code": {
+      "path": "scripts/deploy/deploy.sh",
+      "line": 10,
+      "type_or_method": "deploy.sh",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/scripts/deploy/deploy.sh#L10"
+    },
+    "viewpoint": "성공 SHA 기록·실패 이미지 복원과 되돌리지 않는 DB migration의 호환성을 점검하는 관점"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "catalog": {},
+    "code": {
+      "path": ".github/workflows/ci.yml",
+      "line": 46,
+      "type_or_method": "Backend CI 실제 DB 검사",
+      "url": "https://github.com/owencity/jungsan_attack/blob/5fd757e7c14c8099021349a142d9500199d0453c/.github/workflows/ci.yml#L46"
+    },
+    "viewpoint": "MockMvc·순수 함수 검사와 실제 DB/HTTP 경합 시험의 범위를 구분하는 관점"
+  }
+]

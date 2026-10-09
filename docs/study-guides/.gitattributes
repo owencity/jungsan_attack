@@ -1,0 +1,5 @@
+
+release-ready-v1/** -text -whitespace
+release-ready-v1/GUIDE.md text eol=lf
+release-ready-v1/topics.json text eol=lf
+release-ready-v1/manifest.json text eol=lf

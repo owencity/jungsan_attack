@@ -14,3 +14,8 @@
 `review_findings=[]`는 자동 AI 리뷰를 실행했다는 뜻이 아니다. AI 리뷰 원문은 실행 시각/source SHA를 붙여 별도 파일로 추가한다.
 가이드 생성·소스 복사·diff archive 자체를 새 기능 학습 후보로 취급하지 않는다. 원본 sourceHead의 코드 diff만 근거로 쓴다.
 Slack 전송이나 n8n 설정 변경은 이 문서 저장과 별개이며 이번 작업에서는 하지 않았다.
+
+## 출시 PR · 자동 정산과 운영 배포
+
+- [고정 가이드](release-ready-v1/GUIDE.md) · [전체 PR diff](release-ready-v1/pr-main.diff.patch) · [추가 구현 diff](release-ready-v1/release-changes.diff.patch) · [개인 진도](progress/release-ready.md).
+- 이전 전체 백엔드 이력 정리는 [PR #26](https://github.com/owencity/jungsan_attack/pull/26)에 보존되어 있다.
