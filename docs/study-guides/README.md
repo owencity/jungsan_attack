@@ -7,6 +7,7 @@
 |---|---|---|---|
 | backend-v4 같은 술자리·총무별 독립 정산 | [guide.md](backend-v4-v1/guide.md) · [review.md](backend-v4-v1/review.md) | [manifest.json](backend-v4-v1/manifest.json)의 base/head와 [changes.patch](backend-v4-v1/changes.patch) | [progress.md](backend-v4-v1/progress.md) |
 | auth-release Apple·앱 인증·로그아웃·탈퇴 | [guide.md](auth-release-v1/guide.md) · [review.md](auth-release-v1/review.md) | [manifest.json](auth-release-v1/manifest.json)의 고정 base/head와 [changes.patch](auth-release-v1/changes.patch) | [progress.md](auth-release-v1/progress.md) |
+| [PR #21 CI·배포 실행 권한](https://github.com/owencity/jungsan_attack/pull/21) | [guide.md](actions-ci-v1/guide.md) · [review.md](actions-ci-v1/review.md) | [manifest.json](actions-ci-v1/manifest.json) · [changes.patch](actions-ci-v1/changes.patch) | [progress.md](actions-ci-v1/progress.md) |
 
 각 디렉터리에는 원격 main 정책/목차의 commit SHA, 고정 diff, 관련 source snapshot, 클래스/함수/줄/관점, 검증과 미검증 항목을 남긴다.
 자동화가 받는 JSON 모양은 [n8n-format.json](backend-v4-v1/n8n-format.json)에 사용자 제공 스키마 그대로 보존했다.

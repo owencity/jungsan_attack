@@ -102,8 +102,18 @@ https://api.devkdk.com/api/v1/auth/kakao/callback
 
 ## 배포
 
+- PR 생성·업데이트 → **Backend CI**에서 Core 테스트, Server 테스트, bootJar 빌드를 실행한다.
+  대상 브랜치를 제한하지 않아 기능 브랜치 위에 쌓은 PR도 검증한다. 문서 전용 PR도 동일한 검사를 받아
+  필수 검사 설정 시 경로 필터 때문에 대기 상태에 머무르지 않는다. 이 작업에는 운영 SSH 키가 필요 없다.
+- CI의 테스트 XML·HTML은 실행 화면의 `backend-test-results`에서 14일 동안 받을 수 있다.
 - `main` 에 push → 자동 배포 (문서·design 만 바뀌면 건너뜀)
-- 수동: Actions → **Deploy to OCI** → Run workflow
+- 배포 작업도 Core·Server 테스트를 다시 통과한 뒤 ARM 이미지 빌드·전송·기동·헬스체크를 진행한다.
+- 수동: Actions → **Deploy to OCI** → Run workflow. `main`만 운영 배포하며 다른 브랜치는 건너뛴다.
+- `gradlew`의 Git 실행 권한은 `100755`로 보존한다. Windows에서 파일 내용을 고쳐도 이 권한이
+  유지되는지 확인한다. CI는 `test -x ./gradlew`로 확인하며 권한이 없으면 검사에 실패한다.
+
+CI 성공은 운영 배포 성공과 다르다. **Deploy to OCI**의 헬스체크 성공까지 확인해야 배포 완료다.
+실제 MySQL 경합·제공자 로그인·앱 연결 시험은 위 단위 테스트에 포함되지 않는다.
 
 ## 롤백
 
