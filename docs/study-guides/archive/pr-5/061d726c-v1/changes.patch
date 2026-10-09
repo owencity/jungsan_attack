@@ -1,0 +1,2996 @@
+diff --git a/.claude/skills/jeongsan-review/SKILL.md b/.claude/skills/jeongsan-review/SKILL.md
+index a822be0..2c776a8 100644
+--- a/.claude/skills/jeongsan-review/SKILL.md
++++ b/.claude/skills/jeongsan-review/SKILL.md
+@@ -83,11 +83,29 @@ description: 정산어택 백엔드(core·server) PR을 이 저장소의 표준(
+ - Liquibase changelog 없이 엔티티 컬럼만 바뀌지 않았는가(스키마는
+   changelog가 먼저)
+ 
+-### 2. v1 → v2 전환 오염 (`ARCHITECTURE.md` §8)
+-
+-**이 프로젝트의 지금 가장 위험한 지점이다.** 설계(`CALC_RULES_V2.md`,
+-`DOMAIN_DB_DESIGN_V2.md`)는 확정됐지만 술자리·차수·응답·정산 확정은
+-아직 v1 계약대로 유지하기로 돼 있다.
++### 2. 전환 오염 — Core v1→v2, 제품 v2→v3 (`ARCHITECTURE.md` §8)
++
++**이 프로젝트의 지금 가장 위험한 지점이다.** 전환이 두 겹이다 — 계산 엔진은
++v1→v2(`CALC_RULES_V2.md`), 제품은 v2→v3(`REQUIREMENTS.md` v3, `ADR-019`:
++모임 제거·일회용 술자리). 설계는 확정됐고 구현이 따라가는 중이다.
++
++**제품 v3 기준으로 먼저 본다.**
++
++- 모임(`Group`·`GroupMember`·`GroupBan`) 코드를 **새로 참조하거나 확장**하지
++  않았는가? `server/group`은 제거 대상이다. 모임 코드 패턴을 복사해 온 것도 본다.
++- `disputes`·`dispute_messages`·`group_bans`·`payment_status_histories` 같은
++  **v3가 만들지 않기로 한 테이블**이 changelog에 들어오지 않았는가
++  (`DOMAIN_DB_DESIGN_V2.md` §4.3).
++- 술자리 상태가 `OPEN | SETTLING | COMPLETED` 셋인가? v2의 `ROSTER_OPEN`·
++  `ROUND_CONFIRMING` 같은 상태나 차수별 확정 단계가 되살아나지 않았는가.
++- 면제(`EXEMPT`)를 **총무만** 쓸 수 있게 막았는가(응답 `source = HOST`).
++  참여자가 스스로 면제를 설정할 수 있으면 지적 대상이다.
++- 정산 되돌리기가 `sent_at`·`confirmed_at` 조건을 지키는가. 상태만 보고
++  되돌리면 이미 돈이 오간 정산이 풀린다.
++- 새 changelog가 `012`~`014` 파일명이나 changeSet `018`~`022`를 **재사용하지
++  않았는가**(`AGENTS.md` §7 — 소진된 번호).
++
++**그다음 Core v1→v2를 본다.**
+ 
+ - PR이 `core`의 `Settlement`/`Validation`/`Model`을 건드린다면: v1 계약을
+   부분적으로만 v2로 바꾸고 있지 않은가? (예: `payerId`는 그대로 두고
+@@ -99,8 +117,8 @@ description: 정산어택 백엔드(core·server) PR을 이 저장소의 표준(
+   `gatherings`의 `expected_count`/`rounding_unit`, `extra_items`류 —
+   이 컬럼들에 새로 의존하는 코드가 추가됐다면 그 자체가 지적 대상이다
+   (`DOMAIN_DB_DESIGN_V2.md` §4.1이 폐기 대상으로 이미 정했다).
+-- ADR 없이 `ADR-004`/`008`/`010`의 기존 서술과 어긋나는 동작을 구현하지
+-  않았는가(`DOMAIN_DB_DESIGN_V2.md` §7이 지목한 세 개).
++- 기존 ADR과 어긋나는 동작을 ADR 없이 구현하지 않았는가 —
++  `DOMAIN_DB_DESIGN_V2.md` §7 표가 각 ADR의 v3 판단을 정리해뒀다.
+ 
+ ### 3. 이 저장소가 이미 걸렸던 함정 (`AGENTS.md` §5)
+ 
+@@ -133,6 +151,8 @@ description: 정산어택 백엔드(core·server) PR을 이 저장소의 표준(
+ - 스키마가 바뀌었는데 `docs/ERD.md`가 그대로인가
+ - `core/Validation.kt`의 `ErrorCode` enum이 바뀌었는데 `API.md` §1.4가
+   그대로인가
++- `docs/flow-changes/`의 `열림` 항목 중 이 PR이 건드리는 API·스키마와 관련된 것을 놓쳤는가.
++  반영했다면 그 항목 상태를 `반영됨`으로 바꿨는가. `결정 필요` 항목을 근거로 구현하지 않았는가
+ 
+ ### 5. 테스트
+ 
+diff --git a/AGENTS.md b/AGENTS.md
+index 5cb73c3..b81841f 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,8 +1,9 @@
+ # AGENTS.md — 정산어택 백엔드 (jungsan_attack)
+ 
+ 이 문서는 이 저장소에서 코드를 쓰는 에이전트(Codex)를 위한 것이다.
+-**대상은 `server`·`core` 모듈, 즉 백엔드뿐이다.** 참여자 웹 프론트엔드는 별도
+-저장소(`profile`)에 있고 사람이 직접 작업한다 — 이 저장소 안에 프론트 코드는 없다.
++**대상은 `server`·`core` 모듈, 즉 백엔드뿐이다.** 프론트엔드는 별도 저장소 두 곳에
++있고 Claude가 작업한다 — 웹은 `profile`(React), 앱은 `jungsan_app`(Kotlin Multiplatform,
++iOS·Android). 이 저장소 안에 프론트 코드는 없다.
+ 
+ ## 역할 관계
+ 
+@@ -24,55 +25,59 @@
+ 
+ ## 1. 무엇을 만드는가
+ 
+-**정산어택** — 술자리 정산 서비스. 총무 혼자 정산 몫을 입력하지 않는다. 참여자
+-각자가 링크로 들어와 "몇 차까지 있었는지 · 술을 마셨는지"를 체크하면, 서버가
+-차수별로 계산해서 **금액과 근거를 함께** 보여준다. N빵이 아니다.
++**정산어택** — **일회용** 술자리 정산 서비스. 총무가 술자리를 만들어 링크를 뿌리면,
++참여자가 자기 차수별 참석·음주를 버튼으로 체크하고, 서버가 차수별로 계산해 **금액과
++근거를 함께** 보여준다. N빵이 아니다. 정산이 끝나면 7일 뒤 사라진다.
+ 
+-MVP 플로우 (채팅은 보류):
++MVP 플로우 (제품 v3, 2026-09-29):
+ 
+ ```
+-로그인(카카오)
+-  → 총무: 모임(Group) 생성 — 번개(FLASH, 1회성) or 주기(RECURRING, 지속)
+-  → 참여자: 공유 링크로 모임 참여
+-  → 모임 안에서 술자리(Gathering)가 열리고, 차수·기타항목을 총무가 입력
+-  → 참여자가 각자 출석/음주 체크
+-  → 확정(2단계: 미리보기 → 수락) → 결과·입금 상태 확인
++총무:   로그인(카카오) → [새 술자리] → 차수별 금액·술 항목·결제자 입력
++        → [링크 공유] → 응답 현황 → [정산하기] → 입금 확인 → 완료(7일 뒤 삭제)
++참여자: 링크 → 로그인 → 차수별 [불참]/[논알코올]/[알코올] → 금액 확인
++        → 송금 → [보냈어요]
+ ```
+ 
+-**용어 — `Group` = 모임, `Gathering` = 술자리.** 모임 하나가 술자리 여러 개를 담고,
+-번개(FLASH)만 예외로 정확히 하나만 담는다.
++**용어 — `Gathering` = 술자리가 최상위다. 모임(`Group`)은 없다**(`ADR-019`가 `ADR-009`를
++대체). 차수마다 돈을 낸 사람은 **결제자(`Payer`)**다 — v2의 "차수 총무"라는 말은 쓰지 않는다.
+ 
+-단, **`gatherings.group_id`는 nullable이다.** 모임 없이 술자리 하나만 만드는 경로가
+-스키마상 열려 있다(`ADR-009`가 기존 `Gathering` 구조를 안 바꾸기로 한 결과). 코드를
+-쓸 때 `group_id`가 항상 있다고 가정하지 마라.
++> ⚠️ **`main`에는 아직 모임 코드가 남아 있다** — `server/group` 패키지, `GroupController`,
++> `user_groups`·`group_members` 테이블, `gatherings.group_id`. 전부 **제거 대상**이다
++> (`DOMAIN_DB_DESIGN_V2.md` §4.1·§8). 모임 코드를 참고해 새 기능을 짜지 마라.
+ 
+-새 제품 정의는 [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md)가 기준이다.
+-[`docs/SPEC.md`](docs/SPEC.md)는 현재 구현 계약을 설명하는 레거시 v4이며, 새 요구사항과
+-충돌하는 부분이 있다. 요구사항만 보고 코드를 먼저 바꾸지 말고 계산 규칙·스키마·API
+-계약을 순서대로 개정한 뒤 구현한다.
++제품 정의는 [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) **v3**가 기준이다.
++[`docs/SPEC.md`](docs/SPEC.md)는 레거시 명세라 충돌하면 REQUIREMENTS가 이긴다.
++요구사항만 보고 코드를 먼저 바꾸지 말고 계산 규칙·스키마·API 계약을 순서대로 개정한 뒤
++구현한다.
+ 
+ ---
+ 
+ ## 2. 읽는 순서
+ 
+-1. [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) — 새 제품 요구사항, 유비쿼터스 언어,
+-   역할·권한, 상태 전이. **앞으로 만들 제품의 기준**
+-2. [`docs/SPEC.md`](docs/SPEC.md) — 현재 구현 기준 제품 명세. 새 요구사항과 충돌하는 절은 개정 예정
+-3. [`docs/ERD.md`](docs/ERD.md) — 스키마 요약. **진실은 `server/src/main/resources/db/changelog/`의
+-   Liquibase YAML이다** — ERD.md는 그걸 사람이 읽기 좋게 옮긴 것이다. 스키마를 바꿀 땐
+-   changelog를 먼저 고치고 ERD.md를 그에 맞춰 갱신한다.
+-4. [`docs/CALC_RULES.md`](docs/CALC_RULES.md) — 계산 규칙 + 검증된 테스트 케이스.
+-   **`core` 모듈 작업은 여기서 시작한다.**
+-5. [`docs/API.md`](docs/API.md) — 엔드포인트·요청·응답·오류 코드 계약.
+-   **`server` 모듈 작업은 여기서 시작한다.**
+-6. [`docs/ADR/000-index.md`](docs/ADR/000-index.md) — 왜 이렇게 정했는지.
++1. [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) — 제품 요구사항 **v3**, 용어, 역할·권한,
++   상태. **앞으로 만들 제품의 기준**
++2. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — 시스템이 지금 어떤 모양인지 한눈에
++3. [`docs/DOMAIN_DB_DESIGN_V2.md`](docs/DOMAIN_DB_DESIGN_V2.md) — v3 도메인·상태·논리 스키마·
++   트랜잭션·동시성. **스키마·도메인 작업은 여기서 시작한다**
++4. [`docs/CALC_RULES_V2.md`](docs/CALC_RULES_V2.md) — 결제자별 수취·1원 올림 계산 규칙.
++   **`core` 작업은 여기서 시작한다.** (`CALC_RULES.md`는 v1 회귀 기준으로만 남아 있다)
++5. [`docs/ERD.md`](docs/ERD.md) — 스키마 요약. **진실은 `server/src/main/resources/db/changelog/`의
++   Liquibase YAML이다** — 스키마를 바꿀 땐 changelog를 먼저 고치고 ERD.md를 맞춰 갱신한다.
++6. [`docs/API.md`](docs/API.md) — 엔드포인트·요청·응답·오류 코드 계약. v3 개정 전이라 모임
++   관련 절은 폐기 대상이다. **`server` 작업 시 API.md를 같은 PR에서 v3로 개정한다.**
++7. [`docs/ADR/000-index.md`](docs/ADR/000-index.md) — 왜 이렇게 정했는지.
+    특히 [001](docs/ADR/001-rational-not-bigdecimal.md)(BigDecimal 금지),
+-   [005](docs/ADR/005-no-stored-settlement.md)(계산 결과 미저장),
+-   [006](docs/ADR/006-single-vm-no-kubernetes.md)(단일 VM 배포),
+-   [009](docs/ADR/009-group-persistent-membership.md)(Group을 얹은 방식),
+-   [014](docs/ADR/014-monolith-first-feature-package.md)(모놀리스·feature 패키지 — **가장 최근 결정**)
+-7. [`DEVLOG.md`](DEVLOG.md) — 최근 결정 이력
+-8. [`docs/DEPLOY.md`](docs/DEPLOY.md) — 배포 절차 (배포를 건드릴 때만)
++   [004](docs/ADR/004-two-step-confirm.md)(`inputHash` 2단계 확정),
++   [014](docs/ADR/014-monolith-first-feature-package.md)(모놀리스·feature 패키지),
++   [015](docs/ADR/015-immutable-confirmed-transfer-snapshot.md)(송금 스냅샷),
++   [019](docs/ADR/019-onetime-gathering-no-group.md)(일회용 술자리·모임 제거 — **가장 최근 결정**)
++8. [`docs/flow-changes/`](docs/flow-changes/README.md) — **프론트가 만들며 바뀐 흐름 중 서버가 알아야
++   하는 것.** 웹·Android·iOS는 목데이터로 먼저 만들고 흐름을 계속 고친다. **API·스키마 작업을 시작하기
++   전에 목록에서 `열림` 항목을 읽고, 이번 작업과 관련 있으면 같이 반영한다.** `결정 필요` 항목은
++   CTO 결정 전이라 근거로 구현하지 않는다. 반영했으면 그 항목의 상태를 `반영됨`으로 바꾸고 어디에
++   반영했는지 적는다(같은 PR에서).
++9. [`DEVLOG.md`](DEVLOG.md) — 최근 결정 이력
++10. [`docs/DEPLOY.md`](docs/DEPLOY.md) — 배포 절차 (배포를 건드릴 때만)
+ 
+ > **ADR-013(MSA)과 ADR-010(채팅 분리)은 "보류"이지 "폐기"가 아니다.** 설계는 살아
+ > 있지만 **지금 코드는 014(모놀리스) 기준으로 쓴다.** 저장소 안에 "ADR-013의 REST API
+@@ -85,25 +90,22 @@ MVP 플로우 (채팅은 보류):
+ 
+ ---
+ 
+-## 3. 지금 상태 (2026-08-27 스냅샷)
++## 3. 지금 상태 (2026-09-29 스냅샷)
+ 
+ 이 표는 며칠이면 낡는다. 작업 전에 `git log --oneline -10`과 실제 컨트롤러 파일로 교차 확인해라.
+ 
+-| 영역 | 상태 |
++| 영역 | 상태 (`main` 기준) |
+ |---|---|
+-| `core` 계산 엔진 | ✅ v2 구현 완료. 차수별 면제·총무별 수취·1원 올림, Kotest 44개 통과 |
+-| DB 스키마 | 🚧 changelog 014까지 작성. `001~011 → 014` 업그레이드는 MySQL 8.4에서 검증됨 |
++| `core` 계산 엔진 | ⚠️ **`main`은 아직 v1**(전역 대표결제자 + greedy 상계). v2(결제자별 수취·1원 올림)는 로컬 작업 트리에만 있고 **커밋된 적이 없다** — 최우선으로 검증·커밋할 대상 |
++| DB 스키마 | 🚧 changelog `011`(changeSet `017`)까지. 모임 관리 기반 `012`~`014`는 병합 안 됐고 v3에서 쓰지 않는다 |
+ | 카카오 로그인 | ✅ 동작. OAuth2 → httpOnly JWT 쿠키(`jeongsan_token`) → `GET /auth/me` |
+-| `Group` (모임) | ✅ `GET/POST /api/v1/groups`, `GET /api/v1/groups/{id}`. FLASH 생성 시 술자리 1개 동시 생성 |
+-| 모임 가입 `/gr/{token}` | ❌ `API.md` §3-b.4에 계약만 있고 컨트롤러 없음 |
+-| 멤버 제거 `DELETE /groups/{id}/members/{userId}` | ❌ 계약만 있음 |
+-| `Gathering` (술자리) | 🚧 `GET /api/v1/gatherings`만 존재. **인증 안 걸림 + 응답 필드 4개뿐**인 옛 뼈대 코드 — 계약(`API.md` §3.1)에 한참 못 미친다 |
+-| 차수·기타항목·출석 체크·확정·정산·입금 | ❌ 엔드포인트 없음. 프론트는 전부 목데이터로 동작 중 |
+-| 실시간 채팅 | ⏸️ 보류(`ADR-010`) |
++| `Group` (모임) | ❌ **제거 대상**(`ADR-019`). `GroupController`와 테이블이 남아 있다 |
++| `Gathering` (술자리) | 🚧 `GET /api/v1/gatherings`만 존재. **인증 안 걸림 + 응답 필드 4개뿐**인 옛 뼈대 코드 |
++| 차수·응답·정산하기·송금·삭제 배치 | ❌ 엔드포인트 없음. 프론트는 전부 목데이터로 동작 중 |
++| 정산방 타임라인·스푼 | ❌ 아직 없음. v3 MVP에 포함 — 타임라인은 **모놀리스 안 WebSocket**으로 만든다(`ADR-014`) |
+ | 배포 | 🚧 GitHub Actions → OCI SSH 파이프라인 작성·로컬 검증 완료. **실제 배포는 아직 안 함** |
+ 
+-**컨트롤러는 지금 3개뿐이다** — `AuthController`, `GroupController`, `GatheringController`.
+-그 외 `API.md`에 적힌 모든 엔드포인트는 아직 없다.
++**컨트롤러는 지금 3개뿐이다** — `AuthController`, `GroupController`(제거 대상), `GatheringController`.
+ 
+ > **표의 경로는 축약형이다 — 실제 매핑은 전부 `/api/v1` 프리픽스가 붙는다.**
+ > (`GroupController`는 `@RequestMapping("/api/v1/groups")`) 새 컨트롤러도 반드시
+@@ -162,7 +164,8 @@ MVP 플로우 (채팅은 보류):
+    실패해야 한다(fail-fast). 빈 값으로 떠서 나중에 조용히 깨지는 게 훨씬 나쁘다.
+ 10. **N+1을 만들지 않는다.** 목록에 여러 항목이 있으면 항목마다 쿼리를 날리지 말고
+    `IN :ids` + `GROUP BY` 배치로 한 번에 모은다
+-   (`GroupRepository.kt`의 `countByGroupIds`, `GroupService.listMyGroups` 참고).
++   (현재 예시는 `GroupRepository.kt`의 `countByGroupIds` — 모임 코드는 제거 대상이지만
++   **패턴은 그대로 쓴다.** 예: 술자리 목록의 참여자 수·응답 수를 한 쿼리로 모으기).
+ 11. **새 의존성을 임의로 추가하지 않는다.** 이 저장소는 스택 선택을 ADR로 관리한다.
+     라이브러리가 필요하면 추가하지 말고 PR 설명에 "무엇이·왜 필요한지"를 적어 물어라.
+ 
+@@ -277,14 +280,17 @@ sealed interface SettlementOutcome {
+ ```
+ 009-group-type-and-lifecycle.yaml  →  id: 013, 014, 015   (3개)
+ 010-table-korean-names.yaml        →  id: 016
+-011-rename-groups.yaml             →  id: 017
+-012-group-management-foundation.yaml → id: 018, 019, 020   (3개)
++011-rename-groups.yaml             →  id: 017          ← main의 마지막
++─ 아래는 main에 병합된 적 없음. v3에서 쓰지 않음(ADR-019) ─
++012-group-management-foundation.yaml → id: 018, 019, 020
+ 013-restore-group-admin-remarks.yaml → id: 021
+ 014-enforce-group-admin-definition.yaml → id: 022
+ ```
+ 
+-**따라서 다음 파일은 `015-*.yaml`이고, 그 안의 첫 changeSet id는 `023-...`이다.**
+-파일 번호를 id에 그대로 쓰면 이미 적용된 번호와 충돌한다.
++**`012`~`014` 파일명과 changeSet `018`~`022`는 "소진됨"으로 취급한다.** `main`엔 없지만
++누군가의 로컬 DB에 적용됐을 수 있다 — 같은 번호로 다른 내용을 만들면 그 DB에서
++checksum이 깨진다. **따라서 다음 파일은 `015-*.yaml`이고, 그 안의 첫 changeSet id는
++`023-...`이다.** 파일 번호를 id에 그대로 쓰면 이미 적용된 번호와 충돌한다.
+ 
+ 그 외:
+ 
+@@ -439,10 +445,16 @@ docker compose up -d              # MySQL 하나만 뜬다
+ 
+ ## 13. 하지 않는 것
+ 
+-`docs/SPEC.md` §9와 동일하다. 특히:
++`docs/REQUIREMENTS.md` §12 "만들지 않는 것"이 기준이다. 특히:
+ 
+-- 참여자용 네이티브 앱 (`ADR-003` — 참여자는 웹에 남는다)
+-- 실시간 채팅 (`ADR-010` 보류 — 재검토 조건 전엔 손대지 않는다)
++- **모임(`Group`) 기능 전부** — 관리자·가입·검색·비밀번호·강퇴·차단·보관 (`ADR-019`)
++- **정산 기록 보관·검색** — 완료 7일 뒤 삭제가 원칙이다 (`ADR-019`)
++- **이의제기 절차** — 당사자 1:1 채팅방·협상·오프라인 조율. v3는 [아직 안 들어왔어요] 버튼 하나다
++  (정산방 타임라인은 이의제기 절차가 아니다 — 참여자 전원이 보는 한 줄 대화 + 시스템 소식)
++- **스푼을 돈·상품으로 바꾸는 기능** — 보여주기 전용이다
++- 참여자에게 앱 설치를 요구하는 것 (`ADR-003` — 링크로 웹에서 끝까지 가능해야 한다)
++- **채팅 서버를 별도 프로세스로 떼는 것** (`ADR-010` 원안 — 보류. 정산방 타임라인은 만들되
++  `ADR-014`대로 모놀리스 안 WebSocket으로 만든다. 분리는 재검토 조건이 온 뒤에)
+ - MSA·k3s 전환 (`ADR-013` 보류 — `ADR-014` 재검토 조건 전엔 손대지 않는다)
+ - 계산 결과를 DB에 저장하는 모든 형태 (`ADR-005`)
+ - Spring Security 도입 (§4-6)
+diff --git a/DEVLOG.md b/DEVLOG.md
+index ff8f0e6..8dca8b3 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -5,6 +5,73 @@
+ 
+ ---
+ 
++## [2026-10-01] 프론트 흐름 변경을 `docs/flow-changes/`로 백엔드에 넘긴다
++
++- **문제:** 프론트(웹·Android·iOS)는 목데이터로 먼저 만들고 써 보며 흐름을 계속 고친다. 하루 만에도
++  탭 구성·알림·참여자 진입 순서가 바뀌었고, 그중 일부는 서버 계약을 건드렸다(총무 대리 응답이
++  `DOMAIN_DB_DESIGN_V2` §3.2와 충돌, 송금 근거 데이터 부재 등). 그런데 그 변화가 `SCREENS.md`의 화면
++  설명 속에만 있으면 백엔드는 무엇이 API·스키마 변경인지 골라낼 수 없다.
++- **고려한 대안:** ① SCREENS.md만 고치고 백엔드가 알아서 읽는다 ② 프론트가 DOMAIN·API 문서를 직접
++  고친다 ③ 서버 영향만 모은 별도 폴더에 항목을 쌓고, 백엔드가 API 작업 전에 읽는다
++- **선택 이유 / 트레이드오프:** ③. ①은 계약 변경이 화면 서술에 묻힌다. ②는 프론트가 백엔드 설계를
++  확정하는 꼴이라 역할이 섞이고, 아직 결정 안 된 것까지 계약처럼 보인다. ③은 항목마다 상태
++  (`결정 필요`·`열림`·`반영됨`·`프론트만`)가 있어 **결정 전인 것을 구현하지 않게** 막는다. 대가는
++  문서가 하나 더 생기고 상태를 계속 관리해야 한다는 것 — 그래서 프론트 규칙(jeongsan-front)과
++  백엔드 리뷰 규칙(jeongsan-review)에 확인 단계로 박았다.
++- **아쉬운 점:** 항목이 `열림`인 채 오래 남으면 백엔드가 무엇부터 해야 할지 다시 흐려진다. 백엔드 v3
++  API 작업을 시작할 때 한 번 몰아서 정리하는 시점이 필요하다.
++
++---
++
++## [2026-09-29] 정산방 타임라인과 스푼(총무 감사)을 넣는다
++
++- **문제:** 총무는 계산하고, 돈 받아내고, 안 보낸 사람을 챙기는 생색 안 나는 역할인데
++  앱에 그 수고를 알아주는 장치가 없었다. 또 v3에서 이의제기 절차를 없애면서 정산방 안에서
++  "2차 나 안 마셨는데" 같은 한마디를 나눌 곳도 같이 사라졌다.
++- **고려한 대안:** ① 대화는 카카오톡에 맡기고 앱엔 아무것도 두지 않는다 ② 일반 채팅방을 둔다
++  ③ 정산 진행 소식이 대화 사이에 끼어드는 "정산방 타임라인" + 참여자가 총무에게 주는 스푼
++- **선택 이유 / 트레이드오프:** ③. 일반 채팅은 이미 열려 있는 카톡 단톡방과 경쟁해서 빈 방이 될
++  가능성이 크다. 타임라인은 **카톡에 없는 것 — 정산 소식이 실시간으로 흐르는 것 — 이 여기 올
++  이유**가 된다. 스푼은 버튼 하나라 "버튼만으로" 원칙에 맞고, 누적이 칭호로 보여서 총무가
++  존중받는다. 스푼은 보여주기 전용으로 묶어 금전 가치가 생기지 않게 했다. 대가는 실시간 연결
++  (WebSocket)과 저장이 늘어난다는 것.
++- **아쉬운 점:** 타임라인이 카톡을 이길 수 있는지는 **가설**이다. 써보고 메시지가 거의 안 쌓이면
++  시스템 소식만 남기고 입력창을 빼는 것도 선택지다. 그리고 채팅이 돌아오면서 Kafka의 원래 근거
++  (ADR-010, 채팅 프로세스 분리)도 따라 돌아온 것처럼 보이지만, **v3는 ADR-014대로 모놀리스 안에서
++  시작하므로 스프링 내부 이벤트로 충분하다.** Kafka 필요성은 채팅을 별도 프로세스로 뗄 때나
++  영수증을 서버 워커로 처리할 때 생기며, 그 판단은 백엔드 결정으로 남겨둔다.
++
++---
++
++## [2026-09-29] 술자리를 일회용으로 만들고 모임 계층을 걷어낸다 (ADR-019)
++
++- **문제:** 프론트 개발을 재개하며 흐름을 점검하니 "어지럽다"는 느낌의 원인이 분명했다.
++  정산 하나를 하려면 모임부터 만들어야 했고(두 겹 구조), 총무가 링크를 보내기까지 화면
++  7개·텍스트 입력 10개 이상, 확정 관문 3개(명단 마감·차수 확정·금액 확정), 상태 6개,
++  용어 21개였다. 한 사람이 응답하지 않으면 전체가 멈췄고 탈출구가 없었다. 공통 원인은
++  **백엔드의 상태 모델이 사용자 화면에 그대로 노출돼 있었다**는 것이다.
++- **고려한 대안:** ① v2 구조를 유지하고 화면만 다듬는다 ② 모임을 첫 화면에서만 숨긴다
++  ③ 모임 계층을 제거하고 술자리를 일회용으로 만든다
++- **선택 이유 / 트레이드오프:** ③. 결정적 관찰은 **"사람들은 지난 정산 기록을 찾지
++  않는다"**였다. 그렇다면 모임이라는 영구 컨테이너와 기록 보존 원칙은 드문 경우를 위해
++  모든 경우에 비용을 물린 것이다. 흐름을 `[새 술자리] → 금액 → [링크 공유] → [정산하기]
++  → 입금 확인`으로 줄이고, 미응답은 자동응답(참석·알코올) + 본인·총무 알림으로, 이의제기는
++  [아직 안 들어왔어요] 버튼 하나로 대체했다. 완료 7일 뒤 삭제는 보관할 개인정보 자체를
++  줄인다. 대가는 반복 멤버 편의와 지난 기록 조회가 사라진다는 것, 그리고 이미 만든 모임
++  API·스키마를 걷어내야 한다는 것이다.
++- **아쉬운 점:** 두 가지를 기록해둔다. 첫째, `ADR-009`의 관찰("같은 사람들이 반복해서
++  만난다")은 맞았는데 결론("지속 모임이 필요하다")을 **사용자 관찰 없이** 끌어냈다. 모임
++  관리 기반(`012`~`014`)을 구현까지 한 뒤에야 뒤집었다. 둘째, **9/13에 "이의제기 채팅은
++  후속으로 뺀다"고 합의했는데 REQUIREMENTS에 반영되지 않았고**, 바로 아래 9/13 항목이
++  "채팅도 MVP에 그대로 남았다"고 잘못 적었다. 그 잘못된 전제가 ADR-017(Kafka 소비자에
++  채팅 포함)까지 퍼졌다. 이번 개정에서 채팅 자체가 사라지며 정리됐지만, **합의한 결정을
++  문서에 반영했는지 확인하는 단계가 없었다**는 게 원인이다.
++- **파급:** 모임·이의제기가 빠지며 `ADR-016`(Redis)·`ADR-017`(Kafka)·`ADR-018`(k3s)의
++  근거가 줄었다. 세 ADR 모두 이제 **"영수증을 서버에서 처리하는가"**에 달려 있어
++  재검토 중으로 표시했다. 근거가 줄었다는 사실을 각 문서에 숨기지 않고 적었다.
++
++---
++
+ ## [2026-09-26] PR 학습 추천을 개수 제한 대신 카테고리별 직접 연관 항목으로 구성한다
+ 
+ - **문제:** 학습 추천을 최대 3개로 제한하고 주제별로 출력하면 실제 diff와 직접 관련된
+diff --git a/docs/00-README.md b/docs/00-README.md
+index d374d5d..f4e0f3a 100644
+--- a/docs/00-README.md
++++ b/docs/00-README.md
+@@ -7,13 +7,16 @@
+ 1. **`REQUIREMENTS.md`** — 새 제품 요구사항, 유비쿼터스 언어, 역할·권한, 상태 전이
+ 2. **`ARCHITECTURE.md`** — 이 결정들이 실제로 어떤 모양으로 조립됐는지 한눈에 보는 개요.
+    PR이 이 문서의 전략(§2)에서 벗어나거나 아직 v1인 지점(§8)을 몰래 바꾸는지부터 본다
+-3. **`SPEC.md`** — 기존 구현 기준 제품 명세. 새 요구사항과 충돌하는 절은 개정 예정
+-4. **`CALC_RULES_V2.md`** — 새 차수 총무별 수취·1원 올림 계산 규칙
+-5. **`DOMAIN_DB_DESIGN_V2.md`** — 새 도메인 경계·상태·논리 스키마·동시성 설계
+-6. **`CALC_RULES.md`** — Core v1의 과거 회귀 기준
+-7. **`API.md`** — 현재 엔드포인트·요청·응답·오류 코드 계약
+-8. **`ERD.md`** — 현재 Liquibase 스키마를 사람이 읽기 좋게 옮긴 문서
+-9. **`../design/mockup.html`** — 기존 화면 목업 (브라우저로 열어볼 것)
++3. **`SCREENS.md`** — v3 화면 흐름. 웹·앱이 같이 따르는 화면 기준이고, 서버 API가 어떤 화면을 받치는지 알려준다
++   - **`flow-changes/`** — 프론트를 만들며 바뀐 흐름 중 **서버가 해야 할 일만** 모은 기록. API·스키마
++     작업 전에 `열림` 항목부터 본다
++4. **`SPEC.md`** — 기존 구현 기준 제품 명세. 새 요구사항과 충돌하는 절은 개정 예정
++5. **`CALC_RULES_V2.md`** — 새 차수 총무별 수취·1원 올림 계산 규칙
++6. **`DOMAIN_DB_DESIGN_V2.md`** — 새 도메인 경계·상태·논리 스키마·동시성 설계
++7. **`CALC_RULES.md`** — Core v1의 과거 회귀 기준
++8. **`API.md`** — 현재 엔드포인트·요청·응답·오류 코드 계약
++9. **`ERD.md`** — 현재 Liquibase 스키마를 사람이 읽기 좋게 옮긴 문서
++10. **`../design/mockup.html`** — 기존 화면 목업 (브라우저로 열어볼 것)
+ 
+ > [!IMPORTANT]
+ > `REQUIREMENTS.md`는 앞으로 만들 제품의 기준이고, 나머지 문서는 현재 구현 계약이다.
+diff --git a/docs/ADR/000-index.md b/docs/ADR/000-index.md
+index 4199904..e0c9a65 100644
+--- a/docs/ADR/000-index.md
++++ b/docs/ADR/000-index.md
+@@ -13,16 +13,17 @@
+ | [006](006-single-vm-no-kubernetes.md) | 단일 VM에 docker compose로 배포한다. K8s·ArgoCD·Jenkins를 쓰지 않는다 | ✅ 유효 (MVP 배포) |
+ | [007](007-backend-serves-og.md) | 공유 링크를 백엔드 호스트에 두고 OG 태그가 든 HTML로 응답한다 | 확정 |
+ | [008](008-join-concurrency.md) | 참여 동시성을 `gathering` 행 잠금과 복합 유니크로 나눠 막는다 | 확정 |
+-| [009](009-group-persistent-membership.md) | `Group`(영구 모임)을 `Gathering` 위에 얹는다. 이름은 바꾸지 않는다 | 확정 |
++| [009](009-group-persistent-membership.md) | `Group`(영구 모임)을 `Gathering` 위에 얹는다. 이름은 바꾸지 않는다 | ❌ 대체됨 ([019](019-onetime-gathering-no-group.md)) |
+ | [010](010-realtime-chat-netty-mongo.md) | 실시간 채팅은 Netty+WebSocket+MongoDB, REST 서버와 별도 프로세스 | ⏸️ 부분 보류 ([014](014-monolith-first-feature-package.md)) |
+ | [011](011-mysql-over-postgresql.md) | 핵심 트랜잭션 저장소를 MySQL로 (PG 벤치마크 프로젝트와는 별개 판단) | 확정 |
+ | [012](012-offload-heavy-stateful-stores.md) | MongoDB·Elasticsearch는 관리형 무료 티어로 오프로드/유예한다 | ⚠️ Redis 용도만 대체 ([016](016-redis-scope.md)) |
+ | [013](013-msa-spring-cloud-k3s.md) | Spring Cloud + k3s 위에서 MSA로 전환한다 | ⏸️ 보류 — k3s 부분만 발동 검토 중 ([018](018-activate-k3s.md)) |
+ | [014](014-monolith-first-feature-package.md) | MVP는 모놀리스로 간다. 내부는 feature 패키지로 나눈다 | 확정 |
+-| [015](015-immutable-confirmed-transfer-snapshot.md) | 확정된 송금 명세를 불변 스냅샷으로 저장한다 | 확정 |
+-| [016](016-redis-scope.md) | Redis를 도입하되 용도를 시도 제한·쿼터·토큰 무효화·캐시로 한정한다 | 확정 |
+-| [017](017-kafka-behind-outbox.md) | 아웃박스를 유지한 채 그 뒤에 Kafka를 붙인다 | 확정 |
++| [015](015-immutable-confirmed-transfer-snapshot.md) | 확정된 송금 명세를 불변 스냅샷으로 저장한다 | 확정 (범위 조정: 되돌리기 시 폐기, 7일 뒤 삭제) |
++| [016](016-redis-scope.md) | Redis를 도입하되 용도를 쿼터·토큰 무효화·캐시로 한정한다 | ⚠️ 재검토 중 — 영수증 처리 방식에 달림 |
++| [017](017-kafka-behind-outbox.md) | 아웃박스를 유지한 채 그 뒤에 Kafka를 붙인다 | ⚠️ 재검토 중 — 영수증 처리 방식에 달림 |
+ | [018](018-activate-k3s.md) | `013`의 k3s 부분을 발동한다 (MSA 전환은 아님) | 🕓 제안 — Kamal 비교·메모리 실측 후 확정 |
++| [019](019-onetime-gathering-no-group.md) | 술자리는 일회용이다. 모임 계층을 걷어내고 완료 7일 뒤 삭제한다 | 확정 |
+ 
+ > **`006` → `013` → `014` 이력.** `013`이 한때 `006`을 대체했으나, 그 근거가
+ > "실제 필요"가 아니라 **"학습 목적"** 이었다. `014`가 이를 뒤집어 MVP를 모놀리스로
+@@ -37,6 +38,11 @@
+ > OCR·AI가 MVP로 들어오며 소비자와 외부 과금 호출이 생겼다). 반면 `018`(k3s)은
+ > **아직 반론이 살아 있어 제안 상태다** — `ADR-006`이 지정한 Kamal과 비교
+ > 실측하기 전에는 확정하지 않는다.
++>
++> **`019` 이후 `016`·`017`·`018`은 모두 "영수증을 서버에서 처리하는가"에 달려 있다.**
++> 모임 계층과 이의제기 채팅이 사라지며 세 ADR의 다른 근거가 줄었기 때문이다. 영수증
++> 처리 방식을 실측으로 정하는 순간 세 ADR을 함께 확정하거나 기각한다. 근거가 줄었다는
++> 사실을 숨기지 않고 각 문서 상단에 적어뒀다.
+ 
+ ## 형식
+ 
+diff --git a/docs/ADR/009-group-persistent-membership.md b/docs/ADR/009-group-persistent-membership.md
+index f9844e4..f1c231d 100644
+--- a/docs/ADR/009-group-persistent-membership.md
++++ b/docs/ADR/009-group-persistent-membership.md
+@@ -1,6 +1,11 @@
+ # ADR-009 · `Group`을 `Gathering` 위에 얹는다 — 이름은 바꾸지 않는다
+ 
+-**상태** 확정 · **관련** `SPEC.md` §4, `report/flow.md`
++**상태** ❌ 대체됨 ([`ADR-019`](019-onetime-gathering-no-group.md), 2026-09-29) · **관련** `SPEC.md` §4, `report/flow.md`
++
++> **이 결정은 `ADR-019`가 대체했다.** 아래 관찰("같은 사람들이 반복해서 만난다")은
++> 맞았지만, 거기서 끌어낸 결론("지속 모임 컨테이너가 필요하다")이 틀렸다 — 사람들은
++> 지난 정산을 찾지 않는다. 제품 v3에서 모임 계층을 제거하고 술자리를 일회용으로 만들었다.
++> 이 문서는 판단 근거를 보존하기 위해 남겨둔다.
+ 
+ ## 맥락
+ 
+diff --git a/docs/ADR/015-immutable-confirmed-transfer-snapshot.md b/docs/ADR/015-immutable-confirmed-transfer-snapshot.md
+index aa15969..209c530 100644
+--- a/docs/ADR/015-immutable-confirmed-transfer-snapshot.md
++++ b/docs/ADR/015-immutable-confirmed-transfer-snapshot.md
+@@ -1,8 +1,14 @@
+ # ADR-015 · 확정된 송금 명세를 불변 스냅샷으로 저장한다
+ 
+-**상태** 확정 · **대체** `ADR-005`의 `paidAmount` 방식 · **관련** `REQUIREMENTS.md`,
++**상태** 확정 (2026-09-29 범위 조정, `ADR-019`) · **대체** `ADR-005`의 `paidAmount` 방식 · **관련** `REQUIREMENTS.md`,
+ `CALC_RULES_V2.md`, `DOMAIN_DB_DESIGN_V2.md`, `ADR-004`
+ 
++> **2026-09-29 범위 조정 (`ADR-019`).** 스냅샷을 저장하고 수정하지 않는다는 결정은
++> 유지된다. 다만 두 가지가 바뀌었다. ① 아무도 송금하기 전이면 [정산 되돌리기]로 스냅샷을
++> **통째로 폐기**할 수 있다(수정이 아니라 삭제). ② 술자리가 일회용이 되어 스냅샷도
++> **완료 7일 뒤 술자리와 함께 삭제**된다 — "영구 증거"가 아니라 "송금이 진행되는 동안의
++> 증거"다. 아래 본문의 이의제기 관련 서술은 v3에서 [아직 안 들어왔어요] 버튼으로 대체됐다.
++
+ ## 맥락
+ 
+ Core v1은 술자리 전체의 대표결제자를 중심으로 계산했고 참여자마다 하나의
+diff --git a/docs/ADR/016-redis-scope.md b/docs/ADR/016-redis-scope.md
+index 26dbb97..98a085a 100644
+--- a/docs/ADR/016-redis-scope.md
++++ b/docs/ADR/016-redis-scope.md
+@@ -1,7 +1,20 @@
+ # ADR-016 · Redis를 도입하되, 용도를 다시 정한다
+ 
+-**상태** 확정 · **관련** `ADR-012`(Redis 용도 대체), `DOMAIN_DB_DESIGN_V2.md` §6,
+-`REQUIREMENTS.md` §4.1·§8.3·§10·§11
++**상태** ⚠️ 재검토 중 (2026-09-29, `ADR-019`로 근거 일부 소멸) · **관련** `ADR-012`(Redis 용도 대체),
++`DOMAIN_DB_DESIGN_V2.md` §6, `REQUIREMENTS.md` §4.1·§8.3·§10·§11
++
++> **2026-09-29 — 근거가 약해졌다. 숨기지 않고 적어둔다.**
++> `ADR-019`가 모임 계층을 제거하면서 아래 네 용도 중 **가장 강했던 "모임 비밀번호 시도
++> 제한"이 사라졌다**(검색·비밀번호 가입 경로 자체가 없다). 남은 세 용도의 현재 상태:
++>
++> | 용도 | v3 상태 |
++> |---|---|
++> | 외부 유료 API(OCR·AI) 호출량 제한 | **영수증 인식 방식에 달려 있다.** 서버에서 외부 API를 부르면 유효, 기기 내 OCR로 가면 사라진다(`REQUIREMENTS.md` §9, 미정) |
++> | 탈퇴·로그아웃 토큰 무효화 | 유효. 다만 DB 테이블로도 구현 가능 — Redis여야 할 이유는 TTL 편의 |
++> | 알림 미읽음 수 캐시 | 유효. 다만 규모상 DB 조회로도 충분 |
++>
++> **즉 지금 Redis의 존재 이유는 "영수증을 서버에서 외부 API로 처리하는가"에 달려 있다.**
++> 영수증 방식이 정해지면 이 ADR을 확정하거나 기각한다. 기각도 기록으로 남긴다.
+ 
+ ## 맥락
+ 
+diff --git a/docs/ADR/017-kafka-behind-outbox.md b/docs/ADR/017-kafka-behind-outbox.md
+index 4b9bc83..727c425 100644
+--- a/docs/ADR/017-kafka-behind-outbox.md
++++ b/docs/ADR/017-kafka-behind-outbox.md
+@@ -1,7 +1,16 @@
+ # ADR-017 · 아웃박스 뒤에 Kafka를 붙인다
+ 
+-**상태** 확정 · **관련** `ADR-002`(재검토 조건 발동·갱신 절 정리), `ADR-012`(호스팅),
+-`ADR-013`·`ADR-018`, `REQUIREMENTS.md` §10·§11
++**상태** ⚠️ 재검토 중 (2026-09-29, `ADR-019`로 소비자 감소) · **관련** `ADR-002`(재검토 조건 발동·갱신 절 정리),
++`ADR-012`(호스팅), `ADR-013`·`ADR-018`, `REQUIREMENTS.md` §10·§9
++
++> **2026-09-29 — 소비자가 줄었다. 숨기지 않고 적어둔다.**
++> `ADR-019`로 이의제기 채팅이 사라졌다. 남은 확정 소비자는 **알림 하나**이고,
++> 두 번째 소비자인 **영수증 파이프라인은 영수증을 서버에서 처리할 때만 존재한다**
++> (기기 내 OCR로 가면 서버 파이프라인이 없다 — `REQUIREMENTS.md` §9, 미정).
++>
++> `ADR-002`의 재검토 조건은 "이벤트 소비자가 **2개 이상**"이었다. 영수증을 기기에서
++> 처리하면 소비자가 1개로 돌아가 **이 ADR의 전제가 무너진다.** 영수증 방식이 정해지면
++> 이 ADR을 확정하거나 기각한다. 기각하면 아웃박스 → FCM 직접 호출(`ADR-002` 원안)로 간다.
+ 
+ ## 맥락
+ 
+@@ -36,7 +45,7 @@
+ |---|---|---|
+ | 알림 발송 | FCM 앱·웹 푸시 + 내부 알림함 기록 | `REQUIREMENTS.md` §10 |
+ | 영수증 파이프라인 | 이미지 업로드 → OCR → AI 분류 → 총무 검토 대기 | `REQUIREMENTS.md` §11 |
+-| 이의제기 채팅 브로드캐스트 | 1:1 채팅 메시지 전달 | `DOMAIN_DB_DESIGN_V2.md` |
++| ~~이의제기 채팅 브로드캐스트~~ | ~~1:1 채팅 메시지 전달~~ — **v3에서 삭제**(`ADR-019`) | — |
+ | (향후) 통계 | 정산 규모·응답률 집계 | `ADR-002` 재검토 조건이 예로 든 항목 |
+ 
+ **`ADR-002`의 핵심 근거는 그대로 유지된다** — 발행은 비즈니스 트랜잭션과 같은
+diff --git a/docs/ADR/018-activate-k3s.md b/docs/ADR/018-activate-k3s.md
+index 5c0f2bd..83a002b 100644
+--- a/docs/ADR/018-activate-k3s.md
++++ b/docs/ADR/018-activate-k3s.md
+@@ -5,6 +5,11 @@
+ 
+ > **이 문서는 셋 중 근거가 가장 약하다.** `016`·`017`과 달리 반론이 아직 살아
+ > 있어서, 확정 전에 §"정직한 반론"을 반드시 읽고 판단해야 한다.
++>
++> **2026-09-29 추가.** 이 ADR의 "강한 해석" 근거는 **영수증 워커가 별도 프로세스로
++> 분리된다**는 것이었다. `ADR-019` 이후 `016`(Redis)·`017`(Kafka)과 함께 이 근거도
++> **영수증을 서버에서 처리하는가**에 달려 있다. 기기 내 OCR로 가면 영수증 워커가 없고,
++> 운영 대상 프로세스가 늘지 않아 발동 조건이 성립하지 않는다.
+ 
+ ## 맥락
+ 
+diff --git a/docs/ADR/019-onetime-gathering-no-group.md b/docs/ADR/019-onetime-gathering-no-group.md
+new file mode 100644
+index 0000000..07d603f
+--- /dev/null
++++ b/docs/ADR/019-onetime-gathering-no-group.md
+@@ -0,0 +1,83 @@
++# ADR-019 · 술자리는 일회용이다 — 모임 계층을 걷어낸다
++
++**상태** 확정 · **대체** `ADR-009`(지속 모임) · **관련** `REQUIREMENTS.md` v3,
++`DOMAIN_DB_DESIGN_V2.md`, `ADR-015`, `ADR-016`, `ADR-017`
++
++## 맥락
++
++`ADR-009`는 이런 전제에서 출발했다 — *"지금까지 `Gathering`은 1회성이었다. 그런데
++실제로는 같은 사람들이 반복해서 만난다."* 그래서 `Group`(지속 모임)을 `Gathering`
++위에 얹었고, v2 요구사항은 그 위에 관리자·권한 이전·검색·비밀번호 가입·강퇴·차단·
++보관까지 쌓았다.
++
++프론트 흐름을 다시 점검하면서 이 구조가 **가장 흔한 사용 장면에 가장 큰 마찰**을 준다는
++게 드러났다.
++
++- 정산 하나를 하려면 모임부터 만들고(번개/주기 선택), 그 안에 술자리를 또 만들어야 했다.
++- 총무가 링크를 보내기까지 화면 7개, 텍스트 입력 10개 이상.
++- 공유 링크가 두 종류(`/gr/` 모임 초대, `/g/` 술자리 참여)라 잘못 보낼 위험이 컸다.
++- 사용자가 알아야 할 용어가 21개였다.
++
++그리고 결정적으로, **사람들은 지난 정산 기록을 찾지 않는다.** 같은 사람들과 반복해서
++만나더라도 필요한 건 "지난번 멤버 불러오기" 정도이지, 모임이라는 영구 컨테이너가 아니다.
++`ADR-009`의 관찰("반복해서 만난다")은 맞았지만 거기서 끌어낸 결론("지속 모임이 필요하다")이
++틀렸다.
++
++## 결정
++
++**술자리(`Gathering`)를 최상위 애그리거트로 되돌리고, 일회용으로 만든다.**
++
++1. `Group`·`GroupMember`와 모임 관련 기능 전부(관리자, 가입, 검색, 비밀번호, 강퇴·차단,
++   보관)를 제거한다. 공유 링크는 술자리 링크 하나뿐이다.
++2. 술자리는 **완료 7일 뒤 물리 삭제**한다. 30일간 활동이 없는 미완료 술자리도 삭제한다.
++   완료된 술자리는 삭제 전까지 "완료" 뱃지로 명확히 구분해 보여준다.
++3. 확정 관문을 [정산하기] 하나로 줄인다. 명단 마감·차수 확정 단계를 없앤다.
++4. 미응답 칸은 정산 시점에 자동응답(참석·알코올)으로 채우고 본인과 총무에게 알린다.
++5. 이의제기 절차(1:1 채팅, 협상, 오프라인 조율)를 [아직 안 들어왔어요] 버튼 하나로 대체한다.
++
++## 근거
++
++### 가장 흔한 경우를 가장 짧게
++
++정산 서비스의 가치는 "빨리 끝난다"에 있다. 모임 계층은 반복 사용이라는 **드문 경우**를
++위해 **모든 경우**에 비용을 물렸다. 일회용 구조에서 총무 흐름은
++`[새 술자리] → 금액 → [링크 공유] → [정산하기] → 입금 확인`으로 줄어든다.
++
++### 기록을 지우는 게 기능이다
++
++v2 원칙 6은 "확정된 과거 기록을 지우지 않는다"였다. 그러나 보관하는 기록은 운영 부담
++(개인정보·계좌번호 보관, 탈퇴 시 익명화, 삭제 요청 대응)만 늘리고 사용자 가치는 없었다.
++7일 삭제는 **보관할 개인정보 자체를 줄이는** 설계다. 탈퇴 처리도 단순해진다 — 정산 FK를
++지키려고 익명화할 필요가 없다.
++
++### 한 사람이 전체를 막지 않는다
++
++v2는 "전원 응답 전 확정 불가 + 총무 대리 응답 금지 + 무응답 자동 동의 금지"가 동시에
++있어 탈출구가 없었다. 술자리에서 1~2명이 끝까지 응답하지 않는 것은 정산 앱의 가장 흔한
++실패다. 자동응답은 멈추지 않게 하되, **본인에게 알리고 화면에 표시해 숨기지 않는다.**
++잘못됐다면 아무도 송금하기 전에 총무가 되돌릴 수 있다.
++
++## 대가
++
++- **반복 멤버 편의가 사라진다.** 매번 링크를 새로 뿌려야 한다. 후속 기능으로
++  "지난 술자리 멤버 불러오기"를 검토한다 — 모임 계층 없이 해결하는 방향으로.
++- **지난 정산을 다시 볼 수 없다.** 7일 뒤에는 "지난달에 내가 얼마 냈더라"에 답할 수 없다.
++  사용자 관찰에 근거해 감수한다.
++- **이미 만든 것을 버린다.** `main`의 모임 생성·목록·상세 API(`GroupController`)와 스키마
++  (`002`·`009`·`011`)를 제거해야 하고, 병합 전이던 모임 관리 기반(`012`~`014`,
++  changeSet `018`~`022`)은 쓰지 않는다. 적용된 changelog는 수정하지 않고 새 changelog로
++  테이블을 삭제한다.
++- **자동응답은 틀릴 수 있다.** 술을 안 마신 사람이 응답을 안 해서 알코올로 계산될 수 있다.
++  알림·화면 표시·되돌리기로 완화하지만, 되돌리기가 막힌 뒤(누군가 송금한 뒤)에는
++  당사자끼리 조율해야 한다.
++- **`ADR-016`(Redis)의 가장 강한 근거였던 "모임 비밀번호 시도 제한"이 사라진다.**
++  `ADR-016`에서 남은 용도로 다시 판단한다.
++
++## 재검토 조건
++
++- 사용자가 "지난 정산을 다시 보고 싶다"를 반복해서 요구하면 → 보관 기간 연장 또는
++  "내 정산 요약만 남기기"를 검토한다(전체 기록 보관이 아니라).
++- 같은 멤버끼리 반복 사용이 대부분이라는 데이터가 나오면 → "멤버 불러오기"를 먼저
++  만들고, 그래도 부족할 때만 모임 계층을 다시 본다(`ADR-009`는 기록으로 남아 있다).
++- 자동응답으로 인한 금액 분쟁이 잦으면 → 기본값(참석·알코올)을 바꾸거나, 정산하기 전
++  미응답자에게 한 번 더 알림을 보내는 단계를 검토한다.
+diff --git a/docs/ARCHITECTURE.md b/docs/ARCHITECTURE.md
+index a8784b9..3046e57 100644
+--- a/docs/ARCHITECTURE.md
++++ b/docs/ARCHITECTURE.md
+@@ -13,10 +13,10 @@
+ 
+ ## 1. 컨텍스트·제약
+ 
+-**정산어택**은 술자리 정산 서비스다. 총무 혼자 참여자의 참석·음주 여부를
+-입력하지 않는다 — 참여자 각자 응답하고, 차수마다 결제자(총무)가 따로 있고,
+-수취인별로 송금액이 갈라진다. 제품 규칙의 단일 출처는
+-[`REQUIREMENTS.md`](REQUIREMENTS.md)다.
++**정산어택**은 **일회용** 술자리 정산 서비스다. 총무 혼자 참여자의 참석·음주
++여부를 입력하지 않는다 — 참여자 각자 버튼으로 응답하고, 차수마다 결제자가 따로
++있을 수 있고, 수취인별로 송금액이 갈라진다. 정산이 끝나면 7일 뒤 사라진다.
++제품 규칙의 단일 출처는 [`REQUIREMENTS.md`](REQUIREMENTS.md) v3다.
+ 
+ **움직이지 않는 제약**
+ 
+@@ -26,8 +26,8 @@
+   자료로 쓴다. "측정으로 정당화한 결정"과 "트레이드오프를 인지하고 미룬 결정"을
+   구분해 남기는 이유가 여기 있다 — ADR과 DEVLOG가 그 기록이다.
+ - **2~3개월 MVP 스프린트.** 원래 1개월이었으나 REQUIREMENTS.md v2로 범위가
+-  늘며(영수증·OCR·AI 보조 입력, 1:1 이의제기 채팅) 2~3개월로 늘렸다
+-  (`DEVLOG.md` 2026-09-13). 기간이 늘어도 구조는 지금 필요한 만큼만 올린다는
++  늘며(영수증·OCR·AI 보조 입력) 2~3개월로 늘렸다(`DEVLOG.md` 2026-09-13).
++  이후 v3(2026-09-29)에서 모임·이의제기 절차가 빠지고, 정산방 타임라인·스푼이 들어왔다. 기간이 늘어도 구조는 지금 필요한 만큼만 올린다는
+   원칙은 그대로다. MSA·k3s로 갔다가([ADR-013](ADR/013-msa-spring-cloud-k3s.md))
+   "학습 목적"이었다는 걸 인정하고 모놀리스로 되돌린 전례가 있다
+   ([ADR-014](ADR/014-monolith-first-feature-package.md)).
+@@ -68,8 +68,8 @@ Rational (분자/분모 BigInteger)  → 정확히 20000/3 × 3 = 20,000원 (정
+ ### 2.2 모놀리스 · feature 패키지
+ 
+ 배포 단위는 하나(`server` 모듈)지만, 내부는 **layer가 아니라 feature로**
+-나눈다 — `server/user`, `server/group`, `server/gathering`, `server/common`,
+-`server/config`. `controller/`·`service/`·`repository/` 같은 최상위
++나눈다 — `server/user`, `server/gathering`, `server/common`, `server/config`.
++(`server/group`은 `ADR-019`로 제거 대상이다.) `controller/`·`service/`·`repository/` 같은 최상위
+ 레이어 패키지는 만들지 않는다([ADR-014](ADR/014-monolith-first-feature-package.md)).
+ 
+ ### 2.3 스키마가 코드를 이끈다
+@@ -109,14 +109,14 @@ REQUIREMENTS.md (제품 규칙)
+ ```mermaid
+ flowchart TB
+     subgraph client [클라이언트]
+-        Web[참여자 웹\nprofile 저장소]
+-        App[KMP 앱\njungsan_app 저장소]
++        Web[웹\nprofile 저장소 · 수동 입력]
++        App[KMP 앱 iOS·Android\njungsan_app 저장소 · 영수증 촬영]
+     end
+ 
+     subgraph server [server 모듈 — Spring Boot]
+-        Auth[user\n카카오 로그인 · JWT 쿠키]
+-        Group[group\n모임 · 멤버 · 차단]
+-        Gathering[gathering\n술자리 · 차수]
++        Auth[user\n카카오 로그인 · JWT 쿠키 · 계좌]
++        Gathering[gathering\n술자리 · 차수 · 응답 · 정산하기 · 송금\n타임라인 WebSocket · 스푼]
++        Purge[삭제 배치\n완료 7일 · 방치 30일]
+         Common[common\n@LoginUser · ApiException]
+     end
+ 
+@@ -125,13 +125,12 @@ flowchart TB
+     DB[(MySQL 8.4\nLiquibase changelog)]
+ 
+     Web -->|httpOnly 쿠키| Auth
+-    App -->|"Bearer 헤더 (미도입)"| Auth
++    App -->|"인증 방식 미정 (§8)"| Auth
+     Auth --> Common
+-    Group --> Common
+     Gathering --> Common
+     Gathering -->|계산 위임| Core
++    Purge --> DB
+     Common --> DB
+-    Group --> DB
+     Gathering --> DB
+ ```
+ 
+@@ -144,14 +143,14 @@ Settlement.settle(input: SettlementInput): SettlementOutcome
+ ```
+ 
+ 예외를 던지지 않는다 — 실패도 `SettlementOutcome.Failure`라는 반환값이다.
+-지금 구현(v1)은 **전역 대표결제자 + greedy 상계** 규칙
+-([`CALC_RULES.md`](CALC_RULES.md))이고, 설계가 끝난 v2는 **차수 총무별
+-수취인 분리, 상계 없음**으로 완전히 다른 계산 모델이다
+-([`CALC_RULES_V2.md`](CALC_RULES_V2.md)). v2 전환은 진행 중이며 §8 참고.
++`main`의 구현은 아직 v1 — **전역 대표결제자 + greedy 상계** 규칙
++([`CALC_RULES.md`](CALC_RULES.md))이다. v2는 **결제자별 수취인 분리, 상계 없음,
++1원 올림**으로 완전히 다른 계산 모델이다([`CALC_RULES_V2.md`](CALC_RULES_V2.md)).
++제품 v3(일회용 술자리)에서도 계산 규칙은 v2 그대로다. v2 구현 상태는 §8 참고.
+ 
+ ### `server` — HTTP·영속성 계층
+ 
+-컨트롤러는 실제로 3개뿐이다 — `AuthController`, `GroupController`,
++컨트롤러는 실제로 3개뿐이다 — `AuthController`, `GroupController`(제거 대상),
+ `GatheringController`. 그 외 API.md에 계약만 있고 구현이 없는
+ 엔드포인트가 많다. 인증은 **Spring Security 없이** `@LoginUser` 커스텀
+ 파라미터 리졸버 하나로 처리한다 — 이 말은 **그 애너테이션을 안 붙인
+@@ -160,12 +159,12 @@ Settlement.settle(input: SettlementInput): SettlementOutcome
+ 
+ ### DB — MySQL 8.4
+ 
+-`user_groups`(`groups`는 예약어라 리네임), `group_members`, `group_bans`,
+-`gatherings`, `participants`, `rounds`, `drink_items`, `attendances`,
+-`notification_outbox`까지가 현재 changelog(`001`~`014`)가 만든 테이블이다.
+-v2가 설계한 `settlements`/`settlement_transfers`/`disputes`/
+-`dispute_messages`/`notifications`는 아직 changelog로 안 들어갔다
+-(`DOMAIN_DB_DESIGN_V2.md` §4.2).
++`main`의 changelog(`001`~`011`)가 만든 테이블은 `users`, `user_groups`
++(`groups`는 예약어라 리네임), `group_members`, `gatherings`, `participants`,
++`rounds`, `drink_items`, `attendances`, `extra_items`, `notification_outbox` 등이다.
++v3는 모임 테이블과 기타 항목 테이블을 **삭제**하고, `attendances`를
++`round_responses`로 정리하고, `settlements`·`settlement_transfers`·`notifications`를
++새로 만든다(`DOMAIN_DB_DESIGN_V2.md` §4). 이의제기·모임 차단 테이블은 만들지 않는다.
+ 
+ ---
+ 
+@@ -245,48 +244,50 @@ GitHub push (main)
+ - **배포**: `006`(단일 VM) → `013`(MSA로 전환, 근거가 "학습 목적"이었음이
+   드러남) → `014`(`006`을 되살리고 `013`을 보류). **지금은 `014`·`006`이
+   유효하다.**
+-- **저장 정책**: `005`(계산 결과 미저장) → `015`(확정 시점 송금 스냅샷만
+-  예외적으로 저장). **`015`가 `005`를 완전히 대체하지 않고 좁힌다** —
+-  미리보기는 여전히 미저장, 확정 순간의 송금 명세만 불변 스냅샷.
+-- **채팅**: `010`(Netty+WebSocket+MongoDB, REST와 별도 프로세스) →
+-  `014`가 모놀리스로 합치며 보류. `DOMAIN_DB_DESIGN_V2.md`가 범위를
+-  "이의제기 당사자 1:1 텍스트 채팅"으로 좁혀 MySQL 안에서 부활시켰다 —
+-  `010`을 대체하는 새 ADR이 아직 없다(§8 참고).
++- **도메인 구조**: `009`(1회성 술자리 위에 지속 모임을 얹음) → `019`(모임 계층
++  제거, 술자리를 일회용으로). **지금은 `019`가 유효하다** — 술자리가 최상위다.
++- **저장 정책**: `005`(계산 결과 미저장) → `015`(정산 시점 송금 스냅샷만
++  예외적으로 저장) → `019`(스냅샷 포함 전부 완료 7일 뒤 삭제). 미리보기는 여전히
++  미저장, 정산 순간의 송금 명세는 "송금이 진행되는 동안의 증거"다.
++- **채팅**: `010`(Netty+WebSocket+MongoDB, 별도 프로세스) → `014`가 모놀리스로 합치며
++  분리를 보류 → v3에서 **정산방 타임라인**으로 되살아남. `014`대로 모놀리스 안 WebSocket +
++  MySQL 저장으로 시작하고, 재배포로 연결이 끊기는 게 실제 불편이 되면 `010` 원안(분리)을 본다.
++- **인프라 확장**: `016`(Redis)·`017`(Kafka)·`018`(k3s)은 `019` 이후 모두
++  **"영수증을 서버에서 처리하는가"에 달려 재검토 중**이다(§8).
+ 
+ ---
+ 
+ ## 8. 진행 중인 전환 · 리스크
+ 
+-**Core v1 → v2.** 설계(`CALC_RULES_V2.md`, `DOMAIN_DB_DESIGN_V2.md`)는
+-확정됐고, 모임 관리 기반(changelog `012`~`014`: 관리자·비밀번호·구성원
+-상태·차단)은 구현·검증까지 끝났다. **술자리·차수·응답·정산 확정은 아직
+-v1 계약 그대로다.** `core`의 `Settlement`/`Validation`/`Model`이 지금
+-이 시점에 활발히 수정되고 있다면, 그건 v2 전환 작업 중이라는 뜻이다 —
+-병합 전에 `CALC_RULES_V2.md` §8 체크리스트와 대조해라.
+-
+-정산 확정 트랜잭션의 순서·동시성 규칙 자체는 이미 확정 설계다 — **설계가
+-아니라 구현만 남았다.** 순서는 `DOMAIN_DB_DESIGN_V2.md` §5, 동시성 규칙은
+-같은 문서 §6에 있다(§6 횡단 관심사 표에도 링크).
+-
+-**v2가 아직 새 ADR로 안 남은 결정 3개.** `DOMAIN_DB_DESIGN_V2.md` §7이
+-직접 지목한다 — 조용히 덮어쓰지 말라는 경고다.
+-
+-- `ADR-004`(2단계 확정) — 유지되지만 "재확정" 관련 서술은 폐기 대상
+-- `ADR-008`(정원 잠금·PENDING) — 정원 요구 자체가 사라져 단순화 필요
+-- `ADR-010`(실시간 채팅 보류) — 위에서 설명한 대로 범위를 좁혀 부활하는
+-  중인데 그 결정이 아직 문서화 안 됨
+-
+-**인증 확장.** 지금 규칙(httpOnly 쿠키뿐)은 웹 전용 전제다. KMP
+-앱(`jungsan_app` 저장소)이 붙으면 앱은 쿠키를 못 쓰니 Authorization
+-헤더 경로가 필요해진다 — "웹은 쿠키, 앱은 헤더" 이원화는 아직 설계도
+-구현도 안 됐다. `AGENTS.md` §4-7을 그대로 둔 채 앱을 붙이면 그 규칙이
+-가로막는다.
+-
+-**폐기 후보 컬럼·테이블.** `participants`의 `exempt`/`responded*`/
+-`payment_status`/`paid_amount`, `gatherings`의 `expected_count`/
+-`rounding_unit`, `extra_items`/`extra_item_bearers` 전체 — v2 전환
+-migration에서 정리 대상이다(`DOMAIN_DB_DESIGN_V2.md` §4.1). 지금 이
+-컬럼에 의존하는 코드를 새로 짜지 마라.
++**Core v1 → v2 — 커밋되지 않은 채 로컬에만 있다. 가장 큰 리스크다.**
++`main`의 `core`는 아직 v1이다. v2 계산 엔진(결제자별 수취·1원 올림)은 로컬 작업
++트리의 미커밋 변경으로만 존재한다. 폴더가 날아가면 v2 엔진이 사라진다. 최우선으로
++`:core:test` 통과를 확인하고 커밋·병합해야 한다. 병합 전에 `CALC_RULES_V2.md` §8
++체크리스트와 대조해라.
++
++**제품 v2 → v3 (2026-09-29, `ADR-019`).** 모임 계층·모임 관리·이의제기 절차를
++제거하고 술자리를 일회용으로 만들었다. 설계(`REQUIREMENTS.md` v3,
++`DOMAIN_DB_DESIGN_V2.md` 개정판)는 확정, 구현은 아직이다. 병합되지 않은 모임 관리
++기반(changelog `012`~`014`, changeSet `018`~`022`)은 **쓰지 않으며 번호도 재사용하지
++않는다**(`AGENTS.md` §7). 정산하기·되돌리기·삭제 배치의 순서와 동시성 규칙은
++`DOMAIN_DB_DESIGN_V2.md` §5·§6에 있다 — **설계가 아니라 구현만 남았다.**
++
++**인프라 ADR 세 개가 한 결정에 묶여 있다.** `016`(Redis)·`017`(Kafka)·`018`(k3s)의
++남은 근거가 모두 "영수증을 서버에서 외부 API로 처리한다"에 기대고 있다. 영수증 인식
++방식을 실제 영수증 샘플로 측정해 정하는 순간 세 ADR을 함께 확정하거나 기각한다.
++
++**인증 확장 — 앱 개발이 시작되며 곧 막힌다.** 지금 규칙(httpOnly 쿠키뿐)은 웹
++전용 전제다. KMP 앱(`jungsan_app`)은 카카오 로그인 콜백을 브라우저(커스텀 탭)에서
++받으므로 쿠키가 앱의 HTTP 클라이언트로 넘어오지 않는다 — 콜백에서 앱으로 토큰을
++넘기는 경로(예: 딥링크 + 일회용 코드 교환)가 필요하다. 아직 설계도 구현도 없다.
++`AGENTS.md` §4-7을 그대로 둔 채 앱을 붙이면 그 규칙이 가로막는다. **CTO 결정이 필요한
++항목이다.** 앱이 목데이터로 도는 동안은 막히지 않는다.
++
++**폐기 대상 컬럼·테이블.** 모임 테이블(`user_groups`·`group_members`),
++`gatherings`의 `group_id`/`expected_count`/`rounding_unit`/`group_type`,
++`participants`의 `exempt`/`responded*`/`payment_status`/`paid_amount`/계좌,
++`extra_items`/`extra_item_bearers` — v3 migration에서 정리한다
++(`DOMAIN_DB_DESIGN_V2.md` §4.1). 지금 이 컬럼에 의존하는 코드를 새로 짜지 마라.
+ 
+ ---
+ 
+diff --git a/docs/CALC_RULES_V2.md b/docs/CALC_RULES_V2.md
+index ae66331..e3465df 100644
+--- a/docs/CALC_RULES_V2.md
++++ b/docs/CALC_RULES_V2.md
+@@ -4,6 +4,12 @@
+ > **버전:** v2 · 2026-08-31  
+ > 기존 `CALC_RULES.md`는 현재 Core v1의 회귀 기준이다. Core v2 전환이 끝날 때까지
+ > 보존하고, 새 구현과 테스트는 이 문서를 따른다.
++>
++> **제품 v3(2026-09-29, `ADR-019`)에서도 계산 규칙은 바뀌지 않았다.** 용어만 바뀌었다 —
++> 이 문서의 **"차수 총무"는 제품 v3의 "결제자(`Payer`)"와 같다.** 그 차수를 낸 사람이자
++> 돌려받는 사람이라는 계산상 의미는 동일하고, v3에서 사라진 것은 "차수 확정" 같은
++> 운영 의무뿐이다. 또 v3에서 면제(`EXEMPT`)는 총무만 설정하지만, 계산 엔진 입장에서는
++> 차수별 응답 상태 하나라 이 문서의 규칙에 영향이 없다.
+ 
+ ---
+ 
+diff --git a/docs/DOMAIN_DB_DESIGN_V2.md b/docs/DOMAIN_DB_DESIGN_V2.md
+index 8bbab65..f85f1d2 100644
+--- a/docs/DOMAIN_DB_DESIGN_V2.md
++++ b/docs/DOMAIN_DB_DESIGN_V2.md
+@@ -1,29 +1,38 @@
+-# 정산어택 — 도메인·DB 설계 v2
++# 정산어택 — 도메인·DB 설계 (Core v2 · 제품 v3)
+ 
+-> **상태:** Core v2 반영 설계 확정 · 모임 관리 기반(`012`~`014`) 구현 완료  
+-> **작성일:** 2026-09-03  
+-> **제품 기준:** `REQUIREMENTS.md`  
+-> **계산 기준:** `CALC_RULES_V2.md`
++> **상태:** 제품 v3(일회용 술자리) 기준 설계 확정 · 구현 전
++> **작성일:** 2026-09-03 · **개정:** 2026-09-29 (v3 단순화, `ADR-019`)
++> **제품 기준:** `REQUIREMENTS.md` v3
++> **계산 기준:** `CALC_RULES_V2.md` (v3에서 변경 없음)
+ 
+ 이 문서는 요구사항과 Core v2를 서버 도메인 및 MySQL 스키마로 옮기기 위한
+-구현 계약이다. 현재 스키마는 `001`~`011` changelog와 `ERD.md`가 나타내며,
+-아래 내용 중 모임 관리자·가입 비밀번호·구성원 생명주기·차단은 `012`~`014`에
+-반영했다. 술자리 계산 입력과 확정 송금 스냅샷은 후속 additive migration 대상이다.
++구현 계약이다. 파일명의 `V2`는 **계산 엔진(Core) v2**를 뜻한다 — 제품 요구사항은 v3다.
++
++> [!IMPORTANT]
++> **2026-09-29 개정.** 이전판은 모임(`Group`)·모임 차단·차수 총무의 차수 확정·
++> 1:1 이의제기 채팅을 전제했다. 제품 v3에서 전부 제거됐다(`ADR-019`).
++> 이전판이 "구현 완료"로 적었던 모임 관리 기반 changelog `012`~`014`
++> (changeSet `018`~`022`)는 **`main`에 병합된 적이 없으며 v3에서 쓰지 않는다.**
++> 그 changeSet id는 로컬 DB에 적용됐을 수 있으므로 **재사용하지 않는다** — §8 참조.
+ 
+ ---
+ 
+ ## 1. 설계 결론
+ 
+-1. `Group`은 지속적인 소속 공간이고 `Gathering`은 한 날짜의 정산 단위다.
+-2. 모임 관리자는 `user_groups.admin_user_id`로 한 명만 직접 가리킨다.
+-3. 술자리 생성자는 운영 권한을 가지지만 돈을 받는 사람은 아니다.
+-4. 각 `Round`의 `manager_participant_id`가 유일한 결제자이자 수취인이다.
+-5. 면제는 참여자 전체가 아니라 `RoundResponse`의 차수별 상태다.
+-6. 미리보기는 저장하지 않고 Core에서 매번 계산한다.
+-7. 금액 확정 순간에는 Core 결과의 송금 명세를 불변 스냅샷으로 저장한다.
+-8. 입금 및 이의제기는 스냅샷의 개별 송금 건을 기준으로 진행한다.
+-9. 금액 확정 후 기존 계산 입력은 수정하지 않는다.
+-10. 중복 참여는 분산 락이 아니라 DB 유니크 제약과 조건부 갱신으로 막는다.
++1. **술자리(`Gathering`)가 최상위 애그리거트다.** 모임 계층은 없다.
++2. 술자리는 **일회용**이다. 완료 7일 뒤, 또는 30일간 활동이 없으면 물리 삭제한다.
++3. 총무(`host`)는 술자리당 한 명이며 참여자이기도 하다.
++4. 각 `Round`의 `payer_participant_id`가 그 차수의 유일한 결제자이자 수취인이다.
++   결제자에게는 확정 의무가 없다 — **데이터일 뿐 역할이 아니다.**
++5. 면제는 차수별 응답 상태(`EXEMPT`)이며 **총무만** 설정한다.
++6. 미응답 칸은 정산 시점에 자동응답(`DRANK`, 출처 `AUTO`)으로 채운다.
++7. 미리보기는 저장하지 않고 Core에서 매번 계산한다.
++8. 정산하기 순간 Core 결과의 송금 명세를 스냅샷으로 저장한다(`ADR-015`).
++   스냅샷은 수정하지 않는다 — 되돌리기는 스냅샷을 **통째로 폐기**하는 것이다.
++9. 중복 참여·중복 요청은 분산 락이 아니라 DB 유니크 제약과 조건부 갱신으로 막는다.
++10. 정산방마다 타임라인(`timeline_entries`)이 있고 술자리와 함께 삭제된다. 스푼은
++    **술자리별 기록**(`gathering_spoons`, 함께 삭제)과 **사용자 누적**(`users.spoon_count`,
++    남음)으로 나눠 저장한다.
+ 
+ ---
+ 
+@@ -31,31 +40,29 @@
+ 
+ ```mermaid
+ flowchart LR
+-    U[User] --> GM[GroupMember]
+-    G[Group] --> GM
+-    G --> GB[GroupBan]
+-    G --> GA[Gathering]
+-    GA --> GP[GatheringParticipant]
++    U[User] --> P[Participant]
++    GA[Gathering] --> P
+     GA --> R[Round]
+     R --> RR[RoundResponse]
+     R --> DI[DrinkItem]
+     GA --> S[Settlement]
+     S --> T[SettlementTransfer]
+-    T --> D[Dispute]
+-    D --> DM[DisputeMessage]
++    GA --> TL[TimelineEntry]
++    GA --> SP[GatheringSpoon]
+ ```
+ 
+ | 애그리거트 | 책임 | 주요 불변식 |
+ |---|---|---|
+-| `Group` | 관리자, 구성원, 가입, 차단, 보관 | 관리자는 정확히 한 명이며 활성 구성원이다 |
+-| `Gathering` | 생성자, 참여 명단, 차수, 전체 진행 상태 | 생성자는 참여자이고 금액 확정 후 입력 불변 |
+-| `Round` | 비용, 술 항목, 총무, 차수 확정 | 총무는 해당 술자리의 활성 참여자이며 차수당 한 명 |
+-| `Settlement` | 확정된 계산 버전과 송금 스냅샷 | 술자리당 MVP 정산 한 건, 확정 이후 금액 불변 |
+-| `SettlementTransfer` | 송금 요청·수취 확인 | 송금자와 수취인이 다르고 금액은 양수 |
+-| `Dispute` | 특정 송금의 당사자 조율 | 한 송금에 열린 이의제기는 최대 한 건 |
++| `User` | 로그인, 표시 이름, 받을 계좌 | 계좌는 사용자당 하나, 재사용 |
++| `Gathering` | 총무, 참여자 명단, 차수, 진행 상태, 수명 | 총무는 참여자. 정산 후 입력 불변 |
++| `Round` | 금액, 술 항목, 결제자 | 결제자는 활성 참여자이며 차수당 한 명 |
++| `Settlement` | 정산 시점 입력 버전과 송금 스냅샷 | 술자리당 최대 한 건 |
++| `SettlementTransfer` | 송금·수취 확인 | 송금자 ≠ 수취인, 금액 > 0 |
++| `TimelineEntry` | 정산방 대화와 시스템 소식 | 술자리와 함께 삭제 |
++| `GatheringSpoon` | 술자리별 스푼 기록 | 참여자당 술자리에 1개, 총무 본인 불가 |
+ 
+-`Settlement`는 별도의 계산 엔진이 아니다. 계산은 계속 `core`만 수행하고 서버는
+-확정 시점의 결과와 워크플로 상태만 보존한다.
++`Settlement`는 별도의 계산 엔진이 아니다. 계산은 `core`만 수행하고 서버는 정산 시점
++결과와 송금 진행 상태만 보존한다.
+ 
+ ---
+ 
+@@ -64,251 +71,275 @@ flowchart LR
+ ### 3.1 술자리
+ 
+ ```text
+-ROSTER_OPEN → RESPONDING → ROUND_CONFIRMING → AMOUNT_CONFIRMED
+-                                             → PAYMENT_IN_PROGRESS
+-                                             → COMPLETED
++OPEN ──정산하기──▶ SETTLING ──모든 송금 확인 / 정산 끝내기──▶ COMPLETED ──7일──▶ (삭제)
++  ▲                   │
++  └──정산 되돌리기──────┘   (모든 송금의 sent_at·confirmed_at이 한 번도 채워지지 않았을 때만)
+ ```
+ 
+-- `ROSTER_OPEN`: 참여 가능, 차수·총무·비용 수정 가능
+-- `RESPONDING`: 명단 마감, 참여 불가, 응답 수집 중
+-- `ROUND_CONFIRMING`: 응답 완료 후 차수별 총무가 검토·확정
+-- `AMOUNT_CONFIRMED`: 입력 잠금과 송금 스냅샷 생성이 끝난 순간
+-- `PAYMENT_IN_PROGRESS`: 송금 확인 및 이의 조율 중
+-- `COMPLETED`: 모든 송금 확인 완료, 열린 이의제기 없음
++| 상태 | 참여 | 응답 수정 | 총무 입력 수정 | 송금 |
++|---|---|---|---|---|
++| `OPEN` | 가능 | 가능 | 가능 | 없음 |
++| `SETTLING` | 불가 | 불가 | 불가 | 진행 |
++| `COMPLETED` | 불가 | 불가 | 불가 | 조회만 |
+ 
+-명단 재개는 `RESPONDING` 또는 `ROUND_CONFIRMING`에서 `ROSTER_OPEN`으로만 가능하다.
+-`AMOUNT_CONFIRMED` 이후에는 역방향 전이가 없다.
++- 이전판의 `ROSTER_OPEN`·`RESPONDING`·`ROUND_CONFIRMING`·`AMOUNT_CONFIRMED`·
++  `PAYMENT_IN_PROGRESS`는 없다.
++- 정산하기 결과 송금이 0건이면(예: 결제자 혼자뿐) 바로 `COMPLETED`로 간다.
+ 
+-### 3.2 차수와 응답
++### 3.2 차수 응답
+ 
+-- 차수: `DRAFT → CONFIRMED`, 전체 금액 확정 전에는 `DRAFT`로 되돌릴 수 있다.
+-- 응답: `ABSENT | EXEMPT | SOBER | DRANK` 중 정확히 하나다.
+-- 응답 행의 존재 자체가 응답 완료를 뜻한다. 별도 `responded` 불리언을 두지 않는다.
+-- 모든 활성 참여자에게 모든 차수 응답이 있어야 그 차수를 확정할 수 있다.
++- `response_type = ABSENT | SOBER | DRANK | EXEMPT`
++- `source = SELF | AUTO | HOST`
++  - 참여자는 `SELF`로 `ABSENT`·`SOBER`·`DRANK`만 쓴다.
++  - 총무는 `HOST`로 `EXEMPT`를 쓰고 해제할 수 있다. `HOST`가 쓴 칸은 참여자가 바꿀 수 없다.
++  - 정산하기 트랜잭션이 빈 칸을 `AUTO`·`DRANK`로 채운다.
++- 차수에 별도 상태(`DRAFT`/`CONFIRMED`)를 두지 않는다. 차수 확정 단계가 없다.
+ 
+ ### 3.3 송금
+ 
+ ```text
+-WAITING → CONFIRMATION_REQUESTED → CONFIRMED
+-                                  → DISPUTED → WAITING
++WAITING ──보냈어요──▶ SENT ──확인──▶ CONFIRMED
++   ▲                  │
++   └──아직 안 들어왔어요─┘
++WAITING ──수취인 직접 확인──▶ CONFIRMED
++CONFIRMED ──수취인 확인 취소──▶ WAITING   (술자리가 SETTLING일 때만)
+ ```
+ 
+-- `WAITING`: 아직 확인 요청 전이거나 이의 조율 후 재송금 대기
+-- `CONFIRMATION_REQUESTED`: 송금자가 입금 확인을 요청함
+-- `CONFIRMED`: 수취인이 실제 입금을 확인함
+-- `DISPUTED`: 금액 불일치 또는 미입금을 조율 중
+-- 수취인이 실수로 확인했다면 `CONFIRMED → WAITING` 복구를 허용하고 이력을 남긴다.
++- 이전판의 `CONFIRMATION_REQUESTED`·`DISPUTED`와 이의제기 흐름은 없다.
++- `not_received_at`에 마지막 [아직 안 들어왔어요] 시각을 남겨 송금자 화면에 표시한다.
+ 
+ ---
+ 
+ ## 4. 논리 스키마
+ 
+-### 4.1 기존 테이블에서 유지·변경할 항목
++### 4.1 기존 테이블에서 유지·변경·폐기할 항목
+ 
+ #### `users`
+ 
+-로그인 식별자는 유지한다. 계정 탈퇴는 행 삭제 대신 개인정보 익명화와
+-`withdrawn_at` 기록으로 처리해 정산 FK와 표시 이력을 보존한다.
+-
+-#### `user_groups`
+-
+-| 컬럼 | 결정 |
++| 항목 | 결정 |
+ |---|---|
+-| `created_by_user_id` | 생성 이력으로 유지, 관리자 권한 판단에 사용하지 않음 |
+-| `admin_user_id` | 추가, 현재 유일한 관리자 |
+-| `password_hash` | 추가, 평문·복호화 가능한 값 금지 |
+-| `share_token` | 가입 링크용으로 유지 |
+-| `deleted_at` | 의미를 `archived_at`으로 정리. 물리 삭제가 아님 |
+-| `group_type`, `delete_scheduled_at` | 새 요구사항에서는 폐기 후보. 자동 삭제 정책을 사용하지 않음 |
+-
+-관리자 이전은 다음을 한 트랜잭션에서 처리한다.
++| 로그인 식별자 | 유지 |
++| `display_name` | 추가. 카카오 닉네임 기본값, 사용자가 한 번 확인·수정 |
++| 받을 계좌 | `payout_bank`, `payout_account_no`, `payout_holder` 추가. 암호화·마스킹은 §9 |
++| `spoon_count` | 추가. 받은 스푼 누적 수(`INT NOT NULL DEFAULT 0`). 술자리가 삭제돼도 줄지 않는다. 칭호는 이 값에서 계산하며 저장하지 않는다. **전설(10,000 이상) 순위**도 저장하지 않고 조회 시 `SELECT COUNT(*) + 1 FROM users WHERE spoon_count > :mine`로 계산한다 — 이를 위해 `INDEX (spoon_count)`를 둔다 |
++| 탈퇴 | 개인정보 삭제. 술자리가 일회용이라 정산 FK 보존용 익명화는 필요 없다 — 탈퇴 전 진행 중 술자리 처리는 §9 미결 |
+ 
+-1. 대상이 활성 `group_members`인지 확인한다.
+-2. `user_groups.admin_user_id`를 조건부 갱신한다.
+-3. 감사 이벤트를 기록한다.
++#### `user_groups`, `group_members` — **폐기**
+ 
+-기존 `group_members.role = OWNER`는 이중 진실을 만들므로 v2에서는 권한 판정에 쓰지
+-않고 제거 대상으로 둔다.
+-
+-#### `group_members`
+-
+-`(group_id, user_id)` 유니크는 유지한다. 재가입과 이력을 함께 표현하려고 행을
+-삭제하지 않고 `status = ACTIVE | LEFT | KICKED`, `left_at`을 둔다.
++v3에 모임이 없다. 새 changelog에서 `gatherings.group_id` FK를 먼저 제거한 뒤 두 테이블을
++삭제한다. 이미 적용된 `002`·`009`·`011` changelog는 **수정하지 않는다**(checksum).
+ 
+ #### `gatherings`
+ 
+-| 기존 컬럼 | v2 의미 |
++| 기존 컬럼 | v3 결정 |
+ |---|---|
+-| `host_user_id` | `creator_user_id`로 이름과 의미를 정리 |
+-| `host_participant_id` | 제거 후보. 생성자는 `(gathering_id, user_id)`로 찾음 |
+-| `status` | v2 술자리 상태로 확장 |
+-| `expected_count` | 정원 요구가 없어 제거 후보 |
+-| `rounding_unit` | Core v2가 1원 올림으로 고정하므로 제거 |
+-| `revision` | 입력 버전으로 유지 |
+-| `confirmed_at` | `amount_confirmed_at` 의미로 변경 |
+-
+-`input_revision`은 차수·응답·술 항목·총무 등 계산 입력이 바뀔 때 증가한다.
+-미리보기 응답은 `inputHash`와 `inputRevision`을 반환하고 금액 확정 요청이 둘 다
+-일치할 때만 성공한다.
++| `group_id` | **폐기** |
++| `host_user_id` | 유지. 총무 |
++| `host_participant_id` | 폐기 후보. 총무의 참여자 행은 `(gathering_id, host_user_id)`로 찾는다 |
++| `status` | `OPEN | SETTLING | COMPLETED` |
++| `title` | 유지(없으면 추가). 생성 시 `M/d 술자리`로 자동 채움 |
++| `share_token` | 유지. 참여 링크 |
++| `expected_count` | **폐기** (정원·예상 인원 개념 없음) |
++| `rounding_unit` | **폐기** (Core v2가 1원 올림 고정) |
++| `revision` | `input_revision`으로 유지 |
++| `settled_at`, `completed_at` | 추가 |
++| `last_activity_at` | 추가. 30일 방치 삭제 판단용. 참여·응답·입력·송금 상태 변경 때 갱신 |
++| `group_type`, `delete_scheduled_at`, `deleted_at` | **폐기** (모임 시절 컬럼) |
++
++`input_revision`은 차수·금액·술 항목·결제자·응답·면제가 바뀔 때 증가한다.
++미리보기는 `inputHash`와 `inputRevision`을 돌려주고, 정산하기 요청은 둘 다 일치할 때만
++성공한다(`ADR-004`).
+ 
+ #### `participants`
+ 
+-테이블의 도메인명은 `GatheringParticipant`다.
+-
+ | 항목 | 결정 |
+ |---|---|
+-| `(gathering_id, user_id)` | 유지, 중복 참여의 최종 방어선 |
+-| `participant_type` | `MEMBER | GUEST` 추가 |
+-| `status` | `ACTIVE | REMOVED`로 정리 |
+-| `exempt`, `responded*` | 제거. `round_responses`가 담당 |
+-| `payment_status`, `paid_amount`, 입금 시각 | 제거. `settlement_transfers`가 담당 |
+-| 지급 계좌 | 참여자에 유지 가능하나 암호화·마스킹 정책을 별도 확정 |
++| `(gathering_id, user_id)` | 유지. 중복 참여의 최종 방어선 |
++| `status` | `ACTIVE | REMOVED` |
++| `name` | 폐기 후보. 표시 이름은 `users.display_name`을 쓴다 |
++| `exempt`, `responded*` | **폐기** — `round_responses`가 담당 |
++| `payment_status`, `paid_amount`, 입금 시각 | **폐기** — `settlement_transfers`가 담당 |
++| 계좌 컬럼 | **폐기** — `users`로 이동 |
+ 
+-외부 참여자도 `user_id NOT NULL`이며 카카오 로그인 사용자다. 제거된 외부 참여자가
+-같은 술자리에 다시 들어오는 것은 기존 행의 `REMOVED` 상태로 차단한다.
++`participant_type(MEMBER | GUEST)`는 도입하지 않는다 — 모임이 없으니 구분할 대상이 없다.
+ 
+ #### `rounds`
+ 
+-- `payer_id`는 `manager_participant_id`로 이름을 정리한다.
+-- `status`, `confirmed_at`, `confirmed_by_user_id`를 추가한다.
+-- `(gathering_id, seq)` 유니크는 유지한다.
+-- 삭제된 `seq`는 재사용하지 않고 `MAX(seq) + 1`을 부여한다.
+-- 금액 확정 전 삭제는 soft delete로 처리해 순번과 변경 이력을 보존한다.
+-
+-#### `attendances`
++- `payer_id` → `payer_participant_id`. 기본값은 총무의 참여자 행.
++- `(gathering_id, seq)` 유니크 유지. 삭제된 `seq`는 재사용하지 않고 `MAX(seq)+1`.
++- 차수 상태(`status`, `confirmed_at`, `confirmed_by_user_id`)는 **추가하지 않는다.**
+ 
+-도메인명과 물리 테이블명을 `RoundResponse` / `round_responses`로 정리한다.
+-`attended`, `drank` 조합 대신 `response_type` 하나를 저장한다.
++#### `attendances` → `round_responses`
+ 
+ ```text
+ PRIMARY KEY (participant_id, round_id)
+-response_type = ABSENT | EXEMPT | SOBER | DRANK
+-submitted_at, updated_at
++response_type  ABSENT | SOBER | DRANK | EXEMPT
++source         SELF | AUTO | HOST
++updated_at
+ ```
+ 
+-`extra_items`, `extra_item_bearers`는 v2 코드에서 읽거나 쓰지 않는다. MVP 데이터가
+-없음을 검증한 뒤 별도 migration에서 제거한다.
++`attended`·`drank` 조합 대신 `response_type` 하나로 저장한다. 행의 존재 자체가 응답이다.
+ 
+-### 4.2 새 테이블
++#### `drink_items`
+ 
+-#### `group_bans`
++유지. `round_id`, `name`, `unit_price`, `quantity`.
+ 
+-```text
+-group_id, user_id                 PK
+-banned_by_user_id
+-banned_at
+-released_by_user_id              NULL 가능
+-released_at                      NULL 가능
+-```
++#### `extra_items`, `extra_item_bearers` — **폐기**
+ 
+-현재 차단 여부는 `released_at IS NULL`이다. 과거 강퇴 기록을 덮어쓰지 않아야 한다면
+-추후 surrogate key와 이력 행 방식으로 확장한다. MVP에서는 사용자당 현재 차단 한 건이면
+-충분하다.
++기타 항목은 후속 기능이다. MVP 데이터가 없음을 확인한 뒤 새 changelog에서 삭제한다.
++
++### 4.2 새 테이블
+ 
+ #### `settlements`
+ 
+ ```text
+-id                               PK
+-gathering_id                     UNIQUE
+-status                           CONFIRMED | PAYMENT_IN_PROGRESS | COMPLETED
++id                     PK
++gathering_id           UNIQUE, FK ON DELETE CASCADE
+ input_revision
+-input_hash                       CHAR(64)
++input_hash             CHAR(64)
+ grand_total
+-confirmed_by_user_id
+-confirmed_at
+-completed_at                     NULL 가능
++settled_by_user_id
++settled_at
+ ```
+ 
+-MVP는 확정 후 재정산을 지원하지 않으므로 `gathering_id`가 유일하다.
++상태는 `gatherings.status`가 가진다. 정산 되돌리기는 이 행과 송금 행을 삭제한다.
+ 
+ #### `settlement_transfers`
+ 
+ ```text
+-id                               PK
+-settlement_id                    FK
+-sender_participant_id            FK
+-recipient_participant_id         FK
+-amount                           BIGINT
+-status                           WAITING | CONFIRMATION_REQUESTED | DISPUTED | CONFIRMED
+-confirmation_requested_at        NULL 가능
+-confirmed_at                     NULL 가능
++id                         PK
++settlement_id              FK ON DELETE CASCADE
++sender_participant_id      FK
++recipient_participant_id   FK
++amount                     BIGINT
++status                     WAITING | SENT | CONFIRMED
++sent_at                    NULL 가능   — 한 번이라도 [보냈어요]가 눌린 적 있으면 채워짐
++confirmed_at               NULL 가능
++not_received_at            NULL 가능   — 마지막 [아직 안 들어왔어요]
+ updated_at
+ 
+ UNIQUE (settlement_id, sender_participant_id, recipient_participant_id)
+-CHECK 개념: sender != recipient, amount > 0
++개념 CHECK: sender != recipient, amount > 0
+ ```
+ 
+-이 테이블은 Core v2 `Transfer`의 확정 스냅샷이다. 수취인별 원금 검증과 화면 근거를
+-위해 `settlement_recipient_summaries`를 별도 저장하지 않고, 확정 시 Core 결과와
+-transfer 합계를 검증한 후 저장한다. 상세 계산 근거는 고정된 입력으로 Core를 다시
+-실행해 표시할 수 있다.
++**`sent_at`과 `confirmed_at`은 상태가 되돌아가도 지우지 않는다.** 정산 되돌리기 가능
++여부("돈이 움직이기 시작했는가")를 이 두 컬럼으로 판단하기 때문이다.
+ 
+-#### `payment_status_histories`
++#### `timeline_entries`
+ 
+ ```text
+-id, transfer_id, from_status, to_status, changed_by_user_id, reason, created_at
++id                      PK
++gathering_id            FK ON DELETE CASCADE
++type                    MESSAGE | SYSTEM | SPOON
++author_participant_id   NULL 가능   — SYSTEM이면 NULL
++system_code             NULL 가능   — SETTLED, AUTO_RESPONDED, SENT, CONFIRMED,
++                                      NOT_RECEIVED, SETTLE_UNDONE, COMPLETED, JOINED ...
++body                    VARCHAR(500) — MESSAGE: 사용자 입력 / SYSTEM: 표시 인자(JSON)
++created_at
++
++INDEX (gathering_id, id)
+ ```
+ 
+-확인 완료를 실수로 되돌린 경우까지 설명하기 위한 append-only 감사 기록이다.
++- **시스템 소식은 해당 상태 변경과 같은 트랜잭션에서 삽입한다** — 정산하기가 커밋됐는데
++  타임라인에 "정산했어요"가 없는 상태가 생기지 않게.
++- 실시간 전달은 WebSocket이다(`ADR-014` — 모놀리스 안에 얹는다). **저장의 진실은 이
++  테이블**이고, 클라이언트는 재접속 시 마지막으로 받은 `id` 이후를 조회해 빈틈을 메운다.
++- 메시지 길이(500자)·전송 속도 제한은 서버가 검증한다. 이미지·파일은 없다.
+ 
+-#### `disputes`
++#### `gathering_spoons`
+ 
+ ```text
+-id                               PK
+-transfer_id                      FK
+-opened_by_user_id
+-status                           OPEN | COMPLETION_REQUESTED | RESOLVED
+-completion_requested_by_user_id  NULL 가능
+-completion_requested_at          NULL 가능
+-resolved_by_user_id              NULL 가능
+-resolved_at                      NULL 가능
+-resolution_type                  AGREED | OFFLINE
++gathering_id            PK, FK ON DELETE CASCADE
++giver_participant_id    PK, FK
+ created_at
+ ```
+ 
+-`COMPLETION_REQUESTED`는 한쪽의 협상 완료 제안이며 상대방 확인 전에는 합의가 아니다.
+-오프라인 조율 완료도 최소한 수취인이 실행하도록 권한을 제한한다. 24시간·48시간은
+-상태가 아니라 `created_at`/마지막 메시지 시각으로 계산해 알림 이벤트를 만든다.
+-자동 합의는 하지 않는다.
++- 복합 PK가 "참여자당 술자리에 1스푼"을 DB에서 보장한다.
++- 받는 사람은 항상 그 술자리의 총무라 따로 저장하지 않는다. 총무 본인은 줄 수 없다(서버 검증).
+ 
+-#### `dispute_messages`
++#### `notifications`
+ 
+ ```text
+-id, dispute_id, sender_user_id, message, created_at
++id, user_id, type, gathering_id NULL 가능 (FK ON DELETE CASCADE),
++title, body, read_at, created_at
+ ```
+ 
+-MVP에서는 MySQL에 저장한다. 이미지·파일은 범위 밖이며 텍스트 메시지만 지원한다.
+-WebSocket은 전달 방식일 뿐, 메시지 저장의 진실은 이 테이블이다.
++외부 푸시 재시도는 기존 `notification_outbox`가 맡는다. 내부 알림과 outbox 삽입은
++도메인 상태 변경과 같은 트랜잭션에서 처리한다.
+ 
+-#### `notifications`
++### 4.3 만들지 않는 테이블
+ 
+-사용자가 앱 안에서 보는 알림을 저장한다. 기존 `notification_outbox`는 외부 푸시를
+-재시도하기 위한 전달 큐이므로 역할이 다르다.
++이전판에 있던 `group_bans`, `payment_status_histories`, `disputes`, `dispute_messages`는
++**만들지 않는다.** 모임·이의제기 절차가 없고, 송금 상태 이력은 7일이면 사라지는 데이터라
++감사 테이블을 둘 이유가 없다.
+ 
+-```text
+-id, user_id, type, reference_type, reference_id, title, body,
+-read_at, created_at
+-```
+-
+-내부 알림과 outbox 삽입은 도메인 상태 변경과 같은 트랜잭션에서 처리한다.
++`timeline_entries`는 이전판의 `dispute_messages`와 다르다 — 이의제기 당사자 둘만 보는
++조율 채널이 아니라, 참여자 전원이 보는 한 줄 대화와 정산 소식이다.
+ 
+ ---
+ 
+-## 5. 확정 트랜잭션
++## 5. 핵심 트랜잭션
++
++### 5.1 정산하기
+ 
+-금액 확정은 다음 순서를 하나의 DB 트랜잭션으로 수행한다.
++하나의 DB 트랜잭션으로 수행한다.
+ 
+-1. `gatherings` 행을 읽고 아직 확정 전인지 확인한다.
+-2. 요청의 `inputRevision`과 `inputHash`를 현재 입력과 비교한다.
+-3. 모든 차수 확정, 모든 활성 참여자의 응답 존재를 검증한다.
+-4. 같은 입력으로 Core v2를 다시 실행한다.
++1. `gatherings` 행을 읽고 `OPEN`인지 확인한다.
++2. 요청의 `inputRevision`·`inputHash`를 현재 입력과 비교한다. 다르면 409.
++   **해시는 자동응답이 채워질 값까지 포함해 계산한다** — 총무가 확인 화면에서 본 금액과
++   서버가 고정하는 금액이 같아야 하기 때문이다.
++3. 빈 (참여자, 차수) 칸에 `round_responses(DRANK, AUTO)`를 삽입한다.
++4. 같은 입력으로 Core v2를 실행한다. `Failure`면 409와 오류 목록.
+ 5. `settlements` 한 건과 `settlement_transfers`를 삽입한다.
+-6. 술자리 상태를 `AMOUNT_CONFIRMED`로 조건부 갱신한다.
+-7. 내부 알림과 푸시 outbox를 삽입한다.
++6. 송금이 0건이면 `COMPLETED`, 아니면 `SETTLING`으로 조건부 갱신한다.
++7. 내부 알림·outbox를 삽입한다 — 전원(금액 공개), 자동응답 대상자와 총무(자동응답),
++   계좌 없는 결제자(계좌 등록 필요).
+ 8. 커밋한다.
+ 
+-두 확정 요청이 동시에 오면 `UNIQUE(settlements.gathering_id)`와 조건부 상태 갱신 중
+-하나만 성공한다. 분산 락은 필요 없다.
++### 5.2 정산 되돌리기
++
++1. 술자리가 `SETTLING`인지 확인한다.
++2. 모든 송금의 `sent_at IS NULL AND confirmed_at IS NULL`인지 확인한다. 하나라도 아니면 409.
++3. `source = AUTO`인 응답을 삭제한다(자동응답은 되돌리면 다시 빈 칸이 된다).
++4. `settlements` 행을 삭제한다(송금은 CASCADE).
++5. 술자리를 `OPEN`으로 조건부 갱신하고 `input_revision`을 올린다.
++6. 전원에게 알림.
++
++### 5.3 완료 처리 (총무 기본 스푼)
++
++완료로 가는 모든 경로 — 마지막 송금 확인, [정산 끝내기], §5.1의 송금 0건 — 가 같은 순서를 탄다.
++
++1. 술자리를 `SETTLING → COMPLETED`로 조건부 갱신한다(송금 0건이면 `OPEN → COMPLETED`).
++   **이 갱신은 한 번만 성공한다.**
++2. 갱신이 성공했고 활성 참여자가 **2명 이상**이면 총무의 `users.spoon_count`를 1 올린다
++   (`UPDATE … SET spoon_count = spoon_count + 1` — 원자적 증가).
++3. `completed_at`을 채우고, 타임라인 `SYSTEM(COMPLETED)`와 알림을 삽입한다.
++
++1이 한 번만 성공하므로 기본 스푼도 한 번만 지급된다.
++
++### 5.4 스푼 주기
++
++1. 술자리가 `SETTLING` 또는 `COMPLETED`인지, 주는 사람이 총무가 아닌 활성 참여자인지 확인한다.
++2. `gathering_spoons`에 삽입한다. PK 충돌이면 **이미 준 것**이므로 멱등 성공으로 끝낸다.
++3. **새로 삽입된 경우에만** 총무의 `users.spoon_count`를 1 올린다.
++4. 타임라인 `SPOON`과 총무 알림을 삽입한다.
++5. 커밋한다.
++
++### 5.5 삭제 배치
++
++`server`의 `@Scheduled` 작업이다. `core`에는 넣지 않는다(시간 의존).
++
++```sql
++-- 완료 7일 경과
++DELETE FROM gatherings WHERE status = 'COMPLETED' AND completed_at < NOW() - INTERVAL 7 DAY;
++-- 30일 방치
++DELETE FROM gatherings WHERE status <> 'COMPLETED' AND last_activity_at < NOW() - INTERVAL 30 DAY;
++```
++
++- 자식 테이블은 FK `ON DELETE CASCADE`로 함께 지운다.
++- 한 번에 많이 지우지 않도록 `LIMIT`으로 나눠 반복한다.
++- 멱등하다 — 같은 배치가 두 번 돌아도 결과가 같다.
++- 시각 비교는 UTC 기준이다(`AGENTS.md`·스키마 규율).
+ 
+ ---
+ 
+@@ -317,63 +348,71 @@ read_at, created_at
+ | 경합 | 방어 수단 |
+ |---|---|
+ | 참가 버튼 중복·재요청 | `UNIQUE(gathering_id, user_id)`와 멱등 응답 |
+-| 차단 사용자 가입 | 가입 트랜잭션에서 활성 `group_bans` 확인 |
+-| 명단 마감과 참가 동시 실행 | `gatherings` 상태 조건부 갱신 및 동일 행 잠금 순서 |
+-| 응답 수정과 차수 확정 | 차수 상태 조건부 쓰기 + 입력 revision 증가 |
+-| 미리보기와 금액 확정 사이 변경 | `inputHash` + `inputRevision` 불일치 시 409 |
+-| 금액 확정 더블클릭 | 술자리 상태 조건 + settlement 유니크 |
+-| 입금 확인 요청 더블클릭 | 현재 상태를 조건으로 한 update, 동일 상태면 멱등 성공 |
+-| 이의제기 중복 생성 | 송금별 열린 분쟁 유니크 정책과 트랜잭션 검사 |
+-
+-모든 잠금 경로는 `user_groups → gatherings → rounds/participants` 순서를 지킨다.
++| 정산하기와 참가 동시 실행 | `gatherings` 상태 조건부 갱신(`OPEN`일 때만 참가·정산) |
++| 응답 수정과 정산하기 | 상태 조건부 쓰기 + `input_revision` 증가 |
++| 미리보기와 정산하기 사이 변경 | `inputHash` + `inputRevision` 불일치 시 409 |
++| 정산하기 더블클릭 | 상태 조건 + `settlements.gathering_id` 유니크 |
++| 정산 되돌리기와 [보냈어요] 동시 실행 | 되돌리기는 `sent_at IS NULL` 조건부 삭제, [보냈어요]는 `SETTLING` 조건부 갱신 — 한쪽만 성공 |
++| [보냈어요]·[확인] 더블클릭 | 현재 상태를 조건으로 update, 같은 상태면 멱등 성공 |
++| 삭제 배치와 진행 중 요청 | 삭제 조건이 `COMPLETED`·장기 방치뿐이라 실사용 요청과 겹치지 않음 |
++| 스푼 더블클릭 | `gathering_spoons` 복합 PK. 새로 삽입된 경우에만 누적 증가 |
++| 마지막 송금 확인과 [정산 끝내기] 동시 실행 | `COMPLETED` 조건부 갱신이 한 번만 성공 → 기본 스푼도 한 번 |
++| 누적 스푼 동시 증가 | `spoon_count = spoon_count + 1` 원자적 갱신 (읽고-쓰기 금지) |
++
++**분산 락을 쓰지 않는다.** 잠금 경로는 `gatherings → rounds/participants` 순서를 지킨다.
+ 트랜잭션 안에서 카카오·FCM 같은 외부 호출을 하지 않는다.
+ 
+ ---
+ 
+ ## 7. 기존 결정과의 충돌
+ 
+-| 기존 결정 | v2 판단 |
++| 기존 결정 | v3 판단 |
+ |---|---|
+-| ADR-004 `inputHash` 2단계 확정 | 유지. 단, 재확정 설명은 폐기 |
+-| ADR-005 계산 결과 미저장 | 개정 필요. preview는 미저장, 확정 transfer는 증거로 저장 |
+-| ADR-008 정원 잠금·PENDING | 정원 요구 삭제에 따라 단순화. 중복 참여 유니크는 유지 |
+-| ADR-009 지속 모임 | 유지하되 검색·비밀번호·차단·보관 추가 |
+-| ADR-010 일반 모임 채팅 | 분쟁 1:1 텍스트 채팅으로 MVP 범위 축소, MySQL 유지 |
+-| ADR-014 모놀리스·feature package | 유지 |
++| ADR-004 `inputHash` 2단계 확정 | 유지. 정산하기에 그대로 쓴다. 해시에 자동응답 포함 |
++| ADR-005 계산 결과 미저장 | 015가 이미 좁힘. 유지 |
++| ADR-008 정원 잠금·PENDING | 정원 개념 삭제로 불필요. 중복 참여 유니크만 유지 |
++| ADR-009 지속 모임(`Group`) | **ADR-019가 대체.** 모임 계층 제거 |
++| ADR-010 실시간 채팅 | **정산방 타임라인으로 되살아남.** `ADR-014`대로 모놀리스 안 WebSocket + MySQL 저장으로 시작. 채팅 프로세스 분리(ADR-010 원안)는 `ADR-014` 재검토 조건(재배포로 연결이 끊기는 게 실제 불편으로 보고될 때)이 오면 |
++| ADR-015 확정 송금 스냅샷 | 유지. 단 되돌리기 시 통째로 폐기, 7일 뒤 삭제 |
++| ADR-016 Redis | 모임 비밀번호 시도 제한 용도가 사라짐. 남은 용도로 재검토 (`ADR-016` 참조) |
++| ADR-017 Kafka | 타임라인으로 "한 이벤트 → 타임라인 전송·푸시·스푼 집계" 모양이 생겼다. 단 **모놀리스 안에서는 스프링 내부 이벤트로 충분**하다. Kafka가 꼭 필요해지는 건 채팅(WebSocket)을 별도 프로세스로 떼거나 영수증을 서버 워커로 처리할 때다 — 백엔드 결정(CTO) |
+ 
+-ADR 문서를 조용히 덮어쓰지 않는다. migration 전에 ADR-004·005·008·010의
+-후속 결정을 새 ADR로 기록하거나 각 문서에 superseded 표기를 추가한다.
++ADR 문서를 조용히 덮어쓰지 않는다. 대체·개정은 각 ADR 상단에 표기한다.
+ 
+ ---
+ 
+ ## 8. 구현 순서
+ 
+-1. v2 스냅샷·상태·채팅 저장 결정을 ADR로 확정한다.
+-2. `012-group-management-foundation.yaml`과 MySQL 컬럼 정의 보정용 `013`~`014`를 작성한다.
+-3. MySQL 8.4에서 기존 `001`~`011` 업그레이드와 빈 DB 전체 migration을 검증한다.
+-4. `ERD.md`와 테이블 명세를 실제 changelog에 맞춰 갱신한다.
+-5. 서버 entity/repository를 v2 도메인으로 전환한다.
+-6. 그룹 관리 → 술자리/차수/응답 → 확정 → 입금 → 분쟁 순서로 API를 구현한다.
+-7. 각 상태 전이·권한·동시성 테스트를 추가한다.
++1. **Liquibase 번호에 주의한다.** `main`의 마지막 changelog는 `011`(changeSet `017`)이다.
++   병합되지 않은 모임 관리 기반 `012`~`014`는 changeSet `018`~`022`를 썼고 로컬 DB에
++   적용됐을 수 있다. 그래서 **새 파일은 `015-*.yaml`부터, 새 changeSet id는 `023`부터**
++   시작한다. `018`~`022`는 재사용하지 않는다.
++2. 새 changelog로 스키마를 v3로 옮긴다 — FK 해제 → 모임 테이블 삭제 → 술자리·참여자·
++   차수·응답 컬럼 정리 → `settlements`·`settlement_transfers`·`notifications` 생성 →
++   `users` 컬럼(표시 이름·계좌·`spoon_count`) 추가 → `timeline_entries`·`gathering_spoons` 생성 →
++   기타 항목 테이블 삭제. 모든 테이블·컬럼에 `remarks`.
++3. MySQL 8.4에서 빈 DB 전체 migration과 기존 `001`~`011` DB 업그레이드를 둘 다 검증한다.
++4. `ERD.md`를 실제 changelog에 맞춰 갱신한다.
++5. 서버 entity/repository를 v3 도메인으로 전환하고, `server/group` 패키지를 제거한다.
++6. API 순서: 술자리 생성·참여 → 차수·술 항목·결제자·면제 → 응답 → 미리보기·정산하기·
++   되돌리기 → 송금 상태 → 끝내기(완료·기본 스푼) → 타임라인(조회·메시지·WebSocket) →
++   스푼 → 삭제 배치 → 알림.
++7. 상태 전이·권한·동시성 테스트를 추가한다(엔드포인트마다 성공 1 + 실패 1, 인증 가드 테스트).
++8. `API.md` 버전을 올리고 계약을 개정한다.
+ 
+ ---
+ 
+ ## 9. 구현 전 확인 체크리스트
+ 
+-- [x] 생성자와 돈을 받는 차수 총무를 분리했다.
+-- [x] 차수별 면제를 응답 상태로 표현했다.
+-- [x] 여러 수취인에게 보내는 송금을 참가자 전역 상태에서 분리했다.
+-- [x] 확정 후 불변 금액을 추적할 스냅샷을 정의했다.
+-- [x] 내부 알림과 푸시 outbox의 책임을 분리했다.
+-- [x] 외부 참여자도 로그인 사용자이며 중복 참여가 불가능하다.
+-- [x] 기타 항목과 자동 재정산을 MVP에서 제외했다.
+-- [ ] 계좌번호 저장 시 암호화·조회 권한·로그 마스킹을 보안 설계에서 확정한다.
+-- [ ] 실제 migration에서 폐기 컬럼의 기존 데이터 존재 여부를 검증한다.
+-
+-### 구현 진행
+-
+-- [x] `012` / changeSet `018`~`020`: 관리자·비밀번호·구성원 상태·모임 차단
+-- [x] `013` / changeSet `021`: MySQL `addNotNullConstraint`가 지운 관리자 컬럼 주석 복구
+-- [x] `014` / changeSet `022`: `admin_user_id`의 `NOT NULL`과 주석을 함께 고정
+-- [ ] 술자리·참여자·차수·응답 v2 전환
+-- [ ] 확정 송금 스냅샷·입금 상태 이력
++- [x] 모임 계층을 제거하고 술자리를 최상위 애그리거트로 정했다.
++- [x] 결제자를 역할이 아닌 데이터로 정리했다(확정 의무 없음).
++- [x] 면제를 총무 전용 응답 출처(`HOST`)로 정리했다.
++- [x] 자동응답을 정산 트랜잭션 안에서 채우고 해시에 포함했다.
++- [x] 정산 되돌리기 가능 조건을 `sent_at`·`confirmed_at`으로 정했다.
++- [x] 완료 7일·방치 30일 삭제를 CASCADE와 배치로 정했다.
++- [x] 이의제기·모임 차단 테이블을 만들지 않기로 했다(타임라인은 별개).
++- [x] 스푼을 술자리별 기록(삭제됨)과 사용자 누적(남음)으로 나눴다.
++- [x] 시스템 소식을 상태 변경과 같은 트랜잭션에 넣기로 했다.
++- [ ] 계좌번호 저장 시 암호화·조회 권한·로그 마스킹을 확정한다.
++- [ ] 탈퇴하려는 사용자가 진행 중인 술자리의 총무·결제자일 때의 처리를 정한다.
++- [ ] 영수증 인식 방식과 이미지 보관 여부를 실측 후 정한다(`REQUIREMENTS.md` §9).
+diff --git a/docs/REQUIREMENTS.md b/docs/REQUIREMENTS.md
+index a477367..6142ab1 100644
+--- a/docs/REQUIREMENTS.md
++++ b/docs/REQUIREMENTS.md
+@@ -1,178 +1,133 @@
+-# 정산어택 — 제품 요구사항 정의서 · v1
++# 정산어택 — 제품 요구사항 정의서 · v3
+ 
+-> **상태:** 제품 요구사항 확정 · 기술 설계 반영 전  
+-> **작성일:** 2026-08-29  
+-> **적용 우선순위:** 이 문서는 새 제품 방향의 기준이다. 기존 `SPEC.md`,
+-> `CALC_RULES.md`, `ERD.md`, `API.md`와 충돌하면 이 문서의 제품 규칙을 우선하되,
+-> **코드는 관련 기술 문서를 개정한 뒤 변경한다.**
++> **상태:** 제품 요구사항 확정 · 기술 설계 반영 중
++> **작성일:** 2026-08-29 · **개정:** 2026-09-29 (v3 단순화)
++> **적용 우선순위:** 이 문서는 제품 방향의 기준이다. `SPEC.md`, `CALC_RULES.md`,
++> `ERD.md`, `API.md`와 충돌하면 이 문서의 제품 규칙을 우선하되, **코드는 관련 기술
++> 문서를 개정한 뒤 변경한다.**
++
++> [!IMPORTANT]
++> **v3 변경 요약 (2026-09-29).** v2는 모임(Group)·관리자·차단·확정 관문 3단계·1:1
++> 이의제기 채팅까지 갖춘 무거운 구조였다. 실제 사용 장면을 다시 보니 **정산은 한 번
++> 하고 끝나며, 사람들은 지난 기록을 찾지 않는다.** v3는 이를 기준으로 제품을 다시
++> 잘랐다 — 모임 계층 제거, 술자리는 일회용(완료 7일 뒤 자동 삭제), 확정 관문 1개,
++> 이의제기는 버튼 하나. 대신 정산방마다 **타임라인(채팅)**을 두고, 참여자가 총무에게
++> **스푼(감사)**을 줄 수 있다. 변경 전후 비교는 §14, 결정 기록은 `ADR-019`·`DEVLOG.md`
++> 2026-09-29.
+ 
+ ---
+ 
+ ## 1. 제품 한 문장
+ 
+-**정산어택**은 모임의 각 차수 결제자가 영수증과 비용만 입력하고, 참여자들이
+-자신의 차수별 참석·음주 여부를 직접 제출해, 계산 근거부터 실제 입금 확인까지
+-끝내는 술자리 정산 서비스다.
++**정산어택**은 총무가 술자리를 만들어 링크를 뿌리면, 참여자가 자기 차수별
++참석·음주를 버튼으로 체크하고, 계산된 금액을 보내고, 입금 확인까지 끝내는
++**일회용 술자리 정산 서비스**다.
+ 
+ ### 해결하려는 문제
+ 
+ - 한 사람이 모든 참여자의 참석·음주 여부를 기억하고 입력해야 한다.
+ - 단순 N빵은 차수별 참석 여부와 논알코올 참여자를 제대로 반영하지 못한다.
+ - 계산된 금액만 전달하면 참여자가 자신의 금액을 신뢰하기 어렵다.
+-- 송금했다고 표시하는 것과 실제로 돈을 받은 것은 다르다.
+-- 잘못된 응답이나 입금은 결국 대화로 조율해야 하지만 기록과 상태가 분리돼 있다.
++- 누가 보냈고 누가 안 보냈는지 총무가 일일이 기억해야 한다.
+ 
+ ### 제품 원칙
+ 
+-1. **자기 정보는 참여자가 입력한다.** 총무가 미응답자의 답을 임의로 만들지 않는다.
+-2. **금액과 근거를 함께 보여준다.** 차수별 참석·음주와 부담 내역을 공개한다.
+-3. **차수별 결제자를 존중한다.** 각 차수 총무가 자신이 결제한 금액을 돌려받는다.
+-4. **금액 확정과 정산 종료를 구분한다.** 모든 입금을 확인해야 정산이 끝난다.
+-5. **푸시는 보조 수단이다.** 중요한 상태는 서비스 내부에도 반드시 기록한다.
+-6. **확정된 과거 기록을 지우지 않는다.** 탈퇴·강퇴·모임 보관이 정산 근거를 없애지 않는다.
+-7. **복잡한 기능보다 단순한 사용성을 우선한다.** 화면과 흐름은 꼭 필요한 기능에만 한정한다.
++1. **버튼으로 끝난다.** 텍스트 입력은 금액·술 항목·첫 계좌 등록처럼 꼭 필요한 곳에만 둔다.
++2. **사용자에게는 "지금 할 일 하나"만 보여준다.** 서버 내부 상태를 화면에 그대로 드러내지 않는다.
++3. **일회용이다.** 정산이 끝나면 7일 뒤 사라진다. 기록 보관 서비스가 아니다.
++4. **자기 정보는 본인이 체크한다. 단, 한 사람의 무응답이 전체를 막지 않는다.**
++   응답하지 않은 사람은 정산 시점에 기본값으로 자동 처리하고 본인과 총무에게 알린다.
++5. **금액과 근거를 함께 보여준다.** 차수별 참석·음주와 부담 내역을 공개한다.
++6. **각 차수는 낸 사람에게 돌려준다.** 차수마다 결제자가 다를 수 있다.
++7. **푸시는 보조 수단이다.** 중요한 상태는 서비스 내부 알림에도 기록한다.
++8. **총무의 수고를 보이게 한다.** 총무는 계산하고, 돈 받아내고, 안 보낸 사람을 챙기는
++   생색 안 나는 역할이다. 참여자는 버튼 하나로 감사(스푼)를 전하고, 쌓인 스푼은 칭호로
++   다른 사람에게 보인다.
+ 
+ ---
+ 
+ ## 2. 유비쿼터스 언어
+ 
+-기획, 화면, 문서, 코드와 대화에서 아래 의미를 공유한다. 비슷한 단어를 임의로
+-섞어 쓰지 않는다.
++기획, 화면, 문서, 코드와 대화에서 아래 의미를 공유한다. v2의 21개에서 줄였다.
+ 
+ | 한국어 | 코드 용어 | 정의 |
+ |---|---|---|
+-| 사용자 | `User` | 카카오 로그인을 완료한 서비스 회원 |
+-| 모임 | `Group` | 여러 사용자가 지속적으로 소속되는 공간. 여러 술자리를 가진다 |
+-| 모임 구성원 | `GroupMember` | 특정 모임에 지속적으로 가입한 사용자 |
+-| 모임 관리자 | `GroupAdmin` | 모임을 관리하는 유일한 구성원. 모임당 정확히 한 명 |
+-| 술자리 | `Gathering` | 특정 날짜에 발생한 하나의 정산 대상 행사 |
+-| 술자리 생성자 | `GatheringCreator` | 술자리의 차수와 초기 참여 구조를 만드는 사용자 |
+-| 차수 | `Round` | 술자리 안의 1차·2차 등 개별 결제 단위. 개수 제한이 없다 |
+-| 차수 총무 | `RoundManager` | 해당 차수의 유일한 결제자이자 수취인 |
+-| 술자리 참여자 | `GatheringParticipant` | 해당 술자리의 정산에 참여하는 사용자 |
+-| 외부 참여자 | `GuestParticipant` | 모임 구성원은 아니지만 특정 술자리에만 일회성으로 참여하는 로그인 사용자 |
+-| 차수 응답 | `RoundResponse` | 참여자가 특정 차수에 불참·면제·논알코올·알코올 중 하나를 제출한 정보 |
+-| 술 항목 | `DrinkItem` | 술 이름·병당 가격·병 수를 가진 주류 입력 항목 |
+-| 참여자 명단 마감 | `RosterClosed` | 새로운 술자리 참여를 막고 응답 대상을 고정한 상태 |
+-| 차수 확정 | `RoundConfirmed` | 차수 총무가 자기 차수의 비용과 응답을 검토해 고정한 상태 |
+-| 금액 확정 | `SettlementConfirmed` | 모든 차수 입력을 고정하고 송금 금액을 공개한 상태 |
+-| 입금 확인 요청 | `PaymentConfirmationRequested` | 송금자가 돈을 보냈다고 수취인에게 확인을 요청한 상태 |
+-| 입금 확인 | `PaymentConfirmed` | 실제 수취인이 입금액을 확인한 상태 |
+-| 이의제기 | `Dispute` | 응답 또는 입금 문제를 당사자끼리 조율하는 절차 |
+-| 정산 종료 | `SettlementCompleted` | 모든 입금이 확인되고 열린 이의제기가 없는 최종 상태 |
+-| 모임 보관 | `GroupArchived` | 기록은 유지하면서 신규 활동을 막고 기본 목록에서 숨긴 상태 |
+-| 모임 차단 | `GroupBan` | 강퇴된 사용자가 해당 모임에 다시 가입하지 못하도록 막은 상태 |
+-
+-### 명칭 매핑
+-
+-MySQL 예약어 때문에 제품 언어를 바꾸지 않는다.
+-
+-| 계층 | 명칭 |
+-|---|---|
+-| 사용자 화면·한국어 문서 | 모임 |
+-| Kotlin 도메인 | `Group` |
+-| REST API | `/groups` |
+-| MySQL 물리 테이블 | `user_groups` |
+-| 구성원 관계 | `GroupMember` / `group_members` |
+-
+-`UserGroup`은 모임 자체인지 사용자-모임 연결인지 모호하므로 도메인 클래스명으로
+-사용하지 않는다.
++| 사용자 | `User` | 카카오 로그인을 완료한 회원. 표시 이름과 받을 계좌를 한 번 등록해 재사용한다 |
++| 술자리 | `Gathering` | 한 번의 정산 단위. 총무가 만들고, 끝나면 사라진다 |
++| 총무 | `Host` | 술자리를 만든 사람. 술자리당 정확히 한 명 |
++| 참여자 | `Participant` | 링크로 술자리에 들어온 사용자. 총무도 참여자다 |
++| 차수 | `Round` | 1차·2차 등 결제 단위. 개수 제한 없음 |
++| 결제자 | `Payer` | 그 차수 비용을 실제로 낸 사람이자 돌려받는 사람. 기본값은 총무 |
++| 차수 응답 | `RoundResponse` | 차수별 불참·논알코올·알코올·면제 중 하나 |
++| 자동응답 | `AutoResponse` | 정산 시점까지 응답하지 않은 칸에 들어가는 기본값(참석·알코올) |
++| 술 항목 | `DrinkItem` | 술 이름·병당 가격·병 수 |
++| 정산하기 | `Settle` | 총무가 금액을 고정하고 송금 목록을 공개하는 행동 |
++| 송금 | `Transfer` | "누가 누구에게 얼마"의 한 건 |
++| 완료 | `Completed` | 모든 송금이 확인된 상태. 완료 뱃지가 붙고 7일 뒤 삭제된다 |
++| 타임라인 | `Timeline` | 정산방 안의 대화와 정산 진행 소식이 한 줄로 흐르는 화면. 정산방과 함께 삭제된다 |
++| 스푼 | `Spoon` | 참여자가 총무에게 주는 감사 표시. "감사합니다, 한 스푼" |
++| 칭호 | `HostTitle` | 총무가 받은 스푼 누적 수로 정해지는 표시(예: 새내기 총무 → 프로 총무) |
+ 
+ ### 혼동하면 안 되는 표현
+ 
+ | 표현 | 의미 | 대신 쓰지 않을 표현 |
+ |---|---|---|
+-| 술자리 | 비용이 발생한 특정 날짜의 행사 | 모임, 정산방 |
+-| 정산 | 계산부터 입금 확인까지의 과정 | 술자리 |
+-| 금액 확정 | 송금할 금액이 고정됨 | 정산 완료 |
+-| 정산 종료 | 모든 입금까지 확인됨 | 금액 확정 |
+-| 차수 총무 | 해당 차수를 결제한 사람 | 전체 관리자, 방장 |
++| 술자리 | 한 번의 정산 단위 | 모임, 그룹 |
++| 총무 | 술자리를 만든 사람 | 방장, 관리자 |
++| 결제자 | 그 차수를 낸 사람 | 차수 총무 (v2 용어, 폐기) |
++| 정산하기 | 금액 고정 | 확정, 마감 |
++| 완료 | 모든 입금 확인됨 | 정산 종료 |
++
++> v2의 모임(`Group`)·모임 관리자·모임 차단·명단 마감·차수 확정·이의제기 용어는 v3에서
++> 사용하지 않는다.
+ 
+ ---
+ 
+ ## 3. 역할과 권한
+ 
+-한 사용자가 동시에 여러 역할을 가질 수 있다. 예를 들어 모임 관리자가 술자리를
+-만들고 1차와 3차 총무를 맡을 수 있다.
+-
+-### 3.1 모임 관리자
+-
+-- 모임당 정확히 한 명이다.
+-- 최초 관리자는 모임 생성자다.
+-- 다른 모임 구성원에게 관리자 권한을 넘길 수 있다.
+-- 구성원을 강퇴하고 모임 차단을 해제할 수 있다.
+-- 모임을 보관하고 복구할 수 있다.
+-- 참여자 또는 정산 기록이 있는 모임을 물리적으로 삭제할 수 없다.
+-- 진행 중인 정산에서 차수 총무인 사용자를 강퇴할 수 없다.
+-- 관리자 권한을 넘기기 전에는 모임에서 탈퇴할 수 없다.
+-
+-### 3.2 술자리 생성자
+-
+-- 모임 구성원 누구나 술자리를 생성할 수 있다.
+-- 생성과 동시에 술자리 참여자가 된다.
+-- 술자리 날짜와 진행된 차수를 등록한다.
+-- 생성자를 1차 총무로 기본 지정하되, 금액 확정 전까지 변경할 수 있다.
+-- `모든 차수를 내가 결제했어요`를 선택하면 현재 및 이후 차수의 총무를 자신으로 지정한다.
+-- 각 차수 총무를 지정하거나 변경한다.
+-- 참여 링크를 만들고 참여자 명단을 마감한다.
+-- 술자리 전체 비용을 임의로 계산하지 않는다. 서버가 확정된 차수를 모아 계산한다.
+-
+-### 3.3 차수 총무
+-
+-- 한 차수에 정확히 한 명이 존재한다.
+-- MVP에서는 모임 구성원만 차수 총무가 될 수 있다. 외부 참여자는 맡을 수 없다.
+-- 해당 차수의 전체 비용을 혼자 결제한 사람이다.
+-- 한 사용자가 여러 차수의 총무가 될 수 있다.
+-- 해당 차수의 영수증·총액·술 이름·병당 가격·병 수를 입력한다.
+-- 해당 차수의 참여자 응답을 검토하고 필요한 경우 이의를 제기한다.
+-- 해당 차수 참여자 전원의 응답이 끝나야 차수를 확정할 수 있다.
+-- 전체 금액 확정 전에는 차수 확정을 취소하고 다시 수정할 수 있다.
+-- 해당 차수에서 본인을 제거할 수 없다.
+-- 진행 중인 정산을 맡고 있는 동안 모임에서 강퇴될 수 없다.
+-- 자신이 담당한 차수의 부담액을 실제로 받는 수취인이다.
+-
+-> **MVP 제약:** 한 차수는 총무 한 명이 전액을 결제했다고 가정한다. 실제로는
+-> 여러 명이 나눠 결제했다면(분할 결제) 그 결제 건수만큼 차수를 나눠 등록한다
+-> (예: `1차-A`, `1차-B`). 확정된 수취 금액을 여러 번에 걸쳐 나눠 받는 것과는
+-> 무관한 제약이다 — 그건 입금 쪽 문제이지 이 제약이 막는 대상이 아니다.
+-
+-### 3.4 모임 구성원
+-
+-- 모임을 검색하거나 링크로 찾아 비밀번호를 입력해 가입한다.
+-- 모임의 술자리를 생성할 수 있다.
+-- 술자리 링크를 외부인에게 공유할 수 있다.
+-- 술자리에 직접 참여하고 차수별 응답을 제출한다.
+-- 자신의 계산 근거와 송금 목록을 조회한다.
+-- 송금 후 입금 확인을 요청하고, 자신이 당사자인 이의제기에 참여한다.
+-- 관리자 권한이 없으면 강퇴·차단 해제·모임 보관을 할 수 없다.
+-
+-### 3.5 외부 참여자
+-
+-- 카카오 로그인을 완료한 사용자만 가능하다.
+-- 모임 구성원이 되지 않고 초대받은 술자리에만 일회성으로 참여한다.
+-- 해당 술자리의 응답·결과·입금 확인·이의제기 기능을 사용한다.
+-- 모임의 다른 술자리나 전체 구성원 정보는 조회하지 못한다.
+-- 현재 술자리에서 제외되면 그 술자리에 다시 참여할 수 없다.
+-- 모임의 영구 블랙리스트 대상으로 관리하지 않는다.
+-
+-### 3.6 권한표
+-
+-`본인`, `담당 차수`, `당사자` 조건은 서버에서 항상 검증한다.
+-
+-| 기능 | 모임 관리자 | 술자리 생성자 | 차수 총무 | 구성원 | 외부 참여자 |
+-|---|:---:|:---:|:---:|:---:|:---:|
+-| 관리자 권한 넘기기 | O | 권한 보유 시 | 권한 보유 시 | X | X |
+-| 구성원 강퇴·차단 해제 | O | 권한 보유 시 | X | X | X |
+-| 모임 보관·복구 | O | 권한 보유 시 | X | X | X |
+-| 술자리 생성 | O | O | O | O | X |
+-| 차수 생성·총무 지정 | 권한 보유 시 | O | X | X | X |
+-| 참여 링크 공유 | O | O | O | O | X |
+-| 참여자 명단 마감·재개 | 권한 보유 시 | O | X | X | X |
+-| 차수 비용 입력·확정 | 담당 차수만 | 담당 차수만 | 담당 차수만 | X | X |
+-| 차수 응답 제출 | 본인만 | 본인만 | 본인만 | 본인만 | 본인만 |
+-| 입금 확인 요청 | 송금 당사자 | 송금 당사자 | 송금 당사자 | 송금 당사자 | 송금 당사자 |
+-| 입금 확인·이의제기 | 수취인일 때 | 수취인일 때 | 수취인일 때 | 수취인일 때 | 수취인일 때 |
+-| 이의제기 채팅 | 당사자만 | 당사자만 | 당사자만 | 당사자만 | 당사자만 |
++한 사용자가 여러 역할을 가질 수 있다. 총무가 2차 결제자가 아닐 수도 있고, 참여자가
++2차 결제자일 수도 있다.
++
++### 3.1 총무
++
++- 술자리를 만들고 공유 링크를 뿌린다. 만드는 순간 참여자가 된다.
++- 차수를 추가하고 차수별 금액·술 항목·결제자를 입력한다. 결제자 기본값은 본인이다.
++- 참여자를 **차수별로 면제**할 수 있다(생일자, 쏘는 사람 등). 면제는 총무만 지정한다.
++- **[정산하기]**를 누른다. 아무도 송금하기 전이면 **[정산 되돌리기]**로 수정 상태로 돌아갈 수 있다.
++- 필요하면 **[정산 끝내기]**로 미확인 송금이 남아 있어도 완료 처리할 수 있다.
++- 참여자를 술자리에서 제외할 수 있다(정산하기 전까지).
++
++### 3.2 결제자
++
++- 자기가 낸 차수의 부담액을 돌려받는다.
++- 받을 계좌가 없으면 등록한다(한 번 등록하면 다음 술자리에서 재사용).
++- 자기에게 온 송금을 **[확인]** 또는 **[아직 안 들어왔어요]**로 처리한다.
++
++### 3.3 참여자
++
++- 링크로 들어와 카카오 로그인한다(처음 한 번). 표시 이름은 카카오 닉네임을 기본값으로 한 번 확인한다.
++- 차수별로 **[불참] [참석·논알코올] [참석·알코올]** 중 하나를 누른다. **[전 차수 똑같이]**로 한 번에 처리할 수 있다.
++- 정산하기 전까지 응답을 바꿀 수 있다.
++- 금액이 공개되면 근거를 보고, **[계좌 복사]** 후 송금하고 **[보냈어요]**를 누른다.
++- 타임라인에 짧은 메시지를 남길 수 있다.
++- 정산하기 이후 총무에게 **[🥄 한 스푼]**을 줄 수 있다(술자리당 한 번).
++
++### 3.4 권한표
++
++`본인`, `수취인`, `총무` 조건은 서버에서 항상 검증한다.
++
++| 기능 | 총무 | 결제자 | 참여자 |
++|---|:---:|:---:|:---:|
++| 술자리 생성·공유 | O | - | - |
++| 차수·금액·술 항목·결제자 입력 | O | X | X |
++| 차수별 면제 지정 | O | X | X |
++| 참여자 제외 | O | X | X |
++| 본인 차수 응답 | O | O | O |
++| 정산하기·되돌리기·끝내기 | O | X | X |
++| [보냈어요] | 송금자일 때 | 송금자일 때 | 송금자일 때 |
++| [확인]·[아직 안 들어왔어요] | 수취인일 때 | 수취인일 때 | 수취인일 때 |
++| 타임라인 메시지 | O | O | O |
++| [🥄 한 스푼] 주기 | X (자기 자신) | O | O |
+ 
+ ---
+ 
+@@ -180,187 +135,115 @@ MySQL 예약어 때문에 제품 언어를 바꾸지 않는다.
+ 
+ ```mermaid
+ flowchart TD
+-    A[카카오 로그인] --> B{진입 경로}
+-    B -->|직접 검색| C[모임 검색]
+-    C --> D[모임 비밀번호 입력]
+-    D --> E[가입하기 확인]
+-    B -->|구성원·관리자 초대 링크| F[비밀번호 없이 가입하기 확인]
+-    E --> G[모임 가입]
+-    F --> G
+-    G --> H[술자리 생성]
+-    H --> I[차수 생성 및 차수별 총무 지정]
+-    I --> J[참여 링크 공유]
+-    J --> K[구성원·외부인 직접 참여]
+-    K --> L[참여자 명단 마감]
+-    L --> M[차수별 참석·음주 응답]
+-    M --> N[각 차수 총무 검토·확정]
+-    N --> O[전체 금액 확정]
+-    O --> P[수취인별 송금]
+-    P --> Q[입금 확인 요청]
+-    Q --> R{수취인 확인}
+-    R -->|정상| S[입금 확인]
+-    R -->|문제| T[1:1 이의제기]
+-    T --> P
+-    S --> U{모든 입금 확인?}
+-    U -->|아니오| P
+-    U -->|예| V[정산 종료]
++    A[카카오 로그인] --> B[새 술자리]
++    B --> C[차수별 금액·술 항목 입력<br/>앱: 영수증 촬영으로 채우기]
++    C --> D[링크 공유]
++    D --> E[참여자: 링크 → 차수별 버튼 체크]
++    E --> F{총무: 정산하기}
++    F -->|미응답자 있음| G[자동응답 안내 후 확정<br/>본인·총무에게 알림]
++    F --> H[송금 목록 공개]
++    G --> H
++    H --> I[참여자: 계좌 복사 → 송금 → 보냈어요]
++    I --> J{결제자 확인}
++    J -->|확인| K[입금 확인]
++    J -->|아직 안 들어왔어요| I
++    K --> L{모두 확인?}
++    L -->|아니오| I
++    L -->|예| M[완료 뱃지 → 7일 뒤 자동 삭제]
++    H -.-> N[참여자: 총무에게 🥄 한 스푼]
++    N -.-> O[총무 스푼 누적 → 칭호]
+ ```
+ 
+-### 4.1 로그인과 모임 가입
+-
+-1. 사용자는 카카오로 로그인한다(신규 사용자는 가입도 함께 이뤄진다).
+-2. 모임에 들어오는 경로는 둘로 나뉜다.
+-   - **검색**: 모임을 검색해 찾은 뒤 모임 비밀번호를 입력해야 다음 단계로
+-     넘어간다.
+-   - **초대 링크**: 모임 관리자나 기존 구성원이 보낸 링크로 들어오면
+-     비밀번호 없이 바로 가입 확인 단계로 넘어간다.
+-3. 두 경로 모두 마지막에는 `가입하기`를 직접 눌러야 가입이 완료된다 — 링크를
+-   열었다는 사실만으로 자동 가입되지 않는다.
+-4. 차단된 사용자는 검색·비밀번호·초대 링크 어느 경로로도 가입할 수 없다.
+-5. 관리자가 차단을 해제해야 다시 가입할 수 있다.
+-
+-> [!NOTE]
+-> 초대 링크를 비밀번호 없이 통과시키는 근거는 "발신자가 이미 이 사람을
+-> 선택해서 보냈다"는 것이다. 그 위에 비밀번호까지 요구하면 중복된 마찰이다.
+-> 검색으로 스스로 찾아온 사용자에게는 그런 발신자의 선택이 없으므로
+-> 비밀번호로 대신 검증한다.
+-
+-비밀번호는 단방향 해시로 저장한다. MVP에서는 CAPTCHA나 장기 계정 잠금 같은
+-고급 방어는 도입하지 않는다.
+-
+-### 4.2 술자리 생성과 참여
+-
+-1. 모임 구성원이 술자리 날짜와 진행된 차수를 등록한다.
+-2. 1차 총무는 생성자로 기본 지정한다.
+-3. 생성자가 각 차수의 실제 결제자를 총무로 지정한다.
+-4. 구성원과 외부인은 공유 링크를 통해 술자리에 직접 참여한다.
+-5. 동일 사용자는 같은 술자리에 한 번만 참여할 수 있다.
+-6. 술자리 생성자가 명단을 마감하면 신규 참여를 막는다.
+-7. 전체 금액 확정 전에는 명단 마감을 취소해 누락된 참여자를 추가할 수 있다.
+-
+-### 4.3 차수 입력과 참여자 응답
+-
+-- 차수 개수에는 상한이 없다.
+-- 차수 총무는 영수증을 보고 총액과 주류 항목을 수동 입력한다.
+-- 주류 항목은 술 이름, 병당 가격, 병 수를 가진다.
+-- 참여자는 모든 차수에 대해 다음 넷 중 하나를 선택한다.
+-  - 불참
+-  - 참석·면제
+-  - 참석·논알코올
+-  - 참석·알코올
+-- 모든 참여자의 응답이 끝나기 전에는 차수를 확정할 수 없다.
+-- 총무가 참여자를 대신 응답하지 않는다.
+-
+-### 4.4 금액 확정
+-
+-1. 각 차수 총무가 자기 차수의 비용과 응답을 검토한다.
+-2. 필요하면 이의를 제기하고 참여자가 응답을 수정한다.
+-3. 차수 총무가 해당 차수를 확정한다.
+-4. 모든 차수가 확정되면 서버가 전체 송금 금액을 계산한다.
+-5. 금액 확정 직전에 변경 불가 항목을 명확히 안내한다.
+-6. 금액 확정 후에는 차수, 참여자, 총무, 참석·음주 정보와 비용을 변경할 수 없다.
++정산방이 살아 있는 동안 모든 단계의 소식이 **타임라인**에 흐른다(§8).
+ 
+-> [!IMPORTANT]
+-> 차수 추가 마감 기준은 **전체 입금 완료가 아니라 금액 확정 시점**이다. 입금이
+-> 시작된 뒤 차수를 추가하면 이미 송금한 금액이 바뀌기 때문이다.
++### 4.1 총무 흐름
+ 
+-### 4.5 입금과 종료
++1. **[새 술자리]** — 이름은 자동 생성(예: "9/28 술자리"), 바꿀 수 있다.
++2. 차수를 추가하고 금액을 넣는다. **앱은 영수증 촬영으로 총액·술 항목을 채울 수 있다**(§9).
++3. 술 항목은 프리셋 칩(소주·맥주·막걸리 등)과 병 수 +/- 버튼으로 입력한다.
++4. 다른 사람이 낸 차수면 **"누가 냈나요?"**에서 결제자를 고른다(기본값: 나).
++5. **[링크 공유]** — 카카오톡으로 공유한다.
++6. 참여자별 응답 현황을 본다. 아무 때나 **[정산하기]**를 누를 수 있다.
++7. 받을 돈의 입금을 확인한다. 모두 확인되면 자동으로 완료된다.
+ 
+-1. 참여자는 수취인별로 표시된 금액을 직접 송금한다.
+-2. 송금 후 `입금 확인 요청`을 누른다.
+-3. 실제 수취인은 입금을 확인하거나 이의를 제기한다.
+-4. 잘못 확인했다면 수취인이 확인을 취소할 수 있고 변경 이력을 남긴다.
+-5. 모든 입금이 확인되고 열린 이의제기가 없으면 정산을 종료한다.
++### 4.2 참여자 흐름
++
++1. 링크 → 카카오 로그인(처음 한 번) → 표시 이름 확인(처음 한 번).
++2. 차수별 버튼을 누른다. 필요하면 [전 차수 똑같이].
++3. 정산되면 알림을 받는다. 내 금액과 근거를 본다.
++4. **[계좌 복사]** → 송금 → **[보냈어요]**.
++5. 결제자가 확인하면 알림을 받는다.
++6. (선택) 총무에게 **[🥄 한 스푼]**. 끝.
++
++### 4.3 화면 원칙
++
++- 모든 화면의 최상단에는 **지금 이 사람이 할 일 하나**를 보여준다
++  (예: "2차 응답을 남겨주세요", "민지님께 18,000원을 보내주세요", "3명 입금 확인 대기 중").
++- 상태 이름(OPEN, SETTLING 등)을 사용자에게 보여주지 않는다.
++- 각 사용자의 상태는 사용자별로 보인다 — 총무는 참여자별 응답·송금 상태 목록을,
++  참여자는 본인 상태를 본다.
+ 
+ ---
+ 
+-## 5. 상태 전이
++## 5. 상태
+ 
+-### 5.1 술자리 정산 상태
++### 5.1 술자리
+ 
+ ```mermaid
+ stateDiagram-v2
+-    [*] --> 참여자모집
+-    참여자모집 --> 응답중: 참여자 명단 마감
+-    응답중 --> 참여자모집: 금액 확정 전 명단 재개
+-    응답중 --> 차수확정중: 참여자 응답 완료
+-    차수확정중 --> 응답중: 차수 확정 취소·응답 수정
+-    차수확정중 --> 금액확정: 모든 차수 확정
+-    금액확정 --> 입금진행중: 송금 목록 공개
+-    입금진행중 --> 이의조율중: 입금 이의제기
+-    이의조율중 --> 입금진행중: 협상 종료
+-    입금진행중 --> 정산종료: 모든 입금 확인
+-    정산종료 --> [*]
++    [*] --> 응답받는중
++    응답받는중 --> 송금중: 정산하기
++    송금중 --> 응답받는중: 정산 되돌리기 (아무도 송금 전)
++    송금중 --> 완료: 모든 송금 확인 / 정산 끝내기
++    완료 --> [*]: 7일 뒤 자동 삭제
+ ```
+ 
+-### 5.2 변경 가능 범위
+-
+-| 시점 | 참여자·차수 | 응답·비용 | 차수 총무 | 입금 상태 |
++| 상태 | 참여 | 응답 수정 | 총무 입력 수정 | 송금 |
+ |---|---|---|---|---|
+-| 참여자 모집 | 추가·삭제 가능 | 입력 가능 | 지정·변경 가능 | 없음 |
+-| 응답 중 | 명단 재개 후 변경 | 수정 가능 | 변경 가능 | 없음 |
+-| 차수 확정 중 | 명단 재개 후 변경 | 확정 취소 후 수정 | 확정 취소 후 변경 | 없음 |
+-| 금액 확정 이후 | 변경 불가 | 변경 불가 | 변경 불가 | 요청·확인 가능 |
+-| 정산 종료 | 변경 불가 | 변경 불가 | 변경 불가 | 이력 조회만 가능 |
++| 응답 받는 중 | 가능 | 가능 | 가능 | 없음 |
++| 송금 중 | 불가 | 불가 | 불가 | 진행 |
++| 완료 | 불가 | 불가 | 불가 | 조회만 |
+ 
+-> [!IMPORTANT]
+-> 금액 확정 후 재정산은 MVP에서 지원하지 않는다. 누락이나 잘못된 입력은 금액
+-> 확정 전에 해결한다. 확정 후 발견된 문제는 당사자가 오프라인으로 조율하며,
+-> 후속 버전에서 별도 **추가 정산** 기능을 검토한다.
+-
+-### 5.3 참여 응답 상태
++- v2의 "명단 마감"과 "차수 확정"은 없다. **[정산하기] 한 번이 그 역할을 다 한다.**
++- **정산 되돌리기**는 모든 송금이 한 번도 [보냈어요]·[확인]되지 않았을 때만 가능하다.
++  돈이 움직이기 시작한 뒤의 실수는 당사자끼리 조율한다.
+ 
+-```text
+-작성 중 → 응답 완료 → 차수 확정으로 고정
+-              └── 차수 확정 전 다시 수정 가능
+-```
+-
+-참여자에게 응답 완료 시 다음 내용을 안내한다.
+-
+-> 정산이 확정되기 전까지 응답을 수정할 수 있습니다. 차수 총무가 확정하면 더 이상
+-> 수정할 수 없습니다. 현재 내용으로 응답을 완료하시겠습니까?
+-
+-### 5.4 입금 상태
++### 5.2 송금
+ 
+ ```mermaid
+ stateDiagram-v2
+-    [*] --> 입금대기
+-    입금대기 --> 확인대기: 송금자가 입금 확인 요청
+-    확인대기 --> 확인완료: 수취인이 입금 확인
+-    확인대기 --> 이의제기중: 수취인이 이의제기
+-    이의제기중 --> 입금대기: 협상 종료·재입금 필요
+-    확인완료 --> 확인대기: 수취인이 잘못된 확인 취소
++    [*] --> 대기
++    대기 --> 보냈어요: 송금자 [보냈어요]
++    보냈어요 --> 확인: 수취인 [확인]
++    보냈어요 --> 대기: 수취인 [아직 안 들어왔어요]
++    대기 --> 확인: 수취인 직접 확인 (현금 등)
++    확인 --> 대기: 수취인 확인 취소 (송금 중 상태일 때만)
+ ```
+ 
++- [아직 안 들어왔어요]를 누르면 송금자에게 알림이 가고, 송금자 화면에
++  "OO님이 아직 입금을 확인하지 못했어요"가 뜬다. **그 이상의 조율 절차(채팅·협상)는 없다** —
++  카카오톡으로 이야기한다.
++
+ ---
+ 
+ ## 6. 계산과 송금 규칙
+ 
+-### 6.1 차수별 부담
++정확한 규칙은 `CALC_RULES_V2.md`를 따른다. v3에서 계산 규칙은 바뀌지 않았다.
+ 
+-유리수 계산과 차수별 참석·음주 분배 원칙을 유지한다. 면제는 참여자 전체 속성이
+-아니라 차수별 응답 상태이며, 해당 차수의 모든 부담과 분모에서 제외된다.
++### 6.1 차수별 부담
+ 
+ ```text
+ 비주류 금액 = 차수 총액 - 주류 금액
+-비주류 부담 = 비주류 금액 / 해당 차수 참석자
+-주류 부담 = 주류 금액 / 해당 차수 음주자
++비주류 부담 = 비주류 금액 / 해당 차수 참석자(면제 제외)
++주류 부담   = 주류 금액   / 해당 차수 음주자(면제 제외)
+ ```
+ 
+-동일 수취인에게 보낼 정확한 원부담을 먼저 합친 뒤 소수 부분이 있을 때만 1원 단위로
+-올린다. 10원·100원 단위 선택은 제거한다. 정확한 규칙은 `CALC_RULES_V2.md`를 따른다.
++- 면제는 해당 차수의 모든 부담과 분모에서 빠진다.
++- 동일 수취인에게 보낼 정확한 원부담을 먼저 합친 뒤, 소수 부분이 있을 때만 1원 올린다.
+ 
+ ### 6.2 수취인별 합산
+ 
+-각 차수 부담액은 해당 차수 총무에게 귀속한다. 서로 다른 총무 사이의 채권을
+-전역으로 상계하지 않는다.
+-
+-```text
+-참여자 P가 총무 M에게 보낼 금액
+-= M이 담당한 각 차수에서 P가 부담할 금액의 합
+-```
+-
+-예:
++각 차수 부담액은 그 차수 결제자에게 귀속한다. 서로 다른 결제자 사이를 상계하지 않는다.
+ 
+ ```text
+ 철수에게 42,000원
+@@ -371,123 +254,108 @@ stateDiagram-v2
+ └─ 2차 부담액 18,000원
+ ```
+ 
+-- 총무가 한 명이면 참여자는 그 총무에게 한 번만 송금한다.
+-- 총무가 여러 명이면 참여자는 수취인별로 각각 송금한다.
+-- 같은 총무가 여러 차수를 담당하면 정확한 원부담을 합친 뒤 한 번만 1원 단위로 올린다.
+-- 차수 총무 자신의 해당 차수 부담액은 받을 금액에서 제외한다.
+-
+-> [!WARNING]
+-> 이 규칙은 현재 `CALC_RULES.md`와 core 엔진의 전역 greedy 상계 방식과 다르다.
+-> 구현 전에 계산 명세와 회귀 테스트를 먼저 개정해야 한다.
++- 결제자가 한 명이면 참여자는 한 번만 송금한다.
++- 결제자 자신의 해당 차수 부담액은 받을 금액에서 제외한다.
+ 
+-### 6.3 차수 순서
++### 6.3 자동응답
+ 
+-- 차수 `id`는 영구 식별자이며 재사용하지 않는다.
+-- `seq`는 화면 표시 순서이며 변경할 수 있다.
+-- 같은 술자리에서 `seq`는 중복될 수 없다.
+-- 중간 차수를 삭제하면 뒤 차수의 `seq`를 하나씩 당긴다.
+-- 참석 응답과 영수증은 `seq`가 아니라 차수 `id`를 참조한다.
+-- 금액 확정 후에는 차수 삭제와 순서 변경을 금지한다.
++- [정산하기] 시점에 응답이 없는 (참여자, 차수) 칸은 **참석·알코올**로 채운다.
++- 총무는 정산하기 직전 확인 화면에서 "미응답 2명은 전 차수 참석·알코올로 계산돼요"를 보고,
++  원하면 그 자리에서 바꿀 수 있다.
++- 자동응답된 참여자 **본인과 총무 모두에게** 알림을 보낸다. 본인 화면에는
++  "응답이 없어 참석·알코올로 계산됐어요" 표시가 붙는다.
++- 잘못됐다면 총무가 [정산 되돌리기](아무도 송금 전일 때) 후 고친다.
+ 
+----
+-
+-## 7. 이의제기와 조율
++### 6.4 계좌
+ 
+-### 7.1 대상
++- 결제자는 받을 계좌가 필요하다. 사용자 단위로 한 번 등록하고 재사용한다.
++- 계좌를 등록하지 않은 결제자가 있어도 **정산은 진행된다** — 그 결제자에게 등록 알림이 가고,
++  송금자 화면에는 "계좌 등록을 기다리는 중"이 뜬다. 한 사람 때문에 전체가 멈추지 않는다.
+ 
+-사용자에게 정형화된 사유 선택을 강제하지 않는다. 다만 시스템은 연결 대상을
+-구분한다.
+-
+-| 대상 | 예 | 종료 후 이동 |
+-|---|---|---|
+-| 차수 응답 | 참석했는데 불참으로 응답 | 응답 수정·차수 재검토 |
+-| 입금 | 미입금 또는 금액 불일치 | 입금 대기·재송금 |
+-
+-### 7.2 앱 안에서 합의
+-
+-```text
+-이의제기 시작
+-→ 당사자 1:1 채팅
+-→ 한쪽이 협상 완료 요청
+-→ 상대방이 동의
+-→ 협상 종료
+-```
+-
+-- 협상 완료 요청 후에도 채팅할 수 있다.
+-- 새 메시지가 등록되면 대기 중인 완료 요청은 자동 철회된다.
+-- 상대방이 거절하면 계속 조율한다.
+-- 양측이 동의한 시각과 사용자를 기록한다.
+-
+-### 7.3 미응답과 오프라인 조율
++---
+ 
+-- 24시간 무응답: 1차 알림
+-- 48시간 무응답: 2차 알림 및 `장기 미응답` 표시
+-- 무응답을 자동 동의로 처리하지 않는다.
+-- 전화·대면·외부 메신저로 합의했다면 권한자가 `오프라인 조율 완료`를 누를 수 있다.
+-- 오프라인 종료는 양측 앱 동의와 구분해 기록한다.
++## 7. 완료와 삭제
+ 
+-오프라인 조율 방식은 `전화`, `대면`, `카카오톡`, `기타` 중 선택하고 메모는
+-선택적으로 남긴다.
++- 모든 송금이 확인되면 술자리는 자동으로 **완료**된다. 총무가 [정산 끝내기]로 완료시킬 수도 있다.
++- 완료된 술자리는 목록에 **"완료" 뱃지**를 달고 명확히 구분해 보여준다.
++  "7일 뒤 사라져요"를 함께 표시한다.
++- **완료 7일 뒤 술자리와 관련 데이터(차수·응답·술 항목·송금·해당 알림)를 물리 삭제한다.**
++- **마지막 활동 후 30일이 지난 미완료 술자리도 삭제한다** — 방치된 술자리가 쌓이지 않게 하기 위한 안전망이다.
++- 타임라인 메시지와 술자리별 스푼 기록도 술자리와 함께 삭제한다.
++- 사용자 정보(표시 이름, 받을 계좌, **누적 스푼 수**)는 술자리와 함께 삭제되지 않는다.
++- 계정 탈퇴 시 로그인 정보와 개인정보는 삭제한다.
+ 
+ ---
+ 
+-## 8. 모임 관리와 기록 보존
++## 8. 정산방 타임라인과 스푼
+ 
+-### 8.1 강퇴와 차단
++### 8.1 타임라인
++
++정산방마다 **타임라인** 하나가 있다. 카카오톡 단톡방과 경쟁하는 일반 채팅이 아니라,
++**정산 진행 소식이 대화 사이에 실시간으로 끼어드는 것**이 이 화면이 있는 이유다.
+ 
+ ```text
+-모임 강퇴
+-→ 구성원 자격 제거
+-→ 모임 차단 등록
+-→ 검색·비밀번호·초대 링크 재가입 거절
+-→ 관리자가 차단을 해제해야 재가입 가능
++⚙ 민지님이 정산했어요 · 1인 23,000원
++재훈  아 2차 나 술 안 마셨는데 ㅋㅋ
++민지  확인했어 되돌려서 고칠게
++⚙ 재훈님이 보냈어요
++⚙ 민지님이 입금 확인했어요
++🥄 재훈님이 총무에게 한 스푼 줬어요
++⚙ 모두 입금 완료! 🎉
+ ```
+ 
+-- 진행 중인 정산의 차수 총무는 강퇴할 수 없다.
+-- 먼저 담당 차수를 다른 참여자에게 변경해야 한다.
+-- 불가피한 강제 조치는 운영자 문의로 처리한다.
+-- 강퇴해도 과거 정산 기록은 유지한다.
+-
+-### 8.2 모임 삭제와 보관
+-
+-- 참여자와 정산 기록이 전혀 없는 모임만 물리적으로 삭제할 수 있다.
+-- 참여자 또는 정산 기록이 있으면 `보관`만 가능하다.
+-- 보관한 모임은 기본 목록에서 숨기고 신규 술자리 생성을 막는다.
+-- 모임 관리자만 보관한 모임을 복구할 수 있다.
+-
+-### 8.3 계정 탈퇴
++- 참여자는 짧은 **텍스트 메시지**를 남길 수 있다. 이미지·파일은 지원하지 않는다.
++- 시스템 소식(⚙)은 서버가 자동으로 넣는다 — 참여, 응답 완료, 정산하기, 자동응답,
++  정산 되돌리기, 보냈어요, 입금 확인, 아직 안 들어왔어요, 스푼, 완료.
++- 정산방이 삭제될 때(완료 7일 뒤 또는 30일 방치) **타임라인도 함께 삭제**된다.
++- 타임라인은 이의제기 절차가 아니다. 협상 요청·동의·오프라인 조율 같은 절차는 두지 않는다.
++- 새 메시지에 대한 푸시는 보내지 않는다(알림 피로). 시스템 소식 중 §10 알림 이벤트에 해당하는 것만 푸시한다.
+ 
+-- 진행 중인 정산의 차수 총무는 담당자를 변경하기 전 탈퇴할 수 없다.
+-- 완료된 정산 기록은 다른 참여자의 근거이므로 유지한다.
+-- 탈퇴자의 로그인 정보와 개인정보는 삭제 또는 익명화한다.
+-- 화면에는 `탈퇴한 사용자`로 표시한다.
++### 8.2 스푼
+ 
+-### 8.4 보존 기간
++참여자가 총무에게 버튼 하나로 감사를 전한다 — **"감사합니다, 한 스푼 부탁드려요"**.
+ 
+-MVP에서는 정산 기록에 자동 만료 기간을 두지 않는다. 개인정보와 법적 보존
+-정책은 운영 전 다시 결정한다.
++| 항목 | 규칙 |
++|---|---|
++| 누가 주나 | 총무가 아닌 참여자 → 총무 |
++| 언제 | [정산하기] 이후(송금 중·완료)부터 삭제 전까지 |
++| 몇 개 | 참여자 한 명이 술자리당 **1스푼** |
++| 총무 기본 스푼 | 술자리가 **완료**되고 참여자가 **2명 이상**이면 총무에게 1스푼 (빈 술자리로 쌓는 것 방지) |
++| 쌓이는 곳 | **사용자 단위 누적.** 술자리가 삭제돼도 누적 수는 남는다 |
+ 
+----
++- 스푼을 받으면 총무에게 알림이 가고 타임라인에 소식이 남는다.
++- 스푼은 **보여주기 전용**이다. 돈·상품·쿠폰으로 바꿀 수 없다.
+ 
+-## 9. 동시성과 중복 요청
++### 8.3 칭호
+ 
+-동일 사용자의 중복 참여는 분산 락이 아니라 관계형 DB의 트랜잭션과 복합 유니크
+-제약으로 막는다.
++누적 스푼 수로 칭호가 정해진다. 정산방에서 총무 이름 옆에 칭호와 스푼 수가 보인다
++(예: `민지 · 🥄1,280 프로 총무`). 참여자 눈에 보여야 의미가 있다.
+ 
+-```text
+-UNIQUE (gathering_id, user_id)
+-```
++| 누적 스푼 | 칭호 |
++|---|---|
++| 0~99 | 새내기 총무 |
++| 100~999 | 믿음직한 총무 |
++| 1,000~9,999 | 프로 총무 |
++| 10,000~ | 전설의 총무 · **순위 표시** |
++
++- 경계값은 위 단계로 친다 — 100은 믿음직한, 1,000은 프로, 10,000은 전설.
++- **전설 구간은 전설끼리의 누적 스푼 순위를 함께 보여준다**(예: `전설의 총무 · 3위`).
++  스푼 수가 같으면 같은 순위다. 전설이 아닌 구간에는 순위를 보여주지 않는다.
++- 참고 계산: 술자리 한 번에 쌓이는 스푼은 대략 (참여자 수 − 1) + 기본 1개다. 5명 술자리면
++  약 5개라서, 믿음직한은 총무 약 20회, 프로는 약 200회, 전설은 약 2,000회에 해당한다.
++  전설은 일부러 드물게 둔 구간이다.
++- **픽셀 총무 캐릭터**(스푼이 쌓이면 옷·소품이 바뀜)는 후속 기능이다(§12).
+ 
+-- 참가 버튼 더블클릭
+-- 모바일 네트워크 재시도
+-- 여러 브라우저 탭의 동시 요청
+-- 응답 유실 후 클라이언트 재요청
++---
+ 
+-위 요청은 모두 같은 참여 결과를 돌려주는 멱등 동작으로 처리한다. 정원 제한처럼
+-여러 행의 조건을 동시에 보장해야 할 때만 술자리 행 잠금을 추가한다.
++## 9. 영수증 인식 (앱 전용)
+ 
+-금액 확정 요청은 상태 조건과 입력 버전 또는 해시를 함께 검증해, 사용자가 확인한
+-내용과 서버가 확정하는 내용이 다르지 않게 한다.
++- **앱(iOS·Android)에서만 제공한다.** 웹은 수동 입력만 지원한다.
++- 추출 대상은 **총액과 주류 항목**뿐이다. 비주류는 총액에서 빼서 구하므로 품목별로 뽑지 않는다.
++- 추출 결과는 입력칸에 미리 채워질 뿐이며, **총무가 확인해야 반영된다.** 자동 확정하지 않는다.
++- 뽑은 주류 항목 합계와 영수증 총액을 대조해 맞지 않으면 강조 표시한다.
++- 추출 방식(기기 내 OCR / 서버 OCR / 비전 LLM)과 개인정보 처리(카드번호·승인번호)는
++  실제 영수증 샘플로 정확도를 측정한 뒤 결정한다.
+ 
+ ---
+ 
+@@ -495,129 +363,134 @@ UNIQUE (gathering_id, user_id)
+ 
+ ### 채널
+ 
+-- 앱 사용자: FCM 앱 푸시
+-- 웹 사용자: FCM 웹 푸시
+-- 모든 사용자: 서비스 내부 알림함
++- 앱: FCM 앱 푸시 · 웹: FCM 웹 푸시 · 모두: 서비스 내부 알림함
+ - 초대: 사용자가 직접 보내는 카카오톡 공유 링크
+-- 카카오 알림톡: 비용과 운영 절차 때문에 MVP에서 제외
++- 카카오 알림톡: MVP에서 제외
+ 
+-### 정책
++### 알림 이벤트
++
++| 이벤트 | 받는 사람 |
++|---|---|
++| 참여자가 응답을 남김 | 총무 |
++| 정산하기 (금액 공개) | 참여자 전원 |
++| 자동응답 처리됨 | 해당 참여자 본인 + 총무 |
++| 계좌 등록 필요 | 계좌 없는 결제자 |
++| [보냈어요] | 수취인 |
++| [확인] | 송금자 |
++| [아직 안 들어왔어요] | 송금자 |
++| 정산 되돌리기 | 참여자 전원 |
++| 완료 | 참여자 전원 |
++| 🥄 스푼을 받음 | 총무 |
++
++타임라인의 일반 메시지는 푸시하지 않는다(§8.1).
+ 
+-- 일반 푸시는 사용자가 끌 수 있다.
+-- 정산 확정, 이의제기, 입금 확인 요청은 내부 알림을 항상 생성한다.
+ - 푸시 권한 거부나 발송 실패가 정산 처리 실패가 되어서는 안 된다.
+-- 알림 발송 실패는 재시도하되 비즈니스 트랜잭션과 분리한다.
++- 알림 발송은 비즈니스 트랜잭션과 분리한다(outbox).
+ 
+-### 주요 알림 이벤트
++---
++
++## 11. 동시성과 중복 요청
+ 
+-- 술자리 참여 요청
+-- 차수 응답 요청
+-- 24시간·48시간 미응답
+-- 차수 응답 이의제기
+-- 협상 완료 요청
+-- 전체 금액 확정
+-- 입금 확인 요청
+-- 입금 이의제기
+-- 모든 입금 확인 및 정산 종료
++- 같은 사용자의 같은 술자리 중복 참여는 `UNIQUE (gathering_id, user_id)`로 막고, 중복 요청은 같은 결과를 돌려준다(멱등).
++- [정산하기] 더블클릭은 술자리 상태 조건부 갱신과 정산 스냅샷 유니크로 한 번만 성공한다.
++- 총무가 본 미리보기와 서버가 고정하는 내용이 다르지 않게 입력 버전(`inputRevision`)과 해시(`inputHash`)를 함께 검증한다.
++- [보냈어요]·[확인] 더블클릭은 현재 상태를 조건으로 갱신하고, 같은 상태면 멱등 성공한다.
+ 
+ ---
+ 
+-## 11. MVP와 후속 로드맵
++## 12. MVP와 후속
+ 
+ ### MVP
+ 
+-- 카카오 로그인
+-- 모임 검색·링크·비밀번호 가입
+-- 관리자 1명과 권한 이전
+-- 강퇴·모임 차단·해제
+-- 모임 보관·복구
+-- 구성원 및 외부 로그인 사용자의 술자리 직접 참여
+-- 무제한 차수와 차수별 총무
+-- 차수별 총액·술 이름·병당 가격·병 수 수동 입력
+-- 영수증 이미지 첨부
+-- OCR로 영수증에서 술 이름·병당 가격·병 수 자동 추출
+-- AI로 추출 항목을 주류 종류로 분류
+-- 총무가 자동 추출·분류 결과를 검토·수정한 뒤 확정(사람 검토 없이 자동 확정하지 않는다)
+-- 차수별 참석·음주 응답
+-- 참여자 명단 마감과 차수·금액 확정
+-- 수취인별 송금 금액 합산
+-- 응답·입금 이의제기와 1:1 채팅
+-- 양측 협상 종료와 오프라인 조율 종료
+-- 입금 확인 요청·수취인 확인·정산 종료
++- 카카오 로그인, 표시 이름·받을 계좌 1회 등록
++- 술자리 생성(이름 자동) · 카카오톡 링크 공유
++- 차수·금액·술 항목(프리셋 칩 + 병 수 버튼) 입력, 차수별 결제자 지정
++- 총무의 차수별 면제 지정, 참여자 제외
++- 참여자 차수별 3버튼 응답 + [전 차수 똑같이]
++- [정산하기] + 자동응답 + [정산 되돌리기] + [정산 끝내기]
++- 수취인별 송금액과 계산 근거
++- [계좌 복사] · [보냈어요] · [확인] · [아직 안 들어왔어요]
++- 완료 뱃지 · 완료 7일 뒤 자동 삭제 · 30일 방치 자동 삭제
+ - 앱·웹 푸시와 내부 알림함
++- 영수증 촬영 → 총액·주류 항목 추출 (**앱 전용**, 사람 확인 필수)
++- 정산방 타임라인(텍스트 메시지 + 시스템 소식)
++- [🥄 한 스푼] · 누적 스푼 · 칭호 표시
+ 
+ ### 후속 기능
+ 
+-- 확정 후 별도 추가 정산
++- **픽셀 총무 캐릭터** — 누적 스푼에 따라 옷·소품이 바뀌는 캐릭터. **방향: 국자 총무(칭호 4단계와 1:1)**, 화면 규칙은 `SCREENS.md` §6
++- 토스 송금 딥링크(금액 채워서 토스 열기) — "앱에서 송금 실행"과의 경계 검토 후 결정
++- 자주 함께 마시는 사람 불러오기(반복 멤버) — 모임 계층 없이 해결하는 방향으로 검토
+ - 택시비·대리비 등 기타 항목
+-- 한 차수의 분할 결제
+ - 카카오 알림톡
+ 
+ ### 장기 방향 — 제품 요구사항은 아니다
+ 
+-- **앱인토스(Apps in Toss) 등록.** 토스 앱 안에 미니앱으로 노출되는 토스의
+-  제휴 프로그램이다. 자체 PG·은행 라이선스가 필요 없고, 토스가 제공하는
+-  SDK·API로 로그인·화면을 연동해 등록 심사를 받는 방식이다. 인앱결제·인앱광고·
+-  토스 로그인으로 정산을 받으려면 사업자 등록이 필요하다. 아래 "만들지 않는
+-  것"의 "앱에서 실제 계좌 송금 실행"과는 다른 범주다 — 우리가 송금을 실행하는
+-  게 아니라 토스 생태계 안에 노출되는 것이다. MVP 범위에 넣지 않는다.
++- **앱인토스(Apps in Toss) 등록.** 토스 앱 안에 미니앱으로 노출되는 토스의 제휴
++  프로그램이다. 자체 PG·은행 라이선스가 필요 없고 SDK·API 연동 후 등록 심사를 받는다.
++  아래 "만들지 않는 것"의 "앱에서 실제 계좌 송금 실행"과는 다른 범주다.
+ 
+ ### 만들지 않는 것
+ 
+-- 앱에서 실제 계좌 송금 실행
+-- 은행 입금 내역 자동 조회
+-- 금액 확정 후 기존 정산을 직접 수정하는 기능
+-- 미응답을 자동 동의로 간주하는 기능
+-- AI가 사람의 검토 없이 영수증 결과를 자동 확정하는 기능
++- 모임(그룹) 기능 — 관리자, 가입, 검색, 비밀번호, 강퇴·차단, 보관
++- 정산 기록 보관·검색 — 완료 7일 뒤 삭제가 원칙이다
++- 이의제기 절차 — 1:1 채팅방, 협상 완료 요청, 오프라인 조율 기록
++  (정산방 타임라인은 모두가 보는 한 줄 대화일 뿐 이의제기 절차가 아니다)
++- 스푼을 돈·상품·쿠폰으로 바꾸는 기능 (보여주기 전용 — 금전 가치가 생기면 전자금융 규제 검토 대상이 된다)
++- 이미지·파일 메시지
++- 앱에서 실제 계좌 송금 실행, 은행 입금 내역 자동 조회
++- 웹에서의 영수증 인식
++- AI가 사람 확인 없이 영수증 결과를 자동 확정하는 기능
+ 
+ ---
+ 
+-## 12. 핵심 불변식
++## 13. 핵심 불변식
+ 
+ > [!IMPORTANT]
+ > 아래 규칙은 화면 검증만으로 끝내지 않고 서버·DB·테스트로 보장한다.
+ 
+-1. 모임 관리자는 항상 정확히 한 명이다.
+-2. 한 차수의 총무는 항상 정확히 한 명이다.
+-3. 차수 총무는 해당 술자리 참여자다.
+-4. 같은 사용자는 같은 술자리에 중복 참여할 수 없다.
+-5. 모든 참여자가 응답하기 전에는 관련 차수를 확정할 수 없다.
+-6. 모든 차수가 확정되기 전에는 전체 금액을 확정할 수 없다.
+-7. 금액 확정 후에는 계산 입력을 변경할 수 없다.
+-8. 차수 총무별 수취 합계는 그 총무의 실제 결제액에서 자신의 부담액을 뺀 값과 일치한다.
+-9. 모든 최종 부담액의 합은 모든 차수와 기타 항목의 총액과 정확히 일치한다.
+-10. 모든 입금이 확인되고 열린 이의제기가 없어야 정산을 종료할 수 있다.
+-11. 강퇴·탈퇴·모임 보관은 확정된 정산 기록을 삭제하지 않는다.
++1. 술자리의 총무는 정확히 한 명이고, 총무는 그 술자리의 참여자다.
++2. 각 차수의 결제자는 정확히 한 명이고, 그 술자리의 참여자다.
++3. 같은 사용자는 같은 술자리에 중복 참여할 수 없다.
++4. 면제 응답은 총무만 설정한다. 참여자는 불참·논알코올·알코올만 설정한다.
++5. [정산하기] 이후에는 계산 입력(차수·금액·술 항목·결제자·응답)을 바꿀 수 없다.
++   바꾸려면 [정산 되돌리기]가 가능해야 한다.
++6. [정산 되돌리기]는 모든 송금이 한 번도 [보냈어요]·[확인]되지 않았을 때만 가능하다.
++7. 결제자별 수취 합계는 그 결제자가 낸 차수 총액에서 본인 부담액을 뺀 값과 일치한다.
++8. 모든 최종 부담액의 합은 모든 차수 총액과 일치한다(1원 올림 차이는 `CALC_RULES_V2.md` 규칙을 따른다).
++9. 완료된 술자리는 7일 뒤, 30일간 활동 없는 미완료 술자리는 그때 삭제된다. 타임라인·술자리별 스푼 기록도 함께 삭제된다.
++10. 한 참여자는 한 술자리에서 총무에게 스푼을 최대 1개만 준다. 총무는 자기 자신에게 줄 수 없다.
++11. 총무 기본 스푼은 술자리가 완료되고 참여자가 2명 이상일 때 한 번만 지급된다.
++12. 사용자의 누적 스푼 수는 그 사용자가 받은 스푼의 합과 같다(술자리가 삭제돼도 줄지 않는다).
+ 
+ ---
+ 
+-## 13. 기존 문서·구현과의 차이
+-
+-이 절은 구현 누락이 아니라 **의도적으로 기술 설계에 아직 반영하지 않은 변경 목록**이다.
++## 14. v2 → v3 차이
+ 
+-| 영역 | 기존 기준 | 새 요구사항 |
++| 영역 | v2 | v3 |
+ |---|---|---|
+-| 정산 책임자 | 술자리 전체 주최자 한 명 | 차수별 총무 한 명씩, 전체 총무 없음 |
+-| 결제자 | 차수별 `payerId`, 전역 상계 | 차수 총무가 결제자·수취인, 총무별 합산 |
+-| 참여 마감 | `COLLECTING`에서 주최자 확정 | 명단 마감과 금액 확정 분리 |
+-| 미응답자 | 주최자가 대신 입력 가능 | 본인 응답 필수 |
+-| 확정 후 수정 | 재정산·추가금·환불 지원 | 기존 정산 수정 금지, 후속 추가 정산 검토 |
+-| 이의제기 | 공개 내역으로 자정 | 1:1 조율·양측 합의·오프라인 종료 |
+-| 입금 확인 | 전체 주최자가 확인 | 실제 수취인이 확인 |
+-| 외부 참여 | 링크 참여 | 카카오 로그인 후 술자리 단위 일회성 참여 |
+-| 모임 가입 | 초대 토큰 | 검색은 비밀번호 필요, 구성원·관리자 초대 링크는 비밀번호 생략 |
+-| 모임 관리 | OWNER/MEMBER | 관리자 1명, 권한 이전, 강퇴·차단·보관 |
+-| 채팅 | 일반 실시간 모임방, 보류 | 이의제기 당사자 1:1 채팅이 제품 흐름에 포함 |
+-| 알림 | 주최자 앱 중심 | 앱·웹 푸시 + 내부 알림, 알림톡 제외 |
++| 구조 | 모임 → 술자리 두 겹 | 술자리 하나 (모임 없음) |
++| 기록 | 영구 보존, 확정 기록 삭제 금지 | 완료 7일 뒤 삭제 |
++| 가입 | 검색·비밀번호·초대 링크 3경로 | 술자리 링크 1경로 |
++| 결제자 | "차수 총무" — 역할과 확정 의무를 가짐 | "결제자" — 데이터일 뿐, 확정 의무 없음 |
++| 확정 관문 | 명단 마감 → 차수 확정 → 금액 확정 | [정산하기] 1회 |
++| 상태 | 6개 + 역방향 전이 | 3개 |
++| 미응답자 | 전원 응답 전 확정 불가 | 자동응답 + 본인·총무 알림 |
++| 면제 | 참여자 본인 응답 | 총무가 지정 |
++| 이의제기 | 1:1 채팅·협상·오프라인 조율·24/48시간 알림 | [아직 안 들어왔어요] 버튼 |
++| 대화 | 이의제기 당사자 1:1 채팅 | 정산방 타임라인 (모두가 보는 한 줄 대화 + 시스템 소식) |
++| 총무 보상 | 없음 | 스푼·칭호 (후속: 픽셀 캐릭터) |
++| 용어 | 21개 | 15개 |
++| 영수증 | MVP, 플랫폼 구분 없음 | MVP, **앱 전용** |
+ 
+ ### 기술 설계 반영 순서
+ 
+-1. `CALC_RULES_V2.md` — 차수 총무별 수취와 1원 올림 불변식 재설계
+-2. 상태 전이와 권한 모델 확정
+-3. Liquibase 신규 changelog 작성
+-4. 엔티티와 `ERD.md` 갱신
+-5. `API.md` 버전 상승 및 계약 개정
+-6. core 테스트를 먼저 수정·추가
+-7. server 구현과 성공·권한 실패 테스트 작성
++1. `CALC_RULES_V2.md` — 변경 없음 (용어만 "차수 총무" → "결제자")
++2. `DOMAIN_DB_DESIGN_V2.md` — v3 기준으로 개정 (모임·이의제기 제거, 상태 3개, 삭제 정책)
++3. `ADR-019` — 모임 계층 제거와 일회용 술자리 결정
++4. Liquibase 신규 changelog (전역 changeSet id 규칙 준수 — `AGENTS.md` §7)
++5. 엔티티와 `ERD.md` 갱신
++6. `API.md` 버전 상승 및 계약 개정
++7. 서버 구현과 성공·권한 실패 테스트
+ 
+ 기존 core와 server 코드는 이 순서를 끝내기 전까지 현재 계약대로 유지한다.
+diff --git a/docs/SCREENS.md b/docs/SCREENS.md
+new file mode 100644
+index 0000000..0eb798c
+--- /dev/null
++++ b/docs/SCREENS.md
+@@ -0,0 +1,302 @@
++# 정산어택 — 화면 흐름 스펙 (제품 v3)
++
++> **상태:** 확정 · 구현 전
++> **작성일:** 2026-09-29
++> **대상:** 웹(`profile`, React)과 앱(`jungsan_app`, KMP — iOS·Android). **두 플랫폼이 이 문서 하나를 따른다.**
++> **제품 기준:** `REQUIREMENTS.md` v3 · **데이터 기준:** `DOMAIN_DB_DESIGN_V2.md`
++
++웹과 앱이 요구사항을 각자 읽고 화면을 짜면 흐름이 갈라진다(실제로 앱은 총무 흐름만,
++웹은 모임 흐름까지 따로 자랐다). 이 문서가 화면의 단일 기준이다. 플랫폼 차이는 §7에만 적는다.
++
++---
++
++## 1. 설계 원칙
++
++1. **정산방 화면 하나가 중심이다.** 총무든 참여자든 대부분의 시간을 정산방에서 보낸다.
++   화면을 단계별로 쪼개 이동시키지 않는다.
++2. **맨 위에는 "지금 할 일 하나"만 보인다.** 역할(총무·결제자·참여자)과 상태로 문구가 정해진다(§4).
++   `OPEN`·`SETTLING` 같은 상태 이름은 화면에 쓰지 않는다.
++3. **맨 아래 버튼도 하나다.** 그 "할 일"을 바로 하는 버튼. 나머지 동작은 메뉴나 목록 안에 둔다.
++4. **텍스트 입력은 금액·술 항목·계좌(1회)·이름(1회)·타임라인 메시지뿐이다.** 나머지는 버튼이다.
++5. **배경은 지금 것을 그대로 쓴다** — 로그인은 석양, 그 외는 앱 강변 / 웹 기존 배경.
++
++---
++
++## 2. 화면 목록
++
++| ID | 화면 | 누가 | 한 줄 설명 |
++|---|---|---|---|
++| **L1** | 로그인 | 모두 | 카카오 로그인. 석양 배경 |
++| **L2** | 이름 확인 | 첫 로그인만 | 카카오 닉네임을 기본값으로 표시 이름 확인 |
++| **H1** | 내 술자리 | 모두 | 탭 [내가 총무] [참여 중] [완료]. 위에 내 캐릭터·칭호. [+ 새 술자리] |
++| **R1** | 정산방 | 모두 | **중심 화면.** 할 일 배너 · 참여자 상태 · 타임라인 · 하단 버튼 |
++| **R2** | 차수 편집 | 총무 | 금액 · 술 항목 · 결제자. 앱은 [영수증 찍기] |
++| **R3** | 정산하기 확인 | 총무 | 1인당 금액 미리보기 · 자동응답 안내 · [정산하기] |
++| **R4** | 참여자 관리 시트 | 총무 | 한 사람 탭 → 차수별 면제 · 내보내기 |
++| **P1** | 참여 입구 | 링크로 온 사람 | 총무·차수 미리보기 · [참여하고 체크하기] |
++| **P2** | 내 응답 | 참여자 | 차수별 [불참][논알코올][알코올] · [전 차수 똑같이] |
++| **P3** | 내 금액 | 참여자 | 받는 사람별 금액과 근거 · [계좌 복사] · [보냈어요] |
++| **A1** | 계좌 등록 | 결제자(1회) | 은행·계좌번호. 한 번 등록하면 재사용 |
++| **N1** | 알림함 | 모두 | 내부 알림 목록 |
++
++**없어지는 화면**(웹 기준): 내 모임(`GroupHomePage`), 모임 만들기(`CreateGroupPage`), 모임 상세
++(`GroupDetailPage`), 모임 검색(`SearchGroupPage`), 모임 가입(`JoinGroupPage`), 이의제기 채팅
++(`DisputePage`), 금액 입력의 "전부 내가 냈어요/항목마다 달라요"(`AmountPage`), 예상 인원 경고
++(`ConfirmPage`의 "등록한 인원과 다릅니다"), 명단(`RosterPage` → R1 참여자 목록으로 흡수),
++수집 현황(`CollectPage` → R1로 흡수), 전체 내역(`AllPage` → R1·P3 근거로 흡수).
++
++---
++
++## 3. 흐름
++
++### 3.1 총무
++
++```text
++L1 로그인 → (L2 이름 확인, 처음만) → H1 내 술자리
++  → [+ 새 술자리] ─── 입력 없이 바로 생성("9/29 술자리") ──→ R2 차수 편집(1차)
++  → 금액·술 항목 → [저장] → R1 정산방
++  → 하단 [링크 공유]  (사람이 들어오기 시작)
++  → 하단 [정산하기] → R3 확인 → [정산하기]
++  → R1: 받을 돈 목록에서 [확인] / [아직 안 들어왔어요]
++  → 모두 확인되면 자동 완료 → 7일 뒤 사라짐
++```
++
++- **술자리 이름과 날짜는 입력받지 않는다.** 생성 시 `M/d 술자리`·오늘로 채우고 R1 메뉴에서 바꾼다.
++- **결제자 지정은 사람이 들어온 뒤에 한다.** 생성 직후엔 참여자가 총무뿐이라 고를 사람이 없다.
++  R2의 "누가 냈나요?"는 기본값 "나"이고, 참여자가 생기면 목록에서 고를 수 있다.
++
++### 3.2 참여자
++
++```text
++카톡 링크 → P1 참여 입구(술자리 보기 + 차수별 응답 고르기)
++  → [참여하고 응답 완료] (웹: 로그인 전이면 [카카오로 로그인하고 참여하기]) → R1 정산방
++  → (정산되면 알림) → P3 내 금액 → [계좌 복사] → 송금 → [보냈어요]
++  → (확인되면 알림) → R1에서 [🥄 한 스푼] (선택)
++```
++
++- **링크를 여는 것만으로는 참여되지 않는다.** P1에서 버튼을 눌러야 명단에 들어간다.
++  단톡방 링크를 구경만 한 사람이 명단에 들어가지 않게.
++- **P1과 P2를 한 화면으로 합쳤다(2026-10-03).** 처음 들어올 때 응답까지 한 번에 끝낸다 — 참여자가
++  누르는 화면이 하나 준다. P2는 이후 "응답 고치기"로만 쓴다.
++
++### 3.3 결제자 (총무가 아닌데 한 차수를 낸 사람)
++
++참여자 흐름과 같고, 두 가지가 더해진다.
++- 계좌가 없으면 R1 배너가 가장 먼저 **"받을 계좌를 등록해주세요"** → A1.
++- 정산 후 R1에 **받을 돈 목록**이 생기고 [확인]·[아직 안 들어왔어요]를 누른다.
++
++---
++
++## 4. "지금 할 일" 배너와 하단 버튼 (R1)
++
++**위에서부터 먼저 걸리는 줄 하나만 보여준다.** 배너 문구와 하단 버튼은 항상 짝이다.
++
++**순서 원칙 — 남을 막고 있는 일이 먼저다**(2026-09-30 CTO 결정). 누가 [보냈어요]를 눌렀다면 그
++사람은 내 확인만 기다리며 멈춰 있다. 내가 보낼 돈은 나만 늦어진다. 그래서 송금 중 순서는
++**받은 돈 확인 → 내 송금이 안 들어왔대요 → 보낼 돈 → 받을 돈 대기**다. 총무·결제자 모두 같다.
++
++### 4.1 총무
++
++| 조건 | 배너 | 하단 버튼 |
++|---|---|---|
++| 차수가 없음 | 1차 금액을 넣어주세요 | [1차 입력] → R2 |
++| 참여자가 총무뿐 | 링크를 보내서 사람들을 불러주세요 | [링크 공유] |
++| 미응답자 있음 | N명이 아직 응답 안 했어요 · 준비되면 정산하세요 | [정산하기] → R3 |
++| 모두 응답 | 모두 응답했어요 | [정산하기] → R3 |
++| 정산됨, [보냈어요] 받은 건 있음 | ○○님이 보냈대요. 확인해주세요 | [입금 확인하기] (목록으로 스크롤) |
++| 정산됨, 내 송금에 [아직 안 들어왔어요] | ○○님이 아직 입금을 확인 못 했어요 | [다시 확인 요청] |
++| 정산됨, 내가 보낼 돈 있음 | ○○님께 18,000원을 보내주세요 | [보낼 돈 보기] → P3 |
++| 정산됨, 받을 돈 대기 | N명 입금 기다리는 중 | [링크 다시 공유] |
++| 완료 | 정산 끝! 7일 뒤 사라져요 | 없음 |
++
++### 4.2 참여자 · 결제자
++
++| 조건 | 배너 | 하단 버튼 |
++|---|---|---|
++| 결제자인데 계좌 없음 | 받을 계좌를 등록해주세요 | [계좌 등록] → A1 |
++| 아직 응답 안 함 | 1차·2차 응답을 남겨주세요 | [응답하기] → P2 |
++| 응답함, 정산 전 | 응답 완료! 총무가 정산하면 알려드릴게요 | [응답 고치기] → P2 |
++| (결제자) [보냈어요] 받은 건 있음 | ○○님이 보냈대요. 확인해주세요 | [입금 확인하기] |
++| [아직 안 들어왔어요] 받음 | ○○님이 아직 입금을 확인 못 했어요 | [다시 확인 요청] |
++| 보낼 돈 있음(대기) | ○○님께 23,000원을 보내주세요 | [보낼 돈 보기] → P3 |
++| 보냈어요, 확인 대기 | 확인 기다리는 중이에요 | 없음 |
++| 내 송금 모두 확인, 스푼 아직 | 끝! 총무에게 한 스푼 어때요? | [🥄 한 스푼] |
++| 완료 | 정산 끝! 7일 뒤 사라져요 | [🥄 한 스푼] (아직 안 줬으면) |
++
++- 자동응답이 적용된 사람에게는 배너 아래에 한 줄을 붙인다:
++  **"응답이 없어 전 차수 참석·알코올로 계산됐어요"**.
++
++---
++
++## 5. 화면별 구성
++
++### R1 정산방
++
++위에서 아래로:
++
++1. **상단 줄**: 술자리 이름 · 날짜 · (총무만) ⋯ 메뉴 — 이름/날짜 바꾸기, 정산 되돌리기, 정산 끝내기
++2. **총무 카드**: 국자 총무 캐릭터(칭호 단계) · 이름 · 칩 `🥄 1,280 · 프로 총무` (전설이면 `· 3위`)
++3. **할 일 배너** (§4)
++4. **참여자 줄**: 가로 아바타 목록. 각자 상태 점 — 정산 전: 응답함 ● / 안 함 ○,
++   정산 후: 확인 ✓ / 보냈어요 … / 대기 ○. (총무는 탭하면 R4)
++5. **차수 요약**: `1차 120,000 · 2차 45,000` — 탭하면 R2(총무) 또는 근거(참여자)
++6. **타임라인**: 시스템 소식(⚙)과 메시지가 시간순. 🥄 소식은 강조색
++7. **하단 고정**: 메시지 입력칸 + **할 일 버튼 하나**
++
++### R2 차수 편집 (총무)
++
++- 차수 이름(1차, 2차…)은 자동. 순서 바꾸기·삭제는 ⋯
++- **금액** — 숫자 키패드. 앱은 옆에 **[영수증 찍기]** (§7)
++- **술 항목** — 프리셋 칩 `소주` `맥주` `막걸리` `하이볼` `와인` + [직접 입력].
++  칩을 누르면 한 줄이 생기고 병당 가격 기본값(소주 5,000 · 맥주 5,000 · 막걸리 4,000 ·
++  하이볼 7,000 · 와인 30,000)과 병 수 **[−] 1 [+]** 가 붙는다. 가격은 탭해서 고친다
++- **누가 냈나요?** — 기본 "나". 참여자 칩에서 고른다
++- [저장] · [+ 다음 차수]
++
++### R3 정산하기 확인 (총무)
++
++- 처음엔 시트로 잡았지만 미리보기 목록·대리 응답까지 들어가 길어서 **웹·앱 모두 한 화면**으로 둔다
++  (2026-10-01). [정산하기] 버튼은 바닥에 붙여 목록이 길어도 늘 보인다.
++
++- 1인당 금액 미리보기 목록(서버 미리보기 결과 그대로)
++- 미응답자가 있으면 경고 박스: **"민수, 지영 — 응답이 없어 전 차수 참석·알코올로 계산돼요"**.
++  이름을 탭하면 그 자리에서 차수별 응답을 바꿀 수 있다(총무 대리 설정)
++- "정산하면 금액이 고정돼요. 아무도 보내기 전이면 되돌릴 수 있어요."
++- [정산하기] — 서버에 미리보기의 `inputRevision`·`inputHash`를 같이 보낸다. 409면
++  "그 사이 응답이 바뀌었어요" 안내 후 미리보기를 새로 받는다
++
++### R4 참여자 관리 시트 (총무)
++
++- 그 사람의 차수별 응답 표시
++- 차수별 **[면제]** 토글 — 켜면 그 칸이 `EXEMPT(HOST)`, 참여자는 못 바꾼다
++- [이 술자리에서 내보내기] — 정산 전만
++
++### P1 참여 입구
++
++- 위: "○○님이 정산어택에 초대했어요" · 술자리 이름 · 날짜 · 이미 참여한 사람 수
++- 총무 카드(캐릭터·칭호)
++- **차수마다 [불참][논알코올][알코올]**(P2와 같은 줄, [전 차수 똑같이] 포함). 모든 차수를 골라야 버튼이 켜진다
++- 차수가 아직 없으면 응답 없이 [참여하기] — "총무가 금액을 넣으면 알려드릴게요"
++- 버튼: [참여하고 응답 완료] → R1. **웹은 로그인 전에도 이 화면이 보이고** 버튼이
++  [카카오로 로그인하고 참여하기]가 된다. 앱은 딥링크로 열리면 로그인부터 거친다(§7)
++- 정산된 뒤 들어오면 "이미 정산된 술자리예요"만 보이고 참여 불가. 이미 참여한 사람은 [정산방으로]
++- 웹 주소 `/jungsan/j/{shareToken}`
++
++### P2 내 응답
++
++- 차수마다 한 줄: **[불참] [논알코올] [알코올]** 세 버튼 중 하나. **이것만 고르면 끝이다.**
++  음료수 같은 추가 체크는 두지 않는다 — 참여자는 응답하고 빠졌다가, 정산되면 금액 확인·입금만 한다
++  (2026-10-01 CTO 결정)
++- 위에 **[전 차수 똑같이 ▾]** — 고르면 모든 차수에 같은 값
++- 총무가 면제한 칸은 버튼 대신 "총무가 면제로 지정했어요 🎁" (잠김)
++- [응답 완료]. 정산 전까지 다시 들어와 고칠 수 있다
++
++### P3 내 금액
++
++- 받는 사람별 카드: `민지님께 23,000원`
++  - 근거 펼치기: 차수별 `1차 참석·알코올 18,000 + 2차 불참 0 …`
++  - 받는 사람 계좌 + **[계좌 복사]**. 계좌 미등록이면 "계좌 등록을 기다리는 중"
++  - **[보냈어요]** → 상태 "확인 기다리는 중"
++- 여러 명에게 보내야 하면 카드가 여러 장이다
++
++### A1 계좌 등록
++
++- 은행(목록에서 선택) · 계좌번호 · 예금주(표시 이름 기본값). [저장] — 다음부터 재사용
++
++### H1 내 술자리
++
++- 맨 위: **내 캐릭터 + 칭호 + 스푼 수** (한 번도 총무를 안 했으면 "첫 정산을 만들어보세요")
++- **탭 세 개: [내가 총무] [참여 중] [완료]** (2026-10-01 CTO 결정). 탭 옆에 방 수.
++  - 진행 중인 방은 내 역할로 나눈다 — 내가 연 방은 [내가 총무], 남이 연 방은 [참여 중]
++  - 끝난 방은 역할과 상관없이 [완료]에만. **[완료] 뱃지**와 "N일 뒤 사라져요", 흐리게
++  - 각 줄: 술자리 이름 · 그 방의 할 일 한 줄. [참여 중]엔 "민지 총무", [완료]엔 내 역할(총무/참여)
++  - 내가 지금 손대야 하는 방이 있는 탭엔 점(●)을 찍는다
++  - 처음 열리는 탭: 할 일이 있는 탭(총무 → 참여 순) → 방이 있는 탭 → [내가 총무]
++  - **줄 뱃지 — 내가 아직 확인 안 한 일**: [입금 확인](누가 보냈대요) → [정산금액 확인](정산됐는데
++    내 금액을 아직 안 열어봄) → [응답하기](응답 전). 배너와 같은 순서 원칙(남을 막고 있는 일이 먼저)
++- **줄을 누르면 — 참여자는 할 일 화면이 먼저**(2026-10-01 CTO 결정): 응답 전이면 P2, 정산됐는데
++  금액을 안 봤으면 P3, 그 밖엔 R1. 총무는 늘 R1
++- 머리 오른쪽 🔔 — 안 읽은 알림 수. 누르면 N1
++- 하단 [+ 새 술자리]
++
++### N1 알림함
++
++| 언제 | 누구에게 | 알림 | 누르면 |
++|---|---|---|---|
++| 정산됨 | 총무 뺀 참여자 | **정산이 나왔어요! 입금액을 확인해주세요** · `민지님께 41,000원 외 1건` (자동응답이면 그 사실도) | P3 |
++| 정산됨 + 자동응답 있음 | 총무 | 자동응답으로 계산된 사람이 있어요 | R1 |
++| [보냈어요] | 받는 사람 | ○○님이 보냈대요. 입금을 확인해주세요 | R1 |
++| [아직 안 들어왔어요] | 보낸 사람 | ○○님이 아직 입금을 확인 못 했대요 | P3 |
++| 모두 입금 | 참여자 모두 | 정산 완료! 🎉 · 7일 뒤 사라져요 | R1 |
++
++- 행동한 본인에게는 보내지 않는다. 같은 알림이 푸시(FCM)로도 간다.
++- "정산 **완료**"는 모두 입금됐을 때만 쓴다 — [완료] 탭·뱃지와 같은 뜻으로 맞춘다. 정산하기 직후는 "정산이 나왔어요".
++
++---
++
++## 6. 국자 총무 캐릭터
++
++- **방향: A 국자 총무 확정**(2026-09-29). 시안: 개념 노트의 캐릭터 시안 페이지.
++- 4단계 — 칭호 구간(`REQUIREMENTS.md` §8.3)과 1:1:
++
++| 단계 | 칭호 | 누적 스푼 | 모습 |
++|---|---|---|---|
++| Lv.1 | 새내기 총무 | 0~99 | 반팔 · 나무 숟가락 |
++| Lv.2 | 믿음직한 총무 | 100~999 | + 주황 앞치마 · 스테인리스 숟가락 |
++| Lv.3 | 프로 총무 | 1,000~9,999 | + 요리사 모자 · 은 국자 |
++| Lv.4 | 전설의 총무 | 10,000~ | 왕관 · 금 국자 · 반짝임 · 순위 |
++
++- **도트 데이터는 웹 `src/jeongsan/character/hostSprite.ts` 하나가 원본이다.** 20×21 논리 픽셀,
++  레이어(도구 → 몸 → 앞치마 → 모자/왕관 → 반짝임). 앱은 이 파일을 1:1로 옮긴다
++  (배경 픽셀아트를 옮긴 방식과 같다).
++- 확대 시 안티에일리어싱 없음(웹 `image-rendering: pixelated`, 앱 `FilterQuality.None`).
++- 대기 애니메이션: 0.46초마다 1px 위아래. 전설은 반짝임이 번갈아 켜진다.
++  **움직임 줄이기 설정이면 정지.**
++- 쓰이는 곳: H1 상단(크게), R1·P1 총무 카드(52px), 타임라인 🥄 소식 옆(작게).
++
++---
++
++## 7. 플랫폼 차이
++
++| 항목 | 앱 (iOS·Android) | 웹 |
++|---|---|---|
++| 영수증 찍기 | R2에 [영수증 찍기] | **없음** (수동 입력만) |
++| 링크 공유 | 카카오톡 공유 → 실패 시 OS 공유 시트 | 카카오톡 공유(JS SDK) → 실패 시 [링크 복사] |
++| 푸시 | FCM 앱 푸시 | FCM 웹 푸시(권한 거부해도 알림함은 동작) |
++| 로그인 | 카카오 SDK → 서버 인증 연동 방식 미정(`ARCHITECTURE.md` §8) | 카카오 OAuth 리다이렉트 → httpOnly 쿠키 |
++| 배경 | 로그인 석양 · 그 외 강변 | 기존 그대로 |
++
++**목데이터 단계에서는 로그인·공유·푸시를 흉내만 낸다.** 백엔드 v3 API가 나오면 붙인다.
++
++---
++
++## 8. 프론트 데이터 모델 (목데이터 기준)
++
++두 플랫폼이 같은 모양을 쓴다. 필드는 `DOMAIN_DB_DESIGN_V2.md`를 따른다.
++
++```text
++User          { id, displayName, spoonCount, payout? {bank, accountNo, holder} }
++Gathering     { id, title, date, hostUserId, status: OPEN|SETTLING|COMPLETED,
++                shareToken, completedAt?, inputRevision }
++Participant   { id, userId, displayName, spoonCount, status: ACTIVE|REMOVED }
++Round         { id, seq, label, total, payerParticipantId, drinks: DrinkItem[] }
++DrinkItem     { name, unitPrice, quantity }
++Response      { participantId, roundId, type: ABSENT|SOBER|DRANK|EXEMPT, source: SELF|AUTO|HOST }
++Transfer      { id, fromParticipantId, toParticipantId, amount,
++                status: WAITING|SENT|CONFIRMED, sentAt?, confirmedAt?, notReceivedAt? }
++TimelineEntry { id, type: MESSAGE|SYSTEM|SPOON, authorParticipantId?, systemCode?, body, createdAt }
++Spoon         { giverParticipantId }        // 이 술자리에서 준 사람 목록
++```
++
++- 칭호와 캐릭터 단계는 `spoonCount`에서 계산한다(저장하지 않는다).
++- 1인당 금액은 **프론트가 계산하지 않는다.** 목데이터 단계에선 고정값을 쓰고, 백엔드가 붙으면 서버
++  미리보기·정산 결과를 그대로 보여준다(계산은 `core`만 한다 — `ARCHITECTURE.md` §2.1).
++
++---
++
++## 9. 구현 순서 (프론트)
++
++1. **웹** — v3 모델·목데이터 → 캐릭터 → R1 정산방(배너·타임라인) → R2·R3·R4 → P1·P2·P3 → A1·H1·N1
++   → 없어지는 화면 제거
++2. **앱** — 같은 순서로 이식. 도트 데이터는 웹 `hostSprite.ts`에서 옮긴다
++3. 백엔드 v3 API가 나오면 두 플랫폼 모두 목데이터를 API로 교체
+diff --git a/docs/flow-changes/2026-10-01-v3-front-flow.md b/docs/flow-changes/2026-10-01-v3-front-flow.md
+new file mode 100644
+index 0000000..e7bbe47
+--- /dev/null
++++ b/docs/flow-changes/2026-10-01-v3-front-flow.md
+@@ -0,0 +1,145 @@
++# 2026-10-01 — v3 프론트 1차 구현에서 드러난 백엔드 영향
++
++웹 목데이터로 H1·R1·R2·R3·P2·P3·N1을 만들며 나온 것들이다(브랜치 `feat/jeongsan-v3`, 프론트
++저장소 `profile`). Android·iOS는 같은 흐름으로 옮긴다 — 세 플랫폼이 같은 API를 쓴다.
++목데이터 코드에서 해당 동작을 보려면 `src/jeongsan/v3/`의 파일명을 함께 적었다.
++
++---
++
++## FC-001 내 술자리 목록 — 탭·뱃지에 필요한 요약 데이터
++
++- **상태:** 결정 필요
++- **바뀐 흐름:** H1이 탭 세 개 **[내가 총무] [참여 중] [완료]** 로 나뉘고, 각 줄에 "지금 할 일" 한 줄과
++  뱃지([입금 확인]·[정산금액 확인]·[응답하기])가 붙는다. (`home.ts`, `nextAction.ts`)
++- **백엔드 영향:** 목록 API(`GET /me/gatherings` 류)가 술자리마다 다음을 줘야 화면을 그릴 수 있다.
++  상세 API를 방마다 따로 부르면 목록 한 번에 N번 호출이 된다.
++  - `id, title, date, status, completedAt`
++  - `hostUserId`, `hostDisplayName` — [참여 중] 줄의 "민지 총무"
++  - `myParticipantId`, `myRole` (`HOST`/`PARTICIPANT`), 내가 결제자인 차수가 있는가, 내 계좌 등록 여부
++  - `roundCount`, `respondedAll`(내가 모든 차수에 응답했나), `unrespondedCount`(총무용)
++  - 내 송금: 보낼 것들의 `{toName, amount, status, notReceivedAt}` 요약
++  - 받을 것들 중 `SENT` 개수와 첫 송금자 이름, `WAITING` 개수
++  - `spoonGiven`(내가 이 방에서 스푼을 줬나)
++- **결정 필요:** "지금 할 일" 문구를 누가 만드나.
++  - **A. 프론트가 만든다(현재).** 서버는 위 요약 필드만 준다. 규칙(`nextAction`)이 웹·Android·iOS
++    세 곳에 복제되고, 세 곳 테스트로 일치를 지킨다.
++  - **B. 서버가 만든다.** 목록·상세 응답에 `nextAction: {kind, banner, note?, tone}`을 넣는다. 규칙이
++    한 곳(서버)에만 있고 세 플랫폼은 그리기만 한다. 대신 문구 하나 고칠 때도 서버 배포가 필요하다.
++  - **추천: B의 `kind`만 서버, 문구는 프론트.** 서버가 `kind`(어떤 할 일인가)와 인자(이름·금액)를
++    주고, 문구는 각 플랫폼이 고른다. 판정 규칙의 3중 복제를 없애면서 문구는 앱 배포 없이 못 바꾸는
++    문제도 피한다.
++- **반영할 곳:** `API.md`(목록·상세 응답), `DOMAIN_DB_DESIGN_V2.md`(조회 모델)
++
++## FC-002 정산 미리보기 응답 모양
++
++- **상태:** 열림 (계약 모양 제안 — 필드 이름은 백엔드가 정해도 된다)
++- **바뀐 흐름:** R3에서 총무가 한 사람당 금액을 보고, 미응답자 이름을 눌러 그 자리에서 대신 응답을
++  넣으면 금액이 즉시 다시 보인다. [정산하기]는 미리보기의 버전을 같이 보내고, 그 사이 입력이 바뀌었으면
++  거절된다. (`SettlePage.tsx`, `mockServer.ts`)
++- **백엔드 영향:** 미리보기 응답에 다음이 필요하다.
++  - `inputRevision`, `inputHash` — 정산하기 요청에 그대로 돌려보낸다(이미 설계됨, ADR-004)
++  - `lines[]`: 참여자마다 `{participantId, total, auto, rounds: [{roundId, type, amount}]}`
++    - `auto` — 응답이 없어 자동응답(전 차수 참석·알코올)으로 계산되는 사람. R3 경고 박스와 "자동" 표시
++    - `rounds[].type` — 자동응답이 채울 값까지 반영한 응답(`DRANK` 등)
++  - `transfers[]`: `{from, to, amount, basis[]}` — 정산하기를 누르면 생길 송금 (FC-003)
++  - 금액 단위는 정수 원. 프론트는 더하거나 나누지 않고 그대로 보여준다
++  - 불일치 거절은 HTTP 409 + 오류 코드 하나(예: `SETTLEMENT_INPUT_CHANGED`). 프론트는 "그 사이 응답이
++    바뀌었어요" 안내 후 미리보기를 다시 부른다
++- **반영할 곳:** `API.md`
++
++## FC-003 송금 근거(차수별 금액) — P3
++
++- **상태:** 결정 필요
++- **바뀐 흐름:** P3 "보낼 돈" 카드에 [어떻게 나온 금액인가요?]를 누르면 `1차 · 알코올 40,300원 /
++  2차 · 알코올 32,000원`처럼 차수별 근거가 펼쳐진다. (`PayPage.tsx`, `model.ts` `Transfer.basis`)
++- **백엔드 영향:** 송금 한 건(송금자→수취인)마다 차수별 금액과 그 차수 응답이 필요하다.
++  지금 `settlement_transfers`에는 합계 `amount`만 있다.
++- **기존 문서와 충돌:** 없음(빠져 있음). REQUIREMENTS 원칙 5 "금액과 근거를 함께 보여준다"를 받치는 데이터.
++- **결정 필요:**
++  - **A. 정산 시점에 근거를 스냅샷으로 저장**(`settlement_transfer_items` 같은 자식 테이블). 정산 뒤
++    입력이 고정이라 값이 바뀌지 않는다. 행이 늘어난다.
++  - **B. 조회 때 Core로 다시 계산.** 정산 뒤 입력이 고정(불변식 5)이라 결과가 같다. 저장은 없지만
++    조회마다 계산한다.
++  - 어느 쪽이든 **1원 올림이 수취인 합계 기준**(CALC_RULES_V2)이라 차수별 금액의 합이 송금액과 1원
++    다를 수 있다. 근거 금액을 "올림 전 금액"으로 보여줄지, 차이를 마지막 차수에 붙일지도 정해야 한다.
++  - 추천: **A** — ADR-015(확정 송금 스냅샷)와 같은 생각이고, 분쟁 때 "그때 본 근거"가 남는다.
++- **반영할 곳:** `DOMAIN_DB_DESIGN_V2.md` §4, `CALC_RULES_V2.md`(근거 반올림 표시), `API.md`
++
++## FC-004 총무 대리 응답 — `source = HOST`의 뜻이 넓어짐
++
++- **상태:** 결정 필요
++- **바뀐 흐름:** R3에서 미응답자 이름을 누르면 총무가 그 사람의 차수별 응답(불참·논알코올·알코올)을
++  대신 넣는다(SCREENS.md R3 "총무 대리 설정"). 단톡방에서 "나 2차 안 갔어"라고 말만 한 사람을 위해서다.
++  목데이터는 이 칸을 `source = HOST`로 저장한다. (`store.ts` `respondAsHost`)
++- **기존 문서와 충돌:** `DOMAIN_DB_DESIGN_V2.md` §3.2 — "총무는 `HOST`로 **`EXEMPT`만** 쓰고,
++  `HOST`가 쓴 칸은 참여자가 바꿀 수 없다." 대리 응답까지 `HOST`로 쓰면 참여자가 자기 응답을 못 고치게 된다.
++- **결정 필요:** 총무가 대신 넣은 응답을 참여자가 나중에 고칠 수 있나.
++  - **A. 고칠 수 있다(현재 목데이터).** 잠그는 건 `EXEMPT`+`HOST`뿐. 대리 응답은 `source = HOST`지만
++    참여자가 덮어쓰면 `SELF`가 된다. → DOMAIN §3.2를 "HOST가 쓴 **EXEMPT** 칸만 잠긴다"로 고친다.
++  - **B. 고칠 수 없다.** 총무 대리 = 확정. 참여자가 틀렸다고 느끼면 총무에게 말해야 한다.
++  - **C. 출처를 나눈다.** `source = PROXY`를 새로 두고 잠그지 않는다. 의미가 가장 분명하지만 enum이 하나 는다.
++  - 추천: **A** — 본인 응답이 우선이라는 원칙과 맞고 스키마 변경이 없다.
++- **반영할 곳:** `DOMAIN_DB_DESIGN_V2.md` §3.2, `REQUIREMENTS.md`(총무 권한 표)
++
++## FC-005 알림 — 이벤트별 대상·문구·링크, 읽음 API
++
++- **상태:** 열림
++- **바뀐 흐름:** H1 머리에 🔔(안 읽은 수), N1 알림함 화면이 생겼다. 알림을 누르면 정해진 화면으로
++  간다. (`notify.ts`, `NotificationsPage.tsx`)
++- **백엔드 영향:**
++  - 알림 이벤트·대상은 `REQUIREMENTS.md` §10 표가 기준이다. 프론트는 거기에 **누르면 갈 곳과 문구**를
++    정했다 — 알림 행에 `type`(이벤트)과 `gatheringId`가 있으면 프론트가 갈 곳을 고른다:
++
++    | 이벤트 | 받는 사람 | 문구(프론트) | 누르면 |
++    |---|---|---|---|
++    | 정산하기 | 총무 뺀 참여자 | 정산이 나왔어요! 입금액을 확인해주세요 · `민지님께 41,000원 외 1건` | P3 |
++    | 자동응답 처리됨 | 본인 + 총무 | (본인은 위 알림에 덧붙임) / 자동응답으로 계산된 사람이 있어요 | P3 / R1 |
++    | [보냈어요] | 수취인 | ○○님이 보냈대요. 입금을 확인해주세요 | R1 |
++    | [아직 안 들어왔어요] | 송금자 | ○○님이 아직 입금을 확인 못 했대요 | P3 |
++    | 완료 | 참여자 전원 | 정산 완료! 🎉 · 7일 뒤 사라져요 | R1 |
++
++  - **행동한 본인에게는 보내지 않는다.** (예: 마지막 [확인]을 누른 사람은 "완료" 알림을 받지 않음)
++  - **"정산 완료"는 `COMPLETED`(모두 입금)에만 쓴다.** 정산하기 직후는 "정산이 나왔어요" — [완료] 탭과
++    뜻을 맞추기 위해서다(CTO 결정 2026-10-01).
++  - 정산 알림 본문에 **첫 수취인 이름·금액과 나머지 건수**가 들어간다 → 알림 생성 시 송금 요약이 필요.
++  - API: 내 알림 목록(최신순), 안 읽은 수, 하나 읽음, 모두 읽음.
++  - 목데이터는 §10 표 중 위 다섯 줄만 흉내 낸다. 나머지(응답 남김·[확인]·되돌리기·계좌 필요·스푼)도
++    §10대로 만든다 — 프론트가 빠뜨린 것이지 빼기로 한 게 아니다.
++- **반영할 곳:** `DOMAIN_DB_DESIGN_V2.md`(`notifications` 컬럼: `type`, `gathering_id`, 표시 인자, `read_at`),
++  `API.md`
++
++## FC-006 "정산금액 봤음" 기록 — [정산금액 확인] 뱃지
++
++- **상태:** 결정 필요
++- **바뀐 흐름:** 정산이 나왔는데 참여자가 내 금액(P3)을 아직 안 열어봤으면 H1 줄에 **[정산금액 확인]**
++  뱃지가 붙고, 그 방을 누르면 정산방이 아니라 P3로 바로 간다. P3를 한 번 열면 둘 다 풀린다. (`home.ts`
++  `rowBadge`·`entryRoute`, `store.ts` `paySeen`)
++- **백엔드 영향:** 목데이터는 "봤음"을 기기 메모리에만 둔다 → 폰에서 보고 웹에 들어가면 뱃지가 다시 뜬다.
++- **결정 필요:**
++  - **A. 참여자 행에 `settlement_viewed_at`(NULL 가능)** — P3를 열 때 서버에 기록. 정산 되돌리기 때 지운다.
++  - **B. "정산하기" 알림의 읽음 여부로 대신한다.** 새 컬럼이 없지만, 알림을 안 누르고 목록으로 들어와
++    P3를 본 경우를 못 잡는다.
++  - **C. 기기에만 둔다(현재).** 서버 변경 없음. 여러 기기 쓰는 사람에게 뱃지가 어긋난다.
++  - 추천: **A** — 컬럼 하나, 기기 간 일치. FC-001 목록 요약에 `settlementViewed`로 같이 내려준다.
++- **반영할 곳:** `DOMAIN_DB_DESIGN_V2.md`(`participants`), `API.md`
++
++## FC-007 응답 단순화·참여자 진입 순서·H1 탭
++
++- **상태:** 프론트만
++- **바뀐 흐름:**
++  - P2 응답은 차수마다 **[불참][논알코올][알코올] 하나만** 고른다. **음료수 같은 추가 체크는 없다**
++    (CTO 결정 2026-10-01). → `response_type` 값은 그대로(`ABSENT|SOBER|DRANK|EXEMPT`).
++  - 참여자가 H1에서 방을 누르면 응답 전이면 P2, 정산됐는데 금액을 안 봤으면 P3, 그 밖엔 R1로 간다.
++  - H1 탭 [내가 총무] [참여 중] [완료] — 분류는 FC-001의 요약 필드로 프론트가 한다.
++- **백엔드 영향:** 없음. 위 판단에 필요한 데이터는 FC-001·FC-006에 포함돼 있다.
++
++## FC-008 차수 이름(1차·2차) 누가 붙이나
++
++- **상태:** 결정 필요 (2026-09-30부터 보류 중)
++- **바뀐 흐름:** R2에서 차수를 지우면 남은 차수의 이름이 다시 매겨진다(3차를 지우면 4차가 3차로).
++  목데이터는 프론트가 `seq` 순서로 `N차`를 붙인다. (`round.ts` `relabel`)
++- **결정 필요:**
++  - **A. 서버는 순서(`seq`)만 주고 이름은 프론트가 붙인다.** 이름을 저장하지 않으니 재번호 문제가 없다.
++  - **B. 서버가 `label`을 저장한다.** 지울 때 서버가 다시 매기고 타임라인 문구도 서버가 만든다.
++  - 추천: **A** — 타임라인 시스템 소식은 이미 "표시 인자(JSON)"로 저장하므로 `roundSeq`만 넣으면 된다.
++- **반영할 곳:** `DOMAIN_DB_DESIGN_V2.md`(`rounds`), `API.md`
+diff --git a/docs/flow-changes/2026-10-03-p1-entry.md b/docs/flow-changes/2026-10-03-p1-entry.md
+new file mode 100644
+index 0000000..618285d
+--- /dev/null
++++ b/docs/flow-changes/2026-10-03-p1-entry.md
+@@ -0,0 +1,30 @@
++# 2026-10-03 — P1 참여 입구
++
++웹(`profile` `v3/EntryPage.tsx`)·앱(`jungsan_app` `v3/ui/EntryScreen.kt`) 동시 구현. 목데이터 동작은
++웹 `v3/store.ts` `joinGathering`, 앱 `V3Store.joinGathering`.
++
++## FC-009 링크로 참여 — 참여와 응답을 한 요청으로, 로그인 전 미리보기
++
++- **상태:** 열림 (계약 모양 제안 — 이름은 백엔드가 정해도 된다)
++- **바뀐 흐름:** 단톡방 링크(`/jungsan/j/{shareToken}`)를 누르면 P1이 열린다. P1에서 술자리를 보고
++  **차수별 응답까지 고른 뒤** [참여하고 응답 완료]를 누르면 참여·응답이 한 번에 끝난다(P1+P2 합침).
++  웹은 로그인 전에도 P1이 보이고, 버튼을 누를 때 로그인한다. 링크를 연 것만으로는 참여되지 않는다.
++- **백엔드 영향:**
++  1. **로그인 없이 읽는 미리보기 API** — 공유 토큰으로 술자리 요약을 준다:
++     `title, date, status, participantCount, host{displayName, spoonCount}, rounds[{id, seq, total}]`.
++     **참여자 이름·응답·금액·계좌는 주지 않는다**(링크가 퍼져도 남의 정보가 새지 않게).
++     정산 뒤(`status != OPEN`)에도 이 요약은 주되 화면은 "이미 정산된 술자리예요"만 보인다.
++  2. **참여 요청에 응답을 같이 받는다** — `POST .../join` 본문에 `responses: [{roundId, type}]`(선택).
++     한 트랜잭션에서: 참여자 행 추가 → `SELF` 응답 저장 → 타임라인 `JOINED`(+ 응답 소식) → `input_revision`
++     올림 → 총무 알림. 프론트는 참여와 응답을 두 번 호출해도 동작하지만, 그러면 둘째 호출이 실패할 때
++     "참여는 됐는데 응답 없음"이 생긴다(정산 때 자동응답으로 처리되긴 한다).
++  3. **규칙** — 이미 참여 중이면 아무것도 바꾸지 않고 성공(멱등, 술자리 id 반환). `status != OPEN`이면
++     거절. 새 참여자는 `EXEMPT`를 보낼 수 없다(면제는 총무만). 명단이 바뀌면 `input_revision`이
++     올라가서 총무가 그 전에 받은 미리보기로는 정산하기가 409가 된다 — **의도된 동작**이다.
++  4. **알림** — 총무에게 "○○님이 참여하고 응답했어요"(응답 없이 참여하면 "참여했어요").
++     REQUIREMENTS §10 "참여자가 응답을 남김 → 총무"에 해당.
++- **로그인 왕복 주의(웹):** 실제 카카오 로그인은 페이지를 떠났다 돌아온다. 프론트가 고르던 응답을
++  `sessionStorage`에 두었다가 돌아와서 이어 보낸다 — 서버는 할 일 없음. 다만 OAuth 콜백 뒤
++  **원래 링크(`/jungsan/j/{token}`)로 돌려보내는 `redirect` 보존**이 필요하다(지금 콜백은 `/jungsan`으로 간다).
++- **기존 문서와 충돌:** 없음. `DOMAIN_DB_DESIGN_V2.md`의 참여 트랜잭션에 응답 동시 저장만 더하면 된다.
++- **반영할 곳:** `API.md`(미리보기·참여), `DOMAIN_DB_DESIGN_V2.md` §5(참여 트랜잭션), OAuth 콜백 redirect
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+new file mode 100644
+index 0000000..dcdc422
+--- /dev/null
++++ b/docs/flow-changes/README.md
+@@ -0,0 +1,56 @@
++# flow-changes — 프론트 흐름이 바뀌어 백엔드가 알아야 하는 것
++
++> **누가 쓰나:** 프론트(웹·Android·iOS)를 만드는 Claude Code. 흐름이 바뀔 때마다 쓴다.
++> **누가 읽나:** 백엔드(Codex)와 CTO. **API·스키마 작업을 시작하기 전에 이 폴더의 `열림` 항목을 먼저 읽는다.**
++
++프론트는 목데이터로 먼저 화면을 만들고, 사용해 보며 흐름을 계속 고친다. 그 사이 서버가 받쳐야 할
++데이터·상태·API가 조금씩 달라지는데, 그 변화가 `SCREENS.md` 화면 설명 속에만 묻혀 있으면 백엔드는
++무엇이 계약 변경인지 알기 어렵다. 이 폴더는 **"그래서 서버는 무엇을 해야 하나"만** 모은다.
++
++## 언제 쓰나
++
++프론트 작업 중 아래 중 하나라도 바뀌면 항목을 쓴다.
++
++- 서버가 주거나 받아야 하는 **데이터 모양**(새 필드, 응답 구조, 목록에 필요한 요약)
++- **상태 전이**·권한(누가 언제 무엇을 바꿀 수 있나)
++- **알림** 이벤트·대상·문구·누르면 갈 곳
++- 기존 백엔드 문서(`REQUIREMENTS`·`DOMAIN_DB_DESIGN_V2`·`API`·`CALC_RULES_V2`)와 **어긋나는** 프론트 동작
++
++화면 배치·문구·애니메이션처럼 서버와 무관한 변경은 쓰지 않는다. 다만 "백엔드는 바뀔 것 없음"을
++분명히 해 두는 게 헷갈림을 줄이면 `프론트만`으로 한 줄 남긴다.
++
++## 항목 형식
++
++파일 하나에 같은 날·같은 작업의 항목을 모은다: `YYYY-MM-DD-주제.md`. 항목 번호(`FC-001`)는 폴더 전체에서
++이어서 매긴다.
++
++```markdown
++## FC-000 제목
++
++- **상태:** 열림 | 결정 필요 | 반영됨(문서·PR) | 프론트만
++- **바뀐 흐름:** 사용자 입장에서 무엇이 달라졌나 (화면 ID — SCREENS.md 기준)
++- **백엔드 영향:** API · DB · 상태 전이 · 알림 중 무엇이 어떻게
++- **기존 문서와 충돌:** 있으면 문서·절을 적는다
++- **결정 필요:** CTO가 정할 것과 선택지·추천 (없으면 생략)
++- **반영할 곳:** 어느 문서를 고쳐야 닫히나
++```
++
++**상태 규칙**
++- `결정 필요` — CTO 결정 전. 백엔드는 이 항목을 근거로 구현하지 않는다.
++- `열림` — 결정됐고 백엔드 문서·코드 반영을 기다린다. **백엔드가 읽고 처리할 대상.**
++- `반영됨` — 해당 문서(DOMAIN·API 등)나 PR에 들어갔다. 어디에 들어갔는지 적고 닫는다.
++- `프론트만` — 서버는 바뀔 것 없음을 확인해 둔 것.
++
++## 목록
++
++| 번호 | 제목 | 상태 | 파일 |
++|---|---|---|---|
++| FC-001 | 내 술자리 목록 — 탭·뱃지에 필요한 요약 데이터 | 결정 필요 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-001-내-술자리-목록--탭뱃지에-필요한-요약-데이터) |
++| FC-002 | 정산 미리보기 응답 모양 | 열림 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-002-정산-미리보기-응답-모양) |
++| FC-003 | 송금 근거(차수별 금액) — P3 | 결정 필요 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-003-송금-근거차수별-금액--p3) |
++| FC-004 | 총무 대리 응답 — `source = HOST`의 뜻이 넓어짐 | 결정 필요 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-004-총무-대리-응답--source--host의-뜻이-넓어짐) |
++| FC-005 | 알림 — 이벤트별 대상·문구·링크, 읽음 API | 열림 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-005-알림--이벤트별-대상문구링크-읽음-api) |
++| FC-006 | "정산금액 봤음" 기록 — [정산금액 확인] 뱃지 | 결정 필요 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-006-정산금액-봤음-기록--정산금액-확인-뱃지) |
++| FC-007 | 응답 단순화·참여자 진입 순서·H1 탭 | 프론트만 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-007-응답-단순화참여자-진입-순서h1-탭) |
++| FC-008 | 차수 이름(1차·2차) 누가 붙이나 | 결정 필요 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-008-차수-이름1차2차-누가-붙이나) |
++| FC-009 | 링크로 참여 — 참여와 응답을 한 요청으로, 로그인 전 미리보기 | 열림 | [2026-10-03-p1-entry.md](2026-10-03-p1-entry.md) |

@@ -1,0 +1,527 @@
+{
+  "change_summary": "FC-013에 따라 카카오 닉네임과 별도인 최초 실명 등록 API를 추가했다. 내 정보에 nullable displayName과 needsName을 반환하며, NULL 조건부 UPDATE·재조회로 동일 이름 재시도와 변경 충돌을 구분한다. 실명 마이그레이션, 일반 JPA 갱신 제외, 로그인·본인 목록 필터, 전체 인증 가드와 서버 테스트 및 API v4 문서를 추가했다.",
+  "review_findings": [
+    {
+      "severity": "low",
+      "category": "test",
+      "file": "server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt",
+      "observation": "동시 등록·JPA save의 실명 보존은 실제 DB 회귀 검사로 남기면 좋다. 기존 수동 MySQL 검증을 실패를 재현할 수 있는 통합 검증으로 보존하는 방법을 권한다.",
+      "evidence": "UserApiSpec은 UserRepository를 mock으로 대체하고 결과 User를 stub한다. 이전 개발 검증에서는 실제 MySQL 동시 HTTP 요청의 200/409를 확인했지만 그 절차는 테스트 소스에 없다.",
+      "risk": "조건부 쿼리·flush/clear·컬럼 매핑이 바뀌어도 HTTP 단위 테스트의 stub 응답만으로는 DB 실행 회귀를 발견하지 못할 수 있다. 현재 동시성 결함이 확인됐다는 뜻은 아니다.",
+      "question": "동일 이름·다른 이름 동시 등록과 기존 닉네임 갱신의 실명 보존을 MySQL 통합 검사로 반복 가능하게 남길 수 있는가?"
+    },
+    {
+      "severity": "low",
+      "category": "security",
+      "file": "server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt",
+      "observation": "인증 가드의 검사 범위를 Spring이 실제 등록한 핸들러와 대조할 필요가 있다. RequestMappingHandlerMapping의 등록 목록을 기준으로 검사하는 방법을 권한다.",
+      "evidence": "scanner로 찾은 컨트롤러의 Class.forName(...).declaredMethods를 검사한다. declaredMethods는 상속된 메서드를 포함하지 않으며 현재 PR의 핸들러는 직접 선언돼 있다.",
+      "risk": "나중에 상위 타입에서 상속한 엔드포인트가 생기면 현재 가드가 해당 핸들러를 누락할 수 있다. 현재 공개 누출이 확인된 것은 아니다.",
+      "question": "상속·인터페이스 매핑이 생겨도 실제 등록된 모든 API 핸들러를 검사하도록 가드와 검증 fixture를 확장할 것인가?"
+    }
+  ],
+  "study_recommendations": [
+    {
+      "category": "java-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.findUser",
+      "code_point": "Java 기본기: Optional (JAVA-OPTIONAL) | findById(...).orElseThrow { UnauthenticatedException() } | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L31–L32 UserService.findUser · findById().orElseThrow",
+      "catalog_reference": "JST-14-02-04",
+      "catalog_title": "Optional<T>와 OptionalInt",
+      "study_angle": "사용자 행의 부재를 Optional에서 인증 오류로 바꾸는 경계를 본다.",
+      "reason": "JWT 해석 성공과 사용자 DB 행 존재는 별도 조건이다."
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/common/ApiException.kt",
+      "symbol": "DisplayNameAlreadySetException",
+      "code_point": "Java 기본기: 상속 (JAVA-INHERITANCE) | ApiException 상속 생성자 인자 | server/src/main/kotlin/app/jeongsan/server/common/ApiException.kt:L33–L35 DisplayNameAlreadySetException · ApiException 상속",
+      "catalog_reference": "JST-07-01-01",
+      "catalog_title": "상속의 정의와 장점",
+      "study_angle": "새 도메인 오류가 공통 API 오류의 코드·상태·메시지 계약을 재사용하는 관계를 본다.",
+      "reason": "예외 타입 추가가 기존 공통 처리 경로에 연결된다."
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.registerDisplayName / findUser",
+      "code_point": "Java 기본기: 예외 (JAVA-EXCEPTION) | MalformedRequestException·DisplayNameAlreadySetException·UnauthenticatedException | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L18–L26 UserService.registerDisplayName · 입력 오류·충돌 예외; server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L31–L32 UserService.findUser · 인증 예외",
+      "catalog_reference": "JST-08-01-10",
+      "catalog_title": "사용자정의 예외 만들기",
+      "study_angle": "입력 오류·상태 충돌·인증 부재가 서로 다른 HTTP 실패로 연결되는 경로를 본다.",
+      "reason": "예외 분류가 클라이언트에 전달되는 API 의미를 결정한다."
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt",
+      "symbol": "컨트롤러 핸들러 순회",
+      "code_point": "Java 기본기: annotation (JAVA-ANNOTATION) | isAnnotationPresent, AnnotatedElementUtils.hasAnnotation | server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt:L18–L28 AuthenticationGuardSpec · 매핑·LoginUser 애너테이션 검사",
+      "catalog_reference": "JST-12-03-03",
+      "catalog_title": "메타 애너테이션",
+      "study_angle": "메서드 매핑의 합성 애너테이션 검사와 파라미터 LoginUser 검사를 구분한다.",
+      "reason": "실행 시 메타데이터를 읽어 인증 요구사항을 검증하는 새 처리 코드다."
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.findUser",
+      "code_point": "Java 기본기: lambda (JAVA-LAMBDA) | orElseThrow { UnauthenticatedException() } | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L31–L32 UserService.findUser · 예외 생성 Supplier 람다",
+      "catalog_reference": "JST-14-01-03",
+      "catalog_title": "함수형 인터페이스(Functional Interface)",
+      "study_angle": "Kotlin 람다가 Java Optional의 예외 생성 Supplier에 전달되는 지점을 본다.",
+      "reason": "동작을 인자로 전달하는 Java 상호운용이 실제 실패 경로에 쓰인다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/User.kt",
+      "symbol": "User.displayName",
+      "code_point": "val displayName: String? = null | server/src/main/kotlin/app/jeongsan/server/user/User.kt:L29–L31 User.displayName · nullable 기본값; server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt:L9–L13 MeResponse.displayName / User.toMeResponse",
+      "catalog_reference": "KB-02",
+      "catalog_title": "코틀린에서 null을 다루는 방법",
+      "study_angle": "null이 오류가 아니라 아직 실명을 받지 않은 사용자 상태인 점을 본다.",
+      "reason": "신규·기존 계정의 초기 상태가 nullable 필드 하나로 표현된다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt",
+      "symbol": "DisplayNameRequest / MeResponse",
+      "code_point": "data class, non-null 요청 필드·nullable 응답 필드 | server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt:L3–L13 DisplayNameRequest / MeResponse DTO 선언",
+      "catalog_reference": "KB-14",
+      "catalog_title": "코틀린에서 다양한 클래스를 다루는 방법",
+      "study_angle": "요청에서 요구되는 값과 응답에서 허용되는 부재를 각각 본다.",
+      "reason": "같은 실명 값이라도 요청과 조회 응답의 타입 계약이 다르다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt",
+      "symbol": "User.toMeResponse",
+      "code_point": "fun User.toMeResponse() = MeResponse(...) | server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt:L13–L13 User.toMeResponse · 최상위 확장 함수·식 본문",
+      "catalog_reference": "KB-16",
+      "catalog_title": "코틀린에서 다양한 함수를 다루는 방법",
+      "study_angle": "엔티티에서 API DTO로 변환하는 함수의 수신 타입과 반환 타입을 본다.",
+      "reason": "확장 함수가 엔티티 상속이나 내부 메서드 추가 없이 응답 조립을 표현한다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/User.kt",
+      "symbol": "User.displayName",
+      "code_point": "val과 @Column(updatable = false) | server/src/main/kotlin/app/jeongsan/server/user/User.kt:L29–L31 User.displayName · val / @Column(updatable=false); server/src/main/kotlin/app/jeongsan/server/user/User.kt:L30–L31 User.displayName · ORM 갱신 제외; server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:L14–L15 UserRepository.registerDisplayName · 명시적 수정 쿼리",
+      "catalog_reference": "KB-01",
+      "catalog_title": "코틀린에서 변수를 다루는 방법",
+      "study_angle": "언어의 재할당 제한과 JPA가 생성하는 SQL의 갱신 제외를 구분한다.",
+      "reason": "val만으로 DB 불변성이 생기지 않으며 두 제약은 적용 계층이 다르다."
+    },
+    {
+      "category": "kotlin-advanced",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserController.kt",
+      "symbol": "UserController.registerDisplayName",
+      "code_point": "@LoginUser userId: Long, @Valid @RequestBody request | server/src/main/kotlin/app/jeongsan/server/user/UserController.kt:L13–L15 UserController.registerDisplayName · @LoginUser / @Valid / @RequestBody",
+      "catalog_reference": "KA-20",
+      "catalog_title": "코틀린의 어노테이션",
+      "study_angle": "애너테이션을 리플렉션으로 읽는 Spring 경로와 Long의 JVM 타입 표현을 함께 본다.",
+      "reason": "컨트롤러 입력 해석은 Kotlin 문법뿐 아니라 런타임 파라미터 메타데이터에 의존한다."
+    },
+    {
+      "category": "kotlin-advanced",
+      "file": "server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt",
+      "symbol": "UserApiSpec / beforeTest / 테스트 본문",
+      "code_point": "StringSpec({ ... }), beforeTest { ... }, 문자열 테스트 DSL | server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt:L18–L34 UserApiSpec · StringSpec / beforeTest / request",
+      "catalog_reference": "KA-19",
+      "catalog_title": "DSL 활용 사례 살펴보기",
+      "study_angle": "설정 람다·테스트 실행 람다·리셋 훅의 실행 범위를 구분한다.",
+      "reason": "중첩된 DSL에서 mock과 테스트 객체가 어느 범위에 공유되는지 이해해야 한다. 등록 강의명이 아닌 기술 주제다."
+    },
+    {
+      "category": "jvm",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.registerDisplayName",
+      "code_point": "name.codePointCount(0, name.length) | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L16–L21 UserService.registerDisplayName · trim / codePointCount; server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt:L73–L82 UserApiSpec · 이모지 10개·1개 경계",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "UTF-16 코드 단위와 Unicode 코드포인트",
+      "study_angle": "String.length의 인덱스 범위와 codePointCount의 문자 수를 구분한다.",
+      "reason": "이모지 한 개를 두 UTF-16 단위가 아닌 한 코드포인트로 검증하는 계약이다."
+    },
+    {
+      "category": "spring",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserController.kt",
+      "symbol": "UserController.registerDisplayName",
+      "code_point": "@RequestBody·@Valid·DisplayNameRequest | server/src/main/kotlin/app/jeongsan/server/user/UserController.kt:L14–L15 UserController.registerDisplayName · JSON·검증 진입; server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L16–L21 UserService.registerDisplayName · 업무 검증; server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt:L104–L108 UserApiSpec · 누락·null·깨진 JSON",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "역직렬화·Bean Validation·서비스 검증의 경계",
+      "study_angle": "누락/null JSON과 trim 이후 길이 검증이 어느 단계에서 실패하는지 본다.",
+      "reason": "@Valid 표시만으로 코드포인트 길이를 자동 검사하지 않으며 요청 바인딩과 업무 검증이 분리돼 있다."
+    },
+    {
+      "category": "spring",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt",
+      "symbol": "AuthController.me",
+      "code_point": "@CookieValue 직접 처리 → @LoginUser와 UserService.me | server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt:L96–L97 AuthController.me · @LoginUser 기반 핸들러",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "HandlerMethodArgumentResolver 기반 인증 주입",
+      "study_angle": "내 정보 요청이 공통 사용자 ID 해석을 거쳐 서비스로 들어가는 경로를 본다.",
+      "reason": "이번 PR은 인증 처리 책임을 각 핸들러에서 공통 인자 해석 경로로 이동했다."
+    },
+    {
+      "category": "spring",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService 생성자 / AuthController.userService",
+      "code_point": "생성자 주입·@Service | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L9–L12 UserService · 생성자 UserRepository 주입; server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt:L34–L34 AuthController · UserService 주입",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "생성자 주입과 서비스 책임 경계",
+      "study_angle": "컨트롤러가 요청을 받고 서비스가 조회·등록 규칙을 처리하는 의존 관계를 본다.",
+      "reason": "새 서비스 추출로 테스트 대체 지점과 트랜잭션 적용 지점이 분리된다."
+    },
+    {
+      "category": "jpa",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt",
+      "symbol": "UserRepository.registerDisplayName",
+      "code_point": "@Modifying와 @Query UPDATE | server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:L13–L15 UserRepository.registerDisplayName · @Modifying / JPQL",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "JPQL 벌크 UPDATE 실행",
+      "study_angle": "엔티티를 읽어 필드를 바꾸는 경로와 직접 UPDATE를 실행하는 경로를 구분한다.",
+      "reason": "이번 등록은 일반 dirty checking 대신 수정 쿼리로 처리된다."
+    },
+    {
+      "category": "jpa",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt",
+      "symbol": "UserRepository.registerDisplayName",
+      "code_point": "flushAutomatically = true | server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:L13–L15 UserRepository.registerDisplayName · flushAutomatically=true",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "벌크 갱신 전 flush",
+      "study_angle": "영속성 컨텍스트의 대기 변경과 DB 쿼리 실행 순서를 본다.",
+      "reason": "flush 설정은 clear와 달리 갱신 전 DB 반영 시점에 영향을 준다."
+    },
+    {
+      "category": "jpa",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt",
+      "symbol": "UserRepository.registerDisplayName",
+      "code_point": "clearAutomatically = true와 findById 재조회 | server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:L13–L15 UserRepository.registerDisplayName · clearAutomatically=true; server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L23–L25 UserService.registerDisplayName · UPDATE 후 재조회",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "벌크 갱신 후 영속성 컨텍스트 clear",
+      "study_angle": "DB 행 갱신과 이미 로딩한 엔티티 상태가 따로 존재할 수 있는 점을 본다.",
+      "reason": "재조회가 오래된 1차 캐시 객체를 반환하는 문제를 피하는 설정과 연결된다."
+    },
+    {
+      "category": "jpa",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/User.kt",
+      "symbol": "User.displayName",
+      "code_point": "@Column(updatable = false) | server/src/main/kotlin/app/jeongsan/server/user/User.kt:L30–L31 User.displayName · ORM 갱신 제외; server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:L14–L15 UserRepository.registerDisplayName · 명시적 수정 쿼리",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "일반 ORM 갱신 제외와 수정 쿼리의 차이",
+      "study_angle": "닉네임 갱신 시 생성되는 엔티티 UPDATE와 명시적 등록 JPQL의 적용 범위를 구분한다.",
+      "reason": "실명 보호는 DB 권한이나 CHECK 제약이 아니라 ORM 매핑과 쓰기 경로로 구현돼 있다."
+    },
+    {
+      "category": "jpa",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringRepository.kt",
+      "symbol": "findByHostUserIdOrderByGatheringDateDesc",
+      "code_point": "새 메서드 이름의 조건·정렬 | server/src/main/kotlin/app/jeongsan/server/gathering/GatheringRepository.kt:L8–L8 GatheringRepository.findByHostUserIdOrderByGatheringDateDesc; server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt:L24–L25 GatheringController.list",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "Spring Data 파생 쿼리",
+      "study_angle": "HostUserId 조건과 GatheringDateDesc가 만들어야 할 조회 의미를 본다.",
+      "reason": "이름 기반 쿼리가 전체 목록에서 본인 목록으로 변경된 보안 경로다."
+    },
+    {
+      "category": "database",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt",
+      "symbol": "UserRepository.registerDisplayName",
+      "code_point": "WHERE u.id = :id AND u.displayName IS NULL | server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:L14–L15 UserRepository.registerDisplayName · 조건부 UPDATE",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "조건부 UPDATE의 원자적 상태 전이",
+      "study_angle": "사용자 조회 뒤 판단하는 방식과 DB 쓰기 조건에서 최초 등록을 제한하는 방식을 구분한다.",
+      "reason": "현재 값이 NULL인 행만 바꿀 수 있다는 조건이 저장소 계층의 불변 조건이다."
+    },
+    {
+      "category": "database",
+      "file": "server/src/main/resources/db/changelog/015-user-display-name.yaml",
+      "symbol": "023-add-user-display-name",
+      "code_point": "nullable VARCHAR(10), 기존 행 backfill 없음 | server/src/main/resources/db/changelog/015-user-display-name.yaml:L9–L17 023-add-user-display-name · nullable 컬럼",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "NULL 상태와 점진적인 컬럼 추가",
+      "study_angle": "기존 사용자·새 사용자의 미등록 상태와 별도 플래그 없이 조회하는 방식을 본다.",
+      "reason": "마이그레이션의 NULL 선택이 needsName 및 최초 등록 쿼리와 연결된다."
+    },
+    {
+      "category": "database",
+      "file": "server/src/main/resources/db/changelog/015-user-display-name.yaml",
+      "symbol": "users.display_name",
+      "code_point": "VARCHAR(10)과 codePointCount 규칙 | server/src/main/resources/db/changelog/015-user-display-name.yaml:L13–L17 users.display_name · VARCHAR(10) / remarks; server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L16–L21 UserService.registerDisplayName · 코드포인트 길이",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "문자열 길이·문자 집합과 API 검증의 일치",
+      "study_angle": "보조 평면 문자 10개가 HTTP 검증과 실제 DB 저장을 모두 통과하는지 본다.",
+      "reason": "mock으로 확인한 문자열 허용과 DB 문자 집합·컬럼 길이의 저장 가능 여부는 다르다."
+    },
+    {
+      "category": "transaction",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "registerDisplayName / me",
+      "code_point": "@Transactional와 @Transactional(readOnly = true) | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L11–L15 UserService.me / registerDisplayName · @Transactional",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "서비스 트랜잭션 경계와 읽기 전용 힌트",
+      "study_angle": "등록 UPDATE·재조회·응답 비교가 어느 범위까지 묶이는지 본다.",
+      "reason": "단일 조회와 쓰기 후 확인이 서로 다른 트랜잭션 용도를 갖는다."
+    },
+    {
+      "category": "transaction",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "registerDisplayName",
+      "code_point": "UPDATE 후 findUser와 DisplayNameAlreadySetException | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L14–L28 UserService.registerDisplayName · 트랜잭션·충돌 분기",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "정상 반환·런타임 예외와 commit/rollback",
+      "study_angle": "성공·동일 값 재시도·다른 값 충돌이 트랜잭션 종료에 어떻게 연결되는지 본다.",
+      "reason": "HTTP 상태 분기와 DB 쓰기 확정은 같은 처리에서 연결돼 있다."
+    },
+    {
+      "category": "transaction",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "registerDisplayName / findUser",
+      "code_point": "조건부 UPDATE 다음 SELECT | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L23–L25 UserService.registerDisplayName · 수정 후 findUser; server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:L13–L15 UserRepository.registerDisplayName · clear·조건부 갱신",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "UPDATE 이후 SELECT의 가시성과 격리 수준",
+      "study_angle": "영속성 컨텍스트 clear와 DB 트랜잭션의 읽기 스냅샷을 구분한다.",
+      "reason": "clear만으로 DB 격리 수준까지 바뀌지 않으므로 경합 후 재조회의 실행 순서를 확인해야 한다."
+    },
+    {
+      "category": "spring",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.registerDisplayName 호출 경로",
+      "code_point": "컨트롤러 → @Transactional 서비스 public 메서드 | server/src/main/kotlin/app/jeongsan/server/user/UserController.kt:L14–L15 UserController.registerDisplayName · 서비스 외부 호출; server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L14–L15 UserService.registerDisplayName · 트랜잭션 프록시 경계",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "Spring 트랜잭션 프록시 호출 경로",
+      "study_angle": "컨트롤러가 주입받은 서비스 호출과 서비스 내부 private 함수 호출의 위치를 본다.",
+      "reason": "애너테이션 자체와 프록시를 거치는 호출은 동일하지 않다."
+    },
+    {
+      "category": "concurrency",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt",
+      "symbol": "registerDisplayName",
+      "code_point": "동일 사용자 행의 NULL 조건 UPDATE | server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:L14–L15 UserRepository.registerDisplayName · 최초 등록 경쟁; server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L23–L26 UserService.registerDisplayName · 저장값 비교",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "최초 등록 경합과 행 잠금",
+      "study_angle": "서로 다른 이름 두 요청이 같은 NULL 상태를 바꾸려 할 때의 대기·조건 재평가를 본다.",
+      "reason": "원자적 쿼리의 경쟁 상황은 순차 재요청만으로 검증할 수 없다."
+    },
+    {
+      "category": "architecture",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "registerDisplayName",
+      "code_point": "UPDATE 결과 뒤 user.displayName != name 비교 | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L23–L28 UserService.registerDisplayName · 재조회·동일값 성공; server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt:L53–L61 UserApiSpec · 동일 이름 성공 / 다른 이름 409",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "재시도 멱등성과 상태 충돌의 구분",
+      "study_angle": "같은 정규화 값과 다른 값의 재요청을 서로 다른 결과로 분류하는 계약을 본다.",
+      "reason": "수정된 행 수 0만으로는 동일 값 재시도·다른 값 충돌·사용자 부재를 구분하지 못한다."
+    },
+    {
+      "category": "architecture",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt",
+      "symbol": "User.toMeResponse / MeResponse.needsName",
+      "code_point": "displayName == null | server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt:L9–L13 MeResponse.needsName / User.toMeResponse",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "저장 상태에서 파생하는 응답 필드",
+      "study_angle": "needsName을 별도로 저장하는 대신 실명 상태에서 계산하는 관계를 본다.",
+      "reason": "DB 필드와 플래그의 중복 상태를 만들지 않는 API 표현이다."
+    },
+    {
+      "category": "security",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserController.kt",
+      "symbol": "registerDisplayName의 userId",
+      "code_point": "사용자 ID를 본문이 아니라 @LoginUser에서 획득 | server/src/main/kotlin/app/jeongsan/server/user/UserController.kt:L14–L15 UserController.registerDisplayName · 인증 주체 ID; server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:L14–L15 UserRepository.registerDisplayName · WHERE u.id=:id",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "인증 주체와 수정 대상의 결합",
+      "study_angle": "요청자가 임의 사용자 ID를 실명 등록 대상으로 지정할 수 있는지 본다.",
+      "reason": "엔드포인트의 me 의미가 인증된 주체의 ID로 구현된다."
+    },
+    {
+      "category": "security",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt",
+      "symbol": "GatheringController.list",
+      "code_point": "@LoginUser와 findByHostUserIdOrderByGatheringDateDesc | server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt:L24–L25 GatheringController.list · 인증·소유권 조회; server/src/test/kotlin/app/jeongsan/server/gathering/GatheringAuthenticationSpec.kt:L22–L31 GatheringAuthenticationSpec · 401 / 본인 조회",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "인증 검사와 데이터 소유권 필터",
+      "study_angle": "로그인 확인과 타인의 행을 제외하는 조회 조건을 구분한다.",
+      "reason": "둘 중 하나만 있어서는 본인 목록이라는 응답 범위를 보장하지 못한다."
+    },
+    {
+      "category": "testing",
+      "file": "server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt",
+      "symbol": "실명 API 테스트",
+      "code_point": "standaloneSetup·resolver·advice·repository mock | server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt:L21–L28 UserApiSpec · mock repository / standalone MockMvc; server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt:L44–L61 UserApiSpec · 등록·재시도·충돌 테스트",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "HTTP 경계 테스트와 DB 통합 테스트의 범위",
+      "study_angle": "바인딩·인증·상태 코드가 검증되는 범위와 JPA 실행이 대체되는 지점을 본다.",
+      "reason": "MockMvc 테스트 통과만으로 SQL·잠금·DB 문자 저장까지 검증되지는 않는다."
+    },
+    {
+      "category": "testing",
+      "file": "server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt",
+      "symbol": "beforeTest와 verifyNoInteractions",
+      "code_point": "Mockito.reset(repository), 인증·입력 실패 검증 | server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt:L30–L30 UserApiSpec.beforeTest · Mockito.reset; server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt:L64–L70 UserApiSpec · 검증 실패 시 verifyNoInteractions",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "테스트 격리와 실패 경로의 부수효과 검사",
+      "study_angle": "응답 코드만 맞는 경우와 DB 호출까지 차단되는 경우를 구분한다.",
+      "reason": "실패 응답이 나와도 저장소를 호출했을 가능성을 별도로 탐지한다."
+    },
+    {
+      "category": "kotlin-advanced",
+      "file": "server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt",
+      "symbol": "AuthenticationGuardSpec",
+      "code_point": "컨트롤러 순회와 공개 핸들러 집합 정확 일치 | server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt:L18–L28 AuthenticationGuardSpec · 클래스 스캔·declaredMethods·파라미터 검사",
+      "catalog_reference": "KA-21",
+      "catalog_title": "코틀린의 리플렉션",
+      "study_angle": "공개 엔드포인트 목록과 누락 탐지 범위·검사 방식의 관계를 본다.",
+      "reason": "인증 규칙을 사람이 기억하는 관례에서 자동 검사로 옮겼다."
+    },
+    {
+      "category": "operation",
+      "file": "server/src/main/resources/db/changelog/db.changelog-master.yaml",
+      "symbol": "015 include / 023 changeSet",
+      "code_point": "적용된 changelog 유지·새 include 추가 | server/src/main/resources/db/changelog/015-user-display-name.yaml:L2–L7 023-add-user-display-name · ID·기존 사용자 처리; server/src/main/resources/db/changelog/db.changelog-master.yaml:L27–L28 db.changelog-master · 015 include",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "Liquibase 변경 이력·식별자·재기동 검증",
+      "study_angle": "파일 번호와 전역 changeSet ID, 새 설치와 기존 DB 업그레이드를 구분한다.",
+      "reason": "엔티티 추가와 실제 컬럼 생성은 서로 다른 배포 작업이며 이미 적용된 이력 보존이 필요하다."
+    },
+    {
+      "category": "operation",
+      "file": "docs/API.md",
+      "symbol": "v4 변경 블록·§2.2-a",
+      "code_point": "displayName·needsName·409 계약 추가 | docs/API.md:L1–L22 API v4 제목·변경 표",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "버전별 API 계약과 클라이언트 연결",
+      "study_angle": "추가 응답 필드·새 상태 코드·기존 목록 접근 제한을 프론트 연결 시 함께 대조한다.",
+      "reason": "컴파일 통과와 프론트 계약 호환성은 별개이며 이번 PR은 둘의 문서를 동시에 변경했다."
+    },
+    {
+      "category": "kotlin-advanced",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.findUser",
+      "code_point": "orElseThrow { UnauthenticatedException() } | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L31–L32 UserService.findUser · 예외 생성 Supplier 람다",
+      "catalog_reference": "KA-16",
+      "catalog_title": "SAM과 reference",
+      "study_angle": "Java Optional.orElseThrow의 함수형 인터페이스 인자에 Kotlin 람다가 전달되는 SAM 변환을 본다.",
+      "reason": "동작을 인자로 전달하는 Java 상호운용이 실제 실패 경로에 쓰인다."
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService 생성자 / AuthController.userService",
+      "code_point": "생성자 주입·@Service | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L9–L12 UserService · 생성자 UserRepository 주입; server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt:L34–L34 AuthController · UserService 주입",
+      "catalog_reference": "EJ-05",
+      "catalog_title": "자원을 직접 명시하지 말고 의존 객체 주입을 사용하라",
+      "study_angle": "새 UserService가 UserRepository를 생성자 주입으로 받고 AuthController가 서비스를 의존하는 경계를 본다.",
+      "reason": "새 서비스 추출로 테스트 대체 지점과 트랜잭션 적용 지점이 분리된다."
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/User.kt",
+      "symbol": "User.displayName",
+      "code_point": "val과 @Column(updatable = false) | server/src/main/kotlin/app/jeongsan/server/user/User.kt:L29–L31 User.displayName · val / @Column(updatable=false); server/src/main/kotlin/app/jeongsan/server/user/User.kt:L30–L31 User.displayName · ORM 갱신 제외; server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:L14–L15 UserRepository.registerDisplayName · 명시적 수정 쿼리",
+      "catalog_reference": "EJ-17",
+      "catalog_title": "변경 가능성을 최소화하라",
+      "study_angle": "val이 막는 Kotlin 대입과 ORM의 updatable=false가 막는 DB 갱신을 구분한다.",
+      "reason": "val만으로 DB 불변성이 생기지 않으며 두 제약은 적용 계층이 다르다."
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.registerDisplayName",
+      "code_point": "name.codePointCount(0, name.length) | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L16–L21 UserService.registerDisplayName · trim / codePointCount; server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt:L73–L82 UserApiSpec · 이모지 10개·1개 경계",
+      "catalog_reference": "EJ-49",
+      "catalog_title": "매개변수가 유효한지 검사하라",
+      "study_angle": "trim 후 코드포인트 길이를 검사하여 저장 전에 잘못된 입력을 차단하는 순서를 본다.",
+      "reason": "이모지 한 개를 두 UTF-16 단위가 아닌 한 코드포인트로 검증하는 계약이다."
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.findUser",
+      "code_point": "findById(...).orElseThrow { UnauthenticatedException() } | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L31–L32 UserService.findUser · findById().orElseThrow",
+      "catalog_reference": "EJ-55",
+      "catalog_title": "옵셔널 반환은 신중히 하라",
+      "study_angle": "findById의 Optional 부재를 인증 오류로 바꾸는 반환·오류 계약을 본다.",
+      "reason": "JWT 해석 성공과 사용자 DB 행 존재는 별도 조건이다."
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "registerDisplayName",
+      "code_point": "UPDATE 후 findUser와 DisplayNameAlreadySetException | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L14–L28 UserService.registerDisplayName · 트랜잭션·충돌 분기",
+      "catalog_reference": "EJ-76",
+      "catalog_title": "가능한 한 실패 원자적으로 만들라",
+      "study_angle": "등록 실패가 예외로 끝날 때 트랜잭션 전체 상태가 어떻게 보존되는지 본다.",
+      "reason": "HTTP 상태 분기와 DB 쓰기 확정은 같은 처리에서 연결돼 있다."
+    },
+    {
+      "category": "functional-java",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.findUser",
+      "code_point": "findById(...).orElseThrow { UnauthenticatedException() } | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L31–L32 UserService.findUser · findById().orElseThrow",
+      "catalog_reference": "FJ-09-03",
+      "catalog_title": "Optional 알아보기",
+      "study_angle": "findById의 Optional과 orElseThrow를 통해 사용자 부재를 처리하는 코드를 본다.",
+      "reason": "JWT 해석 성공과 사용자 DB 행 존재는 별도 조건이다."
+    },
+    {
+      "category": "functional-java",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/User.kt",
+      "symbol": "User.displayName",
+      "code_point": "val displayName: String? = null | server/src/main/kotlin/app/jeongsan/server/user/User.kt:L29–L31 User.displayName · nullable 기본값; server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt:L9–L13 MeResponse.displayName / User.toMeResponse",
+      "catalog_reference": "FJ-09-01",
+      "catalog_title": "null 참조의 문제점",
+      "study_angle": "displayName의 null이 미등록을 뜻하고 needsName에 연결되는 상태 계약을 본다.",
+      "reason": "신규·기존 계정의 초기 상태가 nullable 필드 하나로 표현된다."
+    },
+    {
+      "category": "functional-java",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.findUser",
+      "code_point": "orElseThrow { UnauthenticatedException() } | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L31–L32 UserService.findUser · 예외 생성 Supplier 람다",
+      "catalog_reference": "FJ-11-04",
+      "catalog_title": "썽크를 사용한 지연 실행",
+      "study_angle": "orElseThrow에 넘긴 예외 생성 람다가 사용자 조회 실패 시에만 실행되는 지점을 본다.",
+      "reason": "동작을 인자로 전달하는 Java 상호운용이 실제 실패 경로에 쓰인다."
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/UserService.kt",
+      "symbol": "UserService.registerDisplayName",
+      "code_point": "name.codePointCount(0, name.length) | server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:L16–L21 UserService.registerDisplayName · trim / codePointCount; server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt:L73–L82 UserApiSpec · 이모지 10개·1개 경계",
+      "catalog_reference": "JST-09-01-02",
+      "catalog_title": "String클래스",
+      "study_angle": "trim 이후 길이를 코드포인트로 검사하는 문자열 경계 관점",
+      "reason": "이모지 한 개를 두 UTF-16 단위가 아닌 한 코드포인트로 검증하는 계약이다."
+    }
+  ],
+  "test_candidates": [
+    {
+      "scenario": "서로 다른 실명 두 요청을 같은 미등록 사용자에게 동시에 전달하는 실제 MySQL 통합 검사",
+      "expected": "성공 한 건·409 한 건이며 저장 이름은 성공 요청의 값",
+      "reason": "수동 검증 결과를 재현할 수 있는 회귀 검사로 보존한다."
+    },
+    {
+      "scenario": "같은 실명의 동시 최초 등록과 공백 포함 재시도",
+      "expected": "두 요청 모두 200이고 저장된 정규화 실명은 하나",
+      "reason": "다른 값 경합과 같은 값 멱등은 독립 계약이다."
+    },
+    {
+      "scenario": "이미 실명이 있는 사용자에게 예전 실명이 NULL인 detached 엔티티의 닉네임 갱신 save를 실행",
+      "expected": "닉네임은 갱신되고 기존 실명은 유지",
+      "reason": "일반 JPA 갱신 제외가 카카오 로그인과 겹쳐도 실명 보존을 유지하는지 확인한다."
+    },
+    {
+      "scenario": "utf8mb4 실제 DB에 보조 평면 문자 10개를 등록하고 재조회",
+      "expected": "HTTP 200·동일 문자열 저장·needsName=false",
+      "reason": "MockMvc 코드포인트 검증과 DB 문자 저장 제약을 동시에 검증한다."
+    },
+    {
+      "scenario": "인증 애너테이션 없는 메서드를 상위 컨트롤러에서 상속해 실제 핸들러로 등록",
+      "expected": "전체 인증 가드가 공개 whitelist 외 핸들러 누락을 발견",
+      "reason": "declaredMethods 기반 검사와 Spring의 실제 핸들러 등록 범위 차이를 확인한다."
+    },
+    {
+      "scenario": "서로 다른 두 사용자 소유의 실제 술자리를 만들고 한 사용자의 목록 API 조회",
+      "expected": "로그인 사용자 소유 술자리만 날짜 내림차순으로 반환",
+      "reason": "현재 목록 테스트는 빈 목록 mock 호출을 확인하며 실제 조회 조건과 데이터 제외는 별도 검사다."
+    }
+  ]
+}

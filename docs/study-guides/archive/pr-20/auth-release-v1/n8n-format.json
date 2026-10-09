@@ -1,0 +1,273 @@
+{
+  "change_summary": "앱 Bearer/웹 쿠키·Apple 로그인·일회용 티켓·로그아웃·탈퇴를 구현했다. 제공자 운영 연결과 스토어 승인은 별도다.",
+  "review_findings": [],
+  "study_recommendations": [
+    {
+      "category": "java-basic",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java",
+      "symbol": "AuthPolicy 생성자",
+      "code_point": "server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java:15",
+      "catalog_reference": "JST-06-05-01",
+      "catalog_title": "생성자란?",
+      "study_angle": "private 생성자와 static 정책 메서드를 함께 보고 인스턴스를 만들 필요가 없는 이유를 diff에서 확인한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java",
+      "symbol": "AppleTokens.verify",
+      "code_point": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java:35",
+      "catalog_reference": "JST-08-01-03",
+      "catalog_title": "예외 처리하기 - try-catch문",
+      "study_angle": "서명·claim 검증의 예외가 동일한 인증 실패로 변환되는 경계를 확인한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java",
+      "symbol": "AppleTokens.verify",
+      "code_point": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java:25",
+      "catalog_reference": "JST-14-02-03",
+      "catalog_title": "스트림의 중간연산",
+      "study_angle": "kid·alg·kty를 고르는 filter와 toList 이후 정확히 한 키만 허용하는 조건을 연결해서 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "java-basic",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/JwtService.java",
+      "symbol": "JwtService 타입",
+      "code_point": "server/src/main/java/app/jeongsan/server/user/javaimpl/JwtService.java:13",
+      "catalog_reference": "JST-07-04-03",
+      "catalog_title": "final - 마지막의, 변경될 수 없는",
+      "study_angle": "final 클래스와 final key 필드가 각각 어떤 변경을 막는지 구분한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java",
+      "symbol": "AuthPolicy 생성자",
+      "code_point": "server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java:15",
+      "catalog_reference": "EJ-04",
+      "catalog_title": "인스턴스화를 막으려거든 private 생성자를 사용하라",
+      "study_angle": "인스턴스화를 막은 유틸리티 타입이 상속 금지와 별개로 어떤 API 사용을 제한하는지 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java",
+      "symbol": "AuthPolicy.verifyVerifier",
+      "code_point": "server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java:31",
+      "catalog_reference": "EJ-49",
+      "catalog_title": "매개변수가 유효한지 검사하라",
+      "study_angle": "허용 문자·길이 검사를 해시 계산보다 앞에 둔 입력 경계를 확인한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "effective-java",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "symbol": "AuthFlowService 생성자",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt:24",
+      "catalog_reference": "EJ-05",
+      "catalog_title": "자원을 직접 명시하지 말고 의존 객체 주입을 사용하라",
+      "study_angle": "외부 제공자 의존성을 주입받는 구조를 실제 DB probe의 가짜 gateway와 연결해 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "functional-java",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java",
+      "symbol": "AppleTokens.Key",
+      "code_point": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java:19",
+      "catalog_reference": "FJ-05-02",
+      "catalog_title": "도움을 주기 위한 레코드",
+      "study_angle": "검증에 필요한 kid·kty·alg·n·e를 record 값 타입으로 묶은 형태와 Kotlin AppleKey를 비교한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "functional-java",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java",
+      "symbol": "AppleTokens.verify",
+      "code_point": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java:25",
+      "catalog_reference": "FJ-06-03",
+      "catalog_title": "스트림 파이프라인 구축하기",
+      "study_angle": "키 후보 스트림의 중간 연산과 최종 연산 사이에 무엇이 실행되고 언제 목록이 만들어지는지 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "symbol": "AuthFlowService.finish",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt:40",
+      "catalog_reference": "KB-02",
+      "catalog_title": "코틀린에서 null을 다루는 방법",
+      "study_angle": "단일 행이 없을 때 nullable 값을 인증 실패로 바꾸는 ?: 경계를 확인한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt",
+      "symbol": "AppleTokens.verify",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt:24",
+      "catalog_reference": "KB-03",
+      "catalog_title": "코틀린에서 Type을 다루는 방법",
+      "study_angle": "KeyFactory 반환 타입을 RSA 공개키로 명시적으로 캐스팅하는 이유를 호출 API와 함께 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt",
+      "symbol": "AuthPolicy",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt:11",
+      "catalog_reference": "KB-12",
+      "catalog_title": "코틀린에서 object 키워드를 다루는 방법",
+      "study_angle": "Spring Bean과 분리한 object 정책의 생성 방식과 상태 없는 메서드를 확인한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/JwtService.kt",
+      "symbol": "JwtService.Identity",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/JwtService.kt:45",
+      "catalog_reference": "KB-14",
+      "catalog_title": "코틀린에서 다양한 클래스를 다루는 방법",
+      "study_angle": "JWT 검증 결과를 data class로 반환하는 형태를 Java JwtService.Identity record와 비교한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AccountPolicy.kt",
+      "symbol": "AccountPolicy.deletable",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AccountPolicy.kt:8",
+      "catalog_reference": "KB-18",
+      "catalog_title": "코틀린에서 컬렉션을 함수형으로 다루는 방법",
+      "study_angle": "상태 목록에 대한 any 조건이 진행 중 하나만 있어도 탈퇴를 거절하는지 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt",
+      "symbol": "RestProviderGateway http 초기화",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt:37",
+      "catalog_reference": "KB-20",
+      "catalog_title": "코틀린의 scope function",
+      "study_angle": "apply 안의 수신 객체와 반환 객체를 따라가며 타임아웃 설정이 어느 HTTP 클라이언트에 적용되는지 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt",
+      "symbol": "AuthPolicy.verifyVerifier",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt:31",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "RFC 7636 §4.1·4.2·4.6 — verifier 길이, S256 변환, 교환 대조",
+      "study_angle": "앱이 보관한 verifier가 start의 challenge와 티켓 교환을 어떻게 묶어 딥링크 가로채기를 막는지 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt",
+      "symbol": "AppleTokens.verify",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt:21",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "Apple Verifying a user — 서명과 ID token claim 검증",
+      "study_angle": "RS256·kid로 고른 공개키와 issuer·audience·nonce·exp 검증을 순서대로 확인한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt",
+      "symbol": "AppleTokens.clientSecret",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt:31",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "Apple client secret — ES256, kid, team issuer, client subject, 제한된 exp",
+      "study_angle": "Apple ID 토큰용 RSA 검증과 client secret용 EC 서명이 서로 다른 역할인지 구분한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "symbol": "AuthFlowService.exchange",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt:65",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "MySQL 행 잠금 — 공유/배타 잠금, FK cascade, 일회용 교환",
+      "study_angle": "탈퇴 cascade와 맞춘 users→ticket 잠금 순서 및 동시 교환 1건 성공 근거를 확인한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "symbol": "AuthFlowService 트랜잭션",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt:23",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "Spring 트랜잭션 — READ_COMMITTED, 프록시 경계, 외부 부수효과",
+      "study_angle": "가입·state 소비·티켓 발급이 실패 때 함께 rollback되는 범위와 외부 제공자 HTTP의 차이를 확인한다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AccountDeletionService.kt",
+      "symbol": "AccountDeletionService.delete",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AccountDeletionService.kt:23",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "동시성 — 잠금 순서, 목록 재검사, 실제 HTTP 경합",
+      "study_angle": "단위→방→사용자 잠금 후 목록을 재검사해 탈퇴와 새 단위 생성이 동시에 성공하지 못하는 근거를 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthMaintenance.kt",
+      "symbol": "AuthMaintenance.run",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/user/AuthMaintenance.kt:30",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "운영 — 외부 연결 해제 작업, 재시도, SKIP LOCKED",
+      "study_angle": "계정 삭제 뒤의 연결 해제 실패가 재시도 행으로 남고 성공 때만 지워지는 경계를 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/kotlin/app/jeongsan/server/common/LoginUser.kt",
+      "symbol": "LoginUserArgumentResolver.resolveArgument",
+      "code_point": "server/src/main/kotlin/app/jeongsan/server/common/LoginUser.kt:65",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "인증 — 토큰 채널 구분, 탈퇴/로그아웃 후 JWT 무효화",
+      "study_angle": "앱 Bearer·웹 쿠키 선택 뒤 사용자 존재·로그아웃 해시를 확인하는 실제 인증 경로를 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "other",
+      "file": "server/src/main/resources/db/changelog/017-release-auth.yaml",
+      "symbol": "027-release-auth-and-account-deletion",
+      "code_point": "server/src/main/resources/db/changelog/017-release-auth.yaml:10",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "DB — nullable FK, NULL과 복합 UNIQUE, 익명화된 완료 좌석",
+      "study_angle": "로그인 사용자 삭제와 완료 좌석 보존을 nullable FK와 기존 UNIQUE가 어떻게 함께 지원하는지 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    },
+    {
+      "category": "other",
+      "file": "server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt",
+      "symbol": "AuthDatabaseProbe.main",
+      "code_point": "server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt:69",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "테스트 — 암호 서명 단위 시험, 실제 DB 잠금 시험, 실제 제공자 연결의 구분",
+      "study_angle": "제공자만 가짜로 바꾸고 실제 DB에서 4개 교환 중 1개 성공을 확인하는 시험의 범위를 본다.",
+      "reason": "이번 source diff의 추가·변경 줄을 읽기 위해 직접 대응하는 위치다."
+    }
+  ],
+  "test_candidates": [
+    {
+      "scenario": "같은 앱 티켓 4중 교환",
+      "expected": "1개 성공, 나머지 401",
+      "reason": "단일 소비 DB 잠금 확인"
+    },
+    {
+      "scenario": "탈퇴와 추가 단위 생성 경합",
+      "expected": "사용자 삭제와 해당 사용자 포함 활성 정산이 함께 성공하지 않음",
+      "reason": "금융 상태와 계정 삭제 경계 확인"
+    },
+    {
+      "scenario": "Apple 실제 계정 로그인→탈퇴",
+      "expected": "Apple 연결 해제까지 확인",
+      "reason": "로컬 제공자 가짜 시험으로 대체하지 않음"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+**/changes.patch -text -whitespace
+legacy/** -text -whitespace
+# 고정 원본의 공백도 해시 검증 대상으로 보존한다. 새 가이드·색인에는 기본 검사를 적용한다.
+archive/**/before/** -whitespace
+archive/**/after/** -whitespace
+archive/pr-16/core-v2-java-v1/** -whitespace
+archive/pr-18/backend-v4-v1/** -whitespace
+archive/pr-20/auth-release-v1/** -whitespace
+archive/pr-21/actions-ci-v1/** -whitespace
+archive/pr-23/backend-quality-rules-v1/** -whitespace

@@ -1,0 +1,396 @@
+{
+  "change_summary": "Core v1의 전역 대표결제자·상계·10/100원 올림을 Core v2의 결제자별 수취·1원 올림·잔액 조정으로 전환했다. 참여 상태를 차수별 enum으로 닫고 기타 항목을 제거했으며, BigInteger 범위 검증과 수취인별 결과·송금·불변식 테스트를 추가했다.",
+  "review_findings": [
+    {
+      "severity": "medium",
+      "category": "requirement",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Validation.kt",
+      "observation": "전체 합계 상한을 검사하는 시점과 계산 문서가 일치하는지 확인이 필요하다. 저장에도 상한을 적용할지, 확정 전용이라고 문서를 명시할지 결정하는 방법을 권한다.",
+      "evidence": "CALC_RULES_V2.md §5는 저장·확정 공통에 '항목 및 전체 금액은 1조 원 이하'를 둔다. 구현의 전체 합계 fold와 상한 검사는 validateOnConfirm에만 있다.",
+      "risk": "각 차수는 상한 이하여도 합계가 상한을 넘는 입력이 SAVE에서는 통과하고 CONFIRM에서 실패할 수 있다. 계산 결과가 잘못된다는 지적은 아니다.",
+      "question": "각 6천억 원인 두 차수의 SAVE 통과를 허용하는 계약인가? 허용 여부에 맞춰 검증 시점 또는 문서와 phase 테스트를 일치시킬 수 있는가?"
+    },
+    {
+      "severity": "low",
+      "category": "kotlin",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "observation": "effectiveRounds의 '입력 모델은 불변' 주석은 읽기 전용 컬렉션과 깊은 불변성을 구분해 표현하는 편이 정확하다. 호출자 소유권 계약을 명시하거나 필요한 경계에서 방어적 복사를 검토할 수 있다.",
+      "evidence": "SettlementInput은 val rounds: List<Round>를 받고 drinkItems가 비면 effectiveRounds에서 rounds를 그대로 반환한다. 호출자가 MutableList를 전달할 수 있다.",
+      "risk": "외부의 동일 컬렉션 참조가 변경되면 val과 data class만으로 계산 중 입력 불변성을 보장하지 못한다. 현재 호출자가 변경한다는 증거는 없다.",
+      "question": "계산 동안 입력 컬렉션을 변경하지 않는 것을 호출자 계약으로 둘 것인가, 스냅샷 경계에서 복사할 것인가?"
+    },
+    {
+      "severity": "low",
+      "category": "operation",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Validation.kt",
+      "observation": "서버 연결 전 ErrorCode와 API 오류 표를 동기화하는 후속 작업이 필요하다. 엔진만 보존한 PR 범위는 존중하되 API 연결 PR에서 enum 대조를 권한다.",
+      "evidence": "MISSING_ATTENDANCE·NEGATIVE_ADJUSTED_AMOUNT 등이 추가됐고 기존 코드가 제거됐다. PR #7은 docs/API.md를 변경하지 않으며 DEVLOG는 서버·API 후속 작업을 명시한다.",
+      "risk": "구형 계약으로 프론트 예외 분기를 구현하면 새 문자열을 처리하지 못할 수 있다. 현재 HTTP 정산 연결이 있다는 뜻은 아니다.",
+      "question": "정산 API PR에서 새 enum 목록과 오류 위치 필드를 같은 계약 버전으로 맞추고 검증할 것인가?"
+    }
+  ],
+  "study_recommendations": [
+    {
+      "category": "java-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "symbol": "Attendance",
+      "code_point": "Java 기본기: enum (JAVA-ENUM) | data class Attendance → enum class Attendance | core/src/main/kotlin/app/jeongsan/core/Model.kt:L88–L96 Attendance enum 선언·네 상태",
+      "catalog_reference": "JST-12-02-03",
+      "catalog_title": "열거형에 멤버 추가하기",
+      "study_angle": "네 상태가 허용하는 조합과 제거된 불참·음주 모순 검증의 관계를 본다.",
+      "reason": "상태를 불리언 조합이 아니라 닫힌 값 집합으로 변경한 것이 계산 전제에 직접 영향을 준다."
+    },
+    {
+      "category": "java-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.compute",
+      "code_point": "Java 기본기: 컬렉션 (JAVA-COLLECTION) | groupBy(payerId), Map<Long, RecipientSettlement>, Set<Long> | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L91–L100 Settlement.compute · recipients / rawByParticipant",
+      "catalog_reference": "JST-11-01-01",
+      "catalog_title": "컬렉션 프레임웍의 핵심 인터페이스",
+      "study_angle": "수취인별 그룹과 차수 ID 집합·참여자 금액 맵의 키가 각각 무엇을 뜻하는지 본다.",
+      "reason": "컬렉션 구조가 결제자별 합산과 금액 조회의 단위가 된다."
+    },
+    {
+      "category": "java-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt",
+      "symbol": "RecipientSettlement / InvariantSpec의 recipients 비교",
+      "code_point": "Java 기본기: equals / hashCode (JAVA-EQUALS-HASHCODE) | 새 data class와 a.recipients shouldBe b.recipients | core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt:L35–L42 RecipientSettlement 데이터 클래스; core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt:L41–L48 InvariantSpec · 동일 입력 결과 비교",
+      "catalog_reference": "JST-09-01-01",
+      "catalog_title": "Object클래스",
+      "study_angle": "새 수취인 결과의 값 동등성이 맵 비교와 결정론 테스트에 어떻게 쓰이는지 본다.",
+      "reason": "테스트가 객체 동일성보다 구성 값의 동등성에 의존한다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "symbol": "Attendance / SettlementInput.effectiveRounds",
+      "code_point": "enum 생성자 attended·drank·exempt; round.copy(alcohol = when { ... }) | core/src/main/kotlin/app/jeongsan/core/Model.kt:L88–L96 Attendance · 생성자 속성·enum 값; core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L47–L53 Settlement.compute · 참석·음주 필터; core/src/main/kotlin/app/jeongsan/core/Model.kt:L35–L44 SettlementInput.effectiveRounds · fold / round.copy",
+      "catalog_reference": "KB-14",
+      "catalog_title": "코틀린에서 다양한 클래스를 다루는 방법",
+      "study_angle": "EXEMPT의 attended=true와 부담 제외가 동시에 성립하는 속성 묶음을 본다.",
+      "reason": "enum 값의 속성이 참석·음주 분모 필터를 결정한다. 검증·계산 입력 정규화가 copy로 표현되고 copy는 깊은 복사를 뜻하지 않는다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "symbol": "SettlementInput.effectiveRounds",
+      "code_point": "when { alcohol > LONG_MAX ... else ... } | core/src/main/kotlin/app/jeongsan/core/Model.kt:L38–L44 SettlementInput.effectiveRounds · alcohol = when",
+      "catalog_reference": "KB-05",
+      "catalog_title": "코틀린에서 제어문을 다루는 방법",
+      "study_angle": "범위 초과 분기와 정확한 Long 변환 분기가 반환하는 값을 구분한다.",
+      "reason": "when이 문장 나열이 아니라 새 alcohol 값의 표현식으로 사용된다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.settle",
+      "code_point": "firstOrNull와 if (negative != null) | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L18–L25 Settlement.settle · firstOrNull / null 검사",
+      "catalog_reference": "KB-02",
+      "catalog_title": "코틀린에서 null을 다루는 방법",
+      "study_angle": "음수 그룹이 없는 경우와 발견된 경우의 nullable 분기를 본다.",
+      "reason": "firstOrNull 결과를 검사한 뒤 비-null 수취인 오류 경로로 전달한다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "symbol": "SettlementInput.effectiveRounds",
+      "code_point": "groupBy → map, fold(BigInteger.ZERO), return@map | core/src/main/kotlin/app/jeongsan/core/Model.kt:L32–L44 SettlementInput.effectiveRounds · map / return@map / fold; core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L91–L100 Settlement.compute · groupBy / mapValues / associate",
+      "catalog_reference": "KB-18",
+      "catalog_title": "코틀린에서 컬렉션을 함수형으로 다루는 방법",
+      "study_angle": "차수별 그룹화, 합산 누적값, 술 항목 없는 차수의 람다 반환을 구분한다.",
+      "reason": "중첩된 변환에서 return@map은 전체 함수 종료와 다른 실행 경로다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.compute / buildTransfers",
+      "code_point": "mapValues { (recipientId, recipientRounds) }, map { (participantId, amount) } | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L93–L100 Settlement.compute · mapValues 구조 분해; core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L162–L169 Settlement.buildTransfers · entries 구조 분해",
+      "catalog_reference": "KB-19",
+      "catalog_title": "코틀린의 이모저모",
+      "study_angle": "키·값 구조 분해 뒤 반환되는 수취인 객체와 송금 객체의 형태를 본다.",
+      "reason": "같은 맵 요소를 서로 다른 결과 타입으로 바꾸는 코드의 입력·출력 관계다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "symbol": "SettlementInput의 private companion object",
+      "code_point": "LONG_MAX·LONG_MIN | core/src/main/kotlin/app/jeongsan/core/Model.kt:L55–L58 SettlementInput.private companion object · LONG_MAX / LONG_MIN",
+      "catalog_reference": "KB-12",
+      "catalog_title": "코틀린에서 object 키워드를 다루는 방법",
+      "study_angle": "인스턴스 입력과 타입에 공유되는 범위 상수를 구분한다.",
+      "reason": "계산용 경계 상수의 소속과 접근 범위가 이번 변경에서 추가됐다."
+    },
+    {
+      "category": "kotlin-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.compute / SettlementResult",
+      "code_point": "toMutableMap 후 Map 타입 결과 노출 | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L112–L132 Settlement.compute · participantAmounts 생성·변경·반환; core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt:L35–L42 RecipientSettlement.participantAmounts",
+      "catalog_reference": "KB-15",
+      "catalog_title": "코틀린에서 배열과 컬렉션을 다루는 방법",
+      "study_angle": "잔액 배정 중 내부 변경과 외부 결과 타입의 읽기 전용 표현을 구분한다.",
+      "reason": "Map 타입과 val만으로 공유 참조까지 깊게 불변이 되지는 않는다."
+    },
+    {
+      "category": "jvm",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "symbol": "SettlementInput.effectiveRounds",
+      "code_point": "BigInteger.valueOf(...), +, *, longValueExact() | core/src/main/kotlin/app/jeongsan/core/Model.kt:L35–L44 SettlementInput.effectiveRounds · BigInteger 곱셈·누적·변환; core/src/main/kotlin/app/jeongsan/core/Validation.kt:L112–L120 Validator.validateAlways · itemAmount 검증",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "정수 오버플로와 Java BigInteger 상호운용",
+      "study_angle": "곱셈 전에 넓은 타입으로 변환하는 지점과 Long으로 돌아오는 지점을 본다.",
+      "reason": "Long에서 먼저 곱한 뒤 확장하면 검증 전에 이미 값이 왜곡될 수 있다."
+    },
+    {
+      "category": "jvm",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Validation.kt",
+      "symbol": "Validator.validateOnConfirm",
+      "code_point": "rounds.fold(BigInteger.ZERO) | core/src/main/kotlin/app/jeongsan/core/Validation.kt:L198–L205 Validator.validateOnConfirm · grandTotal fold·상한 검증",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "합계 검증의 정수 범위",
+      "study_angle": "개별 항목 상한과 전체 합계 상한을 별개로 보고 누적 타입을 확인한다.",
+      "reason": "각 항목이 정수여도 전체 누적의 범위 검증이 따로 필요하다."
+    },
+    {
+      "category": "other",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.compute",
+      "code_point": "rawByParticipant 합산 후 ceilTo(1) | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L95–L120 Settlement.compute · 원부담 합산→ceilTo(1)→잔액",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "유리수 누적과 정수화 시점",
+      "study_angle": "같은 수취인의 여러 차수를 합친 뒤 한 번만 올리는 순서를 본다.",
+      "reason": "차수별 올림과 합산 후 올림은 동일한 금액을 보장하지 않는다."
+    },
+    {
+      "category": "other",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.compute의 adjustmentId·participantAmounts",
+      "code_point": "paidTotal - participantAmounts.values.sum() | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L101–L120 Settlement.compute · adjustmentId / participantAmounts",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "잔액 조정과 금액 보존 조건",
+      "study_angle": "결제자 우선·최대 원부담·ID 동률 규칙과 잔액 배정의 관계를 본다.",
+      "reason": "수취인별 원금 보존과 조정자 선택이 서로 다른 계산 책임이다."
+    },
+    {
+      "category": "architecture",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.buildTransfers",
+      "code_point": "자기 송금·0원 제외, 수취인별 flatMap | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L162–L169 Settlement.buildTransfers · 수취인별 송금 생성",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "채권 분리와 송금 모델",
+      "study_angle": "반대 방향 송금을 상계하지 않는 제품 계약이 결과 구조에 어떻게 반영되는지 본다.",
+      "reason": "전역 순잔액과 수취인별 회수액은 서로 다른 모델이며 이번 PR이 그 경계를 변경했다."
+    },
+    {
+      "category": "architecture",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Validation.kt",
+      "symbol": "Validator.validateOnConfirm / SettlementInput.attendanceOf",
+      "code_point": "키 존재 확인과 기본값 ABSENT | core/src/main/kotlin/app/jeongsan/core/Validation.kt:L218–L227 Validator.validateOnConfirm · 명시적 AttendanceKey 검사; core/src/main/kotlin/app/jeongsan/core/Model.kt:L48–L53 SettlementInput.attendanceOf · 부재 기본값",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "상태 부재와 명시적 응답의 구분",
+      "study_angle": "응답 행 없음과 명시적인 불참을 저장·확정 단계에서 어떻게 구분하는지 본다.",
+      "reason": "부담 계산의 기본값과 정산 가능 여부는 동일한 판단이 아니다."
+    },
+    {
+      "category": "architecture",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.settle / Settlement.compute",
+      "code_point": "CONFIRM 검증 후 private compute, Failure 반환 | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L14–L25 Settlement.settle · 검증→계산→음수 판정",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "검증 관문과 계산 결과 계약",
+      "study_angle": "공개 진입점이 보장하는 전제와 계산 실패의 반환 경계를 본다.",
+      "reason": "형식 검증과 계산 후 음수 검증이 서로 다른 단계에서 결과를 제한한다."
+    },
+    {
+      "category": "testing",
+      "file": "core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt",
+      "symbol": "수취인별 원금·참여자별 합계 테스트",
+      "code_point": "ownShare + incomingTotal, participantAmounts 합계 | core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt:L52–L70 InvariantSpec · 수취인 원금·참여자 합계 테스트",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "여러 계층의 금액 불변식",
+      "study_angle": "전체 합계가 맞아도 수취인·참여자별 배정이 틀릴 수 있는 지점을 본다.",
+      "reason": "개별 불변식은 서로 다른 정합성 오류를 탐지한다."
+    },
+    {
+      "category": "testing",
+      "file": "core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt",
+      "symbol": "scenario / 결정론·송금 중복 테스트",
+      "code_point": "Random(seed), recipients 비교, distinct 송금 조합 | core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt:L41–L48 InvariantSpec · 결정론 테스트; core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt:L86–L91 InvariantSpec · 자기 송금·중복 조합 테스트",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "재현 가능한 생성 입력과 결정론 검증",
+      "study_angle": "고정 seed의 재현성과 실패 입력 제외·검증 건수 하한을 구분한다.",
+      "reason": "생성 테스트에서 표본이 비거나 실패를 무조건 건너뛰는 문제와 정상 결과 비교는 별개다."
+    },
+    {
+      "category": "testing",
+      "file": "core/src/test/kotlin/app/jeongsan/core/ValidationSpec.kt",
+      "symbol": "Long 범위 초과 테스트",
+      "code_point": "Long.MAX_VALUE 합계와 Int.MAX_VALUE×Long.MAX_VALUE | core/src/test/kotlin/app/jeongsan/core/ValidationSpec.kt:L42–L54 ValidationSpec · 전체 합산 Long 초과; core/src/test/kotlin/app/jeongsan/core/ValidationSpec.kt:L71–L76 ValidationSpec · 술병 곱셈 Long 초과",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "극단값·곱셈·누적의 경계 테스트",
+      "study_angle": "개별 술 항목 곱셈과 여러 차수 합계가 다른 실패 경로인지 본다.",
+      "reason": "둘 다 오버플로지만 입력 구성과 검증 경로가 다르다."
+    },
+    {
+      "category": "testing",
+      "file": "core/src/test/kotlin/app/jeongsan/core/SettlementSpec.kt",
+      "symbol": "T6 / T7 / T7-b",
+      "code_point": "합산 후 올림, 1원 음수 실패, 면제 결제자 | core/src/test/kotlin/app/jeongsan/core/SettlementSpec.kt:L109–L135 SettlementSpec · T6 합산 후 올림 / T7 음수 거절; core/src/test/kotlin/app/jeongsan/core/SettlementSpec.kt:L138–L154 SettlementSpec · T7-b 면제 결제자",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "계산 순서와 예외 상태의 명세 테스트",
+      "study_angle": "일반 N빵 결과 외에 계산 순서·조정자 교체·실패 결과를 각각 본다.",
+      "reason": "정상 총액 보존만으로는 올림 시점과 조정자 규칙을 검증하지 못한다."
+    },
+    {
+      "category": "other",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.compute / buildTransfers",
+      "code_point": "toSortedMap, compareByDescending.thenBy, sortedBy | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L104–L110 Settlement.compute · 부담 내림차순·ID 오름차순; core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L165–L168 Settlement.buildTransfers · 참여자 ID 정렬",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "안정적인 동률 규칙과 출력 순서",
+      "study_angle": "원부담 동률의 조정자 ID와 송금 출력 ID 정렬을 구분한다.",
+      "reason": "금액이 같더라도 선택 규칙과 목록 순서를 명시해야 결과를 설명하고 재현할 수 있다."
+    },
+    {
+      "category": "effective-java",
+      "file": "core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt",
+      "symbol": "RecipientSettlement / InvariantSpec의 recipients 비교",
+      "code_point": "새 data class와 a.recipients shouldBe b.recipients | core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt:L35–L42 RecipientSettlement 데이터 클래스; core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt:L41–L48 InvariantSpec · 동일 입력 결과 비교",
+      "catalog_reference": "EJ-10",
+      "catalog_title": "equals는 일반 규약을 지켜 재정의하라",
+      "study_angle": "새 RecipientSettlement의 구성 값 동등성과 결정론 테스트의 맵 비교를 연결해서 본다.",
+      "reason": "테스트가 객체 동일성보다 구성 값의 동등성에 의존한다."
+    },
+    {
+      "category": "effective-java",
+      "file": "core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt",
+      "symbol": "RecipientSettlement / InvariantSpec의 recipients 비교",
+      "code_point": "새 data class와 a.recipients shouldBe b.recipients | core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt:L35–L42 RecipientSettlement 데이터 클래스; core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt:L41–L48 InvariantSpec · 동일 입력 결과 비교",
+      "catalog_reference": "EJ-11",
+      "catalog_title": "equals를 재정의하려거든 hashCode도 재정의하라",
+      "study_angle": "data class가 생성하는 equals·hashCode와 새 수취인 맵 비교의 관계를 본다.",
+      "reason": "테스트가 객체 동일성보다 구성 값의 동등성에 의존한다."
+    },
+    {
+      "category": "effective-java",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.compute / SettlementResult",
+      "code_point": "toMutableMap 후 Map 타입 결과 노출 | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L112–L132 Settlement.compute · participantAmounts 생성·변경·반환; core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt:L35–L42 RecipientSettlement.participantAmounts",
+      "catalog_reference": "EJ-17",
+      "catalog_title": "변경 가능성을 최소화하라",
+      "study_angle": "새 결과의 val과 내부 MutableMap의 변경 가능성을 구분한다.",
+      "reason": "Map 타입과 val만으로 공유 참조까지 깊게 불변이 되지는 않는다."
+    },
+    {
+      "category": "effective-java",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "symbol": "Attendance",
+      "code_point": "enum 생성자 attended·drank·exempt | core/src/main/kotlin/app/jeongsan/core/Model.kt:L88–L96 Attendance · 생성자 속성·enum 값; core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L47–L53 Settlement.compute · 참석·음주 필터",
+      "catalog_reference": "EJ-34",
+      "catalog_title": "int 상수 대신 열거 타입을 사용하라",
+      "study_angle": "불리언 조합을 네 enum 상태로 바꾸어 허용 상태를 제한한 이유를 본다.",
+      "reason": "enum 값의 속성이 참석·음주 분모 필터를 결정한다."
+    },
+    {
+      "category": "effective-java",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Validation.kt",
+      "symbol": "Validator.validateOnConfirm / SettlementInput.attendanceOf",
+      "code_point": "키 존재 확인과 기본값 ABSENT | core/src/main/kotlin/app/jeongsan/core/Validation.kt:L218–L227 Validator.validateOnConfirm · 명시적 AttendanceKey 검사; core/src/main/kotlin/app/jeongsan/core/Model.kt:L48–L53 SettlementInput.attendanceOf · 부재 기본값",
+      "catalog_reference": "EJ-49",
+      "catalog_title": "매개변수가 유효한지 검사하라",
+      "study_angle": "새 AttendanceKey 누락 검증이 계산 진입 전제와 SAVE/CONFIRM 계약을 어떻게 제한하는지 본다.",
+      "reason": "부담 계산의 기본값과 정산 가능 여부는 동일한 판단이 아니다."
+    },
+    {
+      "category": "effective-java",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "symbol": "SettlementInput.effectiveRounds",
+      "code_point": "round.copy(alcohol = when { ... }) | core/src/main/kotlin/app/jeongsan/core/Model.kt:L35–L44 SettlementInput.effectiveRounds · fold / round.copy",
+      "catalog_reference": "EJ-50",
+      "catalog_title": "적시에 방어적 복사본을 만들라",
+      "study_angle": "round.copy는 얕은 복사이며 입력 List와 출력 Map의 외부 변경까지 막는지 확인한다.",
+      "reason": "검증·계산 입력 정규화가 copy로 표현되고 copy는 깊은 복사를 뜻하지 않는다."
+    },
+    {
+      "category": "effective-java",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.compute",
+      "code_point": "rawByParticipant 합산 후 ceilTo(1) | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L95–L120 Settlement.compute · 원부담 합산→ceilTo(1)→잔액",
+      "catalog_reference": "EJ-60",
+      "catalog_title": "정확한 답이 필요하다면 float와 double은 피하라",
+      "study_angle": "Rational 누적 후 1원 올림으로 정확도를 유지하는 지점을 본다.",
+      "reason": "차수별 올림과 합산 후 올림은 동일한 금액을 보장하지 않는다."
+    },
+    {
+      "category": "functional-java",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.compute / SettlementResult",
+      "code_point": "toMutableMap 후 Map 타입 결과 노출 | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L112–L132 Settlement.compute · participantAmounts 생성·변경·반환; core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt:L35–L42 RecipientSettlement.participantAmounts",
+      "catalog_reference": "FJ-04-02",
+      "catalog_title": "함수형 프로그래밍의 불변성",
+      "study_angle": "새 수취인 결과를 값으로 만들되 내부 컬렉션의 변경 가능성을 구분한다.",
+      "reason": "Map 타입과 val만으로 공유 참조까지 깊게 불변이 되지는 않는다."
+    },
+    {
+      "category": "functional-java",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "symbol": "SettlementInput.effectiveRounds",
+      "code_point": "round.copy(alcohol = when { ... }) | core/src/main/kotlin/app/jeongsan/core/Model.kt:L35–L44 SettlementInput.effectiveRounds · fold / round.copy",
+      "catalog_reference": "FJ-04-04",
+      "catalog_title": "불변성 만들기",
+      "study_angle": "계산용 차수를 copy로 만드는 방식과 외부 컬렉션 별칭이 남는 범위를 본다.",
+      "reason": "검증·계산 입력 정규화가 copy로 표현되고 copy는 깊은 복사를 뜻하지 않는다."
+    },
+    {
+      "category": "kotlin-advanced",
+      "file": "core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt",
+      "symbol": "수취인별 원금·참여자별 합계 테스트",
+      "code_point": "ownShare + incomingTotal, participantAmounts 합계 | core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt:L52–L70 InvariantSpec · 수취인 원금·참여자 합계 테스트",
+      "catalog_reference": "KA-19",
+      "catalog_title": "DSL 활용 사례 살펴보기",
+      "study_angle": "새 수취인별 불변식·송금 검증을 Kotest DSL로 표현한 위치를 본다.",
+      "reason": "개별 불변식은 서로 다른 정합성 오류를 탐지한다."
+    },
+    {
+      "category": "java-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "symbol": "SettlementInput.effectiveRounds",
+      "code_point": "BigInteger.valueOf(...), +, *, longValueExact() | core/src/main/kotlin/app/jeongsan/core/Model.kt:L35–L44 SettlementInput.effectiveRounds · BigInteger 곱셈·누적·변환; core/src/main/kotlin/app/jeongsan/core/Validation.kt:L112–L120 Validator.validateAlways · itemAmount 검증",
+      "catalog_reference": "JST-09-02-06",
+      "catalog_title": "java.math.BigInteger클래스",
+      "study_angle": "Long에서 BigInteger로 바꾼 곱셈·합산 경계 관점",
+      "reason": "Long에서 먼저 곱한 뒤 확장하면 검증 전에 이미 값이 왜곡될 수 있다."
+    },
+    {
+      "category": "java-basic",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "symbol": "Settlement.compute / buildTransfers",
+      "code_point": "toSortedMap, compareByDescending.thenBy, sortedBy | core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L104–L110 Settlement.compute · 부담 내림차순·ID 오름차순; core/src/main/kotlin/app/jeongsan/core/Settlement.kt:L165–L168 Settlement.buildTransfers · 참여자 ID 정렬",
+      "catalog_reference": "JST-11-01-07",
+      "catalog_title": "Comparator와 Comparable",
+      "study_angle": "최다 부담자 동률 규칙과 송금 정렬의 결정론 관점",
+      "reason": "금액이 같더라도 선택 규칙과 목록 순서를 명시해야 결과를 설명하고 재현할 수 있다."
+    }
+  ],
+  "test_candidates": [
+    {
+      "scenario": "결제자마다 합계는 상한 이하지만 전체가 1조 원을 넘는 입력을 SAVE와 CONFIRM에 각각 전달",
+      "expected": "CONFIRM은 AMOUNT_TOO_LARGE. SAVE의 기대값은 문서와 계약 결정에 맞춰 고정",
+      "reason": "검증 시점과 문서의 공통 상한을 대조하는 회귀 근거가 필요하다."
+    },
+    {
+      "scenario": "참여자·차수·응답 맵의 삽입 순서를 바꾼 같은 의미의 입력",
+      "expected": "금액·조정자·송금 목록 순서는 동일하고 근거 차수는 seq 순서",
+      "reason": "같은 객체를 두 번 호출하는 기존 결정론 검사와 입력 순서 독립성 검사는 다르다."
+    },
+    {
+      "scenario": "수취인이 담당 차수에서 모두 ABSENT이고 다른 두 부담자가 서로 다른 원부담을 갖는 입력",
+      "expected": "최대 원부담자가 잔액 조정자이며 자기 송금 없이 수취인 원금 회수",
+      "reason": "현재 면제 결제자·동률 테스트 외에 ABSENT와 비동률 fallback을 직접 검증한다."
+    },
+    {
+      "scenario": "여러 술 항목은 각각 상한 이하지만 같은 차수의 술값 합계가 상한을 넘는 입력",
+      "expected": "AMOUNT_TOO_LARGE를 포함한 Failure를 반환하고 산술 예외로 종료하지 않음",
+      "reason": "단일 항목 곱셈 경계와 여러 항목 누적 경계를 구분한다."
+    }
+  ]
+}
