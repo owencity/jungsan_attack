@@ -1,7 +1,9 @@
 package app.jeongsan.core
 
+import java.math.BigInteger
+
 /**
- * `CALC_RULES.md` §4 — 검증 시점은 둘로 나뉜다.
+ * `CALC_RULES_V2.md` §5 — 검증 시점은 둘로 나뉜다.
  *
  * [SAVE] 시점에 전체 검증을 걸면 **아직 아무도 체크하지 않았으므로 참석자가 0명이라
  * 주최자가 차수를 입력조차 못 한다.**
@@ -13,31 +15,27 @@ enum class ErrorCode {
     ALCOHOL_NEGATIVE,
     ALCOHOL_EXCEEDS_TOTAL,
     PAYER_NOT_FOUND,
-    BEARER_NOT_FOUND,
     INVALID_DRINK_ITEM,
-    INVALID_ROUNDING_UNIT,
-    DRANK_WITHOUT_ATTEND,
+    DRINK_ITEM_ROUND_NOT_FOUND,
+    ATTENDANCE_REFERENCE_NOT_FOUND,
+    MISSING_ATTENDANCE,
     DUPLICATE_ID,
     DUPLICATE_ROUND_SEQ,
     AMOUNT_TOO_LARGE,
     TOO_FEW_PARTICIPANTS,
     NO_ATTENDEE,
-    NO_NON_EXEMPT_ATTENDEE,
     NO_DRINKER_WITH_ALCOHOL,
-    NO_NON_EXEMPT_BEARER,
-    ALL_EXEMPT,
-    NEGATIVE_FINAL_AMOUNT,
+    NEGATIVE_ADJUSTED_AMOUNT,
 }
 
 /**
  * `"입력이 잘못되었습니다"`는 차수를 5개 입력한 주최자에게 아무 도움이 되지 않는다.
- * **어느 차수, 어느 항목이 문제인지 반드시 식별자를 담는다** — `CALC_RULES.md` §4.
+ * **어느 차수, 어느 참여자가 문제인지 반드시 식별자를 담는다** — `CALC_RULES_V2.md` §5.
  */
 data class ValidationError(
     val code: ErrorCode,
     val message: String,
     val roundId: Long? = null,
-    val extraId: Long? = null,
     val participantId: Long? = null,
 )
 
@@ -54,7 +52,12 @@ object Validator {
      * 87,000원을 870,000,000원으로 잘못 입력하는 일은 실제로 난다.
      */
     const val MAX_AMOUNT: Long = 1_000_000_000_000L   // 1조 원
+    private val MAX_AMOUNT_BIG: BigInteger = BigInteger.valueOf(MAX_AMOUNT)
 
+    /**
+     * 검증 오류를 하나 발견해도 즉시 끝내지 않고 가능한 오류를 모두 모은다. 여러 차수를
+     * 입력한 사용자가 저장과 재시도를 반복하지 않고 한 번에 수정할 수 있게 하기 위해서다.
+     */
     fun validate(input: SettlementInput, phase: ValidationPhase): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
         val rounds = input.effectiveRounds()          // F6 — 한 번만 계산해 넘긴다
@@ -77,13 +80,6 @@ object Validator {
         ids: Set<Long>,
         errors: MutableList<ValidationError>,
     ) {
-        if (input.roundingUnit != 10 && input.roundingUnit != 100) {
-            errors += ValidationError(
-                ErrorCode.INVALID_ROUNDING_UNIT,
-                "반올림 단위는 10원 또는 100원만 허용합니다. (입력: ${input.roundingUnit})",
-            )
-        }
-
         // ── 중복 id (F1) — 세 컬렉션 모두 검사하고 어느 id가 중복인지 담는다.
         // 참여자만 검사하고 있었는데, 같은 roundId 가 둘이면 attendance 조회가 두 차수에
         // 같은 값을 돌려주어 금액이 조용히 틀린다. 그런데 합계는 맞으므로 불변식으로도 안 잡힌다.
@@ -97,11 +93,6 @@ object Validator {
                 ErrorCode.DUPLICATE_ID, "차수 id가 중복되었습니다: $it", roundId = it,
             )
         }
-        duplicatesOf(input.extras.map { it.id }).forEach {
-            errors += ValidationError(
-                ErrorCode.DUPLICATE_ID, "기타 항목 id가 중복되었습니다: $it", extraId = it,
-            )
-        }
         duplicatesOf(input.rounds.map { it.seq }).forEach {
             errors += ValidationError(
                 ErrorCode.DUPLICATE_ROUND_SEQ,
@@ -109,12 +100,30 @@ object Validator {
             )
         }
 
+        val roundIds = input.rounds.map { it.id }.toSet()
         input.drinkItems.forEach { item ->
             if (item.bottleCount <= 0 || item.unitPrice <= 0) {
                 errors += ValidationError(
                     ErrorCode.INVALID_DRINK_ITEM,
                     "'${item.name}'의 병 수와 단가는 1 이상이어야 합니다. " +
                         "(${item.bottleCount}병 × ${item.unitPrice}원)",
+                    roundId = item.roundId,
+                )
+            } else {
+                val itemAmount = BigInteger.valueOf(item.bottleCount.toLong()) *
+                    BigInteger.valueOf(item.unitPrice)
+                if (itemAmount > MAX_AMOUNT_BIG) {
+                    errors += ValidationError(
+                        ErrorCode.AMOUNT_TOO_LARGE,
+                        "'${item.name}'의 술값이 너무 큽니다. 병 수와 단가를 확인해주세요.",
+                        roundId = item.roundId,
+                    )
+                }
+            }
+            if (item.roundId !in roundIds) {
+                errors += ValidationError(
+                    ErrorCode.DRINK_ITEM_ROUND_NOT_FOUND,
+                    "'${item.name}'이 존재하지 않는 차수를 참조합니다.",
                     roundId = item.roundId,
                 )
             }
@@ -150,6 +159,13 @@ object Validator {
                     roundId = round.id,
                 )
             }
+            if (round.alcohol > MAX_AMOUNT) {
+                errors += ValidationError(
+                    ErrorCode.AMOUNT_TOO_LARGE,
+                    "${round.label}의 술값이 너무 큽니다. 병 수와 단가를 확인해주세요.",
+                    roundId = round.id,
+                )
+            }
             if (round.payerId !in ids) {
                 errors += ValidationError(
                     ErrorCode.PAYER_NOT_FOUND,
@@ -160,44 +176,11 @@ object Validator {
             }
         }
 
-        input.extras.forEach { extra ->
-            if (extra.amount > MAX_AMOUNT) {
+        input.attendance.keys.forEach { key ->
+            if (key.participantId !in ids || key.roundId !in roundIds) {
                 errors += ValidationError(
-                    ErrorCode.AMOUNT_TOO_LARGE,
-                    "'${extra.label}'의 금액이 너무 큽니다.",
-                    extraId = extra.id,
-                )
-            }
-            if (extra.amount <= 0) {
-                errors += ValidationError(
-                    ErrorCode.TOTAL_NOT_POSITIVE,
-                    "'${extra.label}'의 금액은 1원 이상이어야 합니다.",
-                    extraId = extra.id,
-                )
-            }
-            if (extra.payerId !in ids) {
-                errors += ValidationError(
-                    ErrorCode.PAYER_NOT_FOUND,
-                    "'${extra.label}'의 결제자가 참여자 목록에 없습니다.",
-                    extraId = extra.id,
-                    participantId = extra.payerId,
-                )
-            }
-            extra.bearerIds.filterNot { it in ids }.forEach { unknown ->
-                errors += ValidationError(
-                    ErrorCode.BEARER_NOT_FOUND,
-                    "'${extra.label}'의 부담자 중 참여자 목록에 없는 사람이 있습니다.",
-                    extraId = extra.id,
-                    participantId = unknown,
-                )
-            }
-        }
-
-        input.attendance.forEach { (key, value) ->
-            if (!value.attended && value.drank) {
-                errors += ValidationError(
-                    ErrorCode.DRANK_WITHOUT_ATTEND,
-                    "불참으로 표시됐는데 음주로 표시되어 있습니다.",
+                    ErrorCode.ATTENDANCE_REFERENCE_NOT_FOUND,
+                    "참여 응답이 존재하지 않는 참여자 또는 차수를 참조합니다.",
                     roundId = key.roundId,
                     participantId = key.participantId,
                 )
@@ -212,13 +195,17 @@ object Validator {
         rounds: List<Round>,
         errors: MutableList<ValidationError>,
     ) {
-        val grandTotal = rounds.sumOf { it.total } + input.extras.sumOf { it.amount }
-        if (grandTotal > MAX_AMOUNT) {
+        val grandTotal = rounds.fold(BigInteger.ZERO) { total, round ->
+            total + BigInteger.valueOf(round.total)
+        }
+        if (grandTotal > MAX_AMOUNT_BIG) {
             errors += ValidationError(
                 ErrorCode.AMOUNT_TOO_LARGE, "전체 총액이 너무 큽니다. (${grandTotal}원)",
             )
         }
 
+        // 아래의 두 전역 조건이 실패하면 차수별 분모 검증도 같은 원인에서 파생된 오류를
+        // 쏟아낸다. 사용자가 먼저 해결해야 할 대표 오류만 반환하도록 여기서 중단한다.
         if (input.participants.size < 2) {
             errors += ValidationError(
                 ErrorCode.TOO_FEW_PARTICIPANTS,
@@ -227,36 +214,34 @@ object Validator {
             return
         }
 
-        if (input.participants.all { it.exempt }) {
-            errors += ValidationError(
-                ErrorCode.ALL_EXEMPT,
-                "참여자 전원이 면제자라 부담할 사람이 없습니다.",
-            )
-            return
-        }
-
         rounds.forEach { round ->
+            val missing = input.participants.filter {
+                AttendanceKey(it.id, round.id) !in input.attendance
+            }
+            missing.forEach { participant ->
+                errors += ValidationError(
+                    ErrorCode.MISSING_ATTENDANCE,
+                    "${round.label}에 '${participant.name}'의 응답이 없습니다.",
+                    roundId = round.id,
+                    participantId = participant.id,
+                )
+            }
+
             val attendees = input.participants.filter {
-                input.attendanceOf(it.id, round.id).attended
+                val attendance = input.attendanceOf(it.id, round.id)
+                attendance.attended && !attendance.exempt
             }
             if (attendees.isEmpty()) {
                 errors += ValidationError(
                     ErrorCode.NO_ATTENDEE,
-                    "${round.label}에 참석한 사람이 없습니다.",
+                    "${round.label}에 비용을 부담할 참석자가 없습니다.",
                     roundId = round.id,
                 )
                 return@forEach
             }
-            if (attendees.none { !it.exempt }) {
-                errors += ValidationError(
-                    ErrorCode.NO_NON_EXEMPT_ATTENDEE,
-                    "${round.label}의 참석자가 전원 면제자라 나눌 대상이 없습니다.",
-                    roundId = round.id,
-                )
-            }
             if (round.alcohol > 0) {
                 val drinkers = input.participants.filter {
-                    !it.exempt && input.attendanceOf(it.id, round.id).drank
+                    input.attendanceOf(it.id, round.id).drank
                 }
                 if (drinkers.isEmpty()) {
                     errors += ValidationError(
@@ -269,15 +254,5 @@ object Validator {
             }
         }
 
-        val exemptIds = input.participants.filter { it.exempt }.map { it.id }.toSet()
-        input.extras.forEach { extra ->
-            if (extra.bearerIds.none { it !in exemptIds }) {
-                errors += ValidationError(
-                    ErrorCode.NO_NON_EXEMPT_BEARER,
-                    "'${extra.label}'을 부담할 사람이 없습니다. (전원 면제이거나 부담자가 비어 있음)",
-                    extraId = extra.id,
-                )
-            }
-        }
     }
 }
