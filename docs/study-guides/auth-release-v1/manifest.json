@@ -21,7 +21,9 @@
   },
   "pr": {
     "baseBranch": "feat/backend-v4",
-    "statusAtCreation": "draft"
+    "statusAtCreation": "draft",
+    "number": 20,
+    "url": "https://github.com/owencity/jungsan_attack/pull/20"
   },
   "hashBasis": "Git blob bytes (LF normalized text, binary patch preserved)",
   "sha256": {
