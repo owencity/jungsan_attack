@@ -23,7 +23,7 @@
 
 - 기준: origin/main `f094e88`의 FC-021. `docs/DEPLOY.md`의 Apple 콜백을 `https://api.devkdk.com/api/v1/auth/apple/callback`으로 통일했다.
 - 실제 외부 확인: `api.devkdk.com/actuator/health` HTTP 502, `api.jungsan.devkdk.com` DNS 이름 없음. 502만으로 OCI 내부 원인은 확정하지 않았다.
-- 운영 접속: 준비된 키의 SSH 인증이 거절되어 컨테이너·DB·환경변수는 확인하지 못했다.
+- 운영 접속: CTO가 지정한 OCI에 기존 키로 접속했다. 정산어택 배포 디렉터리는 없고, 8080은 기존 n8n Kafka 앱이 사용 중이다. 정산어택은 별도 포트가 필요하다.
 - PR #18·#20·#21은 확인 시점 모두 병합 전이다. PR CI 성공은 OCI 배포가 아니다.
 - 웹 원격 main의 `src/jeongsan/v3/api.ts`가 `/api/v1`을 붙이므로 Vercel 값은 `https://api.devkdk.com`이다. Production 재배포가 필요하다.
 - 남은 작업: 운영 접근 복구·502 원인 확인, OCI 설정과 카카오/Apple 콘솔 등록, 사용자 병합 후 배포, Vercel 설정·재배포, TestFlight/웹 실제 로그인 시험. 외부 설정을 저장하거나 운영을 배포한 상태로 보고하지 않는다.
