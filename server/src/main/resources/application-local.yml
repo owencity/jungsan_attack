@@ -41,3 +41,12 @@ logging:
 payout:
   # 공개된 로컬 전용 키. 운영은 독립된 32바이트 키를 강제한다.
   encryption-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+auth:
+  encryption-key: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
+apple:
+  client-id: ${APPLE_CLIENT_ID:}
+  team-id: ${APPLE_TEAM_ID:}
+  key-id: ${APPLE_KEY_ID:}
+  private-key-base64: ${APPLE_PRIVATE_KEY_BASE64:}
+  redirect-uri: ${APPLE_REDIRECT_URI:http://localhost:8080/api/v1/auth/apple/callback}

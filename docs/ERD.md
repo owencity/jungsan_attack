@@ -313,3 +313,23 @@ docker rm -f jeongsan-mysql-test && docker network rm jeongsan-test-net
 업그레이드는 COLLECTING 입력을 최초 단위에 붙이고 기존 출석을 SELF로 옮긴다.
 CONFIRMED v1 자료가 있으면 024의 precondition으로 중단한다. 기존 확정 금액을 v2로 조용히 재계산하지 않는다.
 완료 7일 또는 30일 미활동 삭제는 단위 오름차순 잠금→방 잠금→최신 상태 재검사 후 자식부터 제거한다.
+
+## 2026-10-09 인증·탈퇴 스키마
+
+진실은 새 `017-release-auth.yaml`, changeSet `027-release-auth-and-account-deletion`이다.
+users 계정 행은 탈퇴 때 삭제하고, 완료 participants.user_id와 gatherings.host_user_id는 NULL로 끊는다.
+NULL 좌석은 탈퇴 자료에만 사용한다. 가입 API는 항상 유효한 사용자 ID를 저장해 기존 중복 참여 UNIQUE를 유지한다.
+레거시 user_groups.created_by_user_id도 삭제 가능한 NULL 참조로 변경한다.
+
+| 테이블 | 역할·수명 |
+|---|---|
+| auth_challenges | state 해시·provider·client·nonce·상관 쿠키 해시·앱 challenge·복귀 경로, 5분 |
+| auth_tickets | 티켓 해시·user FK(cascade)·앱 challenge, 60초·한 번 교환 |
+| auth_credentials | user PK/FK(cascade)·Apple client ID·암호화 refresh token |
+| auth_revocations | 로그아웃 JWT 해시·실제 JWT 만료, 만료 후 정리 |
+| auth_revoke_jobs | 탈퇴 트랜잭션에서 복사한 Apple client ID·암호문·재시도 시각, 성공 후 삭제 |
+
+로그인·탈퇴 모두 GatheringStore의 같은 DataSource와 트랜잭션을 사용한다.
+티켓 교환 잠금은 users→ticket으로 탈퇴의 cascade와 순서를 맞춘다.
+탈퇴는 관련 unit→Gathering→users 순서로 잡고, 사용자 잠금 뒤 목록 변경을 재검사한다.
+계좌 저장도 알림 대상 Gathering→users 순서로 맞춘다. 요청에 이미 시작된 다른 작업을 취소하는 것은 아니다.

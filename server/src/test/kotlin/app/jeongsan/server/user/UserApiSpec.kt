@@ -20,7 +20,7 @@ class UserApiSpec : StringSpec({
     val cookie = Cookie(AuthController.COOKIE_NAME, jwt.issue(12))
     val repository = Mockito.mock(UserRepository::class.java)
     val service = UserService(repository)
-    val auth = AuthController(repository, jwt, service, "", "", "", "http://localhost", false)
+    val auth = AuthController(Mockito.mock(AuthFlowService::class.java), service, "http://localhost", "http://localhost", false, 30)
     val mvc = MockMvcBuilders.standaloneSetup(UserController(service), auth)
         .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt))
         .setControllerAdvice(GlobalExceptionHandler())

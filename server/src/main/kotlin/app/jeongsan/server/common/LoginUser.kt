@@ -33,6 +33,7 @@ annotation class LoginUser
 @Component
 class LoginUserArgumentResolver(
     private val jwtService: JwtService,
+    private val authFlow: app.jeongsan.server.user.AuthFlowService? = null,
 ) : HandlerMethodArgumentResolver {
 
     /**
@@ -58,11 +59,11 @@ class LoginUserArgumentResolver(
         val request = webRequest.getNativeRequest(HttpServletRequest::class.java)
             ?: throw UnauthenticatedException()
 
-        val token = request.cookies
+        val cookie = request.cookies
             ?.firstOrNull { it.name == AuthController.COOKIE_NAME }
             ?.value
+        val (token,client) = app.jeongsan.server.user.AuthPolicy.token(request.getHeader("Authorization"),cookie)
+        return authFlow?.authenticated(token,client) ?: jwtService.identity(token)?.takeIf { it.client == client }?.userId
             ?: throw UnauthenticatedException()
-
-        return jwtService.parseUserId(token) ?: throw UnauthenticatedException()
     }
 }

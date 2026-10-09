@@ -21,10 +21,12 @@ class JwtService(
 ) {
     private val key: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray(Charsets.UTF_8))
 
-    fun issue(userId: Long): String {
+    fun issue(userId: Long, client: String = "WEB"): String {
         val now = Instant.now()
         return Jwts.builder()
             .subject(userId.toString())
+            .claim("client", client)
+            .id(java.util.UUID.randomUUID().toString())
             .issuedAt(Date.from(now))
             .expiration(Date.from(now.plus(expirationDays, ChronoUnit.DAYS)))
             .signWith(key)
@@ -39,4 +41,10 @@ class JwtService(
         } catch (e: Exception) {
             null
         }
+
+    data class Identity(val userId: Long, val client: String, val expiresAt: Instant)
+    fun identity(token: String): Identity? = try {
+        val claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload
+        Identity(claims.subject.toLong(), claims["client"] as? String ?: "WEB", claims.expiration.toInstant())
+    } catch (_: Exception) { null }
 }

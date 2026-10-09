@@ -60,11 +60,24 @@ KAKAO_CLIENT_ID=<REST API 키>
 KAKAO_CLIENT_SECRET=<카카오 로그인 시크릿>
 KAKAO_REDIRECT_URI=https://api.devkdk.com/api/v1/auth/kakao/callback
 JWT_SECRET=<32자 이상 랜덤>
+PAYOUT_ENCRYPTION_KEY=<계좌용 독립 32바이트 키의 Base64>
+AUTH_ENCRYPTION_KEY=<외부 인증 자격용 독립 32바이트 키의 Base64>
+APPLE_CLIENT_ID=<웹 Apple Services ID>
+APPLE_TEAM_ID=<Apple Team ID>
+APPLE_KEY_ID=<Sign in with Apple Key ID>
+APPLE_PRIVATE_KEY_BASE64=<Apple p8의 PKCS8 DER 바이트를 Base64로 변환한 값>
+APPLE_REDIRECT_URI=https://api.jungsan.devkdk.com/api/v1/auth/apple/callback
 FRONTEND_ORIGIN=https://jungsan.devkdk.com
 LOGIN_SUCCESS_URL=https://jungsan.devkdk.com/jungsan
 EOF
 chmod 600 .env
 ```
+
+Apple 웹 Services ID의 등록 도메인·Return URL과 위 callback을 맞춘다. 앱도 시스템 인증 브라우저에서 같은 Services ID 흐름을 사용한다.
+`APPLE_PRIVATE_KEY_BASE64`는 PEM 헤더·푸터를 제외한 Base64 본문이다. 원본 p8은 저장소에 넣지 않는다.
+prod는 필수 설정이 없거나 비었거나 EC 개인키가 잘못되면 시작이 실패한다.
+AUTH_ENCRYPTION_KEY는 JWT/PAYOUT 키와 별개이며 연결 해제 대기 작업이 있는 동안 변경하면 기존 토큰을 읽을 수 없다.
+실제 Apple 로그인→앱 티켓 교환→탈퇴→Apple 연결 해제까지 확인한 뒤 앱 심사 자료에 결과를 기록한다.
 
 `JWT_SECRET` 생성:
 ```bash
