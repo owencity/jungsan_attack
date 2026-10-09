@@ -5,7 +5,7 @@
 ```
 GitHub Actions (ARM 러너)                  OCI Ubuntu
   ┌────────────────────────┐   SSH/SCP    ┌──────────────────────────┐
-  │ core 테스트 (46개)       │ ───────────▶ │ docker load               │
+  │ core·server 테스트      │ ───────────▶ │ docker load               │
   │ bootJar 빌드            │              │ docker compose up -d      │
   │ 도커 이미지 빌드          │              │   ├ app   (127.0.0.1:8080)│
   │ 이미지 tar.gz 전송       │              │   └ mysql (포트 비공개)     │
@@ -66,7 +66,7 @@ APPLE_CLIENT_ID=<웹 Apple Services ID>
 APPLE_TEAM_ID=<Apple Team ID>
 APPLE_KEY_ID=<Sign in with Apple Key ID>
 APPLE_PRIVATE_KEY_BASE64=<Apple p8의 PKCS8 DER 바이트를 Base64로 변환한 값>
-APPLE_REDIRECT_URI=https://api.jungsan.devkdk.com/api/v1/auth/apple/callback
+APPLE_REDIRECT_URI=https://api.devkdk.com/api/v1/auth/apple/callback
 FRONTEND_ORIGIN=https://jungsan.devkdk.com
 LOGIN_SUCCESS_URL=https://jungsan.devkdk.com/jungsan
 EOF
@@ -95,10 +95,59 @@ https://api.devkdk.com/api/v1/auth/kakao/callback
 ```
 로컬용(`http://localhost:8080/...`)은 그대로 두고 **한 줄 더** 넣는다.
 
-### (e) 쿠키 `secure` 켜기 ⚠️
+### (e) Apple Services ID의 웹 인증 설정
 
-`AuthController.kt` 의 `.secure(false)` 를 운영에서는 `true` 로 바꿔야 한다.
-현재 TODO 로 남아 있다 — HTTPS 붙인 뒤 처리한다.
+Certificates, Identifiers & Profiles → Identifiers → 운영 `APPLE_CLIENT_ID`와 같은 Services ID →
+Sign in with Apple → Configure에서 기존 primary App ID와 연결된 웹 인증 설정을 확인한다.
+
+| 항목 | 운영 값 |
+|---|---|
+| Domains and Subdomains | `api.devkdk.com` |
+| Return URLs | `https://api.devkdk.com/api/v1/auth/apple/callback` |
+
+Done → Continue → Save까지 저장한다. 등록 값과 OCI `.env`의 `APPLE_REDIRECT_URI`는 정확히 같아야 한다.
+`api.jungsan.devkdk.com`은 현재 DNS가 없어 운영 콜백으로 사용하지 않는다.
+문서 변경만으로 개발자 콘솔이나 OCI 설정이 바뀌지는 않는다.
+[Apple 설정 절차](https://developer.apple.com/help/account/capabilities/configure-sign-in-with-apple-for-the-web)를 기준으로 확인한다.
+
+### (f) 운영 쿠키·CORS 확인
+
+`application-prod.yml`의 `app.cookie-secure: true`를 `AuthController`가 사용한다.
+웹 JWT 쿠키는 `HttpOnly; Secure; SameSite=Lax`이고, Apple의 POST 콜백용 브라우저 바인딩 쿠키는
+운영에서 `SameSite=None; Secure`다. 컨트롤러 소스의 값을 배포 때 직접 바꿀 필요가 없다.
+`FRONTEND_ORIGIN`은 실제 웹 주소 `https://jungsan.devkdk.com`과 맞춘다.
+
+### (g) Vercel 웹 API 연결
+
+웹 `profile` 프로젝트 → Settings → Environment Variables에 아래 값을 Production 범위로 저장한다.
+
+```text
+VITE_JEONGSAN_API_BASE_URL=https://api.devkdk.com
+```
+
+웹 `src/jeongsan/v3/api.ts`는 이 값에 `/api/v1/...`을 직접 붙인다. 값에는 `/api/v1`이나 끝의 `/`를 넣지 않는다.
+환경변수 변경 뒤 Production을 다시 빌드·배포해야 브라우저의 번들에 반영된다.
+[Vercel 환경변수 문서](https://vercel.com/docs/environment-variables)의 적용 범위·새 배포 규칙을 따른다.
+백엔드의 `FRONTEND_ORIGIN`은 API 주소가 아니라 이 웹의 운영 origin이어야 한다.
+API 복구·쿠키/CORS 확인 뒤 웹을 서버 모드로 전환한다.
+
+## FC-021 운영 연결 확인 순서
+
+1. OCI에 접속해 컨테이너 상태·로컬 `/actuator/health`·기동 실패 원인을 확인한다.
+   외부 502만으로 앱 중단, 터널/프록시 오류, DB·환경변수 오류 중 하나를 확정하지 않는다.
+2. 운영 DB 백업과 적용 changeSet 현황, v1 CONFIRMED 자료 유무, 필수 환경변수·키 준비를 확인한다.
+   아래 backend-v4 배포 조건을 함께 확인한다. 값과 키를 로그·PR에 출력하지 않는다.
+3. 위 카카오 Redirect URI, Apple Return URL, OCI 두 redirect 환경변수를 모두 같은 운영 호스트로 맞춘다.
+4. CTO가 필요한 PR을 병합한 뒤 해당 main 커밋의 **Deploy to OCI**를 확인한다.
+   `feat/auth-release`의 Backend CI 성공만으로는 운영 서버에 배포되지 않는다.
+   병합 전 브랜치의 직접 운영 배포는 현재 절차에 포함되지 않는다.
+5. 외부 `https://api.devkdk.com/actuator/health`에서 200·UP을 확인하고,
+   로그인 없이 `GET /api/v1/auth/me`가 401을 반환하는지 확인한다.
+6. 웹 환경변수를 반영해 재배포하고 웹 카카오 로그인·로그아웃·탈퇴와 TestFlight 앱의
+   카카오/Apple 로그인 → 앱 복귀 → 티켓 교환 → 인증 API까지 실제로 시험한다.
+
+FC-021은 문서 수정, 콘솔 저장, 운영 배포, 웹 재배포, 실제 로그인 시험을 각각 기록하고
+모두 확인한 뒤 닫는다. DNS 없는 Apple 콜백 주소를 문서에서 바꾼 것만으로 반영 완료 처리하지 않는다.
 
 ## 배포
 
