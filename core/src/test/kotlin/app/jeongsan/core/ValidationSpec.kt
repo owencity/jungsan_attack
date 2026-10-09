@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 
-/** `CALC_RULES.md` §4 — 검증 시점이 둘로 나뉜다. */
+/** `CALC_RULES_V2.md` §5 — 검증 시점이 둘로 나뉜다. */
 class ValidationSpec : StringSpec({
 
     val base = participants("A", "B", "C", "D")
@@ -13,10 +13,8 @@ class ValidationSpec : StringSpec({
         ps: List<Participant> = base,
         rounds: List<Round> = listOf(round(1L, 1, 40_000, 0, ps.id("A"))),
         att: Map<AttendanceKey, Attendance> = ps.attendance { sober(1L, "A", "B", "C", "D") },
-        extras: List<ExtraItem> = emptyList(),
         drinkItems: List<DrinkItem> = emptyList(),
-        unit: Int = 10,
-    ) = SettlementInput(ps, rounds, att, drinkItems, extras, unit)
+    ) = SettlementInput(ps, rounds, att, drinkItems)
 
     // ── 저장 시점에도 확정 시점에도 걸리는 형식 검증
 
@@ -41,14 +39,28 @@ class ValidationSpec : StringSpec({
         errors.codes() shouldContain ErrorCode.AMOUNT_TOO_LARGE
     }
 
+    "전체 총액 합산이 Long 범위를 넘어도 예외 대신 검증 오류를 반환한다" {
+        val rounds = listOf(
+            round(1L, 1, Long.MAX_VALUE, 0, base.id("A")),
+            round(2L, 2, Long.MAX_VALUE, 0, base.id("A")),
+        )
+        val attendance = base.attendance {
+            sober(1L, "A", "B", "C", "D")
+            sober(2L, "A", "B", "C", "D")
+        }
+
+        input(rounds = rounds, att = attendance).fail()
+            .codes() shouldContain ErrorCode.AMOUNT_TOO_LARGE
+    }
+
     "결제자가 참여자 목록에 없으면 거부한다" {
         input(rounds = listOf(round(1L, 1, 40_000, 0, payerId = 999L))).fail()
             .codes() shouldContain ErrorCode.PAYER_NOT_FOUND
     }
 
-    "기타 항목의 부담자가 참여자 목록에 없으면 거부한다" {
-        input(extras = listOf(ExtraItem(101L, "택시비", 10_000, base.id("A"), listOf(base.id("A"), 999L))))
-            .fail().codes() shouldContain ErrorCode.BEARER_NOT_FOUND
+    "술 항목이 존재하지 않는 차수를 참조하면 거부한다" {
+        input(drinkItems = listOf(DrinkItem(999L, "소주", 1, 5_000)))
+            .fail().codes() shouldContain ErrorCode.DRINK_ITEM_ROUND_NOT_FOUND
     }
 
     "술병의 병 수나 단가가 0 이하면 거부한다" {
@@ -56,18 +68,18 @@ class ValidationSpec : StringSpec({
             .fail().codes() shouldContain ErrorCode.INVALID_DRINK_ITEM
     }
 
-    "반올림 단위가 10·100이 아니면 거부한다" {
-        input(unit = 1_000).fail().codes() shouldContain ErrorCode.INVALID_ROUNDING_UNIT
-        input(unit = 1).fail().codes() shouldContain ErrorCode.INVALID_ROUNDING_UNIT
+    "술병 금액이 Long 범위를 넘어도 예외 대신 검증 오류를 반환한다" {
+        input(
+            drinkItems = listOf(
+                DrinkItem(1L, "소주", bottleCount = Int.MAX_VALUE, unitPrice = Long.MAX_VALUE),
+            ),
+        ).fail().codes() shouldContain ErrorCode.AMOUNT_TOO_LARGE
     }
 
-    "불참인데 음주면 거부한다 — 예외가 아니라 검증 오류다" {
-        val errors = input(
-            att = base.attendance { sober(1L, "A", "B", "C") } +
-                mapOf(AttendanceKey(base.id("D"), 1L) to Attendance(attended = false, drank = true)),
-        ).fail()
-        errors.codes() shouldContain ErrorCode.DRANK_WITHOUT_ATTEND
-        errors.first { it.code == ErrorCode.DRANK_WITHOUT_ATTEND }.participantId shouldBe base.id("D")
+    "참여 응답이 존재하지 않는 사용자를 참조하면 거부한다" {
+        val errors = input(att = base.attendance { sober(1L, "A", "B", "C", "D") } +
+            mapOf(AttendanceKey(999L, 1L) to Attendance.SOBER)).fail()
+        errors.codes() shouldContain ErrorCode.ATTENDANCE_REFERENCE_NOT_FOUND
     }
 
     // ── 중복 id (코드 리뷰 F1)
@@ -97,17 +109,6 @@ class ValidationSpec : StringSpec({
         errors.first { it.code == ErrorCode.DUPLICATE_ID }.roundId shouldBe 1L
     }
 
-    "기타 항목 id 중복을 거부한다" {
-        val errors = input(
-            extras = listOf(
-                ExtraItem(101L, "택시비", 10_000, base.id("A"), listOf(base.id("A"))),
-                ExtraItem(101L, "대리비", 20_000, base.id("A"), listOf(base.id("A"))),
-            ),
-        ).fail()
-        errors.codes() shouldContain ErrorCode.DUPLICATE_ID
-        errors.first { it.code == ErrorCode.DUPLICATE_ID }.extraId shouldBe 101L
-    }
-
     "차수 순번(seq) 중복을 거부한다 — 근거 화면의 차수 순서가 흔들린다" {
         val errors = input(
             rounds = listOf(
@@ -132,13 +133,13 @@ class ValidationSpec : StringSpec({
             .codes() shouldContain ErrorCode.NO_ATTENDEE
     }
 
-    "참석자가 전원 면제자면 거부한다" {
-        val ps = participants("A", "B", "C").map { if (it.name == "C") it else it.exempted() }
+    "참석자가 차수에서 전원 면제면 거부한다" {
+        val ps = participants("A", "B", "C")
         input(
             ps = ps,
             rounds = listOf(round(1L, 1, 40_000, 0, ps.id("A"))),
-            att = ps.attendance { sober(1L, "A", "B"); absent(1L, "C") },
-        ).fail().codes() shouldContain ErrorCode.NO_NON_EXEMPT_ATTENDEE
+            att = ps.attendance { exempt(1L, "A", "B", "C") },
+        ).fail().codes() shouldContain ErrorCode.NO_ATTENDEE
     }
 
     "술값이 있는데 음주자가 0명이면 거부한다 — 안내 문구를 담는다" {
@@ -149,23 +150,10 @@ class ValidationSpec : StringSpec({
         e.message.contains("술값을 0으로 하거나") shouldBe true
     }
 
-    "기타 항목의 부담자가 전원 면제자면 거부한다" {
-        val ps = participants("A", "B", "C", "D").map { if (it.name == "D") it.exempted() else it }
-        input(
-            ps = ps,
-            rounds = listOf(round(1L, 1, 40_000, 0, ps.id("A"))),
-            att = ps.attendance { sober(1L, "A", "B", "C", "D") },
-            extras = listOf(ExtraItem(101L, "택시비", 10_000, ps.id("A"), listOf(ps.id("D")))),
-        ).fail().codes() shouldContain ErrorCode.NO_NON_EXEMPT_BEARER
-    }
-
-    "참여자 전원이 면제면 거부한다" {
-        val ps = participants("A", "B").map { it.exempted() }
-        input(
-            ps = ps,
-            rounds = listOf(round(1L, 1, 40_000, 0, ps.id("A"))),
-            att = ps.attendance { sober(1L, "A", "B") },
-        ).fail().codes() shouldContain ErrorCode.ALL_EXEMPT
+    "확정 시 모든 참여자의 명시적 응답이 필요하다" {
+        val errors = input(att = base.attendance { sober(1L, "A", "B", "C") }).fail()
+        errors.codes() shouldContain ErrorCode.MISSING_ATTENDANCE
+        errors.first { it.code == ErrorCode.MISSING_ATTENDANCE }.participantId shouldBe base.id("D")
     }
 
     // ── 시점 구분
