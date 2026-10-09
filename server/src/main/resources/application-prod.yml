@@ -42,3 +42,12 @@ logging:
 
 payout:
   encryption-key: ${PAYOUT_ENCRYPTION_KEY}
+
+auth:
+  encryption-key: ${AUTH_ENCRYPTION_KEY}
+apple:
+  client-id: ${APPLE_CLIENT_ID}
+  team-id: ${APPLE_TEAM_ID}
+  key-id: ${APPLE_KEY_ID}
+  private-key-base64: ${APPLE_PRIVATE_KEY_BASE64}
+  redirect-uri: ${APPLE_REDIRECT_URI}

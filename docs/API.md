@@ -1,4 +1,23 @@
-# 정산어택 — API 계약 · v6
+# 정산어택 — API 계약 · v7
+
+> **v7 변경(2026-10-09)** — CTO 결정: 앱 Bearer / 웹 쿠키. 이전 v3의 쿠키 전용 규칙은 웹에 적용한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | AUTH_RELEASE 로그인 | 카카오 state·웹 복귀, Apple form_post·nonce·서명 검증 |
+> | AUTH_RELEASE 앱 교환 | 60초 일회용 티켓 + 앱 verifier, `{token,expiresAt}` |
+> | §2 인증 확장 | WEB JWT는 쿠키, APP JWT는 Bearer. 잘못된 헤더의 쿠키 우회 금지 |
+> | 로그아웃·탈퇴 | POST auth/logout, DELETE users/me, 토큰 무효화·완료 좌석 익명화 |
+> | §1.4 추가 오류 | AUTH_PROVIDER_UNAVAILABLE(503), ACTIVE_GATHERING_EXISTS(409), ACCOUNT_STATE_CHANGED(409) |
+> | ERD 017 | changeSet 027, 인증 state/ticket/credentials/revocations/revoke jobs |
+
+현재 인증·탈퇴의 정확한 요청·응답·권한은 [AUTH_RELEASE.md](AUTH_RELEASE.md)가 우선한다.
+앱 `GET /auth/{provider}/login?client=app`에는 `codeChallenge`가 필수이고, 교환 JSON에는 `codeVerifier`가 추가된다.
+제공자 콜백과 티켓 교환은 로그인 전 단계라 공개이며, 새 로그아웃·탈퇴는 `@LoginUser`가 필수다.
+로그인 콜백은 POST 본문을 프론트로 재전송하지 않도록 303을 반환한다. 웹 쿠키의 만료는 JWT 설정과 같다.
+`AUTH_PROVIDER_UNAVAILABLE`은 로컬 제공자 미설정, `ACTIVE_GATHERING_EXISTS`는 진행 중 탈퇴,
+`ACCOUNT_STATE_CHANGED`는 탈퇴 잠금 중 참여/단위 목록 변경으로 재시도할 때 반환한다.
+기존 `UNAUTHENTICATED`(401)는 state/상관 쿠키/nonce/서명/티켓/verifier/로그아웃 토큰/탈퇴 계정 검증 실패에도 사용한다.
 
 > **v6 변경(2026-10-07)** — `feat/backend-v4` 구현 계약. 병합·운영 배포 여부와 구현 여부를 구분한다.
 >

@@ -1,5 +1,9 @@
 # AGENTS.md — 정산어택 백엔드 (jungsan_attack)
 
+> **2026-10-09 인증 결정:** CTO가 앱은 Bearer, 웹은 기존 httpOnly 쿠키를 사용하도록 확정했다.
+> 아래 §4-7 쿠키 전용 규칙은 웹에 적용하며 앱은 [AUTH_RELEASE](docs/AUTH_RELEASE.md)를 따른다.
+> APP/WEB 토큰은 교차 사용하지 않고, 앱의 일회용 티켓은 verifier와 함께 교환한다.
+
 > **2026-10-06 현재 제품 방향:** REQUIREMENTS v4와 [SETTLEMENT_UNITS](docs/SETTLEMENT_UNITS.md)를 먼저 읽는다.
 > 같은 Gathering의 링크·참여자 신원은 공유하고, 총무·명단·담당 차수·입력 버전·정산 상태는 단위별이다.
 > 아래 v3 스냅샷의 전역 관리·정산 표현을 신규 개발에 사용하지 않는다. Domain V2의 단일 총무 설계도 기록이다.

@@ -63,3 +63,10 @@ tasks.test {
         showStandardStreams = true
     }
 }
+
+// 기본 단위 테스트와 분리된 실제 MySQL 검증. 전용 로컬 DB 이름·포트만 허용한다.
+tasks.register<JavaExec>("authDatabaseProbe") {
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("app.jeongsan.server.user.AuthDatabaseProbeKt")
+}
