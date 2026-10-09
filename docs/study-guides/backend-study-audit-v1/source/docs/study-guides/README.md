@@ -39,5 +39,3 @@ PR 생성·병합·운영 배포·학습 완료는 다른 상태다. 현재 코�
 - 전체 조사 결과는 [audit.md](audit.md), 구조화된 기준은 [study-index.json](study-index.json)이다.
 
 진도는 progress/pr-N.md에서 기록한다. archive 안의 progress.md는 생성 당시의 고정 템플릿이다. 학습하면서 보존 해시가 깨지지 않도록 실제 진도 파일은 archive 밖에 두었다.
-
-이번 스터디 정리 PR 자체의 [가이드](backend-study-audit-v1/guide.md)·[고정 기준](backend-study-audit-v1/manifest.json)도 보존했다. 별도의 핵심 학습 주제는 없다.
