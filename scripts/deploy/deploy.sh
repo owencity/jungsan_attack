@@ -1,43 +1,38 @@
 #!/usr/bin/env bash
-# 서버에서 실행하는 배포 스크립트.
-#
-#   CI 에서:  ssh ... "cd ~/jeongsan && bash scripts/deploy/deploy.sh"
-#   손으로:   ssh ubuntu@서버 && cd ~/jeongsan && bash scripts/deploy/deploy.sh
-#
-# **둘의 동작이 같아야 한다.** 배포가 깨졌을 때 CI 로그만 보고 추측하는 대신
-# 서버에서 같은 명령을 그대로 돌려볼 수 있어야 원인이 빨리 잡힌다.
-#
-# 인자로 이미지 tar 경로를 받는다. 없으면 이미 로드된 이미지로 재시작만 한다
-# (설정만 바꾸고 다시 띄우는 경우).
-
+# 배포는 성공한 SHA를 기록하며 실패하면 이전 앱 이미지를 복원한다. DB는 되돌리지 않는다.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
-
-IMAGE_TAR="${1:-}"
-
 cd "$DEPLOY_ROOT"
-
-# .env 가 없으면 여기서 멈춘다. 빈 값으로 뜨면 카카오 로그인이 조용히 깨져
-# "왜 안 되지"를 한참 헤매게 된다 — 차라리 배포를 실패시킨다.
-require_file "${DEPLOY_ROOT}/.env" "docs/DEPLOY.md 의 '서버에 .env 만들기' 참조."
+require_file "${DEPLOY_ROOT}/.env" "필수 운영 인증 설정을 먼저 준비한다."
 require_file "$COMPOSE_FILE"
+exec 9> "${DEPLOY_ROOT}/.deploy.lock"
+flock -n 9 || die "다른 정산어택 배포가 진행 중이다."
 
-if [ -n "$IMAGE_TAR" ]; then
-  require_file "$IMAGE_TAR"
-  log "이미지 로드: $IMAGE_TAR"
-  docker load < "$IMAGE_TAR"
-  rm -f "$IMAGE_TAR"
-else
-  warn "이미지 tar 인자가 없다 — 이미 로드된 이미지로 재시작만 한다"
+previous_image="${APP_IMAGE:-}"
+image_tar="${1:-}"
+target_image="${2:-${APP_IMAGE:-}}"
+[[ "$target_image" =~ ^jeongsan-server:[a-f0-9]{40}$ ]] || die "main 커밋 SHA 이미지 태그가 필요하다."
+export APP_IMAGE="$target_image"
+compose config --quiet
+
+if [ -n "$image_tar" ]; then
+  require_file "$image_tar"
+  resolved_tar="$(realpath "$image_tar")"
+  [[ "$resolved_tar" == "$DEPLOY_ROOT/"* ]] || die "이미지 tar는 정산어택 배포 디렉터리에 있어야 한다."
+  docker load < "$resolved_tar"
 fi
+docker image inspect "$APP_IMAGE" >/dev/null
 
-log "컨테이너 기동"
-# --remove-orphans: compose 에서 서비스를 뺐을 때 남은 컨테이너를 정리한다.
-compose up -d --remove-orphans
-
-log "태그 없는 이전 이미지 정리"
-# 배포할 때마다 :latest 가 옮겨가면서 이전 이미지가 dangling 으로 남는다.
-# 안 지우면 디스크가 금방 찬다(이미지 하나가 ~600MB).
-docker image prune -f
-
-ok "배포 완료"
-compose ps
+# 기존 서비스의 컨테이너·이미지·볼륨을 정리하지 않는다. 실패 복원용 이전 이미지도 보존한다.
+if compose up -d && bash "${DEPLOY_ROOT}/scripts/deploy/health.sh"; then
+  printf 'APP_IMAGE=%s\n' "$APP_IMAGE" > "${DEPLOY_ROOT}/.release.env.tmp"
+  mv "${DEPLOY_ROOT}/.release.env.tmp" "${DEPLOY_ROOT}/.release.env"
+  [ -z "$image_tar" ] || rm -f -- "$resolved_tar"
+  ok "운영 이미지 확인 완료: $APP_IMAGE"
+else
+  if [[ "$previous_image" =~ ^jeongsan-server:[a-f0-9]{40}$ ]] && [ "$previous_image" != "$target_image" ]; then
+    export APP_IMAGE="$previous_image"
+    warn "이전 앱 이미지 복원: $previous_image (DB는 유지)"
+    compose up -d app && bash "${DEPLOY_ROOT}/scripts/deploy/health.sh" || die "이전 앱 복원도 실패했다. 수동 확인이 필요하다."
+  fi
+  die "새 이미지 배포 실패. 성공 이력은 갱신하지 않았다."
+fi

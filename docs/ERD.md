@@ -333,3 +333,8 @@ NULL 좌석은 탈퇴 자료에만 사용한다. 가입 API는 항상 유효한 
 티켓 교환 잠금은 users→ticket으로 탈퇴의 cascade와 순서를 맞춘다.
 탈퇴는 관련 unit→Gathering→users 순서로 잡고, 사용자 잠금 뒤 목록 변경을 재검사한다.
 계좌 저장도 알림 대상 Gathering→users 순서로 맞춘다. 요청에 이미 시작된 다른 작업을 취소하는 것은 아니다.
+# FC-020 추가 스키마 (2026-10-10)
+
+물리 정의는 `018-auto-settlement.yaml`, changeSet `028`이다. `settlement_units`에 nullable `headcount INT`,
+`headcount_exceeded_notified BOOLEAN NOT NULL DEFAULT FALSE`, nullable `auto_settlement_error VARCHAR(40)`를 추가한다.
+인원 범위는 서비스가 검증하며 기존 단위의 NULL은 자동 정산을 끈다. 기존 테이블·FK·송금 스냅샷은 유지한다.

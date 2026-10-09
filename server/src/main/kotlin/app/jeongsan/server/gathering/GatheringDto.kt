@@ -4,7 +4,10 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.*
 import java.time.LocalDate
 
-data class UnitCreateRequest(val requestId: java.util.UUID, @field:Size(min=1,max=1000) val participantIds: List<Long>)
+data class GatheringCreateRequest(@field:Min(2) @field:Max(50) val headcount: Int? = null)
+data class HeadcountRequest(@field:Min(2) @field:Max(50) val headcount: Int)
+data class UnitCreateRequest(val requestId: java.util.UUID, @field:Size(min=1,max=1000) val participantIds: List<Long>,
+    @field:Min(2) @field:Max(50) val headcount: Int? = null)
 data class GatheringEditRequest(@field:Size(min=1, max=20) val title: String? = null, val date: LocalDate? = null)
 data class DrinkRequest(@field:Size(min=1,max=20) val name: String, @field:Min(1) val unitPrice: Long, @field:Min(1) val quantity: Int)
 data class RoundRequest(@field:Min(1) @field:Max(1_000_000_000_000) val total: Long, val payerParticipantId: Long,

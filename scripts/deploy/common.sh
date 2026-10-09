@@ -26,9 +26,15 @@ die()  { echo "${C_ERR}❌${C_RESET} $*" >&2; exit 1; }
 DEPLOY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE_FILE="${DEPLOY_ROOT}/docker-compose.prod.yml"
 
+# 성공한 이미지 태그만 저장한 파일이다. 비밀 설정 .env는 셸로 실행하지 않는다.
+if [ -z "${APP_IMAGE:-}" ] && [ -f "${DEPLOY_ROOT}/.release.env" ]; then
+  APP_IMAGE="$(sed -n 's/^APP_IMAGE=//p' "${DEPLOY_ROOT}/.release.env")"
+  export APP_IMAGE
+fi
+
 # compose 명령을 한 곳에서 만든다. 파일이 늘어나면(-f monitoring.yml 등) 여기만 고친다.
 compose() {
-  docker compose -f "$COMPOSE_FILE" "$@"
+  docker compose --project-directory "$DEPLOY_ROOT" --env-file "${DEPLOY_ROOT}/.env" -p jeongsan -f "$COMPOSE_FILE" "$@"
 }
 
 require_file() {

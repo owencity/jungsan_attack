@@ -31,7 +31,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
     private fun unit(gid: Long, id: Long, lock: Boolean = true): UnitInput {
         val row=db.rows("SELECT * FROM settlement_units WHERE id=:id AND gathering_id=:g"+if(lock) " FOR UPDATE" else "", "id" to id,"g" to gid)
             .singleOrNull() ?: fail("SETTLEMENT_UNIT_NOT_FOUND",status=HttpStatus.NOT_FOUND)
-        val ids=db.rows("SELECT participant_id FROM settlement_unit_members WHERE settlement_unit_id=:id AND status='ACTIVE' ORDER BY participant_id","id" to id).map{it.long("participant_id")}
+        val ids=db.rows("SELECT participant_id FROM settlement_unit_members WHERE settlement_unit_id=:id AND status='ACTIVE' ORDER BY participant_id<>:host,joined_at,participant_id","id" to id,"host" to row.long("host_participant_id")).map{it.long("participant_id")}
         return UnitInput(id,row.long("host_participant_id"),row.text("status"),row.long("input_revision"),ids)
     }
     private fun authorize(gid: Long, id: Long, uid: Long, edit: Boolean=true): UnitInput = unit(gid,id).also {
@@ -53,7 +53,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         db.insert("INSERT INTO timeline_entries(gathering_id,settlement_unit_id,type,system_code,body,created_at) VALUES(:g,:s,'SYSTEM',:c,:b,:n)","g" to gid,"s" to unitId,"c" to code,"b" to body,"n" to Instant.now())
     }
     private fun notify(gid: Long, unitId: Long?, type: String, body: String, userIds: List<Long>, actor: Long) {
-        userIds.distinct().filter{it > 0 && it != actor}.forEach { db.insert("INSERT INTO notifications(user_id,gathering_id,settlement_unit_id,type,title,body,created_at) VALUES(:u,:g,:s,:t,:t,:b,:n)","u" to it,"g" to gid,"s" to unitId,"t" to type,"b" to body,"n" to Instant.now()) }
+        userIds.distinct().filter{it > 0 && it != actor}.forEach { db.insert("INSERT INTO notifications(user_id,gathering_id,settlement_unit_id,type,title,body,created_at) VALUES(:u,:g,:s,:t,:title,:b,:n)","u" to it,"g" to gid,"s" to unitId,"t" to type,"title" to NotificationText.title(type),"b" to body,"n" to Instant.now()) }
     }
     private fun updateSummary(gid: Long) {
         room(gid,true)
@@ -62,12 +62,13 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         val completed=if(state=="COMPLETED") all.mapNotNull{it.instant("completed_at")}.maxOrNull() else null
         db.update("UPDATE gatherings SET status=:s,completed_at=:c,delete_scheduled_at=:d,last_activity_at=:n WHERE id=:g","s" to state,"c" to completed,"d" to completed?.plusSeconds(7*86400L),"n" to Instant.now(),"g" to gid)
     }
-    fun create(uid: Long): Map<String,Any?> {
+    fun create(uid: Long, headcount: Int? = null): Map<String,Any?> {
+        AutoSettlementPolicy.validateHeadcount(headcount)
         if(db.rows("SELECT id FROM users WHERE id=:u FOR SHARE","u" to uid).isEmpty()) fail("UNAUTHENTICATED",status=HttpStatus.UNAUTHORIZED)
         val u=named(uid); val now=Instant.now(); val date=LocalDate.now(ZoneId.of("Asia/Seoul"))
         val gid=db.insert("INSERT INTO gatherings(name,host_user_id,gathering_date,status,share_token,expected_count,rounding_unit,revision,created_at,last_activity_at) VALUES(:t,:u,:d,'OPEN',:k,0,1,0,:n,:n)","t" to "${date.monthValue}/${date.dayOfMonth} 술자리","u" to uid,"d" to date,"k" to ShareToken.generate(),"n" to now)
         val pid=db.insert("INSERT INTO participants(gathering_id,user_id,name,status,created_at) VALUES(:g,:u,:name,'ACTIVE',:n)","g" to gid,"u" to uid,"name" to u.text("display_name"),"n" to now)
-        val sid=db.insert("INSERT INTO settlement_units(gathering_id,host_participant_id,created_at) VALUES(:g,:p,:n)","g" to gid,"p" to pid,"n" to now)
+        val sid=db.insert("INSERT INTO settlement_units(gathering_id,host_participant_id,headcount,created_at) VALUES(:g,:p,:hc,:n)","g" to gid,"p" to pid,"hc" to headcount,"n" to now)
         addMember(gid,sid,pid);event(gid,sid,"CREATED","${u.text("display_name")}님이 술자리를 만들었어요")
         return detail(gid,uid)
     }
@@ -80,30 +81,41 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         return detail(gid,uid)
     }
     fun createUnit(gid: Long, uid: Long, request: UnitCreateRequest): Map<String,Any?> {
+        AutoSettlementPolicy.validateHeadcount(request.headcount)
         named(uid);val p=person(gid,uid);room(gid,true);named(uid)
         val ids=SettlementWorkflow.creationRoster(request.participantIds,p.id)
-        val hash=MessageDigest.getInstance("SHA-256").digest(ids.joinToString(",").toByteArray()).joinToString(""){"%02x".format(it)}
+        // 인원 없는 기존 요청의 해시는 유지해 배포 전 재시도도 같은 단위를 반환한다.
+        val payload=ids.joinToString(",") + (request.headcount?.let { "|headcount=$it" } ?: "")
+        val hash=MessageDigest.getInstance("SHA-256").digest(payload.toByteArray()).joinToString(""){"%02x".format(it)}
         val previous=db.rows("SELECT * FROM settlement_unit_requests WHERE gathering_id=:g AND user_id=:u AND request_id=:r","g" to gid,"u" to uid,"r" to request.requestId.toString()).singleOrNull()
         if(previous!=null) { if(previous.text("payload_hash")!=hash) fail("IDEMPOTENCY_KEY_REUSED");return unitView(gid,previous.long("settlement_unit_id"),p.id) }
         val valid=db.rows("SELECT id FROM participants WHERE gathering_id=:g AND status='ACTIVE' AND user_id IS NOT NULL","g" to gid).map{it.long("id")}.toSet()
         if(!valid.containsAll(ids)) fail("NOT_PARTICIPANT",status=HttpStatus.FORBIDDEN)
-        val id=db.insert("INSERT INTO settlement_units(gathering_id,host_participant_id,created_at) VALUES(:g,:p,:n)","g" to gid,"p" to p.id,"n" to Instant.now())
+        val id=db.insert("INSERT INTO settlement_units(gathering_id,host_participant_id,headcount,created_at) VALUES(:g,:p,:hc,:n)","g" to gid,"p" to p.id,"hc" to request.headcount,"n" to Instant.now())
         ids.forEach{addMember(gid,id,it)}
         db.update("INSERT INTO settlement_unit_requests VALUES(:g,:u,:r,:h,:s)","g" to gid,"u" to uid,"r" to request.requestId.toString(),"h" to hash,"s" to id)
         db.update("UPDATE gatherings SET status='OPEN',completed_at=NULL,delete_scheduled_at=NULL,last_activity_at=:n WHERE id=:g","n" to Instant.now(),"g" to gid)
         event(gid,id,"UNIT_CREATED","${p.name}님이 추가 차수의 총무가 되었어요")
+        notifyExcess(gid,id)
         return unitView(gid,id,p.id)
     }
     private fun addMember(gid: Long,id: Long,pid: Long) {
-        db.update("INSERT INTO settlement_unit_members(settlement_unit_id,gathering_id,participant_id,status,joined_at) VALUES(:s,:g,:p,'ACTIVE',:n) ON DUPLICATE KEY UPDATE status='ACTIVE'","s" to id,"g" to gid,"p" to pid,"n" to Instant.now())
+        db.update("INSERT INTO settlement_unit_members(settlement_unit_id,gathering_id,participant_id,status,joined_at) VALUES(:s,:g,:p,'ACTIVE',:n) ON DUPLICATE KEY UPDATE joined_at=IF(status='REMOVED',VALUES(joined_at),joined_at),status='ACTIVE'","s" to id,"g" to gid,"p" to pid,"n" to Instant.now())
     }
     fun member(gid: Long,id: Long,uid: Long,pid: Long,remove: Boolean) {
         val u=authorize(gid,id,uid)
         if(db.rows("SELECT id FROM participants WHERE id=:p AND gathering_id=:g AND status='ACTIVE' AND user_id IS NOT NULL","p" to pid,"g" to gid).isEmpty()) fail("NOT_PARTICIPANT",status=HttpStatus.FORBIDDEN)
         if((pid in u.participantIds) == !remove) return
-        if(remove) { SettlementWorkflow.remove(u,pid,data(gid).second);db.update("UPDATE settlement_unit_members SET status='REMOVED' WHERE settlement_unit_id=:s AND participant_id=:p","s" to id,"p" to pid) }
+        room(gid,true)
+        if(remove) {
+            val loaded=data(gid)
+            SettlementWorkflow.remove(u,pid,loaded.second)
+            excludeMember(gid,id,loaded.first.first{it.id==pid},room(gid).text("name"),"이번 정산에서 빠졌어요",uid,"REMOVED")
+        }
         else addMember(gid,id,pid)
         bump(gid,id)
+        notifyExcess(gid,id)
+        autoSettle(gid,id)
     }
     fun saveRound(gid: Long,id: Long,uid: Long,rid: Long?,request: RoundRequest): Map<String,Any?> {
         val u=authorize(gid,id,uid);SettlementWorkflow.member(u,request.payerParticipantId)
@@ -121,26 +133,37 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         } else { db.update("UPDATE rounds SET total_amount=:total,payer_id=:p WHERE id=:r","total" to request.total,"p" to request.payerParticipantId,"r" to rid);rid }
         db.update("DELETE FROM drink_items WHERE round_id=:r","r" to roundId)
         request.drinks.forEach{db.insert("INSERT INTO drink_items(round_id,name,bottle_count,unit_price) VALUES(:r,:name,:q,:price)","r" to roundId,"name" to it.name.trim(),"q" to it.quantity,"price" to it.unitPrice)}
-        bump(gid,id);event(gid,id,"ROUND_SAVED","${seq}차 ${request.total}원을 넣었어요")
+        bump(gid,id);event(gid,id,"ROUND_SAVED","${seq}차 ${NotificationText.money(request.total)}원을 넣었어요")
+        if(rid!=null) autoSettle(gid,id)
         return roundView(data(gid).second.first{it.id==roundId})
     }
     fun deleteRound(gid: Long,id: Long,uid: Long,rid: Long) {
         authorize(gid,id,uid)
+        room(gid,true)
         if(db.rows("SELECT id FROM rounds WHERE id=:r AND settlement_unit_id=:s","r" to rid,"s" to id).isEmpty()) fail("ROUND_NOT_FOUND",status=HttpStatus.NOT_FOUND)
         db.update("DELETE FROM drink_items WHERE round_id=:r","r" to rid);db.update("DELETE FROM attendances WHERE round_id=:r","r" to rid)
         db.update("DELETE FROM rounds WHERE id=:r","r" to rid);bump(gid,id);event(gid,id,"ROUND_DELETED","차수를 지웠어요")
+        autoSettle(gid,id)
     }
     fun respond(gid: Long,id: Long,uid: Long,pid: Long?,request: ResponseRequest) {
         val u=unit(gid,id);val actor=person(gid,uid);val target=pid ?: actor.id
         if(pid!=null) SettlementWorkflow.host(u,actor)
+        SettlementWorkflow.open(u);SettlementWorkflow.member(u,target);room(gid,true)
         val loaded=data(gid);val rounds=loaded.second
         val previous=loaded.third.filter{it.participantId==target}.associateBy{it.roundId}
         if(request.answers.map{it.roundId}.distinct().size!=request.answers.size) fail("MALFORMED_REQUEST",status=HttpStatus.BAD_REQUEST)
+        var changed=false
         request.answers.forEach { a -> SettlementWorkflow.response(u,target,a.roundId,a.type,rounds)
             val old=previous[a.roundId]
             if(pid==null && old?.type=="EXEMPT" && old.source=="HOST") return@forEach
+            val source=if(pid==null) "SELF" else "HOST"
+            if(old?.type==a.type && old.source==source) return@forEach
+            changed=true
             db.update("INSERT INTO round_responses(participant_id,round_id,type,source) VALUES(:p,:r,:t,:src) ON DUPLICATE KEY UPDATE type=VALUES(type),source=VALUES(source)","p" to target,"r" to a.roundId,"t" to a.type,"src" to if(pid==null) "SELF" else "HOST") }
+        if(!changed) return
         bump(gid,id);event(gid,id,"RESPONDED","${actor.name}님이 응답했어요")
+        notify(gid,id,"RESPONDED","${actor.name}님이 응답했어요",loaded.first.filter{it.id==u.hostId}.map{it.userId},uid)
+        autoSettle(gid,id)
     }
     @Transactional(readOnly=true,isolation=Isolation.READ_COMMITTED)
     fun joinPreview(token: String): Map<String,Any?> {
@@ -148,7 +171,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         val gid=row.long("id");val all=data(gid)
         return mapOf("title" to row["name"],"date" to (row["gathering_date"] as java.sql.Date).toLocalDate(),"status" to row["status"],"participantCount" to all.first.size,
             "settlementUnits" to db.rows("SELECT s.*,COALESCE(u.display_name,p.name) display_name,COALESCE(u.spoon_count,0) spoon_count FROM settlement_units s JOIN participants p ON p.id=s.host_participant_id LEFT JOIN users u ON u.id=p.user_id WHERE s.gathering_id=:g ORDER BY s.id","g" to gid).map{s->
-                mapOf("id" to s["id"],"status" to s["status"],"host" to mapOf("displayName" to s["display_name"],"spoonCount" to s["spoon_count"]),"rounds" to all.second.filter{it.unitId==s.long("id")}.map{mapOf("id" to it.id,"seq" to it.seq,"total" to it.total)})})
+                mapOf("id" to s["id"],"status" to s["status"],"headcount" to s["headcount"],"host" to mapOf("displayName" to s["display_name"],"spoonCount" to s["spoon_count"]),"rounds" to all.second.filter{it.unitId==s.long("id")}.map{mapOf("id" to it.id,"seq" to it.seq,"total" to it.total)})})
     }
     fun join(token: String,uid: Long,request: JoinRequest): Map<String,Long> {
         val usr=named(uid);val gid=db.rows("SELECT id FROM gatherings WHERE share_token=:t","t" to token).singleOrNull()?.long("id") ?: fail("GATHERING_NOT_FOUND",status=HttpStatus.NOT_FOUND)
@@ -159,9 +182,11 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         if(membership?.text("status")=="REMOVED") fail("NOT_SETTLEMENT_UNIT_MEMBER",status=HttpStatus.FORBIDDEN)
         if(membership!=null) return mapOf("gatheringId" to gid,"participantId" to pid)
         addMember(gid,u.id,pid)
-        respond(gid,u.id,uid,null,ResponseRequest(request.responses))
+        bump(gid,u.id)
+        notifyExcess(gid,u.id)
         event(gid,u.id,"JOINED","${usr.text("display_name")}님이 들어왔어요")
         notify(gid,u.id,"JOINED","${usr.text("display_name")}님이 들어왔어요",data(gid).first.filter{it.id==u.hostId}.map{it.userId},uid)
+        respond(gid,u.id,uid,null,ResponseRequest(request.responses))
         return mapOf("gatheringId" to gid,"participantId" to pid)
     }
     fun preview(gid: Long,id: Long,uid: Long): Preview {
@@ -171,6 +196,12 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
     fun settle(gid: Long,id: Long,uid: Long,request: SettleRequest): Map<String,Any?> {
         val u=authorize(gid,id,uid);val d=data(gid);val preview=SettlementWorkflow.preview(u,d.first,d.second,d.third)
         if(preview.inputRevision!=request.inputRevision||preview.inputHash!=request.inputHash) fail("SETTLEMENT_INPUT_CHANGED")
+        persistSettlement(gid,u,d,preview,uid,false)
+        return detail(gid,uid)
+    }
+    private fun persistSettlement(gid: Long,u: UnitInput,d: Triple<List<PersonInput>,List<RoundInput>,List<ResponseInput>>,
+        preview: Preview,actor: Long,automatic: Boolean) {
+        val id=u.id
         // 타임라인·알림 FK가 Gathering 공유 잠금을 먼저 잡으면 두 unit이 X 잠금으로 승격할 때 교착한다.
         // Core 검증 뒤, FK를 포함한 쓰기 전에 unit→Gathering 순서로 배타 잠금을 얻는다.
         room(gid,true)
@@ -182,11 +213,74 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
             t.basis.forEach{b->db.update("INSERT INTO settlement_transfer_items VALUES(:t,:r,:type,:a)","t" to tid,"r" to b.roundId,"type" to b.type,"a" to b.amount)}
         }
         val state=if(preview.transfers.isEmpty()) "COMPLETED" else "SETTLING"
-        db.update("UPDATE settlement_units SET status=:state,completed_at=:n WHERE id=:id","state" to state,"n" to if(state=="COMPLETED") Instant.now() else null,"id" to id)
-        event(gid,id,"SETTLED","${person(gid,uid).name}님이 담당 차수를 정산했어요")
-        notify(gid,id,"SETTLED","정산이 나왔어요! 입금액을 확인해주세요",d.first.filter{it.id in u.participantIds}.map{it.userId},uid)
-        preview.lines.filter{it.auto}.forEach{line->notify(gid,id,"AUTO_RESPONDED","응답이 없어 참석·알코올로 계산됐어요",d.first.filter{it.id==line.participantId||it.id==u.hostId}.map{it.userId},uid)}
-        updateSummary(gid);return detail(gid,uid)
+        db.update("UPDATE settlement_units SET status=:state,completed_at=:n,auto_settlement_error=NULL WHERE id=:id","state" to state,"n" to if(state=="COMPLETED") Instant.now() else null,"id" to id)
+        val host=d.first.first{it.id==u.hostId}
+        event(gid,id,"SETTLED",if(automatic) "모두 응답해서 자동으로 계산했어요" else "${host.name}님이 담당 차수를 정산했어요")
+        preview.transfers.groupBy{it.from}.forEach{(sender,transfers)->
+            val first=transfers.first();val recipient=d.first.first{it.id==first.to}
+            val body="${recipient.name}님께 ${NotificationText.money(first.amount)}원" + if(transfers.size>1) " 외 ${transfers.size-1}건" else " 보내주세요"
+            notify(gid,id,"SETTLED",body,d.first.filter{it.id==sender}.map{it.userId},if(automatic) 0 else actor)
+        }
+        notify(gid,id,"SETTLED_HOST","계산이 끝났어요. 단톡방에 입금 요청을 보내주세요",listOf(host.userId),0)
+        preview.lines.filter{it.auto}.forEach{line->notify(gid,id,"AUTO_RESPONDED","응답이 없어 참석·알코올로 계산됐어요",d.first.filter{it.id==line.participantId||it.id==u.hostId}.map{it.userId},actor)}
+        if(state=="COMPLETED") notify(gid,id,"COMPLETED","정산 완료! 7일 뒤 사라져요",d.first.filter{it.id in u.participantIds}.map{it.userId},actor)
+        updateSummary(gid)
+    }
+    fun headcount(gid: Long,id: Long,uid: Long,headcount: Int) {
+        AutoSettlementPolicy.validateHeadcount(headcount)
+        authorize(gid,id,uid);room(gid,true)
+        val old=db.rows("SELECT headcount FROM settlement_units WHERE id=:s","s" to id).single()["headcount"]
+        if((old as? Number)?.toInt()!=headcount) {
+            db.update("UPDATE settlement_units SET headcount=:hc WHERE id=:s","hc" to headcount,"s" to id)
+            bump(gid,id)
+        }
+        notifyExcess(gid,id);autoSettle(gid,id)
+    }
+    // 호출자가 단위→술자리 순으로 잠근 같은 트랜잭션 안에서만 호출한다.
+    private fun notifyExcess(gid: Long,id: Long) {
+        val row=db.rows("SELECT headcount,headcount_exceeded_notified,host_participant_id FROM settlement_units WHERE id=:s","s" to id).single()
+        val headcount=(row["headcount"] as? Number)?.toInt() ?: return
+        val count=db.rows("SELECT COUNT(*) n FROM settlement_unit_members WHERE settlement_unit_id=:s AND status='ACTIVE'","s" to id).single().long("n")
+        val notified=row["headcount_exceeded_notified"] as Boolean
+        val exceeded=count>headcount
+        if(exceeded && !notified) {
+            val host=db.rows("SELECT user_id FROM participants WHERE id=:p","p" to row.long("host_participant_id")).single()["user_id"] as? Number
+            notify(gid,id,"HEADCOUNT_EXCEEDED","현재 ${count}명이 참여했어요. 그대로면 ${headcount}명으로 계산되고 마지막에 들어온 사람은 빠져요",listOfNotNull(host?.toLong()),0)
+        }
+        if(exceeded!=notified) db.update("UPDATE settlement_units SET headcount_exceeded_notified=:flag WHERE id=:s","flag" to exceeded,"s" to id)
+    }
+    private fun excludeMember(gid: Long,id: Long,participant: PersonInput,title: String,reason: String,actor: Long,notificationType: String="MEMBER_EXCLUDED") {
+        val pid=participant.id
+        db.update("UPDATE settlement_unit_members SET status='REMOVED' WHERE settlement_unit_id=:s AND participant_id=:p","s" to id,"p" to pid)
+        db.update("DELETE a FROM round_responses a JOIN rounds r ON r.id=a.round_id WHERE r.settlement_unit_id=:s AND a.participant_id=:p","s" to id,"p" to pid)
+        event(gid,id,"REMOVED","${participant.name}님은 $reason")
+        notify(gid,id,notificationType,"$title 술자리: $reason",listOf(participant.userId),actor)
+    }
+    private fun autoSettle(gid: Long,id: Long) {
+        val original=unit(gid,id)
+        if(original.state!="OPEN") return
+        val headcount=(db.rows("SELECT headcount FROM settlement_units WHERE id=:s","s" to id).single()["headcount"] as? Number)?.toInt()
+        if(headcount==null) return
+        val loaded=data(gid)
+        val seats=db.rows("SELECT participant_id,joined_at FROM settlement_unit_members WHERE settlement_unit_id=:s AND status='ACTIVE'","s" to id)
+            .map{MemberSeat(it.long("participant_id"),checkNotNull(it.instant("joined_at")))}
+        val plan=AutoSettlementPolicy.plan(original,headcount,seats,loaded.second,loaded.third)
+        var error=plan?.error
+        var preview: Preview?=null
+        val selected=original.copy(participantIds=plan?.includedIds ?: original.participantIds,
+            revision=original.revision + if(plan?.excludedIds?.isNotEmpty()==true) 1 else 0)
+        if(plan!=null && error==null) {
+            try { preview=SettlementWorkflow.preview(selected,loaded.first,loaded.second,loaded.third) }
+            catch(validation: SettlementValidationException) { error=validation.details.first().code.name }
+        }
+        db.update("UPDATE settlement_units SET auto_settlement_error=:error WHERE id=:s","error" to error,"s" to id)
+        if(preview==null || plan==null) return
+        room(gid,true)
+        val title=room(gid).text("name")
+        val peopleById=loaded.first.associateBy{it.id}
+        plan.excludedIds.forEach{excludeMember(gid,id,peopleById.getValue(it),title,"인원(${headcount}명) 밖이라 이번 정산에서 빠졌어요",0)}
+        if(plan.excludedIds.isNotEmpty()) bump(gid,id)
+        persistSettlement(gid,selected,loaded,preview,0,true)
     }
     fun reopen(gid: Long,id: Long,uid: Long) {
         val u=authorize(gid,id,uid,false);if(u.state!="SETTLING") fail("SETTLEMENT_UNIT_NOT_SETTLING")
@@ -196,7 +290,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         db.update("DELETE a FROM round_responses a JOIN rounds r ON r.id=a.round_id WHERE r.settlement_unit_id=:s AND a.source='AUTO'","s" to id)
         db.update("DELETE FROM settlements WHERE settlement_unit_id=:s","s" to id)
         db.update("UPDATE settlement_unit_members SET settlement_viewed_at=NULL WHERE settlement_unit_id=:s","s" to id)
-        db.update("UPDATE settlement_units SET status='OPEN',completed_at=NULL,input_revision=input_revision+1 WHERE id=:s","s" to id)
+        db.update("UPDATE settlement_units SET status='OPEN',completed_at=NULL,auto_settlement_error=NULL,input_revision=input_revision+1 WHERE id=:s","s" to id)
         event(gid,id,"SETTLEMENT_REVERTED","정산을 되돌렸어요");updateSummary(gid)
         notify(gid,id,"SETTLEMENT_REVERTED","정산이 되돌려졌어요",data(gid).first.filter{it.id in u.participantIds}.map{it.userId},uid)
     }
@@ -238,7 +332,8 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
     private fun roundView(r: RoundInput)=mapOf("id" to r.id,"settlementUnitId" to r.unitId,"seq" to r.seq,"total" to r.total,"payerParticipantId" to r.payerId,"drinks" to r.drinks)
     private fun unitView(gid: Long,id: Long,pid: Long): Map<String,Any?> {
         val u=unit(gid,id,false);val viewed=db.rows("SELECT settlement_viewed_at FROM settlement_unit_members WHERE settlement_unit_id=:s AND participant_id=:p","s" to id,"p" to pid).singleOrNull()?.get("settlement_viewed_at")!=null
-        return mapOf("id" to id,"hostParticipantId" to u.hostId,"status" to u.state,"inputRevision" to u.revision,"participantIds" to u.participantIds,"me" to mapOf("included" to (pid in u.participantIds),"settlementViewed" to viewed))
+        val automatic=db.rows("SELECT headcount,auto_settlement_error FROM settlement_units WHERE id=:s","s" to id).single()
+        return mapOf("id" to id,"hostParticipantId" to u.hostId,"status" to u.state,"inputRevision" to u.revision,"headcount" to automatic["headcount"],"autoSettlementError" to automatic["auto_settlement_error"],"participantIds" to u.participantIds,"me" to mapOf("included" to (pid in u.participantIds),"settlementViewed" to viewed))
     }
     @Transactional(readOnly=true,isolation=Isolation.READ_COMMITTED)
     fun detail(gid: Long,uid: Long): Map<String,Any?> { person(gid,uid);return details(listOf(gid),uid).single() }
@@ -261,7 +356,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
             val ts=transfers[gid].orEmpty();val allowed=ts.filter{it.long("sender_participant_id")==me}.map{it.long("recipient_participant_id")}.toSet()+me
             mapOf("id" to gid,"title" to row["name"],"date" to (row["gathering_date"] as java.sql.Date).toLocalDate(),"createdByUserId" to row["host_user_id"],"shareToken" to row["share_token"],"status" to row["status"],"completedAt" to row.instant("completed_at"),"deleteScheduledAt" to row.instant("delete_scheduled_at"),
                 "participants" to ps.map{p->mapOf("id" to p["id"],"userId" to p["user_id"],"displayName" to (p["display_name"] ?: p["name"]),"nickname" to p["nickname"],"spoonCount" to p["spoon_count"],"hasPayout" to (p["payout_encrypted"]!=null),"payout" to if(p.long("id") in allowed) payoutValue(p["payout_encrypted"]) else null)},
-                "settlementUnits" to units[gid].orEmpty().map{u->val ms=members[u.long("id")].orEmpty();mapOf("id" to u["id"],"hostParticipantId" to u["host_participant_id"],"status" to u["status"],"inputRevision" to u["input_revision"],"completedAt" to u.instant("completed_at"),"participantIds" to ms.filter{it.text("status")=="ACTIVE"}.map{it.long("participant_id")},"me" to mapOf("included" to ms.any{it.long("participant_id")==me&&it.text("status")=="ACTIVE"},"settlementViewed" to ms.any{it.long("participant_id")==me&&it["settlement_viewed_at"]!=null}))},
+                "settlementUnits" to units[gid].orEmpty().map{u->val ms=members[u.long("id")].orEmpty();mapOf("id" to u["id"],"hostParticipantId" to u["host_participant_id"],"status" to u["status"],"inputRevision" to u["input_revision"],"headcount" to u["headcount"],"autoSettlementError" to u["auto_settlement_error"],"completedAt" to u.instant("completed_at"),"participantIds" to ms.filter{it.text("status")=="ACTIVE"}.sortedWith(compareBy<Map<String,Any?>> {it.long("participant_id")!=u.long("host_participant_id")}.thenBy{it.instant("joined_at")}.thenBy{it.long("participant_id")}).map{it.long("participant_id")},"me" to mapOf("included" to ms.any{it.long("participant_id")==me&&it.text("status")=="ACTIVE"},"settlementViewed" to ms.any{it.long("participant_id")==me&&it["settlement_viewed_at"]!=null}))},
                 "rounds" to rounds[gid].orEmpty().map{r->mapOf("id" to r["id"],"settlementUnitId" to r["settlement_unit_id"],"seq" to r["seq"],"total" to r["total_amount"],"payerParticipantId" to r["payer_id"],"drinks" to drinks[r.long("id")].orEmpty().map{mapOf("name" to it["name"],"unitPrice" to it["unit_price"],"quantity" to it["bottle_count"])})},
                 "responses" to responses[gid].orEmpty().map{mapOf("participantId" to it["participant_id"],"roundId" to it["round_id"],"type" to it["type"],"source" to it["source"])},
                 "transfers" to ts.map{t->mapOf("id" to t["id"],"settlementUnitId" to t["settlement_unit_id"],"fromParticipantId" to t["sender_participant_id"],"toParticipantId" to t["recipient_participant_id"],"amount" to t["amount"],"status" to t["status"],"sentAt" to t.instant("sent_at"),"confirmedAt" to t.instant("confirmed_at"),"notReceivedAt" to t.instant("not_received_at"),"basis" to basis[t.long("id")].orEmpty().map{mapOf("roundId" to it["round_id"],"type" to it["type"],"amount" to it["amount"])})},

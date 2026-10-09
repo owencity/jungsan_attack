@@ -6,7 +6,7 @@ FC-015(같은 술자리의 새 총무)는 `docs/host-settlement-units` 브랜치
 
 ## FC-016 시간이 9시간 밀려 내려온다 — 로컬 프로필
 
-- **상태:** 열림
+- **상태:** 반영됨 — API v8, local/prod connectionTimeZone=UTC + 세션 UTC, JPA JDBC UTC. Asia/Seoul JVM·실제 MySQL HTTP 비교 통과. 운영 응답 확인은 후속.
 - **바뀐 흐름:** 없음. 타임라인 날짜가 하루 뒤로 보이는 버그(10/9 15시 KST에 만든 기록이 "10/10")
 - **백엔드 영향:** 로컬에서 15:25(KST)에 만든 기록이 `"createdAt": "2026-10-09T15:25:58Z"`로 내려온다 — 한국 시각에
   `Z`가 붙었다. 원인으로 보이는 곳: `application-local.yml`의 JDBC URL에 `serverTimezone=UTC`(또는 `connectionTimeZone=UTC`)가
@@ -17,7 +17,7 @@ FC-015(같은 술자리의 새 총무)는 `docs/host-settlement-units` 브랜치
 
 ## FC-017 타임라인 금액에 천 단위 쉼표가 없다
 
-- **상태:** 열림
+- **상태:** 반영됨 — NotificationText Java/Kotlin·ROUND_SAVED, `184,000원` 실제 HTTP 확인. 기존 저장 문구는 유지.
 - **바뀐 흐름:** 정산방 타임라인(R1)에 "1차 184000원을 넣었어요"로 보인다. 화면의 다른 금액은 모두 "184,000원"
 - **백엔드 영향:** 타임라인 시스템 문구를 서버가 만든다 — 금액을 `184,000`으로 포맷해서 넣는다.
   이미 저장된 문구는 7일 뒤 삭제되니 소급 수정은 필요 없다
@@ -25,7 +25,7 @@ FC-015(같은 술자리의 새 총무)는 `docs/host-settlement-units` 브랜치
 
 ## FC-018 알림 `title`에 종류 코드가 그대로 들어 있다
 
-- **상태:** 열림
+- **상태:** 반영됨 — NotificationText Java/Kotlin, notify의 title/type 분리, 기존 종류와 새 자동 정산 종류 모두 적용.
 - **바뀐 흐름:** 알림함(N1) 한 줄의 제목. 지금 응답은 `title: "SETTLED"`, 사람이 읽을 문장은 `body`에만 있다
 - **백엔드 영향:** `title`은 사람이 읽는 짧은 제목(FC-005 문구)으로, 종류는 이미 있는 `type`으로 구분한다.
   당분간 웹은 `body`를 제목 자리에 쓰고 있다 — 서버가 고치면 프론트도 `title`로 되돌린다

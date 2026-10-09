@@ -30,3 +30,5 @@ databaseChangeLog:
       file: db/changelog/016-independent-settlement-units.yaml
   - include:
       file: db/changelog/017-release-auth.yaml
+  - include:
+      file: db/changelog/018-auto-settlement.yaml

@@ -1,4 +1,18 @@
-# 정산어택 — API 계약 · v7
+# 정산어택 — API 계약 · v8
+
+> **v8 변경(2026-10-10)** — FC-016~018·020. 기존 버전 이력은 유지한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | [자동 정산](AUTO_SETTLEMENT.md) | 생성 선택 headcount, PUT 단위/headcount, 응답 headcount·autoSettlementError |
+> | 알림 | 사람이 읽는 title, HEADCOUNT_EXCEEDED·MEMBER_EXCLUDED·SETTLED_HOST, 송금 요약 |
+> | 시간 | 로컬·운영 JDBC UTC 고정, 타임라인 신규 금액 천 단위 쉼표 |
+> | ERD 018 | changeSet 028, 인원·초과 알림 플래그·자동 계산 보류 오류 |
+
+자동·수동 정산의 현재 계약은 [AUTO_SETTLEMENT.md](AUTO_SETTLEMENT.md)가 우선한다.
+인원 수정의 범위/형식 오류는 400 `MALFORMED_REQUEST`, 권한은 403 `NOT_SETTLEMENT_UNIT_HOST`,
+상태는 409 `SETTLEMENT_UNIT_NOT_OPEN`이다. 자동 계산이 보류되어도 응답 저장은 성공하며 상세의
+`autoSettlementError`가 `REMOVE_PAYER` 또는 기존 Core 오류 코드를 알려 준다.
 
 > **v7 변경(2026-10-09)** — CTO 결정: 앱 Bearer / 웹 쿠키. 이전 v3의 쿠키 전용 규칙은 웹에 적용한다.
 >

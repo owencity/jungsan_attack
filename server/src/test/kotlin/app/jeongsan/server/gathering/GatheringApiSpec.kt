@@ -40,6 +40,7 @@ class GatheringApiSpec : StringSpec({
         Case("POST","/api/v1/transfers/1/sent",code=204),Case("POST","/api/v1/transfers/1/confirm",code=204),Case("POST","/api/v1/transfers/1/not-received",code=204),
         Case("POST","/api/v1/gatherings/1/settlement-units","""{"requestId":"00000000-0000-0000-0000-000000000001","participantIds":[1,2]}""",201),
         Case("PUT",root+"/participants/2",code=204),Case("DELETE",root+"/participants/2",code=204),
+        Case("PUT",root+"/headcount","""{"headcount":3}""",204),
         Case("POST",root+"/rounds",round,201),Case("PUT",root+"/rounds/1",round),Case("DELETE",root+"/rounds/1",code=204),
         Case("PUT",root+"/responses/me",answers,204),Case("PUT",root+"/participants/2/responses",answers,204),
         Case("GET",root+"/settlement/preview"),Case("POST",root+"/settlement","""{"inputRevision":1,"inputHash":"${"a".repeat(64)}"}"""),
@@ -71,5 +72,14 @@ class GatheringApiSpec : StringSpec({
                 .andExpect(status().isBadRequest)
         }
         Mockito.verifyNoInteractions(service)
+    }
+    "인원은 2~50이며 본문 없는 술자리 생성도 유지한다" {
+        for (body in listOf("""{"headcount":1}""", """{"headcount":51}""", "{}")) {
+            mvc.perform(request(HttpMethod.PUT,root+"/headcount").cookie(cookie).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest)
+        }
+        Mockito.verifyNoInteractions(service)
+        mvc.perform(request(HttpMethod.POST,"/api/v1/gatherings").cookie(cookie)).andExpect(status().isCreated)
+        Mockito.verify(service).create(12,null)
     }
 })

@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 028-auto-settlement
+      author: jeongsan
+      comment: "FC-020. 총무가 정한 인원과 자동 계산 보류 사유를 단위별로 유지하고 초과 알림 중복을 막는다."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE settlement_units
+                ADD headcount INT NULL COMMENT '총무 포함 목표 인원 2~50, NULL은 자동 정산 없음',
+                ADD headcount_exceeded_notified BOOLEAN NOT NULL DEFAULT FALSE COMMENT '현재 초과 구간에서 총무 알림을 이미 보냈는지',
+                ADD auto_settlement_error VARCHAR(40) NULL COMMENT '마지막 자동 계산 보류 오류, 정상 입력 변경 때 재평가';

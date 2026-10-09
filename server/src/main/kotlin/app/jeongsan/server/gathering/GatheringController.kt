@@ -13,7 +13,8 @@ class GatheringController(private val service: GatheringService) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun create(@LoginUser userId: Long) = service.create(userId)
+    fun create(@LoginUser userId: Long, @Valid @RequestBody(required=false) request: GatheringCreateRequest? = null) =
+        service.create(userId, request?.headcount)
 
     @GetMapping("/{gid}")
     fun detail(@PathVariable gid: Long, @LoginUser userId: Long) = service.detail(gid,userId)

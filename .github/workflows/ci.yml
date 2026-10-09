@@ -42,6 +42,9 @@ jobs:
       - name: Server 테스트와 jar 빌드
         run: ./gradlew :server:test :server:bootJar --no-daemon
 
+      - name: 실제 MySQL·HTTP 동시성 및 배포 복원 검증
+        run: bash scripts/verify-release.sh
+
       - name: 테스트 결과 보존
         if: always()
         uses: actions/upload-artifact@v4
@@ -52,5 +55,6 @@ jobs:
             core/build/reports/tests/test/
             server/build/test-results/test/
             server/build/reports/tests/test/
+            server/build/release-http.log
           if-no-files-found: ignore
           retention-days: 14

@@ -14,10 +14,10 @@ on:
 permissions:
   contents: read
 
-# 배포가 겹치면 서로 덮어써서 상태가 꼬인다. 앞선 배포는 취소한다.
+# 실행 중인 SSH 배포를 중단하지 않고 뒤의 배포가 기다리게 한다.
 concurrency:
   group: deploy-oci
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 # 이 워크플로는 "언제·어디서" 만 정한다. "무엇을 하는가"는 scripts/deploy/ 안에 있다 —
 # 배포가 깨졌을 때 서버에서 같은 스크립트를 손으로 돌려 재현할 수 있어야 하기 때문이다.
@@ -53,12 +53,14 @@ jobs:
       - name: jar 빌드
         run: ./gradlew :server:bootJar --no-daemon
 
+      - name: 실제 MySQL·HTTP 릴리스 검증
+        run: bash scripts/verify-release.sh
+
       - name: 도커 이미지 빌드
         run: |
           cp server/build/libs/server.jar server/server.jar
-          docker build -t jeongsan-server:latest ./server
-          docker save jeongsan-server:latest | gzip > /tmp/jeongsan-server.tar.gz
-          ls -lh /tmp/jeongsan-server.tar.gz
+          docker build -t "jeongsan-server:$GITHUB_SHA" ./server
+          docker save "jeongsan-server:$GITHUB_SHA" | gzip > "/tmp/jeongsan-server-$GITHUB_SHA.tar.gz"
 
       - name: SSH 키 준비
         run: |
@@ -71,26 +73,24 @@ jobs:
       # 워크플로를 고칠 필요가 없다 — .env 는 서버에만 있으므로 지우지 않는다.
       - name: compose·스크립트 동기화
         run: |
-          rsync -az --delete \
+          ssh -i ~/.ssh/id_key "$OCI_USER@${{ secrets.OCI_HOST }}" \
+            "mkdir -p ~/${{ env.REMOTE_DIR }}/scripts/deploy && chmod 700 ~/${{ env.REMOTE_DIR }}"
+          rsync -az \
             -e "ssh -i ~/.ssh/id_key" \
-            docker-compose.prod.yml scripts/ \
-            "$OCI_USER@${{ secrets.OCI_HOST }}:~/${{ env.REMOTE_DIR }}/scripts_tmp/"
-          ssh -i ~/.ssh/id_key "$OCI_USER@${{ secrets.OCI_HOST }}" "
-            set -e
-            cd ~/${{ env.REMOTE_DIR }}
-            mv scripts_tmp/docker-compose.prod.yml ./
-            rm -rf scripts && mv scripts_tmp scripts
-          "
+            docker-compose.prod.yml \
+            "$OCI_USER@${{ secrets.OCI_HOST }}:~/${{ env.REMOTE_DIR }}/"
+          rsync -az -e "ssh -i ~/.ssh/id_key" scripts/deploy/ \
+            "$OCI_USER@${{ secrets.OCI_HOST }}:~/${{ env.REMOTE_DIR }}/scripts/deploy/"
 
       - name: 이미지 전송
         run: |
-          scp -i ~/.ssh/id_key /tmp/jeongsan-server.tar.gz \
+          scp -i ~/.ssh/id_key "/tmp/jeongsan-server-$GITHUB_SHA.tar.gz" \
             "$OCI_USER@${{ secrets.OCI_HOST }}:~/${{ env.REMOTE_DIR }}/"
 
       - name: 배포
         run: |
           ssh -i ~/.ssh/id_key "$OCI_USER@${{ secrets.OCI_HOST }}" \
-            "cd ~/${{ env.REMOTE_DIR }} && bash scripts/deploy/deploy.sh ~/${{ env.REMOTE_DIR }}/jeongsan-server.tar.gz"
+            "cd ~/${{ env.REMOTE_DIR }} && bash scripts/deploy/deploy.sh ~/${{ env.REMOTE_DIR }}/jeongsan-server-$GITHUB_SHA.tar.gz jeongsan-server:$GITHUB_SHA"
 
       - name: 헬스체크
         run: |

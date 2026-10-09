@@ -7,7 +7,7 @@ GitHub Actions (ARM 러너)                  OCI Ubuntu
   ┌────────────────────────┐   SSH/SCP    ┌──────────────────────────┐
   │ core·server 테스트      │ ───────────▶ │ docker load               │
   │ bootJar 빌드            │              │ docker compose up -d      │
-  │ 도커 이미지 빌드          │              │   ├ app   (127.0.0.1:8080)│
+  │ 도커 이미지 빌드          │              │   ├ app   (127.0.0.1:18080)│
   │ 이미지 tar.gz 전송       │              │   └ mysql (포트 비공개)     │
   │ 헬스체크 확인            │ ◀─────────── │ /actuator/health          │
   └────────────────────────┘              └──────────────────────────┘
@@ -181,9 +181,9 @@ git revert <문제 커밋> && git push
 ```bash
 ssh ubuntu@<OCI_HOST>
 cd ~/jeongsan
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs -f app
-curl -s localhost:8080/actuator/health
+APP_IMAGE=$(sed -n 's/^APP_IMAGE=//p' .release.env) docker compose -f docker-compose.prod.yml ps
+APP_IMAGE=$(sed -n 's/^APP_IMAGE=//p' .release.env) docker compose -f docker-compose.prod.yml logs -f app
+bash scripts/deploy/health.sh
 ```
 
 
@@ -194,3 +194,18 @@ curl -s localhost:8080/actuator/health
 - v1 CONFIRMED 자료가 있으면 024가 기동을 중단한다. 운영 DB 현황과 별도 자료 처리 결정을 먼저 검토한다.
 - MySQL fresh migration과 기존 OPEN 자료 업그레이드 검증은 구분한다. 새 코드가 배포 가능한지 체크리스트와 PR 검증 결과를 확인한다.
 - 사용자 병합 전에는 운영 배포를 실행하지 않는다.
+# 운영 준비 갱신 (2026-10-10)
+
+실제 OCI의 8080은 기존 n8n Kafka 앱이 사용한다. 정산어택 compose project는 `jeongsan`,
+앱은 `127.0.0.1:18080`에만 바인딩한다. Cloudflare의 `api.devkdk.com` 서비스 주소를
+`http://127.0.0.1:18080`으로 맞춘다. 현재 터널은 원격 관리 방식이므로 Cloudflare 설정에서 수정한다.
+기존 n8n/Kafka 포트·컨테이너·이미지·볼륨은 변경하지 않는다.
+
+이미지 태그는 `jeongsan-server:<main 40자리 SHA>`다. 성공한 태그만 서버 `.release.env`에 남기며,
+헬스체크는 해당 compose 앱의 이미지·컨테이너 healthy·18080 바인딩·HTTP UP을 모두 검사한다.
+첫 디렉터리는 파이프라인이 만들지만 **필수 운영 .env는 미리 준비해야 한다**. 키·설정이 없으면 출시가 끝난 것이 아니다.
+실행 중인 배포는 취소하지 않으며 서버 잠금도 사용한다. 실패하면 이전 앱 이미지로 복원하고 DB는 유지한다.
+새 migration은 이전 앱이 읽을 수 있는 추가 컬럼 방식으로 작성한다. 제거·타입 변경 migration은 별도 복구 계획이 필요하다.
+이전 성공 이미지가 없는 최초 배포의 실패는 자동 복원이 불가능하다. 실패 원인을 고친 뒤 같은 SHA로 다시 배포한다.
+수동 실행도 `bash scripts/deploy/deploy.sh <배포 디렉터리의 tar> jeongsan-server:<SHA>`를 쓴다.
+운영 로그는 CI에 자동으로 덤프하지 않으며 OCI에서 필요한 부분만 확인한다.
