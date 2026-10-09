@@ -9,7 +9,9 @@
   "policyBlob": "352945ea722b56231356588a62f47389ac0889a9",
   "pr": {
     "headBranch": "docs/backend-quality-rules",
-    "baseBranch": "main"
+    "baseBranch": "main",
+    "number": 23,
+    "url": "https://github.com/owencity/jungsan_attack/pull/23"
   },
   "hashBasis": "Git blob bytes (LF text, patch preserved)",
   "sha256": {
