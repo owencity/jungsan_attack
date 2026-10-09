@@ -285,3 +285,31 @@ docker rm -f jeongsan-mysql-test && docker network rm jeongsan-test-net
       비용이 컸다
 - [ ] `groups` → `user_groups` 리네임(migration `011`)에 맞춰 `docs/table-spec.xlsx`
       갱신 — 엑셀은 이 문서와 달리 손으로 열어 고쳐야 한다, 아직 안 함
+
+
+## 2026-10-07 v4 구현 스키마
+
+진실은 `016-independent-settlement-units.yaml`의 새 changeSet 024~026이다. 기존 changelog는 수정하지 않았다.
+새 테이블은 `GatheringStore` JDBC와 같은 DataSource의 Spring 트랜잭션으로 매핑한다. ORM 자동 DDL은 사용하지 않는다.
+
+| 테이블 | 키·참조·역할 |
+|---|---|
+| settlement_units | id, gathering_id, host_participant_id. `(host_participant_id,gathering_id)` FK로 다른 방 총무 차단 |
+| settlement_unit_members | PK(unit,participant), 같은 방 compound FK. ACTIVE/REMOVED·viewed_at은 단위별 |
+| settlement_unit_requests | PK(gathering,user,request UUID), 생성 단위와 본문 hash. 동시 재시도 중복 차단 |
+| round_responses | PK(participant,round), 행 부재=미응답, SELF/HOST/AUTO, round 삭제 cascade |
+| settlements | UNIQUE(unit), 확정 revision/hash/실행 원금/시각. 미리보기 계산 결과를 캐시하지 않음 |
+| settlement_transfers | UNIQUE(settlement,sender,recipient), 금액·WAITING/SENT/CONFIRMED·보낸/확인/미수취 시각 |
+| settlement_transfer_items | PK(transfer,round), 확정 당시 참석 타입과 정수 근거, transfer 삭제 cascade |
+| timeline_entries | 방 전체 타임라인, unit은 시스템 소식의 선택 정보, MESSAGE/SYSTEM |
+| notifications | 사용자별 읽음·방/단위 참조·문구·UTC 시각 |
+
+`gatherings`에는 next_round_seq, last_activity_at, completed_at을 추가한다.
+`rounds`에는 unit ID와 `(unit,payer)` 명단 FK를 추가한다. 사용자의 지급 계좌는 users.payout_encrypted에만 신규 저장한다.
+`spoon_count` 기본 0은 조회 기반이며 복수 총무의 지급 정책을 구현한 것으로 보지 않는다.
+
+물리 이름은 기존 name/host_user_id/gathering_date를 유지하고 API에서 title/createdByUserId/date로 매핑한다.
+레거시 group_id·모임/기타 항목/attendance 테이블과 컬럼은 이 단계에서 삭제하지 않았다. 새 API는 사용하지 않는다.
+업그레이드는 COLLECTING 입력을 최초 단위에 붙이고 기존 출석을 SELF로 옮긴다.
+CONFIRMED v1 자료가 있으면 024의 precondition으로 중단한다. 기존 확정 금액을 v2로 조용히 재계산하지 않는다.
+완료 7일 또는 30일 미활동 삭제는 단위 오름차순 잠금→방 잠금→최신 상태 재검사 후 자식부터 제거한다.

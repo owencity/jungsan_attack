@@ -37,3 +37,7 @@ logging:
   level:
     liquibase: INFO
     org.hibernate.SQL: DEBUG
+
+payout:
+  # 공개된 로컬 전용 키. 운영은 독립된 32바이트 키를 강제한다.
+  encryption-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=

@@ -39,3 +39,6 @@ logging:
   level:
     root: INFO
     liquibase: INFO
+
+payout:
+  encryption-key: ${PAYOUT_ENCRYPTION_KEY}

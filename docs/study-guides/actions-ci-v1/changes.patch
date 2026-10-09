@@ -1,0 +1,178 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+new file mode 100644
+index 0000000000000000000000000000000000000000..421a896affdd57e3ab8e36a317c7301216e1f817
+--- /dev/null
++++ b/.github/workflows/ci.yml
+@@ -0,0 +1,56 @@
++name: Backend CI
++
++# 단위별로 쌓은 PR도 검증해야 하므로 대상 브랜치를 main으로 제한하지 않는다.
++on:
++  pull_request:
++  push:
++    branches: [main]
++  workflow_dispatch:
++
++permissions:
++  contents: read
++
++concurrency:
++  group: backend-ci-${{ github.event_name }}-${{ github.ref }}
++  cancel-in-progress: true
++
++jobs:
++  verify:
++    name: Core · Server 테스트와 빌드
++    runs-on: ubuntu-24.04
++    timeout-minutes: 20
++    steps:
++      - name: 체크아웃
++        uses: actions/checkout@v5
++
++      - name: JDK 21 준비
++        uses: actions/setup-java@v5
++        with:
++          distribution: temurin
++          java-version: '21'
++
++      - name: Gradle 캐시
++        uses: gradle/actions/setup-gradle@v5
++
++      # chmod로 덮으면 저장소의 잘못된 권한을 발견하지 못한다.
++      - name: Gradle Wrapper 실행 권한 확인
++        run: test -x ./gradlew
++
++      - name: Core 테스트
++        run: ./gradlew :core:test --no-daemon
++
++      - name: Server 테스트와 jar 빌드
++        run: ./gradlew :server:test :server:bootJar --no-daemon
++
++      - name: 테스트 결과 보존
++        if: always()
++        uses: actions/upload-artifact@v4
++        with:
++          name: backend-test-results
++          path: |
++            core/build/test-results/test/
++            core/build/reports/tests/test/
++            server/build/test-results/test/
++            server/build/reports/tests/test/
++          if-no-files-found: ignore
++          retention-days: 14
+diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+index cd3fa9e9f3073f98979bc058016a31f44a947d99..6af9b9a5e46100d78f6e90334854f3a974545524 100644
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -11,6 +11,9 @@ on:
+       - 'design/**'
+   workflow_dispatch:
+ 
++permissions:
++  contents: read
++
+ # 배포가 겹치면 서로 덮어써서 상태가 꼬인다. 앞선 배포는 취소한다.
+ concurrency:
+   group: deploy-oci
+@@ -24,27 +27,28 @@ env:
+ 
+ jobs:
+   deploy:
++    # 수동 실행에서 기능 브랜치를 선택해도 운영에 배포하지 않는다.
++    if: github.ref == 'refs/heads/main'
+     # OCI 인스턴스가 Canonical-Ubuntu-24.04-aarch64 (ARM64) 로 확인됨.
+     # x86 러너에서 만든 이미지는 여기서 exec format error 로 안 뜬다.
+     runs-on: ubuntu-24.04-arm
+ 
+     steps:
+       - name: 체크아웃
+-        uses: actions/checkout@v4
++        uses: actions/checkout@v5
+ 
+       - name: JDK 21 준비
+-        uses: actions/setup-java@v4
++        uses: actions/setup-java@v5
+         with:
+           distribution: temurin
+           java-version: '21'
+ 
+       - name: Gradle 캐시
+-        uses: gradle/actions/setup-gradle@v4
++        uses: gradle/actions/setup-gradle@v5
+ 
+-      # core 는 순수 계산 엔진이라 Spring·DB 없이 몇 초면 끝난다(46개 테스트).
+-      # 이걸 통과 못 하면 서버까지 갈 이유가 없다.
++      # PR 검증과 별개로 실제 배포할 커밋에서도 두 모듈의 테스트를 통과해야 한다.
+       - name: 테스트
+-        run: ./gradlew :core:test --no-daemon
++        run: ./gradlew :core:test :server:test --no-daemon
+ 
+       - name: jar 빌드
+         run: ./gradlew :server:bootJar --no-daemon
+diff --git a/AGENTS.md b/AGENTS.md
+index b81841ffaeab39259b1ee7cec726dcd24c420864..81cdc9da761353cad92c2175cd49bd6426187d12 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -388,9 +388,9 @@ checksum이 깨진다. **따라서 다음 파일은 `015-*.yaml`이고, 그 안
+ - **`main`에 직접 커밋하지 않는다.** `--no-verify`, force push, `rebase -i` 같은
+   이력 조작을 하지 않는다.
+ 
+-> ⚠️ **PR에 CI가 없다.** 이 저장소의 유일한 워크플로는 `.github/workflows/deploy.yml`이고
+-> 트리거가 `push: [main]`이다. 즉 **네 PR을 자동으로 검증해 주는 게 아무것도 없다** —
+-> §11 체크리스트는 **네가 직접 돌리고 결과를 PR 설명에 붙여야** 의미가 있다.
++> **PR CI:** `.github/workflows/ci.yml`은 모든 대상 브랜치의 PR에서 Core·Server 테스트와
++> bootJar 빌드를 수행한다. 실제 DB·제공자·앱 연결 검증까지 대신하지 않으므로 §11의
++> 작업별 검증은 직접 수행하고 PR 설명에 결과를 붙인다.
+ >
+ > 그리고 **main 병합은 곧 OCI 운영 배포다**(스테이징 없음, `ADR-006`). 문서만 고친
+ > 경우는 `paths-ignore`로 배포가 안 돌지만, 코드가 섞이면 바로 나간다. 리뷰가
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 8dca8b30b2b1279f4ee65e77b753a4b6a5b9ff21..59dd1d1cff5f641f8ff6c7847461bbca22738220 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,3 +1,9 @@
++## [2026-10-09] PR CI와 배포 Wrapper 실행 권한
++- 문제: PR에는 자동 검증이 없었고 마지막 운영 배포는 gradlew 실행 권한 누락으로 테스트 시작 전 exit 126에 실패했다.
++- 고려한 대안: 실행 때마다 chmod로 보정, main 배포 검사만 유지, Git 실행 권한을 복구하고 PR 검증을 별도로 추가.
++- 선택 이유·트레이드오프: 100755를 Git에 보존하고 모든 대상의 PR에서 Core·Server 테스트와 빌드를 실행한다. 배포에서도 같은 커밋의 두 모듈 테스트를 통과해야 한다. 반복 검증 비용을 감수하고 수동 운영 배포도 main으로 제한한다.
++- 아쉬운 점: CI가 실제 MySQL·운영 OAuth·앱 연결을 검증하지 않는다. 검사 통과를 필수로 만드는 저장소 규칙과 사용자 병합은 별개이며 이번 수정이 운영 배포 성공을 보장하지 않는다.
++
+ # DEVLOG
+ 
+ `docs/생각하고-개발하기.md` 규칙에 따라, 반문을 거쳐 내린 결정을 남긴다.
+diff --git a/docs/DEPLOY.md b/docs/DEPLOY.md
+index 21e611c3b00c47b2c41767a636863dd3663a520b..151905c6b690668ed732b839514ced5c7ea7523d 100644
+--- a/docs/DEPLOY.md
++++ b/docs/DEPLOY.md
+@@ -5,7 +5,7 @@
+ ```
+ GitHub Actions (ARM 러너)                  OCI Ubuntu
+   ┌────────────────────────┐   SSH/SCP    ┌──────────────────────────┐
+-  │ core 테스트 (46개)       │ ───────────▶ │ docker load               │
++  │ core·server 테스트      │ ───────────▶ │ docker load               │
+   │ bootJar 빌드            │              │ docker compose up -d      │
+   │ 도커 이미지 빌드          │              │   ├ app   (127.0.0.1:8080)│
+   │ 이미지 tar.gz 전송       │              │   └ mysql (포트 비공개)     │
+@@ -89,8 +89,18 @@ https://api.devkdk.com/api/v1/auth/kakao/callback
+ 
+ ## 배포
+ 
++- PR 생성·업데이트 → **Backend CI**에서 Core 테스트, Server 테스트, bootJar 빌드를 실행한다.
++  대상 브랜치를 제한하지 않아 기능 브랜치 위에 쌓은 PR도 검증한다. 문서 전용 PR도 동일한 검사를 받아
++  필수 검사 설정 시 경로 필터 때문에 대기 상태에 머무르지 않는다. 이 작업에는 운영 SSH 키가 필요 없다.
++- CI의 테스트 XML·HTML은 실행 화면의 `backend-test-results`에서 14일 동안 받을 수 있다.
+ - `main` 에 push → 자동 배포 (문서·design 만 바뀌면 건너뜀)
+-- 수동: Actions → **Deploy to OCI** → Run workflow
++- 배포 작업도 Core·Server 테스트를 다시 통과한 뒤 ARM 이미지 빌드·전송·기동·헬스체크를 진행한다.
++- 수동: Actions → **Deploy to OCI** → Run workflow. `main`만 운영 배포하며 다른 브랜치는 건너뛴다.
++- `gradlew`의 Git 실행 권한은 `100755`로 보존한다. Windows에서 파일 내용을 고쳐도 이 권한이
++  유지되는지 확인한다. CI는 `test -x ./gradlew`로 확인하며 권한이 없으면 검사에 실패한다.
++
++CI 성공은 운영 배포 성공과 다르다. **Deploy to OCI**의 헬스체크 성공까지 확인해야 배포 완료다.
++실제 MySQL 경합·제공자 로그인·앱 연결 시험은 위 단위 테스트에 포함되지 않는다.
+ 
+ ## 롤백
+ 
+diff --git a/gradlew b/gradlew
+old mode 100644
+new mode 100755

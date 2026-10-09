@@ -26,3 +26,5 @@ databaseChangeLog:
       file: db/changelog/011-rename-groups.yaml
   - include:
       file: db/changelog/015-user-display-name.yaml
+  - include:
+      file: db/changelog/016-independent-settlement-units.yaml

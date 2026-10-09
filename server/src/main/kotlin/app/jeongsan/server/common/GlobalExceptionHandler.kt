@@ -22,6 +22,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 class GlobalExceptionHandler {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    @ExceptionHandler(app.jeongsan.server.gathering.SettlementValidationException::class)
+    fun handleSettlement(e: app.jeongsan.server.gathering.SettlementValidationException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(e.status).body(ErrorResponse(e.code, e.message, e.details.map {
+            FieldErrorDetail(it.code.name, it.message, roundId = it.roundId, participantId = it.participantId)
+        }))
+
     @ExceptionHandler(ApiException::class)
     fun handleApi(e: ApiException): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(e.status).body(ErrorResponse(e.code, e.message))
@@ -76,4 +82,6 @@ data class FieldErrorDetail(
     val code: String,
     val message: String,
     val field: String? = null,
+    val roundId: Long? = null,
+    val participantId: Long? = null,
 )

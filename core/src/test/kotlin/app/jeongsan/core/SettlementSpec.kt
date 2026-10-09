@@ -4,13 +4,12 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 
 /**
- * `CALC_RULES.md` §3의 T1~T11을 그대로 옮긴 것이다.
- * 기대값은 참조 구현(`docs/reference_impl.py`)으로 실제 계산해 검증된 값이다.
+ * `CALC_RULES_V2.md` §6의 예제와 핵심 조합을 옮긴 것이다.
  * **구현 결과가 다르면 구현이 틀린 것이다.**
  */
 class SettlementSpec : StringSpec({
 
-    "T1 · 기본 N빵 — 나머지가 대표결제자에게 간다" {
+    "T1 · 기본 N빵 — 차수 총무가 1원 올림 잔액을 조정한다" {
         val ps = participants("A", "B", "C")
         val result = SettlementInput(
             participants = ps,
@@ -18,13 +17,12 @@ class SettlementSpec : StringSpec({
             attendance = ps.attendance { sober(1L, "A", "B", "C") },
         ).succeed()
 
-        result.mainPayerName(ps) shouldBe "A"
-        result.amountsByName(ps) shouldBe mapOf("A" to 3_320L, "B" to 3_340L, "C" to 3_340L)
+        result.amountsByName(ps) shouldBe mapOf("A" to 3_332L, "B" to 3_334L, "C" to 3_334L)
         result.amounts.values.sum() shouldBe 10_000L
-        result.transfersByName(ps) shouldBe listOf("B→A 3340", "C→A 3340")
+        result.transfersByName(ps) shouldBe listOf("B→A 3334", "C→A 3334")
     }
 
-    "T2 · 2차 불참 — 올림이 없으면 대표결제자도 이득을 보지 않는다" {
+    "T2 · 2차 불참 — 나누어떨어지면 총무 잔액 조정도 없다" {
         val ps = participants("A", "B", "C", "D")
         val result = SettlementInput(
             participants = ps,
@@ -56,7 +54,7 @@ class SettlementSpec : StringSpec({
         ).succeed()
 
         result.amountsByName(ps) shouldBe
-            mapOf("A" to 11_660L, "B" to 11_670L, "C" to 11_670L, "D" to 5_000L)
+            mapOf("A" to 11_666L, "B" to 11_667L, "C" to 11_667L, "D" to 5_000L)
         result.amounts.values.sum() shouldBe 40_000L
     }
 
@@ -77,7 +75,9 @@ class SettlementSpec : StringSpec({
 
         result.amountsByName(ps) shouldBe
             mapOf("A" to 20_000L, "B" to 20_000L, "C" to 10_000L, "D" to 20_000L)
-        result.transfersByName(ps) shouldBe listOf("D→A 20000", "C→B 10000")
+        result.transfersByName(ps) shouldBe listOf(
+            "B→A 10000", "C→A 10000", "D→A 10000", "A→B 10000", "D→B 10000",
+        )
     }
 
     "T5 · 복합 — E가 두 사람에게 나눠 보내는 것이 정상이다" {
@@ -100,91 +100,97 @@ class SettlementSpec : StringSpec({
             "A" to 33_150L, "B" to 33_150L, "C" to 33_150L, "D" to 19_150L, "E" to 10_400L,
         )
         result.amounts.values.sum() shouldBe 129_000L
-        result.transfersByName(ps) shouldBe
-            listOf("C→A 33150", "D→A 19150", "E→A 1550", "E→B 8850")
+        result.transfersByName(ps) shouldBe listOf(
+            "B→A 19150", "C→A 19150", "D→A 19150", "E→A 10400",
+            "A→B 14000", "C→B 14000",
+        )
     }
 
-    "T6 · unit=100 — 단위가 커질수록 대표결제자의 이득이 커진다" {
+    "T6 · 동일 총무의 차수는 원부담을 합친 뒤 한 번만 1원 올림한다" {
         val ps = participants("A", "B", "C")
         val result = SettlementInput(
             participants = ps,
-            rounds = listOf(round(1L, 1, total = 10_000, alcohol = 0, payerId = ps.id("A"))),
-            attendance = ps.attendance { sober(1L, "A", "B", "C") },
-            roundingUnit = 100,
+            rounds = listOf(
+                round(1L, 1, total = 10_000, alcohol = 0, payerId = ps.id("A")),
+                round(2L, 2, total = 20_000, alcohol = 0, payerId = ps.id("A")),
+            ),
+            attendance = ps.attendance {
+                sober(1L, "A", "B", "C")
+                sober(2L, "A", "B", "C")
+            },
         ).succeed()
 
-        result.amountsByName(ps) shouldBe mapOf("A" to 3_200L, "B" to 3_400L, "C" to 3_400L)
-        result.appliedRoundingUnit shouldBe 100
-        result.roundingUnitDowngraded shouldBe false
+        result.amountsByName(ps) shouldBe mapOf("A" to 10_000L, "B" to 10_000L, "C" to 10_000L)
+        result.transfersByName(ps) shouldBe listOf("B→A 10000", "C→A 10000")
     }
 
-    "T7 · unit=1000은 거부된다 — 대표결제자를 음수로 만들기 때문이다" {
-        val ps = participants("A", "B", "C", "D")
+    "T7 · 1원 단위에서도 잔액 조정자가 음수면 거부한다" {
+        val ps = participants("A", "B", "C")
         val errors = SettlementInput(
             participants = ps,
-            rounds = listOf(round(1L, 1, total = 4_100, alcohol = 0, payerId = ps.id("A"))),
-            attendance = ps.attendance { sober(1L, "A", "B", "C", "D") },
-            roundingUnit = 1_000,
+            rounds = listOf(round(1L, 1, total = 1, alcohol = 0, payerId = ps.id("A"))),
+            attendance = ps.attendance { sober(1L, "A", "B", "C") },
         ).fail()
 
-        errors.codes() shouldBe setOf(ErrorCode.INVALID_ROUNDING_UNIT)
+        errors.codes() shouldBe setOf(ErrorCode.NEGATIVE_ADJUSTED_AMOUNT)
     }
 
-    "T7-b · unit=100에서 대표결제자가 음수가 되면 10원으로 강등해 재계산한다" {
-        // 15명 / 총액 15,100원 → 1인당 1,006.67원.
-        // unit=100이면 14명이 1,100원씩 = 15,400원이라 대표결제자가 −300원이 된다.
-        val names = (0 until 15).map { "p%02d".format(it) }
-        val ps = participants(*names.toTypedArray())
+    "T7-b · 면제 총무면 비면제 부담자 중 한 명이 잔액을 조정한다" {
+        val ps = participants("A", "B", "C", "D")
         val result = SettlementInput(
             participants = ps,
-            rounds = listOf(round(1L, 1, total = 15_100, alcohol = 0, payerId = ps.id("p00"))),
-            attendance = ps.attendance { sober(1L, *names.toTypedArray()) },
-            roundingUnit = 100,
+            rounds = listOf(round(1L, 1, total = 40_000, alcohol = 0, payerId = ps.id("D"))),
+            attendance = ps.attendance {
+                sober(1L, "A", "B", "C")
+                exempt(1L, "D")
+            },
         ).succeed()
 
-        result.roundingUnitDowngraded shouldBe true
-        result.appliedRoundingUnit shouldBe 10
-        result.amounts.values.all { it >= 0 } shouldBe true
-        result.amounts.values.sum() shouldBe 15_100L
-        result.amountsByName(ps)["p00"] shouldBe 960L    // 15,100 − (14 × 1,010)
+        result.amountsByName(ps) shouldBe mapOf(
+            "A" to 13_332L, "B" to 13_334L, "C" to 13_334L, "D" to 0L,
+        )
+        result.recipients.getValue(ps.id("D")).adjustmentParticipantId shouldBe ps.id("A")
+        result.transfersByName(ps) shouldBe
+            listOf("A→D 13332", "B→D 13334", "C→D 13334")
     }
 
     "T8 · 면제자 — 면제자의 몫을 나머지가 나눠 낸다" {
         val ps = participants("동규", "민지", "재훈", "수아")
-            .map { if (it.name == "수아") it.exempted() else it }
         val result = SettlementInput(
             participants = ps,
             rounds = listOf(round(1L, 1, total = 40_000, alcohol = 0, payerId = ps.id("동규"))),
-            attendance = ps.attendance { sober(1L, "동규", "민지", "재훈", "수아") },
+            attendance = ps.attendance {
+                sober(1L, "동규", "민지", "재훈")
+                exempt(1L, "수아")
+            },
         ).succeed()
 
-        result.mainPayerName(ps) shouldBe "동규"
         result.amountsByName(ps) shouldBe mapOf(
-            "동규" to 13_320L, "민지" to 13_340L, "재훈" to 13_340L, "수아" to 0L,
+            "동규" to 13_332L, "민지" to 13_334L, "재훈" to 13_334L, "수아" to 0L,
         )
         result.amounts.values.sum() shouldBe 40_000L
-        result.transfersByName(ps) shouldBe listOf("민지→동규 13340", "재훈→동규 13340")
+        result.transfersByName(ps) shouldBe listOf("민지→동규 13334", "재훈→동규 13334")
     }
 
-    "T9 · 기타 항목 — 항목 결제자가 순잔액에 반영된다" {
-        val ps = participants("동규", "민지", "재훈", "수아")
+    "T9 · 수취인별 원금은 자기 부담과 들어오는 송금의 합과 같다" {
+        val ps = participants("A", "B", "C", "D")
         val result = SettlementInput(
             participants = ps,
-            rounds = listOf(round(1L, 1, total = 40_000, alcohol = 0, payerId = ps.id("동규"))),
-            attendance = ps.attendance { sober(1L, "동규", "민지", "재훈", "수아") },
-            extras = listOf(
-                ExtraItem(101L, "택시비", 18_000, payerId = ps.id("재훈"),
-                    bearerIds = listOf(ps.id("재훈"), ps.id("수아"))),
+            rounds = listOf(
+                round(1L, 1, total = 40_000, alcohol = 0, payerId = ps.id("A")),
+                round(2L, 2, total = 30_000, alcohol = 0, payerId = ps.id("B")),
             ),
+            attendance = ps.attendance {
+                sober(1L, "A", "B", "C", "D")
+                sober(2L, "A", "B", "D")
+                absent(2L, "C")
+            },
         ).succeed()
 
-        result.amountsByName(ps) shouldBe mapOf(
-            "동규" to 10_000L, "민지" to 10_000L, "재훈" to 19_000L, "수아" to 19_000L,
-        )
-        result.amounts.values.sum() shouldBe 58_000L
-        // 재훈은 19,000을 부담하지만 택시비 18,000을 이미 냈으므로 1,000만 보낸다.
-        result.transfersByName(ps) shouldBe
-            listOf("수아→동규 19000", "민지→동규 10000", "재훈→동규 1000")
+        result.recipients.values.forEach {
+            it.ownShare + it.incomingTotal shouldBe it.paidTotal
+            it.participantAmounts.values.sum() shouldBe it.paidTotal
+        }
     }
 
     "T10 · 술병 계산 — DrinkItem이 alcoholAmount를 덮어쓴다" {
@@ -204,14 +210,13 @@ class SettlementSpec : StringSpec({
         ).succeed()
 
         result.amountsByName(ps) shouldBe mapOf(
-            "동규" to 26_320L, "민지" to 26_340L, "재훈" to 26_340L, "수아" to 12_000L,
+            "동규" to 26_332L, "민지" to 26_334L, "재훈" to 26_334L, "수아" to 12_000L,
         )
         result.amounts.values.sum() shouldBe 91_000L
     }
 
-    "T11 · 전체 통합 — 면제 + 기타 항목 + 다중 결제자" {
+    "T11 · 전체 통합 — 차수별 면제 + 다중 총무" {
         val ps = participants("동규", "민지", "재훈", "수아", "지원")
-            .map { if (it.name == "지원") it.exempted() else it }
         val result = SettlementInput(
             participants = ps,
             rounds = listOf(
@@ -220,47 +225,41 @@ class SettlementSpec : StringSpec({
             ),
             attendance = ps.attendance {
                 drank(1L, "동규", "민지", "재훈", "수아")
-                sober(1L, "지원")
+                exempt(1L, "지원")
                 drank(2L, "동규", "민지", "재훈")
                 absent(2L, "수아", "지원")
             },
-            extras = listOf(
-                ExtraItem(101L, "택시비", 20_000, payerId = ps.id("민지"),
-                    bearerIds = listOf(ps.id("수아"), ps.id("지원"))),
-            ),
         ).succeed()
 
         result.amountsByName(ps) shouldBe mapOf(
             "동규" to 35_750L, "민지" to 35_750L, "재훈" to 35_750L,
-            "수아" to 41_750L, "지원" to 0L,
+            "수아" to 21_750L, "지원" to 0L,
         )
-        result.amounts.values.sum() shouldBe 149_000L
-        result.transfersByName(ps) shouldBe
-            listOf("수아→동규 41750", "재훈→동규 9500", "재훈→민지 26250")
+        result.amounts.values.sum() shouldBe 129_000L
     }
 
-    "면제자가 결제하면 전액 돌려받는다 — CALC_RULES §2.1-c" {
+    "면제 총무가 결제하면 전액 돌려받는다 — CALC_RULES_V2 §3.4" {
         // 명세에 있는 규칙인데 T8·T11 어디에도 면제자가 결제자인 케이스가 없었다.
         // 코드 리뷰 F3에서 찾은 공백을 메우는 테스트다.
         val ps = participants("동규", "민지", "재훈", "수아")
-            .map { if (it.name == "수아") it.exempted() else it }
         val result = SettlementInput(
             participants = ps,
             // 면제자인 수아가 결제한다
             rounds = listOf(round(1L, 1, total = 40_000, alcohol = 0, payerId = ps.id("수아"))),
-            attendance = ps.attendance { sober(1L, "동규", "민지", "재훈", "수아") },
+            attendance = ps.attendance {
+                sober(1L, "동규", "민지", "재훈")
+                exempt(1L, "수아")
+            },
         ).succeed()
 
         result.amountsByName(ps)["수아"] shouldBe 0L                        // 부담 0
         result.breakdown.getValue(ps.id("수아")).paidTotal shouldBe 40_000L  // 결제 40,000
         result.amounts.values.sum() shouldBe 40_000L
+        result.breakdown.getValue(ps.id("수아")).rounds.single().exempt shouldBe true
         // 수아는 부담 0에 결제 40,000이므로 전액 회수한다.
-        // 채무자는 금액 내림차순이라 13,340인 민지·재훈이 먼저, 대표결제자 동규(13,320)가 마지막이다.
+        // 총무가 면제이므로 비면제 부담자 중 id가 가장 작은 동규가 잔액을 조정한다.
         result.transfersByName(ps) shouldBe
-            listOf("민지→수아 13340", "재훈→수아 13340", "동규→수아 13320")
-        // 대표결제자는 면제자를 제외한 사람 중에서 뽑힌다. 수아가 40,000을 결제했지만
-        // 면제자이므로 후보가 아니고, 나머지는 결제 0으로 동률이라 id가 가장 작은 동규가 된다.
-        result.mainPayerName(ps) shouldBe "동규"
+            listOf("동규→수아 13332", "민지→수아 13334", "재훈→수아 13334")
     }
 
     "breakdown은 불참 차수도 0원으로 채워진다 — W2가 '2차 불참 → 0원'을 보여줘야 한다" {

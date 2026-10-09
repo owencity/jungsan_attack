@@ -12,7 +12,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
 class GatheringAuthenticationSpec : StringSpec({
-    val repository = Mockito.mock(GatheringRepository::class.java)
+    val repository = Mockito.mock(GatheringService::class.java)
     val jwt = JwtService("01234567890123456789012345678901", 30)
     val mvc = MockMvcBuilders.standaloneSetup(GatheringController(repository))
         .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt))
@@ -24,10 +24,10 @@ class GatheringAuthenticationSpec : StringSpec({
         Mockito.verifyNoInteractions(repository)
     }
     "로그인한 총무 본인의 목록 조회만 호출한다" {
-        Mockito.`when`(repository.findByHostUserIdOrderByGatheringDateDesc(12)).thenReturn(emptyList())
+        Mockito.`when`(repository.list(12)).thenReturn(emptyList())
         mvc.perform(get("/api/v1/gatherings").cookie(Cookie(AuthController.COOKIE_NAME, jwt.issue(12))))
             .andExpect(status().isOk)
-        Mockito.verify(repository).findByHostUserIdOrderByGatheringDateDesc(12)
+        Mockito.verify(repository).list(12)
         Mockito.verifyNoMoreInteractions(repository)
     }
 })

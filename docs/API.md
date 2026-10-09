@@ -1,4 +1,16 @@
-# 정산어택 — API 계약 · v5
+# 정산어택 — API 계약 · v6
+
+> **v6 변경(2026-10-07)** — `feat/backend-v4` 구현 계약. 병합·운영 배포 여부와 구현 여부를 구분한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | §0.5 | 아래 구현 범위·독립 단위 응답·HTTP 상태·오류 코드 |
+> | SETTLEMENT_UNITS §4 | 같은 술자리의 초기/추가 단위, 명단·차수·응답·정산·송금 API 구현 |
+> | §1.4 추가 표 | Core v2와 단위 권한·상태 오류 |
+> | ERD 구현 스키마 | Liquibase 016, changeSet 024~026 및 JDBC 매핑 |
+> | 인증 가드 | 비로그인 링크 미리보기만 공개 목록에 추가, 기타 핸들러는 쿠키 인증 |
+> | 내 정보 | `payout`, `spoonCount`, `unreadNotificationCount` 추가 |
+
 
 > **v5 변경(2026-10-06)** — 제품 v4의 같은 술자리·복수 총무·독립 정산 계약. **구현 예정**이다.
 >
@@ -1273,3 +1285,64 @@ UI는 없는 상태**(SPEC v4 §9가 이걸 알고 있다: `Group` 통계·활�
 
 SPEC 갱신 때 §4 를 함께 고친다. (`SPEC.md` v4 상단의 "누적된 미반영 변경
 목록"에 이 항목이 이미 들어 있다 — 이 v2 개정도 그 목록을 다루지 않았다.)
+
+
+## 0.5 v6 구현 범위와 HTTP 계약
+
+이 절과 [SETTLEMENT_UNITS §4](SETTLEMENT_UNITS.md#4-api-계약)가 아래의 역사적 v1~v3 모임/전역 정산 경로를 대체한다.
+`U=/api/v1/gatherings/{gid}/settlement-units/{uid}`. 모든 보호 API는 `jeongsan_token` httpOnly JWT 쿠키를 받는다.
+
+| 메서드·경로 | 성공 응답 |
+|---|---|
+| POST `/api/v1/gatherings` | 201 상세. 본문 없음, KST 오늘·기본 제목·공유 참여자·초기 단위를 함께 생성 |
+| GET `/api/v1/gatherings/{gid}` | 200 상세, 공유 ACTIVE 참여자만 |
+| GET `/api/v1/me/gatherings` 또는 `/api/v1/gatherings` | 200 상세 배열, 참여한 방의 날짜·ID 내림차순, 테이블별 IN 배치 |
+| PATCH `/api/v1/gatherings/{gid}` | 200 상세, 생성자만 제목·날짜. 금융 hash에는 영향 없음 |
+| POST `/api/v1/gatherings/{gid}/settlement-units` | 201 Unit. requestId(UUID)와 participantIds, 순서는 의미 없음 |
+| PUT/DELETE `U/participants/{pid}` | 204, 해당 총무·OPEN, 중복 변경 멱등 |
+| POST `U/rounds` | 201 Round, `{total,payerParticipantId,drinks:[{name,unitPrice,quantity}]}` |
+| PUT/DELETE `U/rounds/{rid}` | 200 Round / 204, 해당 총무·OPEN, 다른 단위 차수는 404 |
+| PUT `U/responses/me` 또는 `U/participants/{pid}/responses` | 204, `{answers:[{roundId,type}]}`, SELF / 총무 HOST |
+| GET `U/settlement/preview` | 200 FC-002 Preview: `settlementUnitId,inputRevision,inputHash,lines,transfers,grandTotal` |
+| POST `U/settlement` | 200 상세. `{inputRevision,inputHash}`, 변경 시 409, AUTO와 송금 snapshot 원자 저장 |
+| DELETE `U/settlement` | 204, SETTLING·송금 이력 없음. SELF/HOST 유지, AUTO·snapshot·열람만 제거 |
+| POST `U/settlement/viewed` 또는 `U/complete` | 204, 단위별 최초 열람 / 총무 수동 완료 |
+| GET `/api/v1/join/{token}` | 공개 미리보기, 이름 명단·응답·계좌 제외, 단위의 host 이름과 차수 요약만 |
+| POST `/api/v1/join/{token}` | 200 `{gatheringId,participantId}`, 같은 신원을 재사용, 기존 ACTIVE 응답은 덮지 않음 |
+| PUT `/api/v1/users/me/payout` | 200 `{payout:{bank,accountNo,holder}}`, 본인 계좌, 하이픈 제거, AES-GCM 저장 |
+| POST `/api/v1/transfers/{tid}/sent`, `/confirm`, `/not-received` | 204, 송금자 / 수취인 / 수취인. 계좌 없는 신규 sent는 409 |
+| POST `/api/v1/gatherings/{gid}/messages` | 201 TimelineEntry, 참여자, 1~200자 |
+| GET `/api/v1/me/notifications` | 200 Notification 최신 50개 배열, UTC createdAt/readAt |
+| POST `/api/v1/me/notifications/{id}/read` 또는 `/read-all` | 204, 본인 알림에만 멱등 |
+
+상세는 `id,title,date,createdByUserId,shareToken,status,completedAt,deleteScheduledAt,participants,settlementUnits,rounds,responses,transfers,timeline,me`다.
+단위는 `id,hostParticipantId,status,inputRevision,completedAt,participantIds,me{included,settlementViewed}`다.
+공유 `me={participantId}`. round·transfer에는 `settlementUnitId`를 붙인다. 전역 host/revision/viewed는 반환하지 않는다.
+송금 근거와 미리보기 금액은 정수 원이다. 근거 절단 차이는 마지막 차수에 반영되어 basis 합 = amount를 지킨다.
+본인과 실제 송금 대상 수취인의 payout만 공개하고 다른 참여자는 null + hasPayout만 반환한다.
+계좌는 사용자 단위이며 암호문은 서버 밖으로 응답하지 않는다. 운영에는 독립된 32바이트 Base64 `PAYOUT_ENCRYPTION_KEY`가 필요하다.
+
+**아직 구현하지 않은 출시 기능:** Apple/앱 인증·링크 로그인 복귀·탈퇴, 복수 총무 스푼 정책, 실시간 타임라인 전달과 알림 전체 문구/대상 정합성.
+앱 Bearer 제안은 쿠키 전용 규칙과 충돌하므로 이 PR에서 자동 확정하지 않는다. 면제 API는 사용자 보류 그대로다.
+역사적 `/groups` 핸들러는 제거했다. 기존 DB의 모임 테이블은 적용된 changelog 보존 때문에 물리적으로 남는다.
+
+### 1.4 추가 — v6 실제 오류
+
+정산 검증은 409 `VALIDATION_FAILED` + `errors[{code,message,roundId?,participantId?,field?}]`이다.
+일반 Bean Validation은 기존대로 400, 깨진 JSON도 400이다.
+Core v2 코드: `TOTAL_NOT_POSITIVE`, `ALCOHOL_NEGATIVE`, `ALCOHOL_EXCEEDS_TOTAL`, `PAYER_NOT_FOUND`, `INVALID_DRINK_ITEM`,
+`DRINK_ITEM_ROUND_NOT_FOUND`, `ATTENDANCE_REFERENCE_NOT_FOUND`, `MISSING_ATTENDANCE`, `DUPLICATE_ID`, `DUPLICATE_ROUND_SEQ`,
+`AMOUNT_TOO_LARGE`, `TOO_FEW_PARTICIPANTS`, `NO_ATTENDEE`, `NO_DRINKER_WITH_ALCOHOL`, `NEGATIVE_ADJUSTED_AMOUNT`.
+
+| HTTP | code | 조건 |
+|---|---|---|
+| 401 | UNAUTHENTICATED | 로그인 없음 또는 삭제된 계정 |
+| 403 | NOT_PARTICIPANT / NOT_SETTLEMENT_UNIT_MEMBER | 공유 방 / 단위 ACTIVE 명단에 없음 |
+| 403 | NOT_GATHERING_CREATOR / NOT_SETTLEMENT_UNIT_HOST / NOT_TRANSFER_OWNER | 제목·날짜 / 단위 관리 / 송금 역할 권한 없음 |
+| 404 | GATHERING_NOT_FOUND / SETTLEMENT_UNIT_NOT_FOUND / ROUND_NOT_FOUND / TRANSFER_NOT_FOUND | 해당 부모 범위에 리소스 없음 |
+| 409 | DISPLAY_NAME_REQUIRED | 생성·참여 전 실명 등록 필요 |
+| 409 | SETTLEMENT_UNIT_NOT_OPEN / SETTLEMENT_UNIT_NOT_SETTLING | 상태 전이 불가 |
+| 409 | SETTLEMENT_INPUT_CHANGED / IDEMPOTENCY_KEY_REUSED | 오래된 preview 또는 requestId의 본문 불일치 |
+| 409 | NO_ROUNDS / REMOVE_HOST / REMOVE_PAYER | 차수 없음 또는 보호 명단 제외 시도 |
+| 409 | PAYOUT_MISSING / TRANSFER_ALREADY_SENT / INVALID_TRANSFER_TRANSITION | 수취 계좌 없음 / sentAt·confirmedAt 이력으로 취소 금지 / 송금 상태 불일치 |
+| 400 | MALFORMED_REQUEST | 잘못된 명단·응답 타입·계좌·본문 |
