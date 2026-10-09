@@ -1,0 +1,52 @@
+{
+  "formatVersion": 1,
+  "sourceBase": "769dd4c3d6516faa746dbf97957c41b855e854a8",
+  "sourceHead": "73efc65702d0d017715e9e1342ee5091ec88ce3c",
+  "catalogRef": "origin/main",
+  "catalogCommit": "c4fa119854137596c5da7f88922ed487900e5637",
+  "policyCommit": "c4fa119854137596c5da7f88922ed487900e5637",
+  "dependencies": [
+    "PR #18 feat/backend-v4"
+  ],
+  "verification": {
+    "core": 54,
+    "server": 106,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "authDatabaseChecks": 15,
+    "authHttpChecks": 17,
+    "settlementRegressionHttpChecks": 25,
+    "migration": "fresh 22; previous 21 + new 027"
+  },
+  "pr": {
+    "baseBranch": "feat/backend-v4",
+    "statusAtCreation": "draft"
+  },
+  "hashBasis": "Git blob bytes (LF normalized text, binary patch preserved)",
+  "sha256": {
+    ".gitattributes": "8dcac780cbb28c6c332f023b4e05d1502a4b0eaf874c8124f8c3141b7807bdda",
+    "catalog.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+    "changes.patch": "40692a6df975683b6d74e284a5f4b5fc87fec9a73a66bf58593d72d824e296f8",
+    "guide.json": "6fae2f4cb1d195849fc26321600da1ca845df32f848b7a372e0fdbb7f9616ea2",
+    "guide.md": "56924acbc9ca4165281e181d07e3ee428033279dc19c7c244ba09b7ef5593e8d",
+    "n8n-format.json": "9e6fe5ad0a444a9d1639fe54f3da865bace0613f3be898e4e476ce0d6f2d9d0c",
+    "policy.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+    "progress.md": "dad77b8d60840399e5255de171b488a9f1bf8b13ab2efed4d7a71832d1999474",
+    "review.md": "690e382d03989a984d422e9e0acc78cc76c9404fabcee70b154423aeacfce970",
+    "source/server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java": "ac054bf8742f264d2b6dcd94bf5c62ac88cd7a377cbde6b0b3c669858a55d562",
+    "source/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java": "427ed4e7041c2f659c7ad481f77155d1b013715111bfe03a3a2c41732019097d",
+    "source/server/src/main/java/app/jeongsan/server/user/javaimpl/JwtService.java": "f0d5c6f6189d2a446be20d43d84b998e98692df2fa3292021f50971e11d52416",
+    "source/server/src/main/kotlin/app/jeongsan/server/common/LoginUser.kt": "5ce70065cde644d8d600f4d12b60b3b4ed76f7cb498e536c33a63af910221ede",
+    "source/server/src/main/kotlin/app/jeongsan/server/user/AccountDeletionService.kt": "817c9036ee5edebffe6321c01bca1597b3eac5e20369f9a8726ec67c5ef46f8d",
+    "source/server/src/main/kotlin/app/jeongsan/server/user/AccountPolicy.kt": "19662d38c3fa57b991d7508cca5d09af87205ebf5d5270824608b47729459b9f",
+    "source/server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt": "93ccbbfa772d0dea4d623c4d01424534ea084ec549ac03c70eadd2c5be2a2762",
+    "source/server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt": "f6b879c3708c598505d16a117edf93713a649ebd13a25005d86f494476be2307",
+    "source/server/src/main/kotlin/app/jeongsan/server/user/AuthMaintenance.kt": "9788232da5386b606398ccb34b5f49ae5caa9fe3cff8787321dd17869dfd9302",
+    "source/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt": "e667b66fdb1ab5a2424aa491f5242da4d263c1141d229e7f80e5d5afc51d93c3",
+    "source/server/src/main/kotlin/app/jeongsan/server/user/JwtService.kt": "a2f08392fe34c5ca19371b5a7fc133c65d569c2643108959b280ffd3392e548f",
+    "source/server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt": "e63466f88450943dd6001d148448ae33b52ad0b09307cd71a800c7ea5641f6ed",
+    "source/server/src/main/resources/db/changelog/017-release-auth.yaml": "a88ce007e06767574f8889d09d28cff567d4a005e6572bf2d6e81ec95faef968",
+    "source/server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt": "e56531663ac1cf2d38368b5594861ba3581fe5f4a65d5bc1d7d2007db6f64f2d"
+  }
+}

@@ -1,0 +1,32 @@
+# 학습 진도 — 코드 완료와 구분
+
+학습 대상은 sourceHead `73efc65702d0d017715e9e1342ee5091ec88ce3c`이다. 병합 후에도 이 버전의 diff와 source를 사용한다.
+
+- [ ] 1. JST-06-05-01 생성자란? (자바의 정석 / 6장 객체지향 프로그래밍 I / 5. 생성자(Constructor) / 5.1 / p.315) → AuthPolicy 생성자 (server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java:15)
+- [ ] 2. JST-08-01-03 예외 처리하기 - try-catch문 (자바의 정석 / 8장 예외 처리(exception handling) / 1. 예외 처리(exception handling) / 1.3 / p.446) → AppleTokens.verify (server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java:35)
+- [ ] 3. JST-14-02-03 스트림의 중간연산 (자바의 정석 / 14장 람다와 스트림 / 2. 스트림(stream) / 2.3 / p.958) → AppleTokens.verify (server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java:25)
+- [ ] 4. JST-07-04-03 final - 마지막의, 변경될 수 없는 (자바의 정석 / 7장 객체지향 프로그래밍 II / 4. 제어자(modifier) / 4.3 / p.369) → JwtService 타입 (server/src/main/java/app/jeongsan/server/user/javaimpl/JwtService.java:13)
+- [ ] 5. EJ-04 인스턴스화를 막으려거든 private 생성자를 사용하라 (Effective Java / 2장 객체 생성과 파괴) → AuthPolicy 생성자 (server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java:15)
+- [ ] 6. EJ-49 매개변수가 유효한지 검사하라 (Effective Java / 8장 메서드) → AuthPolicy.verifyVerifier (server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java:31)
+- [ ] 7. EJ-05 자원을 직접 명시하지 말고 의존 객체 주입을 사용하라 (Effective Java / 2장 객체 생성과 파괴) → AuthFlowService 생성자 (server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt:24)
+- [ ] 8. FJ-05-02 도움을 주기 위한 레코드 (함수형 프로그래밍 with 자바 / 5 / 5.2) → AppleTokens.Key (server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java:19)
+- [ ] 9. FJ-06-03 스트림 파이프라인 구축하기 (함수형 프로그래밍 with 자바 / 6 / 6.3) → AppleTokens.verify (server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java:25)
+- [ ] 10. KB-02 코틀린에서 null을 다루는 방법 (Kotlin 기본 / 섹션 2. 코틀린에서 변수와 타입, 연산자를 다루는 방법 / 2강) → AuthFlowService.finish (server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt:40)
+- [ ] 11. KB-03 코틀린에서 Type을 다루는 방법 (Kotlin 기본 / 섹션 2. 코틀린에서 변수와 타입, 연산자를 다루는 방법 / 3강) → AppleTokens.verify (server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt:24)
+- [ ] 12. KB-12 코틀린에서 object 키워드를 다루는 방법 (Kotlin 기본 / 섹션 4. 코틀린에서의 OOP / 12강) → AuthPolicy (server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt:11)
+- [ ] 13. KB-14 코틀린에서 다양한 클래스를 다루는 방법 (Kotlin 기본 / 섹션 4. 코틀린에서의 OOP / 14강) → JwtService.Identity (server/src/main/kotlin/app/jeongsan/server/user/JwtService.kt:45)
+- [ ] 14. KB-18 코틀린에서 컬렉션을 함수형으로 다루는 방법 (Kotlin 기본 / 섹션 5. 코틀린에서의 FP / 18강) → AccountPolicy.deletable (server/src/main/kotlin/app/jeongsan/server/user/AccountPolicy.kt:8)
+- [ ] 15. KB-20 코틀린의 scope function (Kotlin 기본 / 섹션 6. 추가적으로 알아두어야 할 코틀린 특성 / 20강) → RestProviderGateway http 초기화 (server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt:37)
+- [ ] 16. RFC 7636 §4.1·4.2·4.6 — verifier 길이, S256 변환, 교환 대조 → AuthPolicy.verifyVerifier (server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt:31)
+- [ ] 17. Apple Verifying a user — 서명과 ID token claim 검증 → AppleTokens.verify (server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt:21)
+- [ ] 18. Apple client secret — ES256, kid, team issuer, client subject, 제한된 exp → AppleTokens.clientSecret (server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt:31)
+- [ ] 19. MySQL 행 잠금 — 공유/배타 잠금, FK cascade, 일회용 교환 → AuthFlowService.exchange (server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt:65)
+- [ ] 20. Spring 트랜잭션 — READ_COMMITTED, 프록시 경계, 외부 부수효과 → AuthFlowService 트랜잭션 (server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt:23)
+- [ ] 21. 동시성 — 잠금 순서, 목록 재검사, 실제 HTTP 경합 → AccountDeletionService.delete (server/src/main/kotlin/app/jeongsan/server/user/AccountDeletionService.kt:23)
+- [ ] 22. 운영 — 외부 연결 해제 작업, 재시도, SKIP LOCKED → AuthMaintenance.run (server/src/main/kotlin/app/jeongsan/server/user/AuthMaintenance.kt:30)
+- [ ] 23. 인증 — 토큰 채널 구분, 탈퇴/로그아웃 후 JWT 무효화 → LoginUserArgumentResolver.resolveArgument (server/src/main/kotlin/app/jeongsan/server/common/LoginUser.kt:65)
+- [ ] 24. DB — nullable FK, NULL과 복합 UNIQUE, 익명화된 완료 좌석 → 027-release-auth-and-account-deletion (server/src/main/resources/db/changelog/017-release-auth.yaml:10)
+- [ ] 25. 테스트 — 암호 서명 단위 시험, 실제 DB 잠금 시험, 실제 제공자 연결의 구분 → AuthDatabaseProbe.main (server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt:69)
+
+- [ ] n8n 실제 PR 리뷰가 도착하면 원문 링크와 지적을 별도 버전으로 보존
+- [ ] 각 항목의 diff 판단 이유를 내 말로 기록
