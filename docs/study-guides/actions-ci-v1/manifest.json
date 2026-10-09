@@ -9,15 +9,16 @@
   "catalogRef": "origin/main",
   "catalogSnapshotCommit": "c4fa119854137596c5da7f88922ed487900e5637",
   "sha256": {
-    ".gitattributes": "e6fd1527a5d3508ea9c69830fd7a1bf00837d22deabeda793ca9e743fbfbd2af",
+    ".gitattributes": "21329b5ab3e9f3d6603f03997e97ed54a39abff29da41816f0021f126d558129",
     "catalog.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
     "changes.patch": "68f9c7fb5d27ae773f9903e0d4d65fa241a73e8569549fc4d8eb49eb95a394c1",
-    "guide.md": "dad12b9805aa780629d927d3155e63e798092b46c72d32a7023ff062666904eb",
-    "n8n-format.json": "05d1667eb0e97da12e5e036c7943a69d4530a6522b0d203dd576442e6ac0c612",
+    "guide.md": "6cb823e593a4b2546e95cd435049447da03baec7ccae2b1b08a69cc58b0cea55",
+    "n8n-format.json": "91278e668722035eed1f9eded200f23b780ae1bbc0ada77bfda9d1646c70c68e",
     "policy.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
-    "progress.md": "00169c744e452f78e937c77d21e8313a85f2cada239f76b439da77b9debacbc6",
-    "review.md": "411b5769d7b1242b15b83f717690c3308d4c7479658bc7e86dc7199c2b0078ca",
+    "progress.md": "8fca3326a88b8ca35339c9f104b489126c49cdf5d8993d69e1d2590d2880f496",
+    "review.md": "7a95907b867ebe34e4b52a4a495b374bed1ddf91978255b29452db8a18f4c1a8",
     "source/.github/workflows/ci.yml": "789ba301ca479702fe79215f6ed4cbe5cb5db91989a48cb2d44876e8a7473a7b",
     "source/.github/workflows/deploy.yml": "299ee03b7f504d0e8a03eeb3cde83f1265bb6858ba2feb51e31360c7209c1b02"
-  }
+  },
+  "hashBasis": "Git blob bytes (LF normalized text, patch preserved)"
 }

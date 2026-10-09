@@ -1,4 +1,4 @@
-changes.patch -text
+changes.patch -text -whitespace
 *.md text eol=lf
 *.json text eol=lf
 source/** text eol=lf
