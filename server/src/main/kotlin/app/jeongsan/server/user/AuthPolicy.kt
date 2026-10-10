@@ -9,6 +9,12 @@ import java.util.Base64
 
 /** 같은 리다이렉트·티켓 규칙을 Java와 독립 비교한다. 시계·DB·HTTP는 호출부에서 제공한다. */
 object AuthPolicy {
+    // 실명은 L2에서 받으므로 Apple 이름·이메일 동의를 요청하지 않는다.
+    fun appleAuthorizationParameters(nonce: String): Map<String, String> = mapOf(
+        "response_mode" to "form_post",
+        "nonce" to nonce,
+    )
+
     fun providerAvailable(provider: String, kakaoSettings: List<String>, appleSettings: List<String>): Boolean = when (provider) {
         "KAKAO" -> kakaoSettings.size == 3 && kakaoSettings.all { it.isNotBlank() }
         "APPLE" -> appleSettings.size == 5 && appleSettings.all { it.isNotBlank() }

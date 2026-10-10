@@ -9,8 +9,8 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
   - 웹 기본값. 상대 경로 `/jungsan/`만 허용하며 `//`, 역슬래시, 제어문자, percent 인코딩을 거절한다.
   - 앱은 추가로 `codeChallenge` (SHA-256, base64url 43자)를 보낸다. 앱이 생성한 43~128자 `codeVerifier`는 앱에만 보관한다. [RFC 7636 §4.1·4.2](https://www.rfc-editor.org/rfc/rfc7636#section-4.1)의 문자·길이·S256 방식을 티켓 교환에 적용한다.
   - 5분짜리 일회용 state·nonce를 DB에 저장한다. 브라우저 httpOnly 상관 쿠키와 state를 함께 검증한다.
-  - Apple은 `response_mode=form_post`, `scope=name email`. HTTPS 상관 쿠키는 SameSite=None이다.
-- 카카오 콜백 GET / Apple 콜백 POST(form-urlencoded). 코드 교환 뒤 Apple ID 토큰의 RS256 서명·kid·issuer·audience·exp·nonce·subject를 검증한다. 이름은 처음만 주므로 실명은 기존 등록 화면에서 받는다.
+  - Apple은 `response_mode=form_post`를 유지하고 `scope`를 보내지 않는다. 이름·이메일 제공 동의를 요청하지 않는다. HTTPS 상관 쿠키는 SameSite=None이다.
+- 카카오 콜백 GET / Apple 콜백 POST(form-urlencoded). 코드 교환 뒤 Apple ID 토큰의 RS256 서명·kid·issuer·audience·exp·nonce·subject를 검증한다. 계정 연결에는 `sub`만 사용하며 Apple 이름·이메일은 사용하거나 저장하지 않는다. 실명은 L2 등록 화면에서 따로 받는다. 이전 동의로 ID 토큰에 이메일이 포함되더라도 무시한다([Apple 인가 문서](https://developer.apple.com/documentation/signinwithapplerestapi/request-an-authorization-to-the-sign-in-with-apple-server)).
 - 웹: `jeongsan_token` 쿠키 발급, 원래 경로로 복귀. 앱: 고정 `jeongsan://auth?ticket=...`로 복귀. JWT는 URL에 넣지 않는다.
 - `POST /api/v1/auth/app/exchange {ticket,codeVerifier}` → `{token,expiresAt}`. 60초 티켓은 DB 잠금·삭제로 한 번만 교환되고 앱의 challenge와 대조한다.
 - 앱 Authorization Bearer는 APP 토큰만 받는다. 쿠키는 WEB 토큰만 받는다. 둘 다 있으면 Bearer를 우선하고 잘못된 헤더를 쿠키로 우회하지 않는다.

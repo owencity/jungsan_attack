@@ -57,7 +57,9 @@ class RestProviderGateway(
         val builder = UriComponentsBuilder.fromUriString(if (apple) "https://appleid.apple.com/auth/authorize" else "https://kauth.kakao.com/oauth/authorize")
             .queryParam("client_id", if(apple) appleId else kakaoId).queryParam("redirect_uri",if(apple) appleRedirect else kakaoRedirect)
             .queryParam("response_type","code").queryParam("state",state)
-        if (apple) builder.queryParam("response_mode","form_post").queryParam("scope","name email").queryParam("nonce",nonce)
+        if (apple) AuthPolicy.appleAuthorizationParameters(nonce).forEach { (parameterName, parameterValue) ->
+            builder.queryParam(parameterName, parameterValue)
+        }
         return builder.build().encode().toUriString()
     }
     @Suppress("UNCHECKED_CAST")
