@@ -1,0 +1,22 @@
+[
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "technology": "DB 최초 인증",
+    "file": "server/src/main/resources/application-prod.yml",
+    "line": 13,
+    "symbol": "url: jdbc:mysql:",
+    "viewpoint": "로컬 URL과 달리 운영 URL에 없던 공개키 교환 옵션을 변경 줄에서 확인한다. MySQL 인증 캐시를 비우기 전 성공이 최초 연결 성공을 보장하는지 실패 CI와 FLUSH PRIVILEGES 검증을 비교한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/ba508a6903a125b07383ea21927727fb31ced64f/server/src/main/resources/application-prod.yml#L13"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "technology": "실패 근거 보존",
+    "file": ".github/workflows/ci.yml",
+    "line": 62,
+    "symbol": "server/build/release-prod-http.log",
+    "viewpoint": "CI 가짜 설정으로 기동한 prod 로그만 artifact에 추가되는지 diff를 읽는다. 운영 로그·실제 키를 가져오는 경로가 생기지 않았는지도 대조한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/ba508a6903a125b07383ea21927727fb31ced64f/.github/workflows/ci.yml#L62"
+  }
+]

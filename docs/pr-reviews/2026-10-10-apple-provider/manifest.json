@@ -3,10 +3,13 @@
   "source_head": "d3c7e47ccb879d2b65aefb220a3900f976d3e186",
   "review_kind": "implementer_self_review",
   "hashes": {
+    "ci-failure-01.json": "48237d1d248f0719598d7a85934a505d5b27ab798d14248770ee8a9f7e034864",
+    "followup-01.md": "7dc728e0c2238d62ea5b31e0d438ffcf6c75b388c1c422425b622026479ec356",
     "github-review-snapshot.json": "0db07b14207b8ebb1cd71a4687cefe43c1930a885cadf9ffb262e1c58e57f89d",
-    "README.md": "e6a39f27420b759ea817a832089c540b664cf470c95fea114a064673264211a7",
+    "README.md": "204bdbc323153f158dfc23959952585c45994ce039b9e755a4afb30c39b79f2c",
     "self-review.md": "02fdf224404fe9aa230a4172c2d1562e6d7e97c5650b9195ad01be4d256b3adb"
   },
   "pr_url": "https://github.com/owencity/jungsan_attack/pull/29",
-  "capture_head": "9c2482f97eeb7c5b60100b2d7c541b9dbc8362ce"
+  "capture_head": "9c2482f97eeb7c5b60100b2d7c541b9dbc8362ce",
+  "followup_source_head": "ba508a6903a125b07383ea21927727fb31ced64f"
 }

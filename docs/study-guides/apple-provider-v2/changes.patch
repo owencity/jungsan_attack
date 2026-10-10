@@ -1,0 +1,63 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 67990f4..5e8b18f 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -59,5 +59,6 @@ jobs:
+             server/build/test-results/test/
+             server/build/reports/tests/test/
+             server/build/release-http.log
++            server/build/release-prod-http.log
+           if-no-files-found: ignore
+           retention-days: 14
+diff --git a/DEVLOG.md b/DEVLOG.md
+index dce139c..5b516ce 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,11 @@
+ # 개발 결정 로그
+ 
++## [2026-10-10] 운영 DB 최초 인증 실패를 실제 prod 검증으로 고친다
++- 문제: PR #29 CI의 실제 prod 기동에서 MySQL 인증 캐시를 비운 뒤 Public Key Retrieval is not allowed로 실패했다. 기존 로컬 URL 검증만으로는 운영 URL 누락이 드러나지 않았다.
++- 고려한 대안: TLS와 서버 인증서 배포, 서버 RSA 공개키를 파일로 고정, 외부 포트 없는 현재 compose 내부 DB에서 공개키 교환 허용.
++- 선택 이유·트레이드오프: 현재 단일 VM의 격리된 DB 네트워크와 기존 useSSL=false를 유지하며 JDBC 공개키 교환을 명시한다. 같은 실제 prod/MySQL 테스트로 최초 인증을 검증하고 CI 가짜 설정 로그만 보존한다.
++- 아쉬운 점: 공개키 교환 허용은 서버 신원 인증을 대신하지 않는다. 외부·공유 네트워크 DB로 옮길 때 TLS와 인증서 검증을 먼저 갖춰야 한다.
++
+ ## [2026-10-10] Apple 발급 대기와 카카오 운영을 분리
+ - 문제: Apple 로그인 키 발급 전 운영 설정 검증이 서버 전체 기동을 막았다. 파일 생성과 실제 제공자 키 확보도 서로 다른 작업이었다.
+ - 고려한 대안: 모든 Apple 키 발급까지 배포 대기, 배포용 키 재사용, Apple 요청만 닫고 카카오·기존 기능을 먼저 운영한다.
+diff --git a/docs/DEPLOY.md b/docs/DEPLOY.md
+index d16f3a5..e75a592 100644
+--- a/docs/DEPLOY.md
++++ b/docs/DEPLOY.md
+@@ -2,6 +2,15 @@
+ 
+ `ADR-006`(단일 VM + docker compose)을 따른다. K8s·ArgoCD·Jenkins를 쓰지 않는다.
+ 
++**운영 DB 최초 인증 (2026-10-10):** MySQL 8.4의 인증 캐시가 비어 있을 때도 연결되도록
++`application-prod.yml`의 JDBC URL에 `allowPublicKeyRetrieval=true`를 명시한다. 현재 MySQL은
++외부 포트를 열지 않는 단일 VM compose 내부 서비스다. 이 설정은 서버 신원 검증을 대신하지 않으므로
++DB를 외부·공유 네트워크로 옮기기 전 TLS와 인증서 검증을 갖춘다.
++[Connector/J 보안 설정](https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-security.html)과
++[MySQL 8.4 인증 규칙](https://dev.mysql.com/doc/refman/8.4/en/caching-sha2-pluggable-authentication.html)을 참고했다.
++CI는 `FLUSH PRIVILEGES` 뒤 실제 prod 프로필을 띄워 처음부터 검증한다. 보존하는 prod 로그는 CI의
++가짜 설정으로 기동한 서버 로그이며 OCI 운영 로그·실제 키는 업로드하지 않는다.
++
+ ```
+ GitHub Actions (ARM 러너)                  OCI Ubuntu
+   ┌────────────────────────┐   SSH/SCP    ┌──────────────────────────┐
+diff --git a/server/src/main/resources/application-prod.yml b/server/src/main/resources/application-prod.yml
+index 8a01a60..40d92b9 100644
+--- a/server/src/main/resources/application-prod.yml
++++ b/server/src/main/resources/application-prod.yml
+@@ -8,8 +8,9 @@
+ 
+ spring:
+   datasource:
+-    # 호스트가 'mysql' 인 이유 — 같은 compose 네트워크 안의 서비스명이다.
+-    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
++    # 호스트가 'mysql' 인 이유 — 외부 포트 없는 같은 compose 네트워크의 서비스명이다.
++    # MySQL 8.4 최초 인증에서 RSA 공개키 교환이 필요하다. 외부 DB로 옮기면 TLS/서버 신원 검증을 먼저 설정한다.
++    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?allowPublicKeyRetrieval=true&useSSL=false&characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+     username: ${DB_USER}
+     password: ${DB_PASSWORD}
+     driver-class-name: com.mysql.cj.jdbc.Driver

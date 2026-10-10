@@ -1,0 +1,24 @@
+{
+  "pr_url": "https://github.com/owencity/jungsan_attack/pull/29",
+  "base": "08b13a4a9c292499a4e781380af95f6c47aa7df9",
+  "source_head": "ba508a6903a125b07383ea21927727fb31ced64f",
+  "catalog_revision": "c11c9b9af1dfd76c7daf90b9a4e6f92f23c00ce4",
+  "policy_revision": "c11c9b9af1dfd76c7daf90b9a4e6f92f23c00ce4",
+  "topic_count": 2,
+  "hashes": {
+    ".gitattributes": "5b86fff528a0cbe6c5a2c6d4ee87296dca6039fca8377d294dcd0e3049570a0a",
+    "after/.github/workflows/ci.yml": "6a4da8fcf16f2f79fff375cf262c0fd26cbca8beb739b68feab038bbcac56c7b",
+    "after/DEVLOG.md": "6b8c85a45150f871df3450438c47759a9565ebe1ac959deaf469f7c87645d5a1",
+    "after/docs/DEPLOY.md": "01c98d35d2689803dd4a3a5d87dfd52feea7d687a1453555ea4cd14db8d70dc7",
+    "after/server/src/main/resources/application-prod.yml": "50292c555f23e944976f6c286023f131b19514039b8b4b8770e0f3cf7720789b",
+    "before/.github/workflows/ci.yml": "2af8f921cb75339543ae5071560539ceeefdaa2a651a99fc079f2747fadfa802",
+    "before/DEVLOG.md": "ac8bd0d64a9ebea7ce8d8a28fb6b66f0cbf5dea994dd958b4a59364e8ed11136",
+    "before/docs/DEPLOY.md": "a42285b3d3f267e4d4c4d4aa63666650f0fe85cd6cb596fd493d9053907c8cea",
+    "before/server/src/main/resources/application-prod.yml": "90b91b56cfdaaf3ba3321d9f11bffa2a65fea3d4cd5220b7600ac80dd81af264",
+    "changes.patch": "643adc736e2ddbea5d658377ae0bea98acf8c85ee528e125936b34b862c8d1a0",
+    "guide.md": "929ddacb8f210707f840cb16d567f6eba03e776651574b4774bb4726f7f9fde1",
+    "STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+    "STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+    "topics.json": "74ccfd22c69fdbc57ea306eb20bf7c7f42da25d4d90106bcc5814f9bbf3df069"
+  }
+}
