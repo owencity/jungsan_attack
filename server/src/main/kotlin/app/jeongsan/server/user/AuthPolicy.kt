@@ -9,6 +9,12 @@ import java.util.Base64
 
 /** 같은 리다이렉트·티켓 규칙을 Java와 독립 비교한다. 시계·DB·HTTP는 호출부에서 제공한다. */
 object AuthPolicy {
+    fun providerAvailable(provider: String, kakaoSettings: List<String>, appleSettings: List<String>): Boolean = when (provider) {
+        "KAKAO" -> kakaoSettings.size == 3 && kakaoSettings.all { it.isNotBlank() }
+        "APPLE" -> appleSettings.size == 5 && appleSettings.all { it.isNotBlank() }
+        else -> false
+    }
+
     fun returnTo(value: String?): String {
         val path = value ?: "/jungsan/"
         if (path.length > 500 || !path.startsWith("/jungsan/") || path.contains("//") ||

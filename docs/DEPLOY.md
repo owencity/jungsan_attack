@@ -54,7 +54,8 @@ ssh ubuntu@<OCI_HOST> uname -m
 ### (c) 서버에 `.env` 만들기
 
 저장소에 두지 않는다(카카오 시크릿·DB 비밀번호). OCI 에서 직접 만든다.
-CTO가 `~/jeongsan/.env`의 실제 값을 입력한다(2026-10-10 결정). 에이전트는 값 대신 필요한 키와 검증 결과를 남긴다.
+2026-10-10 추가 결정: Codex가 `~/jeongsan/.env`를 생성하고 카카오 기존 설정과 새 내부 키를 채운다.
+CTO가 Sign in with Apple 로그인용 Key ID·개인키를 서버에 직접 입력한다. 키 값은 저장소·채팅·로그에 남기지 않는다.
 
 | 필요한 키 | 용도·입력 기준 |
 |---|---|
@@ -85,10 +86,11 @@ KAKAO_REDIRECT_URI=https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback
 JWT_SECRET=<32자 이상 랜덤>
 PAYOUT_ENCRYPTION_KEY=<계좌용 독립 32바이트 키의 Base64>
 AUTH_ENCRYPTION_KEY=<외부 인증 자격용 독립 32바이트 키의 Base64>
-APPLE_CLIENT_ID=<웹 Apple Services ID>
-APPLE_TEAM_ID=<Apple Team ID>
-APPLE_KEY_ID=<Sign in with Apple Key ID>
-APPLE_PRIVATE_KEY_BASE64=<Apple p8의 PKCS8 DER 바이트를 Base64로 변환한 값>
+# Apple 로그인 설정 발급 전에는 아래 값을 비워 둔다
+APPLE_CLIENT_ID=
+APPLE_TEAM_ID=
+APPLE_KEY_ID=
+APPLE_PRIVATE_KEY_BASE64=
 APPLE_REDIRECT_URI=https://jungsan-api.devkdk.com/api/v1/auth/apple/callback
 FRONTEND_ORIGIN=https://jungsan.devkdk.com
 LOGIN_SUCCESS_URL=https://jungsan.devkdk.com/jungsan
@@ -98,7 +100,12 @@ chmod 600 .env
 
 Apple 웹 Services ID의 등록 도메인·Return URL과 위 callback을 맞춘다. 앱도 시스템 인증 브라우저에서 같은 Services ID 흐름을 사용한다.
 `APPLE_PRIVATE_KEY_BASE64`는 PEM 헤더·푸터를 제외한 Base64 본문이다. 원본 p8은 저장소에 넣지 않는다.
-prod는 필수 설정이 없거나 비었거나 EC 개인키가 잘못되면 시작이 실패한다.
+Apple 키 발급 전에는 `APPLE_CLIENT_ID/TEAM_ID/KEY_ID/PRIVATE_KEY_BASE64` 값을 빈칸으로 둘 수 있다.
+키 이름은 `.env`에 모두 선언하고 자리표시 문자열 대신 `APPLE_KEY_ID=`처럼 둔다.
+이때 서버·카카오는 기동하며 Apple 요청은 503 `AUTH_PROVIDER_UNAVAILABLE`이다.
+Apple 설정을 모두 채웠는데 개인키가 잘못되면 기동이 실패한다. 나머지 필수 운영 값에는 이 예외를 적용하지 않는다.
+App Store Connect/TestFlight 배포용 p8은 로그인용이 아니므로 서버 설정에 넣지 않는다.
+설정을 완성한 뒤 재배포해야 새 컨테이너가 Apple 값을 읽는다.
 AUTH_ENCRYPTION_KEY는 JWT/PAYOUT 키와 별개이며 연결 해제 대기 작업이 있는 동안 변경하면 기존 토큰을 읽을 수 없다.
 실제 Apple 로그인→앱 티켓 교환→탈퇴→Apple 연결 해제까지 확인한 뒤 앱 심사 자료에 결과를 기록한다.
 
@@ -264,3 +271,11 @@ bash scripts/deploy/health.sh
 SSH 인증 거절은 이 실행의 원인이 아니다. CTO가 위 필수 키와 **새 콜백 주소**를 넣고
 `chmod 600 ~/jeongsan/.env`로 보호한 뒤 최신 main의 배포를 재실행한다.
 Tunnel 추가·개발자 콘솔 등록·실제 로그인은 이 빌드 결과와 별도로 확인한다.
+
+## 운영 설정 생성과 Tunnel 추가 (2026-10-10 · 추가 확인)
+
+CTO가 OCI Tunnel에 `jungsan-api.devkdk.com` → `http://localhost:18080`을 추가했다고 확인했다.
+Codex가 OCI `~/jeongsan/.env`를 권한 600으로 생성했다. 기존 DB·앱이 없는 것을 확인한 뒤
+DB 비밀번호·JWT 서명·서로 독립인 계좌/인증 암호화 키를 새로 생성했고 기존 카카오 설정을 채웠다.
+Apple 로그인용 설정은 발급 전 빈 값이다. 위 기존 배포 실패 기록은 파일 생성 전 시점이다.
+Apple 미설정 기동 변경은 PR 검증·병합 뒤 배포하며, 실제 운영 health·카카오 로그인 성공은 따로 확인한다.

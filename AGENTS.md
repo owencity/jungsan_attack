@@ -1,5 +1,11 @@
 # AGENTS.md — 정산어택 백엔드 (jungsan_attack)
 
+> **2026-10-10 운영 설정 추가 결정:** Codex가 OCI `.env`를 만들고 카카오·내부 키를 준비한다.
+> Apple 로그인용 키는 CTO가 서버에 직접 입력하며 App Store Connect 배포 키를 사용하지 않는다.
+> Apple 설정이 비면 운영 기동을 허용하되 Apple 요청만 503으로 닫는다. 모두 채운 Apple 키의
+> 오류와 카카오·DB·JWT·암호화 필수 설정 오류는 기동 시 거절한다. prod 기본값은 추가하지 않는다.
+> CTO가 OCI Tunnel의 새 호스트 추가를 완료했다. 과거 준비 요청보다 이 결정을 우선한다.
+
 > **2026-10-10 운영 호스트 정정:** 정산어택은 `jungsan-api.devkdk.com`이다.
 > `api.devkdk.com`은 노트북 터널이므로 수정하지 않는다. OCI Tunnel에는 새 호스트를
 > `http://localhost:18080`으로 추가하며 기존 `webhook.devkdk.com` → 8080은 유지한다.

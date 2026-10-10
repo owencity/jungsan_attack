@@ -50,10 +50,11 @@ services:
       JWT_SECRET: ${JWT_SECRET:?필수 운영 설정}
       PAYOUT_ENCRYPTION_KEY: ${PAYOUT_ENCRYPTION_KEY:?필수 운영 설정}
       AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?필수 운영 설정}
-      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:?필수 운영 설정}
-      APPLE_TEAM_ID: ${APPLE_TEAM_ID:?필수 운영 설정}
-      APPLE_KEY_ID: ${APPLE_KEY_ID:?필수 운영 설정}
-      APPLE_PRIVATE_KEY_BASE64: ${APPLE_PRIVATE_KEY_BASE64}
+      # 키 이름은 선언하되 발급 전 빈 값은 허용한다. Apple 진입만 503으로 닫는다.
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID?Apple 설정 키를 선언하세요 (빈 값 허용)}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID?Apple 설정 키를 선언하세요 (빈 값 허용)}
+      APPLE_KEY_ID: ${APPLE_KEY_ID?Apple 설정 키를 선언하세요 (빈 값 허용)}
+      APPLE_PRIVATE_KEY_BASE64: ${APPLE_PRIVATE_KEY_BASE64?Apple 설정 키를 선언하세요 (빈 값 허용)}
       APPLE_REDIRECT_URI: ${APPLE_REDIRECT_URI:?필수 운영 설정}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?필수 운영 설정}
       LOGIN_SUCCESS_URL: ${LOGIN_SUCCESS_URL:?필수 운영 설정}

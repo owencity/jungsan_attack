@@ -1,5 +1,12 @@
-# 정산어택 — API 계약 · v8
+# 정산어택 — API 계약 · v9
 
+> **v9 변경(2026-10-10)** — CTO 결정: Apple 로그인 설정 발급 중에도 카카오·서버를 운영한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | AUTH_RELEASE 운영 설정 | Apple 설정이 비면 서버 기동 허용, Apple 요청만 503 |
+> | §1.4 AUTH_PROVIDER_UNAVAILABLE | 운영 Apple 미설정에도 반환, 카카오·DB·JWT 필수 설정은 계속 기동 시 검증 |
+>
 > **v8 변경(2026-10-10)** — FC-016~018·020. 기존 버전 이력은 유지한다.
 >
 > | 절 | 변경 |
@@ -29,7 +36,7 @@
 앱 `GET /auth/{provider}/login?client=app`에는 `codeChallenge`가 필수이고, 교환 JSON에는 `codeVerifier`가 추가된다.
 제공자 콜백과 티켓 교환은 로그인 전 단계라 공개이며, 새 로그아웃·탈퇴는 `@LoginUser`가 필수다.
 로그인 콜백은 POST 본문을 프론트로 재전송하지 않도록 303을 반환한다. 웹 쿠키의 만료는 JWT 설정과 같다.
-`AUTH_PROVIDER_UNAVAILABLE`은 로컬 제공자 미설정, `ACTIVE_GATHERING_EXISTS`는 진행 중 탈퇴,
+`AUTH_PROVIDER_UNAVAILABLE`은 제공자 미설정(운영 Apple 포함), `ACTIVE_GATHERING_EXISTS`는 진행 중 탈퇴,
 `ACCOUNT_STATE_CHANGED`는 탈퇴 잠금 중 참여/단위 목록 변경으로 재시도할 때 반환한다.
 기존 `UNAUTHENTICATED`(401)는 state/상관 쿠키/nonce/서명/티켓/verifier/로그아웃 토큰/탈퇴 계정 검증 실패에도 사용한다.
 
@@ -286,6 +293,7 @@ GET /api/v1/gatherings
 | `DISPLAY_NAME_ALREADY_SET` | 409 | 등록한 실명과 다른 값으로 변경 요청 |
 | `TOKEN_EXPIRED` | 401 | 만료 — 프론트는 재로그인으로 보낸다 |
 | `PROVIDER_AUTH_FAILED` | 401 | 카카오가 code 를 거부 |
+| `AUTH_PROVIDER_UNAVAILABLE` | 503 | 제공자 설정 미완료. 운영 Apple 미설정은 해당 제공자만 중단 |
 | `NOT_HOST` | 403 | 주최자 전용 기능 |
 | `NOT_SELF` | 403 | 남의 체크·입금 상태를 바꾸려 함 |
 | `NOT_FOUND` | 404 | 없음 또는 내 것이 아님 |

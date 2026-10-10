@@ -34,18 +34,21 @@ class RestProviderGateway(
     @Value("\${apple.redirect-uri}") private val appleRedirect: String,
     env: Environment,
 ) : ProviderGateway {
+    private val kakaoSettings = listOf(kakaoId, kakaoSecret, kakaoRedirect)
+    private val appleSettings = listOf(appleId, appleTeam, appleKeyId, appleKey, appleRedirect)
     private val http = RestClient.builder().requestFactory(SimpleClientHttpRequestFactory().apply {
         setConnectTimeout(5000); setReadTimeout(5000)
     }).build()
     init {
         if (env.activeProfiles.contains("prod")) {
-            require(listOf(kakaoId, kakaoSecret, kakaoRedirect, appleId, appleTeam, appleKeyId, appleKey, appleRedirect).all { it.isNotBlank() }) { "로그인 운영 설정이 비었습니다." }
-            AppleTokens.clientSecret(appleTeam, appleKeyId, appleId, appleKey, Instant.now())
+            require(AuthPolicy.providerAvailable("KAKAO", kakaoSettings, appleSettings)) { "카카오 운영 설정이 비었습니다." }
+            // Apple 키 발급 전에는 해당 제공자만 닫는다. 모두 설정했다면 잘못된 키는 기동 시 발견한다.
+            if (AuthPolicy.providerAvailable("APPLE", kakaoSettings, appleSettings))
+                AppleTokens.clientSecret(appleTeam, appleKeyId, appleId, appleKey, Instant.now())
         }
     }
     private fun available(provider: String) {
-        val ready = if (provider == "KAKAO") kakaoId.isNotBlank() else provider == "APPLE" &&
-            listOf(appleId,appleTeam,appleKeyId,appleKey,appleRedirect).all { it.isNotBlank() }
+        val ready = AuthPolicy.providerAvailable(provider, kakaoSettings, appleSettings)
         if (!ready) throw ApiException("AUTH_PROVIDER_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, "로그인 설정을 확인해 주세요.")
     }
     override fun authorize(provider: String, state: String, nonce: String): String {

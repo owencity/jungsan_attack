@@ -4,9 +4,9 @@
 기존 PR의 리뷰·고정 학습 자료는 삭제하지 않는다. PR #26은 백엔드 전체 학습 이력 인덱스다.
 새 출시 PR의 head를 기준으로 검증하며 과거 CI 성공을 새 커밋 성공으로 대신하지 않는다.
 
-CTO는 실제 `.env`를 OCI의 `~/jeongsan/.env`에 직접 넣는다. 필수 키 목록은 DEPLOY.md에 보존했다.
+추가 결정으로 Codex가 OCI `~/jeongsan/.env`를 생성했고 카카오·내부 키를 채웠다. Apple 로그인용 개인키는 CTO가 서버에서 직접 입력한다. 필수 키 목록은 DEPLOY.md에 보존했다.
 DNS 전용 `CLOUDFLARE_API_TOKEN`은 GitHub Secret, 확인한 OCI Tunnel ID는 GitHub Variable로 준비한다.
-CTO가 OCI Tunnel에 새 호스트 → localhost:18080을 추가한다. 기존 노트북 `api.devkdk.com`과
+CTO가 OCI Tunnel에 새 호스트 → localhost:18080 추가를 완료했다고 확인했다. 기존 노트북 `api.devkdk.com`과
 웹훅 `webhook.devkdk.com` → localhost:8080은 변경하지 않는다. DNS 작업은 새 호스트만 대상으로 한다.
 실제 GitHub 리뷰 댓글 10개와 구현자 재검토는 [리뷰 기록](pr-reviews/2026-10-10-release/README.md)에 있다.
 
@@ -25,7 +25,7 @@ CTO가 OCI Tunnel에 새 호스트 → localhost:18080을 추가한다. 기존 �
 
 1. 병합 권한: CTO가 2026-10-10에 CI 전체 통과·미결 결정 없음·리뷰/스터디 보존 조건으로 Codex 병합을 승인했다. REMOVE_PAYER 보류도 승인했다. [PR #27](https://github.com/owencity/jungsan_attack/pull/27)은 CI 전체 성공 후 병합됐다. 새 호스트 수정도 별도 PR·최신 CI를 거친다.
 2. 운영 `.env`: 카카오 Client ID·Secret, Apple Services ID·Team ID·Key ID·p8, 콜백, 독립 JWT/계좌/인증 암호화 키. 저장소·CI 로그에 값은 남기지 않는다.
-3. GitHub OCI_HOST/OCI_SSH_KEY가 CTO가 지정한 OCI와 준비된 키를 가리키는지 확인한다. PR #27 main 배포에서 SSH 전송은 성공했다. 현재 기동 중단 원인은 `~/jeongsan/.env` 부재다.
+3. GitHub OCI_HOST/OCI_SSH_KEY가 CTO가 지정한 OCI와 준비된 키를 가리키는지 확인한다. PR #27 main 배포에서 SSH 전송은 성공했다. 그 배포는 `.env` 생성 전 실패였다. 현재 파일은 생성됐으며 Apple 미설정 기동 변경을 검증·배포한다.
 4. OCI Tunnel에 `jungsan-api.devkdk.com` → `http://localhost:18080` 새 항목 추가. 기존 8080의 n8n/Kafka는 유지한다.
 5. 실제 운영 DB·백업과 기존 v1 CONFIRMED 자료 확인. 새 배포 디렉터리가 없다는 사실만으로 다른 위치의 DB가 없다고 단정하지 않는다.
 6. 카카오 Redirect URI와 Apple Services ID Return URL은 `https://jungsan-api.devkdk.com/api/v1/auth/{provider}/callback`.
@@ -39,3 +39,6 @@ FC-020 인원 밖 결제자 보류는 CTO가 승인했다. 프론트 `autoSettle
 실제 배포 기록: [실행 38030304729](https://github.com/owencity/jungsan_attack/actions/runs/38030304729)은
 테스트·빌드·전송 성공, 배포 단계 실패다. OCI에서 `.env` 부재와 정산어택 컨테이너 미생성을 확인했다.
 운영 health·웹/앱 로그인을 성공으로 기록하지 않는다.
+
+Apple 값 발급 전 카카오·기존 기능 운영을 허용하는 CTO 결정이 추가됐다. Apple 미설정은 해당 제공자의 503이며
+DB/JWT/카카오/암호화 필수 설정과 인증 가드는 계속 검사한다. 실제 Apple 로그인·앱 심사는 미완료다.

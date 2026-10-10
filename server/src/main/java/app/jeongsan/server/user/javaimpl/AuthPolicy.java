@@ -3,6 +3,7 @@ package app.jeongsan.server.user.javaimpl;
 import app.jeongsan.server.common.MalformedRequestException;
 import app.jeongsan.server.common.UnauthenticatedException;
 import java.net.URI;
+import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -12,6 +13,14 @@ import java.util.HexFormat;
 
 /** Java 학습 구현. Kotlin 정책으로 위임하지 않는다. */
 public final class AuthPolicy {
+    public static boolean providerAvailable(String provider, List<String> kakaoSettings, List<String> appleSettings) {
+        if (!"KAKAO".equals(provider) && !"APPLE".equals(provider)) return false;
+        List<String> settings = "KAKAO".equals(provider) ? kakaoSettings : appleSettings;
+        int expectedSize = "KAKAO".equals(provider) ? 3 : 5;
+        return settings.size() == expectedSize && settings.stream().allMatch(value ->
+                value.codePoints().anyMatch(character -> !Character.isWhitespace(character) && !Character.isSpaceChar(character)));
+    }
+
     private AuthPolicy() {}
     public record Credential(String token, String client) {}
     public static String returnTo(String value) {
