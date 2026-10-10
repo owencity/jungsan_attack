@@ -1,0 +1,81 @@
+{
+  "change_summary": "PR CI 추가와 배포 Wrapper 실행 권한 복구",
+  "review_findings": [],
+  "study_recommendations": [
+    {
+      "category": "other",
+      "file": ".github/workflows/ci.yml",
+      "symbol": "on.pull_request / on.push",
+      "code_point": ".github/workflows/ci.yml:5",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "GitHub Actions — PR 이벤트와 main push 이벤트",
+      "study_angle": "대상 브랜치를 제한하지 않은 pull_request가 쌓은 PR까지 검증하고 push main이 병합 결과를 다시 검증하는지 diff에서 확인한다.",
+      "reason": "실제 고정 diff의 설정과 장애 원인을 검토하기 위함"
+    },
+    {
+      "category": "other",
+      "file": ".github/workflows/ci.yml",
+      "symbol": "concurrency",
+      "code_point": ".github/workflows/ci.yml:14",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "GitHub Actions — 실행별 concurrency 그룹",
+      "study_angle": "event_name/ref로 만든 그룹이 다른 PR 검증을 취소하지 않으면서 같은 PR의 이전 실행만 취소하는지 확인한다.",
+      "reason": "실제 고정 diff의 설정과 장애 원인을 검토하기 위함"
+    },
+    {
+      "category": "other",
+      "file": ".github/workflows/ci.yml",
+      "symbol": "verify.steps 실행 권한 확인",
+      "code_point": ".github/workflows/ci.yml:37",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "Git·Linux — 100644와 100755 실행 비트",
+      "study_angle": "gradlew 내용 diff가 없어도 changes.patch의 mode change가 실행 가능 여부를 바꾸는지 확인하고 test -x 실패와 exit 126을 연결한다.",
+      "reason": "실제 고정 diff의 설정과 장애 원인을 검토하기 위함"
+    },
+    {
+      "category": "other",
+      "file": ".github/workflows/ci.yml",
+      "symbol": "verify.steps Server 테스트와 jar 빌드",
+      "code_point": ".github/workflows/ci.yml:43",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "Gradle — test와 bootJar의 태스크 경계",
+      "study_angle": "bootJar만 실행하면 서버 테스트를 보장하지 못하므로 명시적인 :server:test를 실행하는지 확인한다.",
+      "reason": "실제 고정 diff의 설정과 장애 원인을 검토하기 위함"
+    },
+    {
+      "category": "other",
+      "file": ".github/workflows/ci.yml",
+      "symbol": "테스트 결과 보존 if",
+      "code_point": ".github/workflows/ci.yml:46",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "GitHub Actions — always와 테스트 결과 artifact",
+      "study_angle": "앞 단계 테스트가 실패해도 XML/HTML 업로드가 실행되는지, 결과가 없으면 어떻게 처리하는지 확인한다.",
+      "reason": "실제 고정 diff의 설정과 장애 원인을 검토하기 위함"
+    },
+    {
+      "category": "other",
+      "file": ".github/workflows/deploy.yml",
+      "symbol": "jobs.deploy.if",
+      "code_point": ".github/workflows/deploy.yml:31",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "GitHub Actions — 수동 실행 ref와 운영 배포 조건",
+      "study_angle": "workflow_dispatch에서 기능 브랜치를 선택해도 main ref 조건으로 운영 배포를 건너뛰는지 확인한다.",
+      "reason": "실제 고정 diff의 설정과 장애 원인을 검토하기 위함"
+    },
+    {
+      "category": "other",
+      "file": ".github/workflows/deploy.yml",
+      "symbol": "테스트 step",
+      "code_point": ".github/workflows/deploy.yml:51",
+      "catalog_reference": "UNMATCHED",
+      "catalog_title": "CI/CD — 검증한 커밋과 배포할 커밋",
+      "study_angle": "PR 검증 이후 main의 실제 배포 커밋에서도 Core·Server 테스트가 실패하면 빌드·전송을 진행하지 않는지 확인한다.",
+      "reason": "실제 고정 diff의 설정과 장애 원인을 검토하기 위함"
+    }
+  ],
+  "test_candidates": [
+    "PR 이벤트에서 테스트·빌드 시작 확인",
+    "main 외 수동 배포 차단 조건 확인",
+    "테스트 실패 시 결과 artifact 보존 확인"
+  ]
+}

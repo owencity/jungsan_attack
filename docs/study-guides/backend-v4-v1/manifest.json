@@ -1,0 +1,44 @@
+{
+  "formatVersion": 1,
+  "sourceBase": "6269774cade6e032c762cdd568545246b6331002",
+  "sourceHead": "be7d4ee1a68c9eae5e095fa4d283c0923ae63fcb",
+  "catalogRef": "origin/main",
+  "catalogCommit": "d5feb4677f71c9fe973e31118fd3b82d27eb2788",
+  "policyCommit": "d5feb4677f71c9fe973e31118fd3b82d27eb2788",
+  "dependencies": [
+    "PR #10",
+    "PR #17",
+    "Core sources from origin/feat/core-v2-java (PR #16)"
+  ],
+  "verification": {
+    "core": 54,
+    "server": 79,
+    "httpChecks": 25,
+    "upgradeChecks": 4,
+    "skipped": 0
+  },
+  "pr": {
+    "number": 18,
+    "url": "https://github.com/owencity/jungsan_attack/pull/18",
+    "baseBranch": "docs/host-settlement-units",
+    "statusAtCreation": "draft"
+  },
+  "sha256": {
+    ".gitattributes": "8dcac780cbb28c6c332f023b4e05d1502a4b0eaf874c8124f8c3141b7807bdda",
+    "catalog.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+    "changes.patch": "81e2cc5d76ac62eb8e191d5254f636f0c491230bf39ebc1098fae472582dc1eb",
+    "guide.json": "92c44c68ceba0b381c206567ce902cd85803f8e90beb53e52d794ca5e28ef3fc",
+    "guide.md": "97c53ab30d06b6abec5e6ca2cd4c824b7b068d856be6206b6540765a7cfa5583",
+    "n8n-format.json": "3b9cf5c3c9228cb6d28bf9e53b45765bc733e9326f6b46b422f61a3a66941298",
+    "policy.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+    "progress.md": "c04cc52d043f866c312ff977bd2d25e06874c0392f456b6d6bf7d95ded974778",
+    "review.md": "4f2f03b10ad09ac587dc6a104da438a8d304bd4103d585f3d7bc353ce52d4bae",
+    "source/server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java": "d6b9b0690489028a21880e168e5cd0179a8ca16744a82a0bee5e9c59e199be5c",
+    "source/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt": "1b21a934c0e4f41c83f82cd7a131b4fc1d12609e758a4551da56d54f65ae909e",
+    "source/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt": "fcacad12aef21618b1a3b8df819211fab907c2e5a6bdd9de5512a1d48bae8f70",
+    "source/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringStore.kt": "50075b471df2568182587cbac5dda16ee905d92869b1b770e336af22cc1247e7",
+    "source/server/src/main/kotlin/app/jeongsan/server/gathering/PayoutCipher.kt": "79917264ef83df957ac8da6906baec9e0860cc5db8432cfa4d5bde4cac8be2a9",
+    "source/server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt": "1cef94f08348510915d3e67dc9f97c0c25bd743e7f71821267d8e3569060f946"
+  },
+  "hashBasis": "Git blob bytes (LF normalized text, binary patch preserved)"
+}

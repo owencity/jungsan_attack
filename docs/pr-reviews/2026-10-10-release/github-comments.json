@@ -1,0 +1,273 @@
+{
+  "captured_on": "2026-10-10",
+  "timezone": "Asia/Seoul",
+  "records": [
+    {
+      "number": 4,
+      "title": "feat(core): 차수별 결제자 정산 엔진 v2 적용",
+      "url": "https://github.com/owencity/jungsan_attack/pull/4",
+      "head_at_capture": "51e35a93a0f9f2de02ed0b0b5949823c3bbfea72",
+      "state_at_capture": "open",
+      "formal_reviews": [],
+      "issue_comments": [
+        {
+          "id": 5811380868,
+          "html_url": "https://github.com/owencity/jungsan_attack/pull/4#issuecomment-5811380868",
+          "created_at": "2026-09-24T09:19:15Z",
+          "submitted_at": null,
+          "updated_at": "2026-09-24T09:19:15Z",
+          "body": "{\n  \"review_markdown\": \"## 🤖 AI PR Review\\n\\n### 변경 요약\\n\\n계산 엔진(`core`)을 `CALC_RULES_V2.md` 설계에 맞춰 전면 개편했습니다. 기존 v1의 대표결제자 greedy 상계,",
+          "state": null,
+          "commit_id": null,
+          "original_commit_id": null,
+          "path": null,
+          "line": null,
+          "original_line": null,
+          "diff_hunk": null,
+          "author": "owencity"
+        }
+      ],
+      "inline_comments": []
+    },
+    {
+      "number": 7,
+      "title": "feat(core): 제품 v3 기준 Core v2 계산 엔진 선별 보존",
+      "url": "https://github.com/owencity/jungsan_attack/pull/7",
+      "head_at_capture": "7cd7ff1c8e8442733d11590df17eea119fc63a27",
+      "state_at_capture": "open",
+      "formal_reviews": [],
+      "issue_comments": [
+        {
+          "id": 5969531208,
+          "html_url": "https://github.com/owencity/jungsan_attack/pull/7#issuecomment-5969531208",
+          "created_at": "2026-10-03T13:16:39Z",
+          "submitted_at": null,
+          "updated_at": "2026-10-03T13:16:39Z",
+          "body": "## 🤖 AI PR Review\n\n### 변경 요약\n\n계산 엔진을 Core v1(전역 대표결제자·상계)에서 Core v2(차수 총무별 수취·1원 올림 잔액 조정)로 전환한 변경입니다. `ExtraItem`(기타 항목) 및 전역 `roundingUnit` 설정을 제거하고, 차수별 면제(`Attendance.EXEMPT`) 및 수취인별 송금 분리 로직을 도입했습니다. 또한 대용량 금액 연산 시의 오버플로 방지 로직과 신규 검증 규칙(`MISSING_ATTENDANCE`, `NEGATIVE_ADJUSTED_AMOUNT` 등)을 추가하고 48건의 Kotest 명세를 통과하도록 갱신했습니다.\n\n### 주요 변경\n\n- `core/src/main/kotlin/app/jeongsan/core/Model.kt`: `ExtraItem` 및 `Participant.exempt` 필드를 제거하고, `Attendance`를 4개 상태(`ABSENT`, `EXEMPT`, `SOBER`, `DRANK`)를 갖는 enum으로 개편했습니다. `effectiveRounds()` 내 술병 금액 합산 시 `BigInteger`를 사용하여 오버플로를 방지하도록 보강했습니다.\n- `core/src/main/kotlin/app/jeongsan/core/Settlement.kt`: 기존 전역 대표결제자 기반 상계 알고리즘을 폐기하고, 수취인(차수 총무)별 1원 올림 및 잔액 조정자(`adjustmentParticipantId`) 선정 로직과 수취인별 송금(`buildTransfers`) 생성 로직을 구현했습니다.\n- `core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt`: 반환 모델에서 `mainPayerId`와 `roundingUnit` 관련 필드를 제거하고, 차수 총무별 정산 내역을 담는 `recipients`(`RecipientSettlement`)와 차수별 면제 여부(`exempt`)를 추가했습니다.\n- `core/src/main/kotlin/app/jeongsan/core/Validation.kt`: 폐기된 항목 관련 에러 코드를 정리하고 `MISSING_ATTENDANCE`, `NEGATIVE_ADJUSTED_AMOUNT`, `ATTENDANCE_REFERENCE_NOT_FOUND` 등을 신설했습니다. 총액 및 술값 검증에 `BigInteger` 비교를 적용했습니다.\n- `core/src/test/kotlin/app/jeongsan/core/*`: Core v2 계산 명세(`CALC_RULES_V2.md`)에 맞추어 불변식 테스트(`InvariantSpec`) 및 단위 테스트(`SettlementSpec`, `ValidationSpec`)를 갱신했습니다.\n- `AGENTS.md`, `DEVLOG.md`, `README.md`: Core v2 반영 현황 및 WIP 선별 보존 결정 내역을 문서화했습니다.\n\n### 확인해볼 사항\n\n- `Settlement.kt:101-111`: 결제자 본인의 원부담이 0 이하인 경우(예: 총무가 해당 차수에 불참했거나 면제된 경우), 차수 참석자 중 원부담이 가장 큰 참여자(동률 시 id 오름차순)를 잔액 조정자로 선정하고 있습니다. 이 경우 비면제 참석자가 1원 올림 잔액 조정을 대신 떠안게 되는데, 이것이 `CALC_RULES_V2.md` §3.4의 의도된 동작과 일치하는지 확인해보는 것이 좋습니다.\n- `Validation.kt:218-228`: `ValidationPhase.CONFIRM` 단계에서 모든 참여자에 대해 `input.attendance` 맵에 명시적인 응답 키가 존재하는지(`MISSING_ATTENDANCE`) 검사하고 있습니다. `Model.attendanceOf`는 기본값으로 `ABSENT`를 돌려주지만 확정 단계에서는 누락 시 에러가 발생하므로, 향후 서버나 프론트 연동 시 모든 참여자 응답 레코드를 생성해서 넘겨주는 계약인지 점검할 필요가 있습니다.\n- `Validation.kt:230-240`: 참석자가 전원 면제인 경우 기존의 `NO_NON_EXEMPT_ATTENDEE` 대신 `NO_ATTENDEE` 에러 코드가 반환되도록 변경되었습니다. 향후 API 문서(`docs/API.md` §1.4 에러 코드 표)와 클라이언트 예외 처리 연동에 영향이 없는지 검토해보는 것이 좋습니다.\n\n### 테스트해볼 시나리오\n\n- 차수 총무(`payerId`)가 불참(`ABSENT`)하거나 면제(`EXEMPT`)되어 본인 부담액이 0원일 때, 다른 참석자 중 최다 부담자가 잔액 조정자로 지정되어 합계 금액이 원금과 일치하는지 확인\n- `ValidationPhase.CONFIRM` 호출 시 특정 참여자의 출석 정보(`AttendanceKey`)가 맵에서 누락되었을 때 `MISSING_ATTENDANCE`가 정상 반환되고, `ValidationPhase.SAVE` 호출 시에는 해당 검사가 통과되는지 확인\n- 인원 대비 총 결제 금액이 극단적으로 작아 1원 올림 후 잔액 조정자의 금액이 음수가 되는 상황(예: 총액 1원, 참석자 3명)에서 `NEGATIVE_ADJUSTED_AMOUNT` 에러가 반환되는지 확인\n\n---\n> AI가 제시한 내용은 코드리뷰를 보조하기 위한 참고사항이며, 최종 판단은 개발자가 수행합니다.",
+          "state": null,
+          "commit_id": null,
+          "original_commit_id": null,
+          "path": null,
+          "line": null,
+          "original_line": null,
+          "diff_hunk": null,
+          "author": "owencity"
+        }
+      ],
+      "inline_comments": []
+    },
+    {
+      "number": 10,
+      "title": "feat(user): 최초 실명 등록과 인증 가드 구현",
+      "url": "https://github.com/owencity/jungsan_attack/pull/10",
+      "head_at_capture": "d34078782c8380fc45d0eed913c867e0877c8a00",
+      "state_at_capture": "open",
+      "formal_reviews": [],
+      "issue_comments": [
+        {
+          "id": 5978140666,
+          "html_url": "https://github.com/owencity/jungsan_attack/pull/10#issuecomment-5978140666",
+          "created_at": "2026-10-04T08:32:57Z",
+          "submitted_at": null,
+          "updated_at": "2026-10-04T08:32:57Z",
+          "body": "# AI PR Review\n\n## 변경 요약\n\nFC-013(실명 입력) 반영에 따른 실명 등록 API(PUT /api/v1/users/me/display-name) 및 내 정보 조회(GET /api/v1/auth/me) 응답 확장(needsName, displayName 추가), Liquibase 015 마이그레이션(display_name 컬럼 추가), 전체 컨트롤러 대상 인증 가드 테스트(AuthenticationGuardSpec) 추가 및 GatheringController 목록 조회의 인증/본인 필터 적용\n\n## 검토 포인트\n\n\n### 1. [HIGH] security\n\n**파일**\n`server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt`\n\n**관찰**\n인증 가드 검증에서 GroupController 및 추후 추가될 컨트롤러의 커스텀 HTTP 매핑 애너테이션(@GetMapping, @PostMapping 등) 누락 가능성과 검증 범위 확인 필요\n\n**근거**\nAuthenticationGuardSpec.kt:21-26에서 ClassPathScanningCandidateComponentProvider와 AnnotatedElementUtils.hasAnnotation(it, RequestMapping::class.java)을 사용하며, publicMethods로 AuthController#login, callback 2개만 화이트리스트 처리함. 그러나 현재 main 브랜치에 존재하는 GroupController(제거 대상이나 아직 존재)의 엔드포인트들이 이 테스트에서 어떻게 동작하는지 확인 필요\n\n**위험**\n만약 GroupController가 스캔 대상에 포함되어 있거나 향후 @RequestMapping 메타 애너테이션 상속 구조가 달라질 경우, 인증이 누락된 핸들러를 제대로 탐지하지 못하거나 빌드가 의도치 않게 깨질 가능성이 있음\n\n**생각해볼 질문**\n> 현재 main 브랜치에 남아있는 GroupController의 핸들러들은 @LoginUser를 가지고 있는지, 만약 없다면 AuthenticationGuardSpec 테스트 실행 시 실패하지 않고 통과하는 이유가 무엇인지 확인해보았는가?\n\n\n### 2. [MEDIUM] data\n\n**파일**\n`server/src/main/resources/db/changelog/015-user-display-name.yaml`\n\n**관찰**\ndisplay_name 컬럼이 VARCHAR(10)으로 정의되어 있어 다중 바이트 문자(이모지 등) 저장 시 바이트 단위 제한이나 인코딩 특성에 영향이 없는지 확인 필요\n\n**근거**\n015-user-display-name.yaml:14 `type: VARCHAR(10)`, UserService.kt:18 `val count = name.codePointCount(0, name.length)`\n\n**위험**\nMySQL에서 utf8mb4 문자셋의 VARCHAR(10)은 문자(code point) 단위로 최대 10자까지 허용되지만, 복합 이모지(ZWJ 시퀀스, 스킨톤 결합자 등)는 여러 코드포인트로 구성되어 코드포인트 기준 검증과 DB 길이 제한 간에 차이가 발생할 가능성이 있음\n\n**생각해볼 질문**\n> ZWJ(Zero Width Joiner)나 합성 이모지 등 여러 코드포인트로 구성된 단일 그래핌(Grapheme)이 입력되었을 때 애플리케이션의 codePointCount 검증 및 DB의 VARCHAR(10) 제약과 어떻게 상호작용하는지 확인해보았는가?\n\n\n### 3. [MEDIUM] concurrency\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/user/UserService.kt`\n\n**관찰**\n조건부 UPDATE 후 재조회 시 영속성 컨텍스트(1차 캐시)와 실제 DB 데이터의 일치 여부 검토 필요\n\n**근거**\nUserRepository.kt:13 `@Modifying(flushAutomatically = true, clearAutomatically = true)`, UserService.kt:23-25 `userRepository.registerDisplayName(userId, name); val user = findUser(userId)`\n\n**위험**\nclearAutomatically = true가 선언되어 있어 영속성 컨텍스트가 초기화되지만, 트랜잭션 격리 수준(기본 REPEATABLE READ)에 따라 동일 트랜잭션 내에서 이전에 findUser를 호출했거나 다른 엔티티 조회가 얽힐 경우 Non-Repeatable Read 방지 규칙으로 인해 다른 트랜잭션이 이미 커밋한 display_name을 단순 SELECT로 읽지 못하고 MVCC 이전 스냅샷을 읽을 가능성이 있는지 검토가 필요함\n\n**생각해볼 질문**\n> REPEATABLE READ 격리 수준의 MySQL에서 한 트랜잭션이 UPDATE 실행 전 이미 User 엔티티를 조회한 상태에서 다른 트랜잭션이 display_name을 먼저 커밋했을 때, findUser(userId)가 최신 커밋 값을 읽어오는지 확인해보았는가?\n\n\n### 4. [LOW] kotlin\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/user/User.kt`\n\n**관찰**\nUser 엔티티의 displayName 필드가 val 및 @Column(updatable = false)로 선언되어 있어 JPA dirty checking을 방지하는 구조의 일관성 확인 필요\n\n**근거**\nUser.kt:30-31 `@Column(name = \"display_name\", updatable = false) val displayName: String? = null`\n\n**위험**\nJPA save() 호출 시 카카오 로그인 등의 흐름에서 display_name이 실수로 덮어씌워지지 않도록 잘 방어되었으나, JPQL Modifying 쿼리로만 변경되므로 엔티티 객체의 인메모리 인스턴스는 영속성 컨텍스트 초기화 전까지 불일치할 수 있음\n\n**생각해볼 질문**\n> User 엔티티를 사용하는 다른 비즈니스 로직에서 displayName을 변경해야 하는 요구사항이 생길 경우, 도메인 모델 차원에서 변경 불가능성이 명확하게 인지되고 있는가?\n\n\n## 추가 테스트 후보\n\n\n### 1. 동일 사용자가 서로 다른 displayName으로 동시에 PUT /api/v1/users/me/display-name을 요청하는 동시성 환경\n\n**기대 결과**\n하나의 요청만 200 OK로 성공하고, 뒤이어 처리된 요청은 409 Conflict (DISPLAY_NAME_ALREADY_SET)를 반환해야 함\n\n**왜 필요한가**\n현재 테스트(UserApiSpec)는 Mockito 단일 스레드 기반이라 조건부 UPDATE의 DB 수준 동시성 방어가 실제로 동작하는지 검증되지 못했기 때문\n\n\n### 2. 복합 이모지(예: 가족 이모지 👨‍👩‍👧‍👦, 국기 이모지 등 여러 코드포인트 결합 문자)를 displayName으로 등록 요청\n\n**기대 결과**\ncodePointCount 기준 10자 초과 시 400 Bad Request가 발생하거나, 통과 시 MySQL VARCHAR(10) 컬럼에 정상 저장/잘림 없이 처리되어야 함\n\n**왜 필요한가**\n단일 이모지(🍺) 외에 결합자(ZWJ)가 포함된 이모지 입력 시 코드포인트 검증 및 DB 컬럼 길이 제한과의 정합성을 확인하기 위함\n\n\n### 3. 로그인하지 않은 상태에서 GET /api/v1/gatherings 호출\n\n**기대 결과**\n401 Unauthorized 응답 반환\n\n**왜 필요한가**\n이전 버전에서 인증 없이 전체 목록을 반환하던 보안 취약점이 올바르게 차단되었는지 회귀 방지 차원에서 검증 필요\n",
+          "state": null,
+          "commit_id": null,
+          "original_commit_id": null,
+          "path": null,
+          "line": null,
+          "original_line": null,
+          "diff_hunk": null,
+          "author": "owencity"
+        },
+        {
+          "id": 5979205907,
+          "html_url": "https://github.com/owencity/jungsan_attack/pull/10#issuecomment-5979205907",
+          "created_at": "2026-10-04T10:53:27Z",
+          "submitted_at": null,
+          "updated_at": "2026-10-04T10:53:27Z",
+          "body": "# AI PR Review\n\n## 변경 요약\n\nFC-013 기반 사용자 실명(displayName) 최초 등록 API(PUT /api/v1/users/me/display-name) 및 내 정보 조회(GET /api/v1/auth/me) 응답 확장(needsName 등), 실명 DB 컬럼 추가(015 changelog, changeSet 023), 비인가 전체 조회 위험이 있던 술자리 목록 엔드포인트(@LoginUser 적용 및 hostUserId 필터) 개선, 인증 가드 테스트 및 단위/통합 테스트 추가\n\n## 검토 포인트\n\n\n### 1. [MEDIUM] concurrency\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/user/UserService.kt`\n\n**관찰**\nregisterDisplayName 메서드에서 UPDATE 후 findUser를 다시 호출하여 영속성 컨텍스트 및 DB 상태를 검증하는 흐름\n\n**근거**\nUserService.kt:23-27: userRepository.registerDisplayName(userId, name) 호출 후 val user = findUser(userId) 실행, user.displayName != name 검사\n\n**위험**\nUserRepository.registerDisplayName에 @Modifying(flushAutomatically = true, clearAutomatically = true)가 설정되어 있어 1차 캐시는 정리되나, 트랜잭션 격리 수준(REPEATABLE READ) 하에서 동일 트랜잭션 내 이전에 해당 엔티티가 로드된 적이 있다면 non-repeatable read 방지로 인해 snapshot 읽기가 발생하여 방금 UPDATE된 값을 즉시 조회하지 못할 가능성이 있는지 확인할 필요가 있음\n\n**생각해볼 질문**\n> 동일 트랜잭션 내에서 findUser가 사전에 호출되는 시나리오가 추가될 경우, REPEATABLE READ 격리 수준에서 clearAutomatically 이후 findById가 DB의 커밋되지 않은 최신 변경본을 제대로 읽어오는지 확인되었는가?\n\n\n### 2. [MEDIUM] requirement\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt`\n\n**관찰**\n술자리 목록 조회가 로그인한 총무 본인(hostUserId)의 술자리만 반환하도록 변경됨\n\n**근거**\nGatheringController.kt:24-26: fun list(@LoginUser userId: Long) = gatheringRepository.findByHostUserIdOrderByGatheringDateDesc(userId)\n\n**위험**\n기존의 전체 공개 상태는 막았으나, 참여자(Participant)로 속한 술자리는 아직 목록에 나오지 않고 총무가 개설한 술자리만 노출됨. 프론트엔드 연동 시 참여자의 술자리 목록 조회가 일시적으로 비어보일 수 있음\n\n**생각해볼 질문**\n> v3 참여자 기준 술자리 조회 API가 완성되기 전까지 '내가 참여한 술자리' 조회가 불가능한 상태가 프론트엔드 MVP 개발 흐름과 합의된 과도기적 스펙인지 확인이 필요한가?\n\n\n### 3. [LOW] data\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/user/User.kt`\n\n**관찰**\ndisplayName 필드에 updatable = false 지정\n\n**근거**\nUser.kt:30: @Column(name = \"display_name\", updatable = false)\n\n**위험**\nJPA save() 호출 시 카카오 로그인 재인증 등으로 다른 필드가 갱신될 때 실명이 덮어써지는 것은 안전하게 차단되지만, 향후 관리자 변경이나 오타 정정 정책이 생겼을 때 JPA 엔티티를 통한 변경이 완전히 제한됨\n\n**생각해볼 질문**\n> 실명 수정을 완전히 불변으로 유지하는 것이 FC-013 요구사항에 부합하며, 벌크 쿼리(registerDisplayName) 외의 경로를 차단하기 위한 의도된 제약인지 검토가 되었는가?\n\n\n### 4. [LOW] test\n\n**파일**\n`server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt`\n\n**관찰**\n모의 객체(Mockito Mock) 기반 standalone MockMvc 테스트로만 구성되어 실제 DB 조건부 UPDATE 동작이 검증되지 않음\n\n**근거**\nUserApiSpec.kt:21: val repository = Mockito.mock(UserRepository::class.java)\n\n**위험**\nDEVLOG에도 언급되었듯이, 'WHERE u.displayName IS NULL' 조건부 UPDATE 쿼리와 1차 캐시 clearAutomatically 동작 및 동시성 제어가 실제 MySQL 환경에서 동작하는지는 이 단위 테스트로 보장되지 않음\n\n**생각해볼 질문**\n> H2 또는 Testcontainers MySQL을 활용하여 실제 Repository 벌크 연산 및 동시성 충돌(동시 요청 시 1건만 업데이트되고 나머지는 409)을 검증하는 슬라이스/통합 테스트를 추가할 계획이 있는가?\n\n\n## 추가 테스트 후보\n\n\n### 1. 실제 DB(MySQL) 환경에서 동일 사용자에 대해 서로 다른 실명으로 동시에 PUT /api/v1/users/me/display-name 호출\n\n**기대 결과**\n하나의 요청만 200 OK로 displayName이 등록되고, 경합한 다른 요청은 409 DISPLAY_NAME_ALREADY_SET 응답을 반환해야 함\n\n**왜 필요한가**\n조건부 UPDATE(WHERE displayName IS NULL) 기반의 동시성 제어가 DB 레벨에서 원자적으로 처리되는지 확인 필요\n\n\n### 2. 공백만으로 구성된 이름(\"   \"), 1자 이름, 11자 초과 이름 전송\n\n**기대 결과**\n400 BAD_REQUEST와 함께 각각 '이름을 넣어주세요', '성까지 적어주세요', '이름은 10자까지예요' 메시지 반환\n\n**왜 필요한가**\nUserService의 코드포인트 길이 검증 및 GlobalExceptionHandler의 메시지 직렬화 계약 준수 확인\n\n\n### 3. 이모지가 포함된 이름(예: '🍺홍길동' = 코드포인트 4개) 등록 요청\n\n**기대 결과**\n정상적으로 200 OK 응답 및 등록 완료\n\n**왜 필요한가**\nJava/Kotlin String의 length(UTF-16 서로게이트 페어로 인한 5글자 취급) 대신 codePointCount 기반 검증이 정확히 작동하는지 확인\n",
+          "state": null,
+          "commit_id": null,
+          "original_commit_id": null,
+          "path": null,
+          "line": null,
+          "original_line": null,
+          "diff_hunk": null,
+          "author": "owencity"
+        },
+        {
+          "id": 5996079749,
+          "html_url": "https://github.com/owencity/jungsan_attack/pull/10#issuecomment-5996079749",
+          "created_at": "2026-10-05T14:04:09Z",
+          "submitted_at": null,
+          "updated_at": "2026-10-05T14:04:09Z",
+          "body": "# AI PR Review\n\n## 변경 요약\n\nFC-013 기반 실명(displayName) 등록 API 추가, /auth/me 응답에 needsName 및 displayName 추가, Liquibase changelog(015) 추가, Gathering 목록 조회 시 인증 추가 및 본인 주최 술자리 필터링 적용, 컨트롤러 리플렉션 기반 인증 가드 테스트 및 단위/슬라이스 테스트 추가\n\n## 검토 포인트\n\n\n### 1. [MEDIUM] security\n\n**파일**\n`server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt`\n\n**관찰**\nGroupController의 핸들러들이 공개되어 있음에도 가드 테스트 화이트리스트에 누락되어 테스트가 통과하지 않거나 GroupController의 미인증 상태를 놓칠 가능성\n\n**근거**\nAuthenticationGuardSpec.kt:14-17 publicMethods에는 AuthController#login, AuthController#callback만 등록되어 있으나, 기존 저장소에 남아있는 GroupController 핸들러들(@LoginUser 미사용 시)이 존재하는지 확인 필요\n\n**위험**\nGroupController에 @LoginUser가 없는 핸들러가 남아있다면 테스트 실행 시 실패하거나, 혹은 검사 대상 패키지 스캔 경로/조건에 따라 미인증 취약점이 있는 엔드포인트가 감지되지 않고 넘어갈 수 있음\n\n**생각해볼 질문**\n> GroupController의 핸들러들이 모두 제거되었거나 @LoginUser가 붙어 있는지, 아니면 가드 테스트에서 GroupController가 예외 없이 정상 검증되는지 확인이 필요합니다.\n\n\n### 2. [MEDIUM] concurrency\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/user/UserService.kt`\n\n**관찰**\n조건부 UPDATE 후 registerDisplayName의 반환값(영향받은 행 수)을 직접 확인하지 않고 재조회 결과만으로 성공 여부를 판별함\n\n**근거**\nUserService.kt:23-26 userRepository.registerDisplayName(userId, name) 호출 후 반환된 Int(업데이트된 row 수)를 무시하고, findUser(userId)를 호출하여 user.displayName != name 조건으로 DisplayNameAlreadySetException을 던짐\n\n**위험**\n만약 A 사용자가 이미 '김철수'로 등록되어 있는 상태에서 다시 '김철수'로 등록 요청을 보낸 경우, UPDATE는 0행이 수정되지만 재조회 시 user.displayName은 '김철수'이므로 예외 없이 200이 반환됨(명세상 같은 값 재시도 멱등 성공은 만족). 그러나 두 요청이 서로 다른 값으로 동시 경합할 때 첫 번째 커밋 시점과 두 번째 트랜잭션의 격리 수준에 따라 1차 캐시 clearAutomatically 이후 DB에서 읽어오는 값과의 정합성 타이밍 검토가 필요함\n\n**생각해볼 질문**\n> UPDATE 쿼리의 영향받은 행 수가 0인 경우(이미 다른 값이 세팅된 경우 vs 같은 값이 세팅된 경우)를 명시적으로 분기하는 대신 재조회 값 비교 방식이 트랜잭션 격리 수준(Repeatable Read vs Read Committed) 하에서 의도한 대로 동작하는지 검토되었나요?\n\n\n### 3. [LOW] data\n\n**파일**\n`server/src/main/resources/db/changelog/015-user-display-name.yaml`\n\n**관찰**\nVARCHAR(10) 컬럼 크기가 이모지(4바이트 UTF-8) 및 최대 10 코드포인트 저장 시 MySQL char/byte 제한에 안전한지 검토 필요\n\n**근거**\n015-user-display-name.yaml:14 type: VARCHAR(10), UserService.kt:18 count > 10 검사\n\n**위험**\nMySQL의 VARCHAR(N)은 문자(code point) 단위 길이이므로 utf8mb4 환경에서는 10개의 이모지가 10문자로 저장 가능하지만, DB의 캐릭터셋이 utf8mb4가 아니거나 특정 정렬 규칙에서 초과 에러가 발생하는지 확인 필요\n\n**생각해볼 질문**\n> 데이터베이스의 기본 캐릭터셋이 utf8mb4로 설정되어 4바이트 이모지 10개가 VARCHAR(10)에 문제없이 저장되는지 확인되었나요?\n\n\n### 4. [LOW] requirement\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt`\n\n**관찰**\nDisplayNameRequest의 validation 어노테이션이 누락되어 있음\n\n**근거**\nUserDto.kt:3 data class DisplayNameRequest(val displayName: String), UserController.kt:14 @Valid @RequestBody request: DisplayNameRequest\n\n**위험**\n컨트롤러에 @Valid가 붙어 있으나 DTO 필드에 @NotBlank나 @NotNull 등의 제약이 없어, null이나 타입 불일치가 아닌 이상 Bean Validation 계층을 그대로 통과하고 UserService에서 수동 검증됨\n\n**생각해볼 질문**\n> DTO 수준의 Bean Validation(@field:NotBlank 등)을 두지 않고 UserService 내부에서만 수동으로 글자 수를 검증하는 것이 의도된 설계인지 확인이 필요합니다.\n\n\n## 추가 테스트 후보\n\n\n### 1. 실제 MySQL DB 연동 환경에서 두 스레드가 동시에 서로 다른 실명(예: '김동규' vs '이동규')으로 최초 등록(registerDisplayName)을 호출하는 상황\n\n**기대 결과**\n하나의 스레드만 200 OK로 성공하고 다른 스레드는 409 DisplayNameAlreadySetException으로 실패해야 함\n\n**왜 필요한가**\nUserService 단위 테스트는 Mockito로 mock되어 있어 실제 DB의 조건부 UPDATE 원자성과 1차 캐시 갱신 동작을 온전히 검증하지 못하므로, 실제 트랜잭션 동시성 검증이 필요함\n\n\n### 2. 이미 실명이 '김동규'로 등록된 사용자가 다시 '김동규'로 등록 요청을 보내는 상황\n\n**기대 결과**\n409가 아닌 200 OK와 함께 현재 정보가 반환되어 멱등성이 보장되어야 함\n\n**왜 필요한가**\nFC-013 요구사항에서 동일한 정규화 값 재요청은 200을 반환하도록 규정하고 있으므로, 실제 DB 갱신 건수가 0일 때의 멱등 처리 경로 확인 필요\n\n\n### 3. GroupController 등 기존 남아있는 레거시/다른 도메인 컨트롤러 핸들러들에 대해 AuthenticationGuardSpec을 실행하는 상황\n\n**기대 결과**\n공개 화이트리스트 외에 @LoginUser가 없는 모든 핸들러가 검출되어 통과하거나 명시적으로 예외 처리되어야 함\n\n**왜 필요한가**\n-\n",
+          "state": null,
+          "commit_id": null,
+          "original_commit_id": null,
+          "path": null,
+          "line": null,
+          "original_line": null,
+          "diff_hunk": null,
+          "author": "owencity"
+        }
+      ],
+      "inline_comments": []
+    },
+    {
+      "number": 16,
+      "title": "feat(core): Java·Kotlin 정산 엔진을 함께 구현하고 검증",
+      "url": "https://github.com/owencity/jungsan_attack/pull/16",
+      "head_at_capture": "ae0344f7dc1b87eefe92465c15a5827ec4a046ff",
+      "state_at_capture": "open",
+      "formal_reviews": [],
+      "issue_comments": [
+        {
+          "id": 5994776416,
+          "html_url": "https://github.com/owencity/jungsan_attack/pull/16#issuecomment-5994776416",
+          "created_at": "2026-10-05T12:49:19Z",
+          "submitted_at": null,
+          "updated_at": "2026-10-05T12:49:19Z",
+          "body": "# AI PR Review\n\n## 변경 요약\n\nCore v2 정산 엔진을 Kotlin과 독립적인 Java 21(record, sealed interface, BigInteger, Stream)로 구현하고, 두 언어 구현 간의 계산 결과·근거·오류·순서 일치성을 검증하는 차등 테스트(JavaParitySpec) 및 스터디 가이드를 추가함.\n\n## 검토 포인트\n\n\n### 1. [MEDIUM] requirement\n\n**파일**\n`core/src/main/java/app/jeongsan/core/javaimpl/Validation.java`\n\n**관찰**\n전체 총액 상한(1조 원) 검증이 SAVE 단계에서는 누락되고 CONFIRM 단계에서만 수행됨\n\n**근거**\nValidation.java:119 'validateOnConfirm' 내부에서만 'grandTotal.compareTo(MAX_AMOUNT_BIG) > 0'을 검증하고 있으며, docs/CORE_DUAL_IMPLEMENTATION.md에도 기존 Kotlin 구현과의 호환성을 위해 이 차이를 유지했다고 명시됨. 반면 docs/CALC_RULES_V2.md §5는 '저장과 확정 공통: 항목 및 전체 금액은 1조 원 이하'로 규정함\n\n**위험**\n개별 차수 금액이 1조 원 이하이지만 차수 합계가 1조 원을 초과하는 임시 저장 데이터가 SAVE 단계 검증을 통과하여 DB에 저장된 후, 추후 정산 확정(CONFIRM) 시점에 뒤늦게 유효성 검증 실패로 이어질 가능성이 있음\n\n**생각해볼 질문**\n> 전체 총액 1조 원 상한 검증이 SAVE 단계가 아닌 CONFIRM 단계에서만 동작하는 것이 제품 스펙상 의도된 동작인지, 아니면 CALC_RULES_V2.md 명세와 일치하도록 SAVE 단계에도 전체 총액 검증을 추가해야 하는지 확인이 필요함\n\n\n### 2. [LOW] data\n\n**파일**\n`core/src/main/java/app/jeongsan/core/javaimpl/Model.java`\n\n**관찰**\nDrinkItem 곱셈 및 누적 금액이 Long 범위를 벗어날 때 Long.MIN_VALUE/MAX_VALUE로 포화(saturation) 처리됨\n\n**근거**\nModel.java:48-50 'long alcohol = sum.max(BigInteger.valueOf(Long.MIN_VALUE)).min(BigInteger.valueOf(Long.MAX_VALUE)).longValueExact();'\n\n**위험**\n주류 항목의 단가나 수량이 매우 비정상적으로 큰 경우 예외를 즉시 던지지 않고 Long.MAX_VALUE로 클램핑하여 Round.alcohol에 주입함. 이후 Validation에서 AMOUNT_TOO_LARGE 또는 ALCOHOL_EXCEEDS_TOTAL로 걸러지기는 하지만, 도메인 모델 생성 시점에 원본 계산값이 왜곡된 채 전달될 수 있음\n\n**생각해볼 질문**\n> 비정상적으로 큰 주류 항목 합산값을 Validation 이전에 Long.MAX_VALUE로 클램핑하여 후속 유효성 검사로 위임하는 방식이 의도된 실패 전파 흐름인지 검토할 필요가 있음\n\n\n## 추가 테스트 후보\n\n\n### 1. 개별 차수 금액은 1조 원 이하이지만 전체 차수 합계가 1조 원을 초과하는 SettlementInput으로 ValidationPhase.SAVE를 검증하는 경우\n\n**기대 결과**\n현재 구현에서는 SAVE 단계에서 에러 없이 통과하고 CONFIRM 단계에서만 AMOUNT_TOO_LARGE가 발생함. 이것이 스펙상 의도된 동작인지 확인 필요\n\n**왜 필요한가**\nCALC_RULES_V2.md §5와 실제 코드(Kotlin/Java 공통)의 SAVE 검증 동작 불일치 지점을 명확히 확인하기 위함\n\n\n### 2. DrinkItem의 수량 또는 단가가 음수이거나 0인 상태에서 effectiveRounds() 호출 및 Validation 수행\n\n**기대 결과**\nINVALID_DRINK_ITEM 에러가 정상적으로 발생하고 음수 주류 금액이 차수 총액 계산에 오염되지 않음\n\n**왜 필요한가**\nModel.effectiveRounds에서 곱셈 후 포화 처리와 Validation에서의 유효성 검증 순서 및 상호작용 검증\n",
+          "state": null,
+          "commit_id": null,
+          "original_commit_id": null,
+          "path": null,
+          "line": null,
+          "original_line": null,
+          "diff_hunk": null,
+          "author": "owencity"
+        }
+      ],
+      "inline_comments": []
+    },
+    {
+      "number": 18,
+      "title": "feat(backend): 같은 술자리의 총무별 독립 정산 구현",
+      "url": "https://github.com/owencity/jungsan_attack/pull/18",
+      "head_at_capture": "54fda97d1dcda03f2b7f8313257316efd4d5e104",
+      "state_at_capture": "open",
+      "formal_reviews": [],
+      "issue_comments": [
+        {
+          "id": 6048882599,
+          "html_url": "https://github.com/owencity/jungsan_attack/pull/18#issuecomment-6048882599",
+          "created_at": "2026-10-07T23:24:45Z",
+          "submitted_at": null,
+          "updated_at": "2026-10-07T23:24:45Z",
+          "body": "# AI PR Review\n\n## 변경 요약\n\n술자리 내 다중 총무 기반의 독립 정산 단위(SettlementUnit) 구조 도입, Core v2 계산 엔진의 Java/Kotlin 상호 호환 구현, 명시적 JDBC(GatheringStore) 및 비관적 락 기반 동시성 제어, AES-GCM 계좌 암호화, 7일/30일 수명주기 배치 삭제 도입\n\n## 검토 포인트\n\n\n### 1. [HIGH] security\n\n**파일**\n`server/src/main/resources/application-local.yml`\n\n**관찰**\n로컬 프로파일에 하드코딩된 암호화 키(Base64 인코딩된 all-zero 32바이트)가 존재하며, 운영 키가 미설정되거나 실수로 로컬 설정이 참조될 위험이 있는지 확인할 필요가 있다.\n\n**근거**\napplication-local.yml: `payout.encryption-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=` / application-prod.yml: `encryption-key: ${PAYOUT_ENCRYPTION_KEY}`\n\n**위험**\n로컬 환경 키가 기본값으로 누출되거나 배포 스크립트 실수 등으로 운영 환경에서 기본 고정 키가 주입될 경우, 계좌번호 암호화가 무력화될 수 있다.\n\n**생각해볼 질문**\n> 운영 배포 시 PAYOUT_ENCRYPTION_KEY가 빈 값이거나 기본값일 때 애플리케이션 기동이 fail-fast되도록 PayoutCipher 생성자에서 검증하는 로직이 충분한지 확인이 필요한가?\n\n\n### 2. [HIGH] concurrency\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt`\n\n**관찰**\n단위 잠금(settlement_units FOR UPDATE)과 모임 잠금(gatherings FOR UPDATE) 간의 획득 순서가 일관되지 않아 교착 상태(Deadlock)가 발생할 가능성이 있는지 검토할 필요가 있다.\n\n**근거**\nGatheringService.kt: `unit()` 함수는 기본적으로 `settlement_units`에 대해 `FOR UPDATE`를 수행하며, 이후 `settle()`, `reopen()`, `transfer()` 등에서 `room(gid, true)`를 호출하여 `gatherings`에 대해 `FOR UPDATE`를 취득한다. 반면 `deleteExpired()`는 `settlement_units` 전체 잠금 후 `gatherings` 잠금을 취득하고, `createUnit()`은 `room(gid, true)`를 먼저 취득한다.\n\n**위험**\n동일 술자리 내에서 한 트랜잭션은 `room(gatherings)`을 먼저 잡고 `unit`을 조작하며, 다른 트랜잭션(예: `settle` 또는 `member`)은 `unit`을 먼저 잠그고 `room` 잠금을 시도하면 상호 교착(Deadlock)이 발생할 가능성이 있다.\n\n**생각해볼 질문**\n> 모든 쓰기 트랜잭션에서 부모인 `gatherings` 행을 먼저 잠그거나, 혹은 `settlement_units`부터 일관되게 락을 획득하도록 잠금 계층 순서를 표준화해야 하는지 검토가 필요한가?\n\n\n### 3. [MEDIUM] concurrency\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt`\n\n**관찰**\npayout 등록(`payout()`)과 송금 상태 전이(`transfer()`) 간의 동시 실행 시 레이스 컨디션 발생 가능성을 확인할 필요가 있다.\n\n**근거**\nGatheringService.kt `payout()`은 `users` 테이블에 락을 걸고 업데이트한 뒤 `settlement_transfers`를 조회하여 미확인 송금에 알림을 발송한다. 반면 `transfer()`는 수취인의 `payout_encrypted != null` 여부를 먼저 단순 SELECT로 검사한 후 상태 전이를 수행한다.\n\n**위험**\n송금자가 `sent`를 요청하는 시점과 수취인이 계좌를 등록하는 시점이 경합할 때, `transfer`가 `PAYOUT_MISSING`으로 실패하거나 불완전한 상태로 처리될 가능성이 있다.\n\n**생각해볼 질문**\n> 계좌 유무 검사와 송금 상태 전이가 동일한 격리 범위 내에서 안전하게 보호되는지 검토가 필요한가?\n\n\n### 4. [MEDIUM] data\n\n**파일**\n`server/src/main/resources/db/changelog/016-independent-settlement-units.yaml`\n\n**관찰**\n기존 데이터 마이그레이션 중 `attendances` 테이블의 데이터를 `round_responses`로 변환할 때, `attended=1, drank=0`인 케이스가 누락 없이 SOBER로 매핑되는지 확인할 필요가 있다.\n\n**근거**\n016-independent-settlement-units.yaml: `CASE WHEN attended=0 THEN 'ABSENT' WHEN drank=1 THEN 'DRANK' ELSE 'SOBER' END`\n\n**위험**\n기존 v1 모델에서 `attended=false, drank=true` 같은 비정상 행이 존재했거나, 복합 상태가 존재했을 때 마이그레이션 결과가 도메인 정합성에 부합하는지 확인할 필요가 있다.\n\n**생각해볼 질문**\n> 기존 운영/스테이징 DB에 존재하는 `attendances` 데이터의 분포가 이 CASE 문으로 안전하게 변환되는지 검증되었는가?\n\n\n### 5. [LOW] performance\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/gathering/RetentionJob.kt`\n\n**관찰**\n60초 주기로 실행되는 `deleteCompleted` 배치가 매번 최대 100건의 술자리를 조회하여 개별 트랜잭션으로 삭제하므로, 대량 삭제 발생 시 DB 부하 및 락 점유 시간을 확인할 필요가 있다.\n\n**근거**\nRetentionJob.kt: `@Scheduled(fixedDelay=60000)` 및 `db.rows('... LIMIT 100').forEach { service.deleteExpired(...) }`\n\n**위험**\n외래키 CASCADE 제약조건과 다수의 연관 테이블 DELETE 작업이 짧은 간격으로 실행될 때, 커넥션 풀 고갈이나 DB 쓰기 지연이 발생할 가능성이 있다.\n\n**생각해볼 질문**\n> 배치 삭제 시 청크 단위 처리 및 주기(cron/fixedDelay) 설정이 운영 트래픽 패턴에 적합한지 검토가 필요한가?\n\n\n## 추가 테스트 후보\n\n\n### 1. 동일 술자리 내 두 개 이상의 정산 단위가 동시에 정산(Settle) 요청을 실행하는 상황\n\n**기대 결과**\n외래키 공유 락과 부모 테이블 배타 락 간 교착 상태(Deadlock) 없이 두 단위 모두 순차적으로 정산되거나 한쪽이 안전하게 처리되어야 한다.\n\n**왜 필요한가**\n다중 총무 단위 도입으로 인해同一 술자리 자식 테이블의 동시 쓰기가 빈번해졌기 때문\n\n\n### 2. 한 참여자가 계좌를 등록하는 트랜잭션과 다른 참여자가 송금 완료(sent)를 요청하는 트랜잭션이 동시 실행되는 상황\n\n**기대 결과**\n계좌 등록 상태가 원자적으로 반영되어 송금이 누락 없이 대기 상태로 전이되거나 올바른 실패 응답(PAYOUT_MISSING)을 반환해야 한다.\n\n**왜 필요한가**\n사용자 계좌 업데이트와 단위 송금 상태 전이가 서로 다른 트랜잭션/테이블에서 교차 검증되기 때문\n\n\n### 3. 정산 완료 후 7일 경과 배치 삭제(RetentionJob)와 추가 정산 단위 생성(createUnit)이 동시에 실행되는 상황\n\n**기대 결과**\n배치 삭제가 최신 활동 상태를 재검사하여 추가 단위가 생성된 방의 삭제를 건너뛰어야 한다.\n\n**왜 필요한가**\n술자리 삭제와 신규 단위 생성이 경합할 때 유효한 정산 데이터가 조기 물리 삭제되는 사고를 방지하기 위해\n",
+          "state": null,
+          "commit_id": null,
+          "original_commit_id": null,
+          "path": null,
+          "line": null,
+          "original_line": null,
+          "diff_hunk": null,
+          "author": "owencity"
+        },
+        {
+          "id": 6048961065,
+          "html_url": "https://github.com/owencity/jungsan_attack/pull/18#issuecomment-6048961065",
+          "created_at": "2026-10-07T23:31:31Z",
+          "submitted_at": null,
+          "updated_at": "2026-10-07T23:31:31Z",
+          "body": "# AI PR Review\n\n## 변경 요약\n\n같은 술자리 내 복수 총무 정산 단위(SettlementUnit) 도입, Core v2 계산 엔진(결제자별 수취·1원 올림)의 Kotlin/Java 독립 구현, JDBC 기반 동시성 제어 및 계좌 암호화(AES-GCM), 레거시 모임(Group) 코드 제거\n\n## 검토 포인트\n\n\n### 1. [MEDIUM] concurrency\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt`\n\n**관찰**\n트랜잭션 간 자원 잠금 순서(Lock Ordering) 불일치로 인한 교착 상태(Deadlock) 발생 가능성\n\n**근거**\ncreateUnit(라인 74)은 gatherings(라인 72)를 먼저 배타 잠금(FOR UPDATE)한 후 settlement_units를 INSERT하는 반면, settle(라인 165), saveRound(라인 106), deleteExpired(라인 273) 등은 settlement_units를 먼저 잠근 후 room(gid, true)을 통해 gatherings 배타 잠금을 획득함\n\n**위험**\n동일 술자리에서 새 정산 단위 생성 요청과 기존 단위의 정산/차수 수정 요청이 동시에 인입될 경우 상호 대기 상태에 빠져 트랜잭션이 롤백될 위험이 있음\n\n**생각해볼 질문**\n> 모든 엔드포인트에서 상위 애그리거트(gatherings)와 하위 애그리거트(settlement_units) 간의 락 획득 순서를 단방향으로 통일할 수 있는지 검토가 필요하다\n\n\n### 2. [MEDIUM] performance\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt`\n\n**관찰**\n삭제 배치 작업(deleteExpired)에서 인덱스 없는 JSON 추출 조건문 사용에 따른 풀 테이블 스캔 가능성\n\n**근거**\nGatheringService.kt:284: db.update(\"DELETE FROM notification_outbox WHERE JSON_UNQUOTE(JSON_EXTRACT(payload,'$.gatheringId'))=:g\", \"g\" to gid.toString())\n\n**위험**\nnotification_outbox 테이블에 레코드가 누적될수록 인덱스를 타지 못해 주기적 삭제 작업마다 DB CPU 및 I/O 부하가 급증할 수 있음\n\n**생각해볼 질문**\n> notification_outbox 테이블에 gathering_id 컬럼을 별도로 분리하고 인덱스를 추가하여 삭제 쿼리를 최적화할 필요가 있는지 검토가 필요하다\n\n\n### 3. [LOW] data\n\n**파일**\n`core/src/main/kotlin/app/jeongsan/core/SettlementPresentation.kt`\n\n**관찰**\n송금 근거(basis) 계산 시 정수 올림 오차를 마지막 차수에 일괄 반영하는 방식의 정합성\n\n**근거**\nSettlementPresentation.kt:17: values[values.lastIndex] = last.copy(amount = last.amount + transfer.amount - values.sumOf { it.amount })\n\n**위험**\n참여자가 마지막 차수에 불참(ABSENT)하거나 면제(EXEMPT)되어 0원이어야 하는 경우에도 마지막 요소라는 이유로 오차 조정 금액(1원 등)이 부과되어 화면에 불참 차수 금액이 표시될 가능성이 있음\n\n**생각해볼 질문**\n> 오차 보정 대상을 단순 마지막 차수가 아닌 실제 참여하고 금액이 발생한 차수 중 마지막 차수로 한정해야 하는지 요구사항 검토가 필요하다\n\n\n### 4. [MEDIUM] operation\n\n**파일**\n`server/src/main/resources/db/changelog/016-independent-settlement-units.yaml`\n\n**관찰**\n마이그레이션 024의 사전 조건(preCondition) 실패 시 배포 중단 위험\n\n**근거**\n016-independent-settlement-units.yaml: sqlCheck: SELECT COUNT(*) FROM gatherings WHERE status='CONFIRMED' == 0 (onFail: HALT)\n\n**위험**\n기존 데이터베이스에 과거 v1 로직으로 확정(CONFIRMED)된 술자리 데이터가 1건이라도 존재할 경우 애플리케이션 구동 자체가 실패함\n\n**생각해볼 질문**\n> 운영 DB에 과거 CONFIRMED 데이터가 존재하는지 사전 확인하고, 존재할 경우 수동 아카이빙 또는 상태 마이그레이션 절차가 선행되었는지 확인할 필요가 있다\n\n\n## 추가 테스트 후보\n\n\n### 1. 송금자(sender)의 [보냈어요] 호출과 총무의 [정산 되돌리기]가 동시에 요청되는 상황\n\n**기대 결과**\n송금 상태가 SENT로 변경되면 정산 되돌리기는 409(TRANSFER_ALREADY_SENT)로 실패하고, 정산이 먼저 되돌려지면 보냈어요는 실패해야 함\n\n**왜 필요한가**\n돈이 움직이기 시작한 후 정산 스냅샷이 폐기되어 금전적 불일치가 생기는 것을 방지하는 상태 전이 및 락 검증이 필요하기 때문\n\n\n### 2. 차수별 송금 근거(basis) 생성 시 마지막 차수가 불참(ABSENT)이거나 면제(EXEMPT)인 참여자의 오차 보정 처리\n\n**기대 결과**\n불참 차수의 금액이 0원으로 유지되거나, 총 송금액과 차수별 근거 합계가 제품 정책에 맞게 왜곡 없이 일치해야 함\n\n**왜 필요한가**\n마지막 요소 인덱스에 무조건 잔여 차액을 덧셈 보정하는 로직에서 불참 차수에 1원이 표기되는 결함이 없는지 확인하기 위함\n\n\n### 3. RetentionJob의 deleteExpired 실행 중 동일 술자리에 대한 새 단위 생성(createUnit) 요청이 인입되는 상황\n\n**기대 결과**\n삭제 트랜잭션이 진행 중이거나 활동이 갱신된 술자리에 대해 삭제가 안전하게 건너뛰어지거나 적절한 오류를 반환해야 함\n\n**왜 필요한가**\n단위 잠금 후 gatherings 락을 얻는 사이에 새 단위가 생성되어 데이터가 꼬이거나 참조 무결성 오류가 발생하지 않는지 검증하기 위함\n",
+          "state": null,
+          "commit_id": null,
+          "original_commit_id": null,
+          "path": null,
+          "line": null,
+          "original_line": null,
+          "diff_hunk": null,
+          "author": "owencity"
+        }
+      ],
+      "inline_comments": []
+    },
+    {
+      "number": 20,
+      "title": "feat(auth): 앱 인증·Apple 로그인·로그아웃·계정 탈퇴",
+      "url": "https://github.com/owencity/jungsan_attack/pull/20",
+      "head_at_capture": "201d6330e90910155ff3e8fc43c2e274c1ea76b9",
+      "state_at_capture": "open",
+      "formal_reviews": [],
+      "issue_comments": [
+        {
+          "id": 6082204426,
+          "html_url": "https://github.com/owencity/jungsan_attack/pull/20#issuecomment-6082204426",
+          "created_at": "2026-10-09T13:46:51Z",
+          "submitted_at": null,
+          "updated_at": "2026-10-09T13:46:51Z",
+          "body": "# AI PR Review\n\n## 변경 요약\n\nCTO의 2026-10-09 인증 결정에 따라 앱(Authorization Bearer + 일회용 티켓/PKCE verifier 교환)과 웹(httpOnly 쿠키) 인증 채널을 분리하고, Apple 로그인(form_post 콜백, RS256 ID 토큰 검증, ES256 client secret) 및 회원 탈퇴(완료 정산 익명화, 활성 정산 시 탈퇴 차단, Apple revoke job 등록 및 재시도)를 구현한 PR입니다.\n\n## 검토 포인트\n\n\n### 1. [MEDIUM] data\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/user/AccountDeletionService.kt`\n\n**관찰**\n탈퇴 처리 시 과거 시스템 소식 및 알림을 이름 부분 문자열 일치(LOCATE > 0)로 일괄 삭제하는 로직에서 다른 사용자의 기록까지 함께 삭제될 가능성이 있습니다.\n\n**근거**\nAccountDeletionService.kt:34-39: names.forEach { name -> db.update(\"DELETE FROM timeline_entries WHERE gathering_id IN (:g) AND type='SYSTEM' AND LOCATE(:n,body)>0\", ...); db.update(\"DELETE FROM notifications WHERE gathering_id IN (:g) AND (LOCATE(:n,body)>0 OR LOCATE(:n,title)>0)\", ...) }\n\n**위험**\n탈퇴자의 display_name이나 nickname이 '민', '수', '테스트'처럼 짧거나 흔한 단어인 경우, 동일 술자리의 다른 참여자('민수')의 소식이나 일반 시스템 메시지 본문까지 의도치 않게 삭제될 위험이 있습니다.\n\n**생각해볼 질문**\n> 시스템 소식 본문에 사용자 ID를 구조화된 JSON 메타데이터로 기록하여 정확한 식별자 매칭을 하거나, 단순 부분 문자열 매칭 대신 정규식/경계 일치 검사를 적용하는 방안이 가능한지 검토가 필요합니다.\n\n\n### 2. [MEDIUM] transaction\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/user/AuthMaintenance.kt`\n\n**관찰**\n배치 트랜잭션 내부에서 외부 Apple 토큰 취소 API 호출(HTTP I/O)을 수행하여 DB 커넥션 점유 시간이 길어질 수 있습니다.\n\n**근거**\nAuthMaintenance.kt:27-31: tx.executeWithoutResult { val row=db.rows(\"... FOR UPDATE SKIP LOCKED\"); if(row!=null) try { gateway.revokeApple(...); db.update(\"DELETE FROM auth_revoke_jobs WHERE id=:id\", ...); } ... }\n\n**위험**\n외부 Apple API(https://appleid.apple.com/auth/revoke)가 지연되거나 타임아웃(최대 5초)이 발생할 경우, DB 커넥션 풀을 장시간 점유하고 auth_revoke_jobs 행 잠금을 유지하게 되어 배치 처리량 저하 및 풀 고갈로 이어질 가능성이 있습니다.\n\n**생각해볼 질문**\n> 외부 HTTP 호출을 트랜잭션 외부에서 수행하고, 호출 결과에 따라 작업 상태 업데이트/삭제만 별도 짧은 트랜잭션으로 커밋하는 구조로 분리하는 것이 적절한지 확인이 필요합니다.\n\n\n### 3. [MEDIUM] failure\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt`\n\n**관찰**\nApple 로그인 콜백에서 사용자가 로그인을 취소하거나 에러가 발생했을 때 필수 파라미터 누락으로 400 Bad Request가 발생할 수 있습니다.\n\n**근거**\nAuthController.kt:47: fun appleCallback(@RequestParam code: String, @RequestParam state: String, request: HttpServletRequest)\n\n**위험**\nApple 로그인 화면에서 사용자가 [취소]를 누르면 Apple은 code 없이 error=user_cancelled_authorize 파라미터로 콜백을 호출합니다. 현재 컨트롤러는 code를 필수로 받으므로 MissingServletRequestParameterException이 발생하여 사용자에게 오류 페이지(400)가 노출될 수 있습니다.\n\n**생각해볼 질문**\n> appleCallback에서 code를 선택적(@RequestParam(required=false))으로 받고, error 파라미터가 수신되었을 때 적절한 웹 복귀 경로 또는 취소 처리 URL로 안내하는 흐름이 필요한지 검토가 필요합니다.\n\n\n### 4. [LOW] performance\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt`\n\n**관찰**\nApple ID 토큰 검증 시 Apple 공개키(JWKS) 목록을 매 로그인 요청마다 외부 HTTP 호출로 가져오고 있습니다.\n\n**근거**\nProviderGateway.kt:70: val raw = http.get().uri(\"https://appleid.apple.com/auth/keys\").retrieve().body(Map::class.java)\n\n**위험**\nApple의 JWKS 키 세트는 거의 변경되지 않음에도 매 로그인마다 네트워크 왕복 비용이 발생하여 로그인 응답 속도가 느려지고, Apple 엔드포인트 순간 장애 시 로그인이 실패할 수 있습니다.\n\n**생각해볼 질문**\n> JWKS 공개키 응답을 인메모리 캐시(TTL 12~24시간)에 보관하고, 모르는 kid가 들어올 때만 캐시를 갱신하도록 구성하는 방안을 고려해볼 수 있는지 확인이 필요합니다.\n\n\n### 5. [LOW] performance\n\n**파일**\n`server/src/main/kotlin/app/jeongsan/server/common/LoginUser.kt`\n\n**관찰**\n토큰 검증 시마다 DB를 2회 조회하여 기존 무상태(stateless) JWT 리졸버 대비 요청당 DB 부하가 증가했습니다.\n\n**근거**\nLoginUser.kt:65 및 AuthFlowService.kt:74-78: authFlow.authenticated() 호출 시 users 테이블 존재 확인(SELECT id FROM users) 및 auth_revocations 블랙리스트 확인(SELECT token_hash FROM auth_revocations) 수행\n\n**위험**\n로그아웃 즉시 무효화 및 탈퇴 계정 차단을 위해 필요한 설계이나, @LoginUser가 걸린 모든 API 호출마다 2번의 DB 읽기 쿼리가 추가되므로 트래픽 증가 시 커넥션 풀 및 DB 부하가 발생할 수 있습니다.\n\n**생각해볼 질문**\n> 토큰 블랙리스트 및 탈퇴 사용자 검증에 대해 로컬 캐시나 향후 Redis 도입을 통한 캐싱 계층 적용 계획이 있는지 확인이 필요합니다.\n\n\n## 추가 테스트 후보\n\n\n### 1. 동일한 일회용 앱 로그인 티켓으로 4개의 스레드가 동시에 /api/v1/auth/app/exchange 요청을 전송하는 상황\n\n**기대 결과**\n정확히 1개의 요청만 200 OK와 함께 토큰을 발급받고, 나머지 3개 요청은 401 Unauthenticated로 실패해야 함\n\n**왜 필요한가**\nDB 행 잠금(FOR UPDATE)과 단일 삭제 트랜잭션이 티켓 중복 소비를 완벽히 차단하는지 동시성 검증\n\n\n### 2. 탈퇴 요청(DELETE /api/v1/users/me)과 새 정산 단위 참여/생성 요청이 동시에 경합하는 상황\n\n**기대 결과**\n사용자 삭제와 활성 정산 단위 생성이 동시에 성공하지 않고, 한쪽이 409(ACTIVE_GATHERING_EXISTS 또는 ACCOUNT_STATE_CHANGED) 또는 401/403으로 처리되어야 함\n\n**왜 필요한가**\n탈퇴 트랜잭션의 잠금 순서 및 목록 재검사(AccountPolicy.unchanged)가 동시 상태 변경을 안전하게 격리하는지 확인\n\n\n### 3. Apple 로그인 인가 중 사용자가 취소를 누르거나 Apple 에러 파라미터가 포함되어 콜백(POST /auth/apple/callback)으로 들어오는 상황\n\n**기대 결과**\n서버가 500 내부 에러나 400 Bad Request 대신 정의된 오류 응답 또는 원래 웹/앱 경로로 실패 리다이렉트해야 함\n\n**왜 필요한가**\n사용자 인증 중단 시의 외부 IdP 콜백 실패 시나리오 정상 처리 확인\n",
+          "state": null,
+          "commit_id": null,
+          "original_commit_id": null,
+          "path": null,
+          "line": null,
+          "original_line": null,
+          "diff_hunk": null,
+          "author": "owencity"
+        }
+      ],
+      "inline_comments": []
+    },
+    {
+      "number": 21,
+      "title": "fix(ci): PR 자동 검증과 배포 실행 권한 복구",
+      "url": "https://github.com/owencity/jungsan_attack/pull/21",
+      "head_at_capture": "d62d03dfb3540cfe503ffdacfd26ba647a244495",
+      "state_at_capture": "open",
+      "formal_reviews": [],
+      "issue_comments": [
+        {
+          "id": 6081862517,
+          "html_url": "https://github.com/owencity/jungsan_attack/pull/21#issuecomment-6081862517",
+          "created_at": "2026-10-09T13:28:04Z",
+          "submitted_at": null,
+          "updated_at": "2026-10-09T13:28:04Z",
+          "body": "# AI PR Review\n\n## 변경 요약\n\nPR 검증을 위한 Backend CI 워크플로 신설, gradlew 실행 권한(100755) 복구 및 OCI 배포 워크플로에 server 테스트와 main 브랜치 가드 추가\n\n## 검토 포인트\n\n\n### 1. [HIGH] operation\n\n**파일**\n`.github/workflows/ci.yml`\n\n**관찰**\n존재하지 않거나 미출시된 GitHub Action 메이저 버전(v5) 사용 가능성 검토 필요\n\n**근거**\n.github/workflows/ci.yml:24 (actions/checkout@v5), :27 (actions/setup-java@v5), :33 (gradle/actions/setup-gradle@v5) 및 .github/workflows/deploy.yml:37, :41, :47\n\n**위험**\n공식 GitHub Actions(actions/checkout, actions/setup-java) 및 gradle/actions/setup-gradle의 v5 릴리스/태그가 실제로 존재하지 않을 경우, 워크플로 시작 단계에서 Action 다운로드 실패로 전체 CI 및 배포 작업이 즉시 실패할 수 있습니다.\n\n**생각해볼 질문**\n> 현재 환경에서 actions/checkout@v5, actions/setup-java@v5, gradle/actions/setup-gradle@v5 태그가 실제로 유효하게 해석되고 실행되는지 확인되었습니까?\n\n\n### 2. [MEDIUM] operation\n\n**파일**\n`.github/workflows/deploy.yml`\n\n**관찰**\n배포 워크플로의 cancel-in-progress: true로 인한 원격 배포 중간 중단 위험 검토\n\n**근거**\n.github/workflows/deploy.yml:20 concurrency: group: deploy-oci, cancel-in-progress: true\n\n**위험**\n배포 단계(rsync 동기화, docker compose up, deploy.sh 실행 중)에 새로운 커밋이 push되어 이전 실행이 취소되면, 원격 서버의 ~/jeongsan 디렉터리가 파일 교체 중간 상태(scripts_tmp 등)로 남아 서비스 불능 상태가 발생할 가능성이 있습니다.\n\n**생각해볼 질문**\n> 배포 작업의 경우 이전 실행을 강제 취소하기보다 대기 후 순차 실행하도록 cancel-in-progress를 false로 두거나 배포 스크립트 실행 구간을 원자적으로 보장할 필요가 없는지 검토가 필요합니다.\n\n\n### 3. [LOW] test\n\n**파일**\n`.github/workflows/ci.yml`\n\n**관찰**\nServer 테스트 실행 시 Test DB 및 외부 환경 의존성 미구비 여부\n\n**근거**\n.github/workflows/ci.yml:43 ./gradlew :server:test :server:bootJar --no-daemon\n\n**위험**\n현재 server 모듈에 DB 연결이나 Spring Boot 컨텍스트를 띄우는 테스트가 추가될 경우, CI 러너 환경에 MySQL 서비스 컨테이너나 H2 설정이 없다면 빌드가 실패할 수 있습니다.\n\n**생각해볼 질문**\n> server 모듈에 향후 통합 테스트나 SpringBootTest가 도입될 때를 대비해 워크플로에 컨테이너 서비스(MySQL) 정의나 인메모리 테스트 프로파일 분리가 고려되어 있습니까?\n\n\n## 추가 테스트 후보\n\n\n### 1. 신규 워크플로 액션 버전(checkout@v5, setup-java@v5, setup-gradle@v5) 유효성 확인\n\n**기대 결과**\n러너에서 각 액션을 정상 resolve하고 실패 없이 스텝이 시작되어야 함\n\n**왜 필요한가**\n존재하지 않는 Action 태그 사용 시 워크플로가 즉각 에러로 종료되기 때문\n\n\n### 2. main이 아닌 feature 브랜치에서 Deploy to OCI 수동 실행(workflow_dispatch)\n\n**기대 결과**\ndeploy job의 if 조건에 의해 작업이 스킵되고 운영 배포가 진행되지 않아야 함\n\n**왜 필요한가**\n배포 워크플로 브랜치 가드가 의도대로 동작하는지 검증하기 위함\n\n\n### 3. gradlew 파일의 실행 권한을 100644로 낮춘 후 CI 실행\n\n**기대 결과**\ntest -x ./gradlew 스텝에서 0이 아닌 종료 코드로 즉시 실패해야 함\n\n**왜 필요한가**\n실행 권한 누락 탐지 스텝이 의도대로 게이트 역할을 하는지 확인하기 위함\n",
+          "state": null,
+          "commit_id": null,
+          "original_commit_id": null,
+          "path": null,
+          "line": null,
+          "original_line": null,
+          "diff_hunk": null,
+          "author": "owencity"
+        }
+      ],
+      "inline_comments": []
+    },
+    {
+      "number": 23,
+      "title": "docs(backend): 시니어 검증·FC 추적·SOLID·목차 활용 기준",
+      "url": "https://github.com/owencity/jungsan_attack/pull/23",
+      "head_at_capture": "c9b723e8420c6fceb88dcd3affb119cab61a8b99",
+      "state_at_capture": "open",
+      "formal_reviews": [],
+      "issue_comments": [],
+      "inline_comments": []
+    },
+    {
+      "number": 26,
+      "title": "docs(study): 백엔드 PR 전체 학습 기록과 누락 가이드 보존",
+      "url": "https://github.com/owencity/jungsan_attack/pull/26",
+      "head_at_capture": "c654f89c801dd23388ef1dc769f55fc24a9c1b26",
+      "state_at_capture": "open",
+      "formal_reviews": [],
+      "issue_comments": [],
+      "inline_comments": []
+    },
+    {
+      "number": 27,
+      "title": "feat(release): 자동 정산·앱 인증을 통합하고 운영 배포를 준비",
+      "url": "https://github.com/owencity/jungsan_attack/pull/27",
+      "head_at_capture": "1977a7d02a6764998b1183afbd64cf41b6b4b0eb",
+      "state_at_capture": "open",
+      "formal_reviews": [],
+      "issue_comments": [],
+      "inline_comments": []
+    }
+  ]
+}

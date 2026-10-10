@@ -1,0 +1,29 @@
+[
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "path": "scripts/cloudflare-dns.py",
+    "line": 42,
+    "class_or_function": "sync",
+    "viewpoint": "DNS 호스트·Zone·Tunnel ID 범위를 제한해 다른 서비스가 바뀌지 않게 하는 관점",
+    "url": "https://github.com/owencity/jungsan_attack/blob/a8a56266b037a9e87eef3cc0697c8c7f989bbbd4/scripts/cloudflare-dns.py#L42"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "path": "scripts/cloudflare-dns.py",
+    "line": 66,
+    "class_or_function": "sync",
+    "viewpoint": "없으면 생성·같으면 무변경·다르면 PATCH하는 재실행 관점",
+    "url": "https://github.com/owencity/jungsan_attack/blob/a8a56266b037a9e87eef3cc0697c8c7f989bbbd4/scripts/cloudflare-dns.py#L66"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "path": "scripts/cloudflare-dns.py",
+    "line": 78,
+    "class_or_function": "sync",
+    "viewpoint": "API 쓰기 성공과 실제 적용을 재조회로 구분하는 관점",
+    "url": "https://github.com/owencity/jungsan_attack/blob/a8a56266b037a9e87eef3cc0697c8c7f989bbbd4/scripts/cloudflare-dns.py#L78"
+  }
+]

@@ -1,0 +1,26 @@
+{
+  "sourceBase": "f094e884580159ffb82844bd3d759cf028c96458",
+  "sourceHead": "138916f2917d56f729f9b830655c3b19bf6d8be3",
+  "catalogCommit": "f094e884580159ffb82844bd3d759cf028c96458",
+  "policyCommit": "f094e884580159ffb82844bd3d759cf028c96458",
+  "date": "2026-10-10",
+  "studyStatus": "UNRECORDED",
+  "learningItemCount": 0,
+  "diffScope": [
+    "DEVLOG.md",
+    "docs/study-guides/README.md",
+    "docs/study-guides/audit.md",
+    "docs/study-guides/study-index.json"
+  ],
+  "scopeReason": "학습 후보를 만들지 않는 자료 복제 파일은 별도 개별 PR 아카이브에 이미 보존되어 있다. 이번 정리 PR 자체의 조사·색인·결정 문서 diff를 고정한다.",
+  "sha256": {
+    ".gitattributes": "ceedd74c89b1fbc4714921b1fd12de96460aa0c868cbd02caa67cc5f99f80287",
+    "changes.patch": "9df94c0fdc0e7de63ca25377dc2815af818de5cbc95b24d39fee1e1a4fd81353",
+    "guide.md": "a10793834de0c0dcf36676cae649949d1a3bc7f61327f5e500c4f4997f6b050a",
+    "progress.md": "0a9029f2ad82cfba3e7b02c0c95fa58f1fed335d9d0d2aeb12b64de1bc30af2a",
+    "source/DEVLOG.md": "323f5678cfe0ab5ece9bd220550da9b307ceaa7c964e9dab283b7f79e1577561",
+    "source/docs/study-guides/audit.md": "3eac46f9257d44d4db6a34c1598baf4fc31146714123ee669aa97f934d089012",
+    "source/docs/study-guides/README.md": "1c3bc35cc6137b559240a3e13b6566dd0277e4b7bca2bb826fe497c5d311798e",
+    "source/docs/study-guides/study-index.json": "9193e60b15f245ff4d291c153e2040491316a7b16b0dbfa047ae340b978ef1bd"
+  }
+}

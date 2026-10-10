@@ -1,0 +1,117 @@
+{
+  "sourceBase": "18998adee79ec358798564e470ccfab16a698643",
+  "sourceHead": "51e35a93a0f9f2de02ed0b0b5949823c3bbfea72",
+  "catalogCommit": "f094e884580159ffb82844bd3d759cf028c96458",
+  "items": [
+    {
+      "category": "Kotlin 기본",
+      "catalogId": "KB-14",
+      "read": "KB-14 코틀린에서 다양한 클래스를 다루는 방법 (Kotlin 기본 / 섹션 4. 코틀린에서의 OOP / 14강)",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "line": 88,
+      "symbol": "Attendance",
+      "perspective": "상태 상수와 attended·exempt·drank 필드를 보고 허용되지 않는 불리언 조합을 enum이 어떻게 막는지 확인한다.",
+      "diffVerified": true
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogId": "KB-18",
+      "read": "KB-18 코틀린에서 컬렉션을 함수형으로 다루는 방법 (Kotlin 기본 / 섹션 5. 코틀린에서의 FP / 18강)",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "line": 91,
+      "symbol": "Settlement.compute",
+      "perspective": "payerId별 그룹을 만든 뒤 각 그룹에 속한 차수만 합산하는 변경 줄을 확인한다.",
+      "diffVerified": true
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogId": "KB-18",
+      "read": "KB-18 코틀린에서 컬렉션을 함수형으로 다루는 방법 (Kotlin 기본 / 섹션 5. 코틀린에서의 FP / 18강)",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "line": 108,
+      "symbol": "Settlement.compute",
+      "perspective": "부담액 내림차순 다음 숫자 id 오름차순이 잔액 조정자를 결정하는지 확인한다.",
+      "diffVerified": true
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogId": "KB-02",
+      "read": "KB-02 코틀린에서 null을 다루는 방법 (Kotlin 기본 / 섹션 2. 코틀린에서 변수와 타입, 연산자를 다루는 방법 / 2강)",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "line": 22,
+      "symbol": "Settlement.settle",
+      "perspective": "nullable 탐색 결과를 검사한 뒤 실패 결과를 만드는 분기와 null일 때 성공하는 경로를 확인한다.",
+      "diffVerified": true
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogId": "KB-14",
+      "read": "KB-14 코틀린에서 다양한 클래스를 다루는 방법 (Kotlin 기본 / 섹션 4. 코틀린에서의 OOP / 14강)",
+      "file": "core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt",
+      "line": 35,
+      "symbol": "RecipientSettlement",
+      "perspective": "새 data class의 수취인·본인 부담·받을 합계 필드가 계산 결과의 어느 단위를 표현하는지 확인한다.",
+      "diffVerified": true
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogId": null,
+      "read": "JDK BigInteger — 곱셈·누적과 Long 범위 변환",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+      "line": 36,
+      "symbol": "SettlementInput.effectiveRounds",
+      "perspective": "금액 오버플로: 병 수와 단가를 곱하기 전에 BigInteger로 바꾸는 위치와 Long 경계 처리의 순서를 확인한다.",
+      "diffVerified": true
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogId": null,
+      "read": "Rational.ceilTo — 수취인별 합산·1원 올림·잔액 보존",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "line": 116,
+      "symbol": "Settlement.compute",
+      "perspective": "원 단위 올림: 수취인별 정확한 합계에 한 번만 올림을 적용하고 잔액은 조정자에게 배정하는지 확인한다.",
+      "diffVerified": true
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogId": null,
+      "read": "수취인별 방향 송금 — 자기 송금·0원 송금 제외",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "line": 168,
+      "symbol": "Settlement.buildTransfers",
+      "perspective": "송금 분리: 서로 다른 결제자 사이에 상계하지 않고 배정된 수취인별 금액을 송금으로 만드는지 확인한다.",
+      "diffVerified": true
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogId": null,
+      "read": "ValidationPhase.CONFIRM — AttendanceKey 누락과 ABSENT 기본값",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Validation.kt",
+      "line": 223,
+      "symbol": "Validator.validateOnConfirm",
+      "perspective": "저장·확정 검증: 참석 기본값과 명시적인 응답 키 누락 오류를 구분하고 CONFIRM에서 거절하는 조건을 확인한다.",
+      "diffVerified": true
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogId": null,
+      "read": "SettlementOutcome.Failure — 음수 조정액의 오류 반환",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+      "line": 31,
+      "symbol": "Settlement.negativeAmountError",
+      "perspective": "초소액 경계: 올림 뒤 조정자 부담이 음수가 되면 성공 결과를 반환하지 않고 검증 실패로 바꾸는지 확인한다.",
+      "diffVerified": true
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogId": null,
+      "read": "BigInteger.fold — 차수 상한과 전체 합계 상한 검증",
+      "file": "core/src/main/kotlin/app/jeongsan/core/Validation.kt",
+      "line": 198,
+      "symbol": "Validator.validateOnConfirm",
+      "perspective": "총액 상한: 차수별 상한과 전체 합계 상한이 어느 검증 단계에서 적용되는지 diff와 비교한다.",
+      "diffVerified": true
+    }
+  ]
+}

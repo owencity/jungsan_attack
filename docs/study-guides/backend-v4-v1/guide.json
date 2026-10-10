@@ -1,0 +1,259 @@
+{
+  "sourceHead": "be7d4ee1a68c9eae5e095fa4d283c0923ae63fcb",
+  "catalogCommit": "d5feb4677f71c9fe973e31118fd3b82d27eb2788",
+  "items": [
+    {
+      "category": "Java 기본기",
+      "catalogIds": [
+        "JAVA-CONSTRUCTOR",
+        "JST-06-05-01"
+      ],
+      "read": "JAVA-CONSTRUCTOR 생성자; JST-06-05-01 생성자란? (6장 객체지향 프로그래밍 I / 5. 생성자(Constructor) / p.315)",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "line": 12,
+      "symbol": "SettlementWorkflow 생성자",
+      "perspective": "private 생성자가 계산용 객체 생성을 막는 지점을 diff에서 확인한다"
+    },
+    {
+      "category": "Java 기본기",
+      "catalogIds": [
+        "JST-07-04-03"
+      ],
+      "read": "JST-07-04-03 final - 마지막의, 변경될 수 없는 (7장 객체지향 프로그래밍 II / 4. 제어자(modifier) / p.369)",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "line": 11,
+      "symbol": "SettlementWorkflow 타입",
+      "perspective": "상속을 막는 final과 private 생성자의 서로 다른 역할을 코드에서 구분한다"
+    },
+    {
+      "category": "Java 기본기",
+      "catalogIds": [
+        "JST-11-01-10"
+      ],
+      "read": "JST-11-01-10 HashMap과 Hashtable (11장 컬렉션 프레임웍 / 1. 컬렉션 프레임웍(collections framework) / p.674)",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "line": 48,
+      "symbol": "input",
+      "perspective": "AttendanceKey를 키로 삼아 각 사람×차수 응답을 한 번씩 넣는 관점으로 본다"
+    },
+    {
+      "category": "Java 기본기",
+      "catalogIds": [
+        "JST-14-01-06",
+        "JST-14-02-03"
+      ],
+      "read": "JST-14-01-06 메서드 참조 (14장 람다와 스트림 / 1. 람다식(Lambda expression) / p.946); JST-14-02-03 스트림의 중간연산 (14장 람다와 스트림 / 2. 스트림(stream) / p.958)",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "line": 45,
+      "symbol": "input",
+      "perspective": "filter→sorted→toList에서 다른 단위 사람과 차수가 어느 단계에 제거되는지 추적한다"
+    },
+    {
+      "category": "Effective Java",
+      "catalogIds": [
+        "EJ-04"
+      ],
+      "read": "EJ-04 인스턴스화를 막으려거든 private 생성자를 사용하라",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "line": 12,
+      "symbol": "SettlementWorkflow 생성자",
+      "perspective": "인스턴스 상태 없는 static 기능 묶음의 생성 방지 의도가 실제 구조와 맞는지 본다"
+    },
+    {
+      "category": "Effective Java",
+      "catalogIds": [
+        "EJ-50"
+      ],
+      "read": "EJ-50 적시에 방어적 복사본을 만들라",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "line": 14,
+      "symbol": "UnitInput compact constructor",
+      "perspective": "record 필드가 final이어도 외부 List 변경을 별도로 막아야 하는 지점을 본다"
+    },
+    {
+      "category": "Effective Java",
+      "catalogIds": [
+        "EJ-49"
+      ],
+      "read": "EJ-49 매개변수가 유효한지 검사하라",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "line": 104,
+      "symbol": "payout",
+      "perspective": "은행·숫자·예금주를 암호화 전에 거절하는 인수 검증을 본다"
+    },
+    {
+      "category": "함수형 Java",
+      "catalogIds": [
+        "FJ-05-02"
+      ],
+      "read": "FJ-05-02 도움을 주기 위한 레코드 (§5.2)",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "line": 13,
+      "symbol": "UnitInput",
+      "perspective": "Java record의 입력 묶음과 Kotlin UnitInput의 data class를 같은 필드 기준으로 비교한다"
+    },
+    {
+      "category": "함수형 Java",
+      "catalogIds": [
+        "FJ-06-03"
+      ],
+      "read": "FJ-06-03 스트림 파이프라인 구축하기 (§6.3)",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "line": 46,
+      "symbol": "input",
+      "perspective": "파이프라인 중 unitId 필터를 빼면 B의 실패가 A에 섞이는지 diff로 확인한다"
+    },
+    {
+      "category": "함수형 Java",
+      "catalogIds": [
+        "FJ-04-04"
+      ],
+      "read": "FJ-04-04 불변성 만들기 (§4.4)",
+      "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/SettlementWorkflow.java",
+      "line": 19,
+      "symbol": "RoundInput compact constructor",
+      "perspective": "외부 술 항목 목록의 변경이 다음 계산에 들어오는지를 방어 복사 테스트와 대조한다"
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-03",
+        "KB-05"
+      ],
+      "read": "KB-03 코틀린에서 Type을 다루는 방법 (섹션 2. 코틀린에서 변수와 타입, 연산자를 다루는 방법 / 3강); KB-05 코틀린에서 제어문을 다루는 방법 (섹션 3. 코틀린에서 코드를 제어하는 방법 / 5강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "line": 74,
+      "symbol": "preview",
+      "perspective": "when의 is 분기 뒤 outcome.result 접근을 Java의 instanceof 분기와 비교한다"
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-14"
+      ],
+      "read": "KB-14 코틀린에서 다양한 클래스를 다루는 방법 (섹션 4. 코틀린에서의 OOP / 14강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "line": 9,
+      "symbol": "UnitInput",
+      "perspective": "DB 행 전체 대신 계산 단위의 id·명단·상태·revision만 옮기는 타입 경계를 본다"
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-12"
+      ],
+      "read": "KB-12 코틀린에서 object 키워드를 다루는 방법 (섹션 4. 코틀린에서의 OOP / 12강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "line": 20,
+      "symbol": "SettlementWorkflow",
+      "perspective": "Kotlin object와 Java final/private 생성자/static 묶음을 실제 호출 방식으로 비교한다"
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-18"
+      ],
+      "read": "KB-18 코틀린에서 컬렉션을 함수형으로 다루는 방법 (섹션 5. 코틀린에서의 FP / 18강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "line": 49,
+      "symbol": "input",
+      "perspective": "명단×차수 조합과 미응답 DRANK 투영을 만드는 flatMap/toMap을 추적한다"
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-16"
+      ],
+      "read": "KB-16 코틀린에서 다양한 함수를 다루는 방법 (섹션 5. 코틀린에서의 FP / 16강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringStore.kt",
+      "line": 29,
+      "symbol": "Map.instant 확장 함수",
+      "perspective": "확장 함수가 DB Map 타입에 붙인 호출 문법과 실제 Timestamp/LocalDateTime 변환을 본다"
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-20"
+      ],
+      "read": "KB-20 코틀린의 scope function (섹션 6. 추가적으로 알아두어야 할 코틀린 특성 / 20강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "line": 37,
+      "symbol": "authorize / 호출부",
+      "perspective": "also로 인가·OPEN 검사를 수행하고 원래 UnitInput을 반환하는 흐름을 본다"
+    },
+    {
+      "category": "Kotlin 고급",
+      "catalogIds": [
+        "KA-20"
+      ],
+      "read": "KA-20 코틀린의 어노테이션 (섹션 6. 어노테이션과 리플렉션 / 20강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt",
+      "line": 11,
+      "symbol": "RoundRequest",
+      "perspective": "Kotlin 생성자 프로퍼티의 field 대상 어노테이션이 실제 Bean Validation에 적용되는지를 본다"
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "MySQL FK 공유 잠금 뒤 FOR UPDATE 승격과 unit→Gathering 선행 배타 잠금의 교착 차이를 본다",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "line": 173,
+      "symbol": "settle / room",
+      "perspective": "MySQL FK 공유 잠금 뒤 FOR UPDATE 승격과 unit→Gathering 선행 배타 잠금의 교착 차이를 본다"
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "preview 후 다른 응답이 들어오면 revision/hash 거절과 트랜잭션 rollback이 어디서 보장되는지 본다",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "line": 172,
+      "symbol": "settle",
+      "perspective": "preview 후 다른 응답이 들어오면 revision/hash 거절과 트랜잭션 rollback이 어디서 보장되는지 본다"
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "WAITING이어도 sentAt 이력이 있으면 취소할 수 없는 금융 상태와 DB 상태를 대조한다",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "line": 190,
+      "symbol": "reopen / transfer",
+      "perspective": "WAITING이어도 sentAt 이력이 있으면 취소할 수 없는 금융 상태와 DB 상태를 대조한다"
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "단위 전체 잠금→방 잠금→새 단위·활동 재검사가 개인정보 삭제와 동시 요청에 어떤 경계를 주는지 본다",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "line": 276,
+      "symbol": "deleteExpired",
+      "perspective": "단위 전체 잠금→방 잠금→새 단위·활동 재검사가 개인정보 삭제와 동시 요청에 어떤 경계를 주는지 본다"
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "같은 DataSource의 Spring 트랜잭션 참여와 테이블별 IN 조회를 롤백·목록 테스트에서 확인한다",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringStore.kt",
+      "line": 4,
+      "symbol": "GatheringStore / details",
+      "perspective": "같은 DataSource의 Spring 트랜잭션 참여와 테이블별 IN 조회를 롤백·목록 테스트에서 확인한다"
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "AES-GCM nonce가 매번 달라지고 변조를 거절하는지 Java/Kotlin 상호 복호화 테스트와 대조한다",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/PayoutCipher.kt",
+      "line": 8,
+      "symbol": "PayoutCipher.encrypt",
+      "perspective": "AES-GCM nonce가 매번 달라지고 변조를 거절하는지 Java/Kotlin 상호 복호화 테스트와 대조한다"
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "필드 구분자·개수·길이 접두사와 안정된 정렬이 같은 입력을 같은 hash로 만드는지 본다",
+      "file": "server/src/main/kotlin/app/jeongsan/server/gathering/SettlementWorkflow.kt",
+      "line": 58,
+      "symbol": "hash",
+      "perspective": "필드 구분자·개수·길이 접두사와 안정된 정렬이 같은 입력을 같은 hash로 만드는지 본다"
+    }
+  ]
+}

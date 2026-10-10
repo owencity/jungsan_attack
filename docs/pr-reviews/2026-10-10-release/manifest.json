@@ -1,0 +1,14 @@
+{
+  "captured_on": "2026-10-10",
+  "code_head": "a8a56266b037a9e87eef3cc0697c8c7f989bbbd4",
+  "previous_verified_backend_head": "1977a7d02a6764998b1183afbd64cf41b6b4b0eb",
+  "pr": 27,
+  "formal_review_count": 0,
+  "comment_count": 10,
+  "review_sha_for_issue_comments": "UNAVAILABLE",
+  "hashes": {
+    "github-comments.json": "3c24de53259788b76f6b02d6c7e92fb6af453d33615e79cfa4452e8f557a1821",
+    "README.md": "3c8347f1a5bc9f09c0d031cad835af111544265f669c82c7f1ee48fdc1901005",
+    "self-review.md": "2275cb39d5ff08aefc6279235a2993627703988c11df5a28967b2c49d53129a7"
+  }
+}

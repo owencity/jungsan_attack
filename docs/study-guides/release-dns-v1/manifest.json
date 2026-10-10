@@ -1,0 +1,20 @@
+{
+  "pr": 27,
+  "base": "0a341c1d2b95ebe5d536cac0ebc2952b9088149b",
+  "source_head": "a8a56266b037a9e87eef3cc0697c8c7f989bbbd4",
+  "catalog_revision": "f094e884580159ffb82844bd3d759cf028c96458",
+  "policy_revision": "f094e884580159ffb82844bd3d759cf028c96458",
+  "topic_count": 3,
+  "hashes": {
+    ".gitattributes": "5e74e25ec37af0d4d24c1d0f89d1e08d95c709b59ba15b0928b029baad54f634",
+    "changes.patch": "b174b29998a5807c705bed011af1d811cbcfbf8af341c60932df119676186346",
+    "guide.md": "9b107a70d119df58a8cbff790261d2747e1613355d427b3952f2b33d42dbe7c8",
+    "STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+    "STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+    "topics.json": "9ff9c7d97b933b815204219f772261cc63d91e7871474b035486dca0bf02a6a6",
+    "source/scripts/cloudflare-dns.py": "90d04ccdcb3350c2ba8dd994542a83f6c0e1e0ee15f11eca4d933fcf521026fb",
+    "source/scripts/verify-cloudflare-dns.py": "ce4144df5a05cb551c104a2cb9b172ac07896f5e401e1f1ddfdb63553617f2e7",
+    "source/.github/workflows/ci.yml": "2af8f921cb75339543ae5071560539ceeefdaa2a651a99fc079f2747fadfa802",
+    "source/.github/workflows/cloudflare-dns.yml": "329b7aabc276c48251da9a2e1038a05e4b8ed24501a9e8017c741fb6b481234c"
+  }
+}

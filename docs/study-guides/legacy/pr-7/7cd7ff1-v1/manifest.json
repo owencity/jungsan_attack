@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "pr_number": 7,
+  "pr_url": "https://github.com/owencity/jungsan_attack/pull/7",
+  "title": "Core v2 계산 엔진",
+  "base_sha": "66e0345456a33bac8bf5997ab946af1c625303ab",
+  "head_sha": "7cd7ff1c8e8442733d11590df17eea119fc63a27",
+  "catalog_sha": "63a46d695e5c52b746235c5ab581ac4770e61665",
+  "policy_sha": "63a46d695e5c52b746235c5ab581ac4770e61665",
+  "archived_on": "2026-10-05",
+  "timezone": "Asia/Seoul",
+  "guide_version": 1,
+  "archive_reason": "기존 가이드와 코드 diff를 프로젝트 개발 완료 이후에도 다시 읽기 위해 보존",
+  "implemented_languages": [
+    "kotlin"
+  ],
+  "java_kotlin_pair_status": "KOTLIN_ONLY",
+  "changed_files": [
+    "AGENTS.md",
+    "DEVLOG.md",
+    "README.md",
+    "core/src/main/kotlin/app/jeongsan/core/Model.kt",
+    "core/src/main/kotlin/app/jeongsan/core/Rational.kt",
+    "core/src/main/kotlin/app/jeongsan/core/Settlement.kt",
+    "core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt",
+    "core/src/main/kotlin/app/jeongsan/core/Validation.kt",
+    "core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt",
+    "core/src/test/kotlin/app/jeongsan/core/SettlementSpec.kt",
+    "core/src/test/kotlin/app/jeongsan/core/TestFixtures.kt",
+    "core/src/test/kotlin/app/jeongsan/core/ValidationSpec.kt"
+  ],
+  "study_item_count": 34,
+  "review_source": "기존 대화의 정적 검토 메모. 외부 AI 리뷰 원문은 수집하지 않음",
+  "files": {
+    "guide_json": "guide.json",
+    "guide": "guide.md",
+    "before": "before/",
+    "after": "after/",
+    "diff": "changes.patch",
+    "policy": "STUDY_POLICY.md",
+    "review_notes": "review-notes.md",
+    "catalog": "STUDY_CATALOG.md"
+  }
+}

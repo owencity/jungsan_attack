@@ -1,0 +1,413 @@
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 8dca8b3..379c12f 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,3 +1,9 @@
++## [2026-10-10] 백엔드 PR 전체 스터디 기록 보완
++- 문제: 백엔드 구현 PR들은 미병합이고 #7·#10의 학습 기록 일부는 미커밋 로컬 파일로만 남아 있었다. 코드 완료·병합·학습 상태가 섞여 있었다.
++- 고려한 대안: 기존 가이드를 최신 코드로 덮기, 각 브랜치의 파일만 연결하기, 고정 기록과 현재 학습 진도를 따로 보존하기.
++- 선택 이유·트레이드오프: 전체 25개 PR을 조사하고 백엔드 13개 기록을 한 목록으로 모은다. #4·#7·#10의 실제 diff와 최신 원격 목차로 34개 항목을 보완하고 기존·과거 버전은 바이트 그대로 보존한다. 중복 보존으로 문서 용량이 늘지만 병합 뒤에도 당시 코드를 읽을 수 있다.
++- 아쉬운 점: 사용자 학습 완료 여부는 모른다. 문서 PR 병합은 코드 PR 병합·운영 배포와 별개이며 추후 PR head 변경은 새 가이드 버전으로 기록해야 한다.
++
+ # DEVLOG
+ 
+ `docs/생각하고-개발하기.md` 규칙에 따라, 반문을 거쳐 내린 결정을 남긴다.
+diff --git a/docs/study-guides/README.md b/docs/study-guides/README.md
+new file mode 100644
+index 0000000..c5ebd5f
+--- /dev/null
++++ b/docs/study-guides/README.md
+@@ -0,0 +1,41 @@
++# 백엔드 PR 스터디 기록
++
++조사 기준: 2026-10-10, GitHub 전체 25개 PR. 백엔드 코드 7개와 백엔드 설계·운영 문서 6개를 정리했다. 프론트 FC·화면 문서 및 목차 등록 PR은 구현 학습 대상에서 제외했다.
++
++PR 생성·병합·운영 배포·학습 완료는 다른 상태다. 현재 코드 PR 7개는 모두 미병합이다. 학습 상태는 사용자 기록이 없어 모두 UNRECORDED로 둔다.
++
++| PR | 제목 | 병합 상태 | 스터디 | 보완 |
++|---|---|---|---|---|
++| [#1](https://github.com/owencity/jungsan_attack/pull/1) | chore(automation): n8n PR 자동 코드리뷰 파이프라인 설계 메모 추가 | 미병합 | [가이드](archive/pr-1/9f791c01-v1/guide.md) · [고정 기준](archive/pr-1/9f791c01-v1/manifest.json) · [진도](progress/pr-1.md) | 백엔드 문서 PR · 별도 핵심 학습 없음 |
++| [#2](https://github.com/owencity/jungsan_attack/pull/2) | Feat/local git flow web | 병합됨 2026-09-19 | [가이드](archive/pr-2/96d6a973-v1/guide.md) · [고정 기준](archive/pr-2/96d6a973-v1/manifest.json) · [진도](progress/pr-2.md) | 백엔드 문서 PR · 별도 핵심 학습 없음 |
++| [#3](https://github.com/owencity/jungsan_attack/pull/3) | Feat/local git flow web | 미병합 | [가이드](archive/pr-3/0da394a2-v1/guide.md) · [고정 기준](archive/pr-3/0da394a2-v1/manifest.json) · [진도](progress/pr-3.md) | 백엔드 문서 PR · 별도 핵심 학습 없음 |
++| [#4](https://github.com/owencity/jungsan_attack/pull/4) | feat(core): 차수별 결제자 정산 엔진 v2 적용 | 미병합 | [가이드](archive/pr-4/51e35a93-v1/guide.md) · [고정 기준](archive/pr-4/51e35a93-v1/manifest.json) · [진도](progress/pr-4.md) | 최신 diff로 신규 보완 |
++| [#5](https://github.com/owencity/jungsan_attack/pull/5) | Docs/simplify onetime gathering | 병합됨 2026-10-03 | [가이드](archive/pr-5/061d726c-v1/guide.md) · [고정 기준](archive/pr-5/061d726c-v1/manifest.json) · [진도](progress/pr-5.md) | 백엔드 문서 PR · 별도 핵심 학습 없음 |
++| [#7](https://github.com/owencity/jungsan_attack/pull/7) | feat(core): 제품 v3 기준 Core v2 계산 엔진 선별 보존 | 미병합 | [가이드](archive/pr-7/7cd7ff1c-v2/guide.md) · [고정 기준](archive/pr-7/7cd7ff1c-v2/manifest.json) · [진도](progress/pr-7.md) | 최신 diff로 신규 보완 |
++| [#10](https://github.com/owencity/jungsan_attack/pull/10) | feat(user): 최초 실명 등록과 인증 가드 구현 | 미병합 | [가이드](archive/pr-10/d3407878-v2/guide.md) · [고정 기준](archive/pr-10/d3407878-v2/manifest.json) · [진도](progress/pr-10.md) | 최신 diff로 신규 보완 |
++| [#16](https://github.com/owencity/jungsan_attack/pull/16) | feat(core): Java·Kotlin 정산 엔진을 함께 구현하고 검증 | 미병합 | [가이드](archive/pr-16/core-v2-java-v1/guide.md) · [고정 기준](archive/pr-16/core-v2-java-v1/manifest.json) · [진도](progress/pr-16.md) | 원격 커밋의 기존 고정 기록 보존 |
++| [#17](https://github.com/owencity/jungsan_attack/pull/17) | docs(settlement): 같은 술자리의 총무별 독립 정산 계약을 정의 | 미병합 | [가이드](archive/pr-17/6269774c-v1/guide.md) · [고정 기준](archive/pr-17/6269774c-v1/manifest.json) · [진도](progress/pr-17.md) | 백엔드 문서 PR · 별도 핵심 학습 없음 |
++| [#18](https://github.com/owencity/jungsan_attack/pull/18) | feat(backend): 같은 술자리의 총무별 독립 정산 구현 | 미병합 | [가이드](archive/pr-18/backend-v4-v1/guide.md) · [고정 기준](archive/pr-18/backend-v4-v1/manifest.json) · [진도](progress/pr-18.md) | 원격 커밋의 기존 고정 기록 보존 |
++| [#20](https://github.com/owencity/jungsan_attack/pull/20) | feat(auth): 앱 인증·Apple 로그인·로그아웃·계정 탈퇴 | 미병합 | [가이드](archive/pr-20/auth-release-v1/guide.md) · [고정 기준](archive/pr-20/auth-release-v1/manifest.json) · [진도](progress/pr-20.md) | 원격 커밋의 기존 고정 기록 보존 |
++| [#21](https://github.com/owencity/jungsan_attack/pull/21) | fix(ci): PR 자동 검증과 배포 실행 권한 복구 | 미병합 | [가이드](archive/pr-21/actions-ci-v1/guide.md) · [고정 기준](archive/pr-21/actions-ci-v1/manifest.json) · [진도](progress/pr-21.md) | 원격 커밋의 기존 고정 기록 보존 |
++| [#23](https://github.com/owencity/jungsan_attack/pull/23) | docs(backend): 시니어 검증·FC 추적·SOLID·목차 활용 기준 | 미병합 | [가이드](archive/pr-23/backend-quality-rules-v1/guide.md) · [고정 기준](archive/pr-23/backend-quality-rules-v1/manifest.json) · [진도](progress/pr-23.md) | 원격 커밋의 기존 고정 기록 보존 |
++
++## 읽는 순서와 병합 의존 관계
++
++- 학습: Core Kotlin #7 → Java 비교 #16 → 실명·인증 가드 #10 → 총무 단위 계약 #17 → 서버 구현 #18 → 인증·탈퇴 #20. CI #21은 별도다.
++- #4와 #7의 core/src 트리는 동일하다. 과거 #4를 보존하되 계산 학습은 #7부터 읽어도 된다. 별도 Git 이력이라 중복 PR의 병합·종료 판단은 CTO가 한다.
++- #10 head는 #17의 조상이고 #17 head는 #18의 조상이며 #18 head는 #20의 조상이다. 현재 PR 대상도 #10 → #17 → #18 → #20 순으로 연결되어 있다.
++- #16은 #18의 조상이 아니지만 #16의 Java 엔진과 비교 테스트 소스는 #18에 포함된다. core/src의 차이는 #18이 추가한 Java/Kotlin SettlementPresentation 두 파일뿐이다. 전부 개별 병합해야 한다는 뜻은 아니다.
++- #21은 main 대상 CI 수정, #23은 main 대상 개발 규칙 문서다. main 병합·배포 여부는 CTO가 결정한다.
++- 같은 작업 브랜치를 위 대상 브랜치에 먼저 병합하거나 squash/rebase할 경우 후속 PR의 기준·충돌·검사를 다시 확인해야 한다. 이 문서는 병합을 실행하거나 병합 가능성을 보장하지 않는다.
++
++## 보존 방식
++
++- 신규 가이드: 실제 PR merge-base→head diff, before/after 파일, 생성 시 origin/main의 목차·정책, 코드 줄·함수·관점, 진도, 해시를 저장한다.
++- 기존 고정 가이드 #16·#18·#20·#21·#23은 원격 커밋의 파일을 그대로 가져왔다. 당시 catalogCommit을 유지하고 해시가 있는 기록은 검증했다.
++- 로컬에만 있던 #7·#10 과거 버전은 [legacy](legacy/README.md)에 별도로 보존했다. 새 head/목차로 과거 기록을 덮어쓰지 않는다.
++- 과거 PR의 Kotlin 단독 구현을 Java 동시 구현으로 표시하지 않는다. Java 없는 diff에 자바의 정석·Effective Java 목차를 억지로 붙이지 않는다.
++- 가이드의 링크가 달라져도 보존된 changes.patch와 before/after 또는 source 파일로 당시 코드를 읽을 수 있다.
++- 전체 조사 결과는 [audit.md](audit.md), 구조화된 기준은 [study-index.json](study-index.json)이다.
++
++진도는 progress/pr-N.md에서 기록한다. archive 안의 progress.md는 생성 당시의 고정 템플릿이다. 학습하면서 보존 해시가 깨지지 않도록 실제 진도 파일은 archive 밖에 두었다.
+diff --git a/docs/study-guides/audit.md b/docs/study-guides/audit.md
+new file mode 100644
+index 0000000..edcc33d
+--- /dev/null
++++ b/docs/study-guides/audit.md
+@@ -0,0 +1,40 @@
++# 백엔드 PR 및 운영 접근 조사
++
++조사일: 2026-10-10 (Asia/Seoul). GitHub API 전체 25개 PR과 원격 Git 객체 기준이다. 병합·닫기·운영 배포는 실행하지 않았다.
++
++| PR | 제목 | GitHub 상태 | 분류 |
++|---|---|---|---|
++| [#1](https://github.com/owencity/jungsan_attack/pull/1) | chore(automation): n8n PR 자동 코드리뷰 파이프라인 설계 메모 추가 | 열림 | 백엔드 설계·운영 문서 |
++| [#2](https://github.com/owencity/jungsan_attack/pull/2) | Feat/local git flow web | 병합됨 2026-09-19 | 백엔드 설계·운영 문서 |
++| [#3](https://github.com/owencity/jungsan_attack/pull/3) | Feat/local git flow web | 열림 | 백엔드 설계·운영 문서 |
++| [#4](https://github.com/owencity/jungsan_attack/pull/4) | feat(core): 차수별 결제자 정산 엔진 v2 적용 | 열림 | 백엔드 코드 |
++| [#5](https://github.com/owencity/jungsan_attack/pull/5) | Docs/simplify onetime gathering | 병합됨 2026-10-03 | 백엔드 설계·운영 문서 |
++| [#6](https://github.com/owencity/jungsan_attack/pull/6) | docs(screens,flow-changes): R4 참여자 관리 · FC-010 면제 해제·내보내기 규칙 | 병합됨 2026-10-03 | 프론트 흐름·API 계약 문서 |
++| [#7](https://github.com/owencity/jungsan_attack/pull/7) | feat(core): 제품 v3 기준 Core v2 계산 엔진 선별 보존 | 열림 | 백엔드 코드 |
++| [#8](https://github.com/owencity/jungsan_attack/pull/8) | Docs/r4 participant sheet | 병합됨 2026-10-03 | 프론트 흐름·API 계약 문서 |
++| [#9](https://github.com/owencity/jungsan_attack/pull/9) | Docs/l2 name | 병합됨 2026-10-03 | 프론트 흐름·API 계약 문서 |
++| [#10](https://github.com/owencity/jungsan_attack/pull/10) | feat(user): 최초 실명 등록과 인증 가드 구현 | 열림 | 백엔드 코드 |
++| [#11](https://github.com/owencity/jungsan_attack/pull/11) | docs(study): Kotlin 기본·고급 강의 목차를 학습 카테고리로 추가 | 병합됨 2026-10-04 | 목차 등록 |
++| [#12](https://github.com/owencity/jungsan_attack/pull/12) | docs(study): Effective Java 1~90·함수형 프로그래밍 with 자바 전체 목차 등록 | 병합됨 2026-10-04 | 목차 등록 |
++| [#13](https://github.com/owencity/jungsan_attack/pull/13) | docs(study): 자바의 정석 선별 목차(6~16장, 233개 소절) 등록 | 병합됨 2026-10-04 | 목차 등록 |
++| [#14](https://github.com/owencity/jungsan_attack/pull/14) | docs(study): 자바의 정석 선별 목차(6~16장, 233개 소절) 등록 | 병합됨 2026-10-05 | 목차 등록 |
++| [#15](https://github.com/owencity/jungsan_attack/pull/15) | Docs/fc 014 api contract | 병합됨 2026-10-05 | 프론트 흐름·API 계약 문서 |
++| [#16](https://github.com/owencity/jungsan_attack/pull/16) | feat(core): Java·Kotlin 정산 엔진을 함께 구현하고 검증 | 열림 | 백엔드 코드 |
++| [#17](https://github.com/owencity/jungsan_attack/pull/17) | docs(settlement): 같은 술자리의 총무별 독립 정산 계약을 정의 | 열림 | 백엔드 설계·운영 문서 |
++| [#18](https://github.com/owencity/jungsan_attack/pull/18) | feat(backend): 같은 술자리의 총무별 독립 정산 구현 | 열림 | 백엔드 코드 |
++| [#19](https://github.com/owencity/jungsan_attack/pull/19) | Docs/fc 016 b integration | 병합됨 2026-10-09 | 프론트 흐름·API 계약 문서 |
++| [#20](https://github.com/owencity/jungsan_attack/pull/20) | feat(auth): 앱 인증·Apple 로그인·로그아웃·계정 탈퇴 | 열림 | 백엔드 코드 |
++| [#21](https://github.com/owencity/jungsan_attack/pull/21) | fix(ci): PR 자동 검증과 배포 실행 권한 복구 | 열림 | 백엔드 코드 |
++| [#22](https://github.com/owencity/jungsan_attack/pull/22) | docs(flow-changes): FC-020 인원 입력 · 전원 응답 시 자동 정산 · 입금 요청 | 병합됨 2026-10-09 | 프론트 흐름·API 계약 문서 |
++| [#23](https://github.com/owencity/jungsan_attack/pull/23) | docs(backend): 시니어 검증·FC 추적·SOLID·목차 활용 기준 | 열림 | 백엔드 설계·운영 문서 |
++| [#24](https://github.com/owencity/jungsan_attack/pull/24) | docs(flow-changes): FC-020 추가 — 인원보다 더 들어오면 총무 확인, 그대로면 뒤에 온 사람은 빠진다 | 병합됨 2026-10-09 | 프론트 흐름·API 계약 문서 |
++| [#25](https://github.com/owencity/jungsan_attack/pull/25) | docs(flow-changes): FC-021 앱 로그인 프론트 연결 · 운영 API 502 · Apple 콜백 도메인 불일치 | 병합됨 2026-10-09 | 프론트 흐름·API 계약 문서 |
++
++## OCI 읽기 전용 확인
++
++- 사용자가 지정한 OCI 접속 주소와 준비된 키로 ubuntu SSH 접속에 성공했다. origin IP나 키를 공개 저장소에 적지 않는다.
++- ARM64 서버이며 ~/jeongsan 배포 디렉터리는 없다. 따라서 해당 경로에 정산 앱이 배포되었다고 보고하지 않는다.
++- 기존 n8n-kafka-app-1이 호스트 127.0.0.1:8080을 점유한다. 이 주소의 health 200은 정산 앱의 기동 증거가 아니다.
++- 정산 docker-compose.prod.yml도 127.0.0.1:8080을 사용한다. 운영 배포 전에 정산 전용 포트와 해당 API 프록시·터널 경로를 정해야 한다.
++- 외부 API의 502와 이 관측만으로 Cloudflare 경로 설정을 확정하지 않는다. 프록시 설정·실제 정산 앱 경로는 아직 미확인이다.
++- 기존 n8n/Kafka 서비스의 설정·포트·컨테이너를 변경하거나 중단하지 않았다.
+diff --git a/docs/study-guides/study-index.json b/docs/study-guides/study-index.json
+new file mode 100644
+index 0000000..6a141c4
+--- /dev/null
++++ b/docs/study-guides/study-index.json
+@@ -0,0 +1,300 @@
++{
++  "schemaVersion": 2,
++  "date": "2026-10-10",
++  "catalogCommit": "f094e884580159ffb82844bd3d759cf028c96458",
++  "statusMeaning": "PR 병합과 학습 완료는 별개. UNRECORDED는 사용자 학습 여부를 모른다는 뜻.",
++  "entries": [
++    {
++      "pr": 1,
++      "title": "chore(automation): n8n PR 자동 코드리뷰 파이프라인 설계 메모 추가",
++      "url": "https://github.com/owencity/jungsan_attack/pull/1",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "main",
++      "observedBase": "e6223c8c9200d809a8bc231fe2af9ceb603e4a4f",
++      "observedHead": "9f791c01e9adfbda1b2f32a923c28ecacab96b8d",
++      "guide": "archive/pr-1/9f791c01-v1/guide.md",
++      "manifest": "archive/pr-1/9f791c01-v1/manifest.json",
++      "origin": "백엔드 문서 PR · 별도 핵심 학습 없음",
++      "studyStatus": "UNRECORDED",
++      "learningItemCount": 0,
++      "progress": "progress/pr-1.md"
++    },
++    {
++      "pr": 2,
++      "title": "Feat/local git flow web",
++      "url": "https://github.com/owencity/jungsan_attack/pull/2",
++      "mergedAt": "2026-09-19T13:17:51Z",
++      "state": "closed",
++      "baseBranch": "main",
++      "observedBase": "70c915c1fe4c5207e4c51403014dbb752d91ea96",
++      "observedHead": "96d6a9736d56abb5c41260e9f5c9f74fc4ff7fd1",
++      "guide": "archive/pr-2/96d6a973-v1/guide.md",
++      "manifest": "archive/pr-2/96d6a973-v1/manifest.json",
++      "origin": "백엔드 문서 PR · 별도 핵심 학습 없음",
++      "studyStatus": "UNRECORDED",
++      "learningItemCount": 0,
++      "progress": "progress/pr-2.md"
++    },
++    {
++      "pr": 3,
++      "title": "Feat/local git flow web",
++      "url": "https://github.com/owencity/jungsan_attack/pull/3",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "main",
++      "observedBase": "e6223c8c9200d809a8bc231fe2af9ceb603e4a4f",
++      "observedHead": "0da394a2977840c6ef6bf00d4c64ddb6526995f6",
++      "guide": "archive/pr-3/0da394a2-v1/guide.md",
++      "manifest": "archive/pr-3/0da394a2-v1/manifest.json",
++      "origin": "백엔드 문서 PR · 별도 핵심 학습 없음",
++      "studyStatus": "UNRECORDED",
++      "learningItemCount": 0,
++      "progress": "progress/pr-3.md"
++    },
++    {
++      "pr": 4,
++      "title": "feat(core): 차수별 결제자 정산 엔진 v2 적용",
++      "url": "https://github.com/owencity/jungsan_attack/pull/4",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "main",
++      "observedBase": "18998adee79ec358798564e470ccfab16a698643",
++      "observedHead": "51e35a93a0f9f2de02ed0b0b5949823c3bbfea72",
++      "guide": "archive/pr-4/51e35a93-v1/guide.md",
++      "manifest": "archive/pr-4/51e35a93-v1/manifest.json",
++      "origin": "최신 diff로 신규 보완",
++      "studyStatus": "UNRECORDED",
++      "learningItemCount": 11,
++      "progress": "progress/pr-4.md"
++    },
++    {
++      "pr": 5,
++      "title": "Docs/simplify onetime gathering",
++      "url": "https://github.com/owencity/jungsan_attack/pull/5",
++      "mergedAt": "2026-10-03T11:12:52Z",
++      "state": "closed",
++      "baseBranch": "main",
++      "observedBase": "18998adee79ec358798564e470ccfab16a698643",
++      "observedHead": "061d726cdf98b6c6dcc2174271f532bbe942be7b",
++      "guide": "archive/pr-5/061d726c-v1/guide.md",
++      "manifest": "archive/pr-5/061d726c-v1/manifest.json",
++      "origin": "백엔드 문서 PR · 별도 핵심 학습 없음",
++      "studyStatus": "UNRECORDED",
++      "learningItemCount": 0,
++      "progress": "progress/pr-5.md"
++    },
++    {
++      "pr": 7,
++      "title": "feat(core): 제품 v3 기준 Core v2 계산 엔진 선별 보존",
++      "url": "https://github.com/owencity/jungsan_attack/pull/7",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "main",
++      "observedBase": "129eb82d1cdad93abcdfd08147a722192b3ad164",
++      "observedHead": "7cd7ff1c8e8442733d11590df17eea119fc63a27",
++      "guide": "archive/pr-7/7cd7ff1c-v2/guide.md",
++      "manifest": "archive/pr-7/7cd7ff1c-v2/manifest.json",
++      "origin": "최신 diff로 신규 보완",
++      "studyStatus": "UNRECORDED",
++      "learningItemCount": 11,
++      "progress": "progress/pr-7.md"
++    },
++    {
++      "pr": 10,
++      "title": "feat(user): 최초 실명 등록과 인증 가드 구현",
++      "url": "https://github.com/owencity/jungsan_attack/pull/10",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "main",
++      "observedBase": "d5feb4677f71c9fe973e31118fd3b82d27eb2788",
++      "observedHead": "d34078782c8380fc45d0eed913c867e0877c8a00",
++      "guide": "archive/pr-10/d3407878-v2/guide.md",
++      "manifest": "archive/pr-10/d3407878-v2/manifest.json",
++      "origin": "최신 diff로 신규 보완",
++      "studyStatus": "UNRECORDED",
++      "learningItemCount": 12,
++      "progress": "progress/pr-10.md"
++    },
++    {
++      "pr": 16,
++      "title": "feat(core): Java·Kotlin 정산 엔진을 함께 구현하고 검증",
++      "url": "https://github.com/owencity/jungsan_attack/pull/16",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "feat/core-v2-v3",
++      "observedBase": "7cd7ff1c8e8442733d11590df17eea119fc63a27",
++      "observedHead": "ae0344f7dc1b87eefe92465c15a5827ec4a046ff",
++      "guide": "archive/pr-16/core-v2-java-v1/guide.md",
++      "manifest": "archive/pr-16/core-v2-java-v1/manifest.json",
++      "origin": "원격 커밋의 기존 고정 기록 보존",
++      "studyStatus": "UNRECORDED",
++      "importedFiles": 9,
++      "progress": "progress/pr-16.md"
++    },
++    {
++      "pr": 17,
++      "title": "docs(settlement): 같은 술자리의 총무별 독립 정산 계약을 정의",
++      "url": "https://github.com/owencity/jungsan_attack/pull/17",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "feat/user-real-name",
++      "observedBase": "d34078782c8380fc45d0eed913c867e0877c8a00",
++      "observedHead": "6269774cade6e032c762cdd568545246b6331002",
++      "guide": "archive/pr-17/6269774c-v1/guide.md",
++      "manifest": "archive/pr-17/6269774c-v1/manifest.json",
++      "origin": "백엔드 문서 PR · 별도 핵심 학습 없음",
++      "studyStatus": "UNRECORDED",
++      "learningItemCount": 0,
++      "progress": "progress/pr-17.md"
++    },
++    {
++      "pr": 18,
++      "title": "feat(backend): 같은 술자리의 총무별 독립 정산 구현",
++      "url": "https://github.com/owencity/jungsan_attack/pull/18",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "docs/host-settlement-units",
++      "observedBase": "6269774cade6e032c762cdd568545246b6331002",
++      "observedHead": "54fda97d1dcda03f2b7f8313257316efd4d5e104",
++      "guide": "archive/pr-18/backend-v4-v1/guide.md",
++      "manifest": "archive/pr-18/backend-v4-v1/manifest.json",
++      "origin": "원격 커밋의 기존 고정 기록 보존",
++      "studyStatus": "UNRECORDED",
++      "importedFiles": 16,
++      "progress": "progress/pr-18.md"
++    },
++    {
++      "pr": 20,
++      "title": "feat(auth): 앱 인증·Apple 로그인·로그아웃·계정 탈퇴",
++      "url": "https://github.com/owencity/jungsan_attack/pull/20",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "feat/backend-v4",
++      "observedBase": "54fda97d1dcda03f2b7f8313257316efd4d5e104",
++      "observedHead": "201d6330e90910155ff3e8fc43c2e274c1ea76b9",
++      "guide": "archive/pr-20/auth-release-v1/guide.md",
++      "manifest": "archive/pr-20/auth-release-v1/manifest.json",
++      "origin": "원격 커밋의 기존 고정 기록 보존",
++      "studyStatus": "UNRECORDED",
++      "importedFiles": 24,
++      "progress": "progress/pr-20.md"
++    },
++    {
++      "pr": 21,
++      "title": "fix(ci): PR 자동 검증과 배포 실행 권한 복구",
++      "url": "https://github.com/owencity/jungsan_attack/pull/21",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "main",
++      "observedBase": "c4fa119854137596c5da7f88922ed487900e5637",
++      "observedHead": "d62d03dfb3540cfe503ffdacfd26ba647a244495",
++      "guide": "archive/pr-21/actions-ci-v1/guide.md",
++      "manifest": "archive/pr-21/actions-ci-v1/manifest.json",
++      "origin": "원격 커밋의 기존 고정 기록 보존",
++      "studyStatus": "UNRECORDED",
++      "importedFiles": 11,
++      "progress": "progress/pr-21.md"
++    },
++    {
++      "pr": 23,
++      "title": "docs(backend): 시니어 검증·FC 추적·SOLID·목차 활용 기준",
++      "url": "https://github.com/owencity/jungsan_attack/pull/23",
++      "mergedAt": null,
++      "state": "open",
++      "baseBranch": "main",
++      "observedBase": "113c9e70826e984a53fd7fa3faa2d9881772529c",
++      "observedHead": "c9b723e8420c6fceb88dcd3affb119cab61a8b99",
++      "guide": "archive/pr-23/backend-quality-rules-v1/guide.md",
++      "manifest": "archive/pr-23/backend-quality-rules-v1/manifest.json",
++      "origin": "원격 커밋의 기존 고정 기록 보존",
++      "studyStatus": "UNRECORDED",
++      "importedFiles": 9,
++      "progress": "progress/pr-23.md"
++    }
++  ],
++  "legacyHashes": {
++    "legacy/pr-7/7cd7ff1-v1/changes.patch": "1bae3e3f0b0b1d337a227b2fcfe8722b0dea3f4e103452abcab2f1fd7a5229bb",
++    "legacy/pr-7/7cd7ff1-v1/checksums.sha256": "add740b99f743c16780bfa2e298f84bea540e35a6e5e32b9f75275f44d2d343f",
++    "legacy/pr-7/7cd7ff1-v1/guide.json": "ae6f9cf66256994aeea8774f34d21663a527392b75427ab9c22ab530cec98f90",
++    "legacy/pr-7/7cd7ff1-v1/guide.md": "ed10f8f3a22c2581a5d5dc8a4bc9ebbad7e6f9c2a0987a33a5a9a9fdf8246475",
++    "legacy/pr-7/7cd7ff1-v1/manifest.json": "5d97e8e4c6095b155657c3b5fc59471cb5b301eb9831579f85482bca914b0c60",
++    "legacy/pr-7/7cd7ff1-v1/pr-7-core-v2-review.md": "54706d98894589733c31bb65a47dbcfec219715f700825484f3401d477569735",
++    "legacy/pr-7/7cd7ff1-v1/pr-7-core-v2.json": "ae6f9cf66256994aeea8774f34d21663a527392b75427ab9c22ab530cec98f90",
++    "legacy/pr-7/7cd7ff1-v1/pr-7-core-v2.md": "ed10f8f3a22c2581a5d5dc8a4bc9ebbad7e6f9c2a0987a33a5a9a9fdf8246475",
++    "legacy/pr-7/7cd7ff1-v1/review-notes.md": "54706d98894589733c31bb65a47dbcfec219715f700825484f3401d477569735",
++    "legacy/pr-7/7cd7ff1-v1/STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
++    "legacy/pr-7/7cd7ff1-v1/STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
++    "legacy/pr-7/7cd7ff1-v1/after/AGENTS.md": "cdf76cbce487a51d62d3e79ee33a9d3f5767548c5326e4a7482af535eb521a2f",
++    "legacy/pr-7/7cd7ff1-v1/after/DEVLOG.md": "cc11eb2110610271cec4d6b7fe7f6f8f6ed6de0c201d3630daa4d3fbdc94cf54",
++    "legacy/pr-7/7cd7ff1-v1/after/README.md": "904773e3b5bf3ca91a6d69cce850f7dd3076691234842663570aaf9b6e4dd9bc",
++    "legacy/pr-7/7cd7ff1-v1/before/AGENTS.md": "97a688f3d50e9e5e567106f3b6218c1797c3d1bae53cc08440aad858ed15f315",
++    "legacy/pr-7/7cd7ff1-v1/before/DEVLOG.md": "1cfac5a3e3902b695552acfee3990aa562df27664e4513df749c878605b9a0a4",
++    "legacy/pr-7/7cd7ff1-v1/before/README.md": "7822e0a94a9c1d1d57509be63173c13b41552fa5f91bb4c51cdda060a293646c",
++    "legacy/pr-7/7cd7ff1-v1/after/core/src/main/kotlin/app/jeongsan/core/Model.kt": "07096620900121c99c3666ed9cd56464bb592a8b021e3d08ab5fd4039a1fcf46",
++    "legacy/pr-7/7cd7ff1-v1/after/core/src/main/kotlin/app/jeongsan/core/Rational.kt": "a69ee2a9ceb926f68c09f0ded8e296f37f9221a8e8308d8a7ef886824bf8bfef",
++    "legacy/pr-7/7cd7ff1-v1/after/core/src/main/kotlin/app/jeongsan/core/Settlement.kt": "d20df35ec91691784d33653b57992bc64bc8b582fbead7e72b0fe3a79f28a369",
++    "legacy/pr-7/7cd7ff1-v1/after/core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt": "4cd01e9edfd395ac30a4549678a1f6e0fcdeafac3d5d06e323a475a55cc1d96b",
++    "legacy/pr-7/7cd7ff1-v1/after/core/src/main/kotlin/app/jeongsan/core/Validation.kt": "269671e3326a4157a5b9b1f21078425b075920c98711615a55077ae67a564950",
++    "legacy/pr-7/7cd7ff1-v1/after/core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt": "e63c90c9124ce4463391b63ac2f9fae74ece3a44ed503bfea9c5361050b9fdb5",
++    "legacy/pr-7/7cd7ff1-v1/after/core/src/test/kotlin/app/jeongsan/core/SettlementSpec.kt": "5109dd00be6d0db4a4172bb1591fd9dd91b02167d391c415fe12207001a5ae24",
++    "legacy/pr-7/7cd7ff1-v1/after/core/src/test/kotlin/app/jeongsan/core/TestFixtures.kt": "28bd9f788edc3701c16b47de9c1dafe810d4fefe52030bdff7e89bb79367e8f3",
++    "legacy/pr-7/7cd7ff1-v1/after/core/src/test/kotlin/app/jeongsan/core/ValidationSpec.kt": "da774cc8a2e4405ce0c19905c89a25753b4e7672f19efe22f7d69d78afe70e95",
++    "legacy/pr-7/7cd7ff1-v1/before/core/src/main/kotlin/app/jeongsan/core/Model.kt": "24a239bd290c2327ca8387bef9ad03f425d1dfe9fb4e9202e61ce306098ef2a4",
++    "legacy/pr-7/7cd7ff1-v1/before/core/src/main/kotlin/app/jeongsan/core/Rational.kt": "b20813d9ae704c94927c43a32c0950b309d994eb353a7fb9a8d77b5d0c434b4e",
++    "legacy/pr-7/7cd7ff1-v1/before/core/src/main/kotlin/app/jeongsan/core/Settlement.kt": "846fd37e5cd211749dfe5d4cd79dc9e580b562319f1b20ed75d8542bda4c0a14",
++    "legacy/pr-7/7cd7ff1-v1/before/core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt": "87f4384a2511c4e841040618eb13bbb0fd8b9caf0b60ed6d9ff6acda0407e690",
++    "legacy/pr-7/7cd7ff1-v1/before/core/src/main/kotlin/app/jeongsan/core/Validation.kt": "46fcb87ca08abd58f085060203fbd6abc54088882d1159f3ea2c132766512dd4",
++    "legacy/pr-7/7cd7ff1-v1/before/core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt": "13ce66ef06118e9d964f91fa605691df2e7dfaef8cac29ee325c9ee1f6741a00",
++    "legacy/pr-7/7cd7ff1-v1/before/core/src/test/kotlin/app/jeongsan/core/SettlementSpec.kt": "c674c157a299849c140ff3d1e638d9d017cc85b1955ad69e440a0110e5074383",
++    "legacy/pr-7/7cd7ff1-v1/before/core/src/test/kotlin/app/jeongsan/core/TestFixtures.kt": "e00ef3e472cc535a9ff24961eb413285824a0f768cbca0b5da505edb636b151f",
++    "legacy/pr-7/7cd7ff1-v1/before/core/src/test/kotlin/app/jeongsan/core/ValidationSpec.kt": "c27da2a05e77f562a29e7e86e26e32c33e5d41bca2c8ddee769f5f6425835de8",
++    "legacy/pr-10/1f29594-v1/changes.patch": "85c9fbc74bb914c77d1e24df57cb5d032c4e2896abc866e6248b710ed3cffa75",
++    "legacy/pr-10/1f29594-v1/checksums.sha256": "a5fd3f8696795dd003119e80878f4dc8542f59183877d6923cd23251f8faf187",
++    "legacy/pr-10/1f29594-v1/guide.json": "3ee4d113852aeb14b4bde036c22900e52eacfca8c696257f150af277248ba2a5",
++    "legacy/pr-10/1f29594-v1/guide.md": "181db68cf0bae598e20cc4175f786d2915e94dedfe91bbf6a1e1ce541485edb6",
++    "legacy/pr-10/1f29594-v1/manifest.json": "e447ef9eccdba9ad8e01477931a93f13a8fa40d25cf8cac5d66c3a5e550e1c1e",
++    "legacy/pr-10/1f29594-v1/pr-10-user-real-name-review.md": "42cdda2cc3b7a3cae574876d50b38af95b2a245eb5fde4db2a3f5e81538d5bd8",
++    "legacy/pr-10/1f29594-v1/pr-10-user-real-name.json": "3ee4d113852aeb14b4bde036c22900e52eacfca8c696257f150af277248ba2a5",
++    "legacy/pr-10/1f29594-v1/pr-10-user-real-name.md": "181db68cf0bae598e20cc4175f786d2915e94dedfe91bbf6a1e1ce541485edb6",
++    "legacy/pr-10/1f29594-v1/review-notes.md": "42cdda2cc3b7a3cae574876d50b38af95b2a245eb5fde4db2a3f5e81538d5bd8",
++    "legacy/pr-10/1f29594-v1/STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
++    "legacy/pr-10/1f29594-v1/STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
++    "legacy/pr-10/1f29594-v1/after/DEVLOG.md": "62eb01c11a9b2c08522a8b693cf3f3b942a56125b13e944a6be878c02f0b8242",
++    "legacy/pr-10/1f29594-v1/before/DEVLOG.md": "1cfac5a3e3902b695552acfee3990aa562df27664e4513df749c878605b9a0a4",
++    "legacy/pr-10/1f29594-v1/after/docs/API.md": "a4535635c01f1747e07d16374386f1e0bd639212b659679500e7a4617d36aab8",
++    "legacy/pr-10/1f29594-v1/after/docs/DOMAIN_DB_DESIGN_V2.md": "ea110507d387315dfd112f9446a2cbebcc80da15e60c12d40f68292ef9a47ac2",
++    "legacy/pr-10/1f29594-v1/after/docs/ERD.md": "94179bc4d1da3c1ed7745f386af8ac1ed9e61eb904206faa65a8e648d12d5642",
++    "legacy/pr-10/1f29594-v1/after/docs/RELEASE_2026_10_11.md": "7d69a4d8a665ab97d9b10faa14ac636b0f205c16591fcea7cdd9a83373446426",
++    "legacy/pr-10/1f29594-v1/after/docs/REQUIREMENTS.md": "0a24bf4db2dda497e14a901ef1f3040b5c6c06a345932aaee009e6d1e587d6e3",
++    "legacy/pr-10/1f29594-v1/after/docs/flow-changes/2026-10-04-l2-name.md": "e18f06f869a2a7667fe97b77bdd505f2c4e2393f2c9851b0a3c318d77f8b82ad",
++    "legacy/pr-10/1f29594-v1/after/docs/flow-changes/README.md": "f08c1c071e2d912cf30cf459a65cc01b827a35a3f79eee4bbfa346745c1fb872",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/kotlin/app/jeongsan/server/common/ApiException.kt": "8e86f06486ed8c528bc52e4a0c5e7ee1b0f4821b7577f64a8b78e493c96c2e3d",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt": "61cc61247b585f06fab818a4fc576fe1de3c015830776e9b01612a51dd119fb0",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringRepository.kt": "8cb0729e185f49c2cfdc65ee3ba574b8212e3c578a7abafd5f5abda09268fe99",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt": "948c38980a8ed91083e89a43406c77aec6dbacc965f5685f722fd741e2b6e288",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/kotlin/app/jeongsan/server/user/User.kt": "0df234deba68751ea458ab1a0d125852b63b09bcb76de84d1d082647bf21f377",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/kotlin/app/jeongsan/server/user/UserController.kt": "2a0a81c404bd185f98b9160a04cb424afab38e0b2170e9cac0381644ba709582",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt": "c41f47eaf43c84c7d08478beb0bd8e2f85a6b4e1be3d85086f1923421831ee92",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt": "e42bd970646ec04ec19e8fbc419ff21f0c78fc90ec7824ab03a84435c8a34625",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/kotlin/app/jeongsan/server/user/UserService.kt": "e6db0edf93f2ec6ab41b9edcd6c295b8fbc49428ed5452ba44e32c6348d4be30",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/resources/db/changelog/015-user-display-name.yaml": "0df0b9884be4b07b374248263925466472e4c16621fc00acab23f24341b2cac0",
++    "legacy/pr-10/1f29594-v1/after/server/src/main/resources/db/changelog/db.changelog-master.yaml": "f8dd31f914fe58851abee9e4cc24472b39ecd423b9798058cc813f3dcf63eba2",
++    "legacy/pr-10/1f29594-v1/after/server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt": "3f89dd1ded81da2074609ef5546d77187ab84efa069b205da11632003d4b5326",
++    "legacy/pr-10/1f29594-v1/after/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringAuthenticationSpec.kt": "b366eb3b1794b7510d5adebb8a5edf4a47363de61881074ef9171e3a0057c87f",
++    "legacy/pr-10/1f29594-v1/after/server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt": "55bef7897806bc2ff62a18fef3015ea75e92b764246fe600bd3faf7856023c5e",
++    "legacy/pr-10/1f29594-v1/before/docs/API.md": "5ba2c215447ba086f0db523aec673b8283cee331d82004bc0fbca884c07a49eb",
++    "legacy/pr-10/1f29594-v1/before/docs/DOMAIN_DB_DESIGN_V2.md": "a4239273c04ab406a380de13e67c060e00364f3abce5d8682a13da90b2b4258c",
++    "legacy/pr-10/1f29594-v1/before/docs/ERD.md": "fc89ba635ef489d2aee8682d964006356f1656799f3568ccc49125119416621a",
++    "legacy/pr-10/1f29594-v1/before/docs/REQUIREMENTS.md": "ca233a36a4bd65c4dfbb68761554e12264d39e3b6c648739e3a411207b5e72e4",
++    "legacy/pr-10/1f29594-v1/before/docs/flow-changes/2026-10-04-l2-name.md": "2120c53c056ca8b84bf5e39d5c4d4a02c75c0f0b4f34000e091a059b5d3385da",
++    "legacy/pr-10/1f29594-v1/before/docs/flow-changes/README.md": "5497c1273964e6efb78c569504d6abe483b75a9f5c31b0abfb3e887884e6ee5e",
++    "legacy/pr-10/1f29594-v1/before/server/src/main/kotlin/app/jeongsan/server/common/ApiException.kt": "8e687e07ba6ead404760ccce2ef5de451ed87e06eea5418e927c156248fc41c9",
++    "legacy/pr-10/1f29594-v1/before/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt": "ca8e5559e67f771c0e4658b9f5396a31d44f4eb068656adc664e6c84a67bee53",
++    "legacy/pr-10/1f29594-v1/before/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringRepository.kt": "e4ebc1ad3b801544fa9d23dedf85a841d005e55a2a6505c33af1da86a6791bc2",
++    "legacy/pr-10/1f29594-v1/before/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt": "584124d8bee44b2b7efc66bb216f459a13d2598bdfeff500b62f5ac8e7e3ffdc",
++    "legacy/pr-10/1f29594-v1/before/server/src/main/kotlin/app/jeongsan/server/user/User.kt": "f8086115e2b668fbd2e8175080db44e34cd02f154298bad237d41436185fe04c",
++    "legacy/pr-10/1f29594-v1/before/server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt": "10768e944b841ec84398f3a9f4e5c4a509b506351ccf6895c763ac9e6aa4c3b0",
++    "legacy/pr-10/1f29594-v1/before/server/src/main/resources/db/changelog/db.changelog-master.yaml": "fecb710bdb32a855ea0d65a63d751e3a8f491ea5519b069d995f530b00ff930e"
++  }
++}

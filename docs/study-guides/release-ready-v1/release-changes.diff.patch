@@ -1,0 +1,1180 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 421a896..22183a4 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -44,0 +45,3 @@ jobs:
++      - name: 실제 MySQL·HTTP 동시성 및 배포 복원 검증
++        run: bash scripts/verify-release.sh
++
+@@ -54,0 +58 @@ jobs:
++            server/build/release-http.log
+diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+index 6af9b9a..20f5c38 100644
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -17 +17 @@ permissions:
+-# 배포가 겹치면 서로 덮어써서 상태가 꼬인다. 앞선 배포는 취소한다.
++# 실행 중인 SSH 배포를 중단하지 않고 뒤의 배포가 기다리게 한다.
+@@ -20 +20 @@ concurrency:
+-  cancel-in-progress: true
++  cancel-in-progress: false
+@@ -55,0 +56,3 @@ jobs:
++      - name: 실제 MySQL·HTTP 릴리스 검증
++        run: bash scripts/verify-release.sh
++
+@@ -59,3 +62,2 @@ jobs:
+-          docker build -t jeongsan-server:latest ./server
+-          docker save jeongsan-server:latest | gzip > /tmp/jeongsan-server.tar.gz
+-          ls -lh /tmp/jeongsan-server.tar.gz
++          docker build -t "jeongsan-server:$GITHUB_SHA" ./server
++          docker save "jeongsan-server:$GITHUB_SHA" | gzip > "/tmp/jeongsan-server-$GITHUB_SHA.tar.gz"
+@@ -74 +76,3 @@ jobs:
+-          rsync -az --delete \
++          ssh -i ~/.ssh/id_key "$OCI_USER@${{ secrets.OCI_HOST }}" \
++            "mkdir -p ~/${{ env.REMOTE_DIR }}/scripts/deploy && chmod 700 ~/${{ env.REMOTE_DIR }}"
++          rsync -az \
+@@ -76,8 +80,4 @@ jobs:
+-            docker-compose.prod.yml scripts/ \
+-            "$OCI_USER@${{ secrets.OCI_HOST }}:~/${{ env.REMOTE_DIR }}/scripts_tmp/"
+-          ssh -i ~/.ssh/id_key "$OCI_USER@${{ secrets.OCI_HOST }}" "
+-            set -e
+-            cd ~/${{ env.REMOTE_DIR }}
+-            mv scripts_tmp/docker-compose.prod.yml ./
+-            rm -rf scripts && mv scripts_tmp scripts
+-          "
++            docker-compose.prod.yml \
++            "$OCI_USER@${{ secrets.OCI_HOST }}:~/${{ env.REMOTE_DIR }}/"
++          rsync -az -e "ssh -i ~/.ssh/id_key" scripts/deploy/ \
++            "$OCI_USER@${{ secrets.OCI_HOST }}:~/${{ env.REMOTE_DIR }}/scripts/deploy/"
+@@ -87 +87 @@ jobs:
+-          scp -i ~/.ssh/id_key /tmp/jeongsan-server.tar.gz \
++          scp -i ~/.ssh/id_key "/tmp/jeongsan-server-$GITHUB_SHA.tar.gz" \
+@@ -93 +93 @@ jobs:
+-            "cd ~/${{ env.REMOTE_DIR }} && bash scripts/deploy/deploy.sh ~/${{ env.REMOTE_DIR }}/jeongsan-server.tar.gz"
++            "cd ~/${{ env.REMOTE_DIR }} && bash scripts/deploy/deploy.sh ~/${{ env.REMOTE_DIR }}/jeongsan-server-$GITHUB_SHA.tar.gz jeongsan-server:$GITHUB_SHA"
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 446bf6e..6ad893b 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -0,0 +1,6 @@
++## [2026-10-10] 인원 자동 정산과 운영 포트 분리
++- 문제: FC-020이 서버에 없고 로컬 시각·알림 문구가 프론트와 달랐다. 실제 OCI 8080은 다른 서비스가 사용하며 정산어택이 배포되지 않았다.
++- 고려한 대안: 수동 정산만 출시, 인원 밖 결제자 강제 제외, 기존 서비스 포트 변경, latest 이미지 계속 사용.
++- 선택 이유·트레이드오프: Java/Kotlin 인원 정책과 같은 Core·스냅샷 경로로 자동 확정한다. 단위 잠금·검증 후 제외하며 잘못된 자동 계산은 응답을 보존한다. 별도 18080·SHA 이미지·실패 복원과 DB/HTTP CI를 사용한다.
++- 아쉬운 점: 인원 밖 결제자 예외는 CTO 검토가 필요하다. 실제 카카오/Apple·앱 왕복, 운영 설정·터널 변경·병합은 별도 확인이 남았고 최초 배포에는 이전 이미지가 없다.
++
+diff --git a/docker-compose.prod.yml b/docker-compose.prod.yml
+index eaf578b..0039ffe 100644
+--- a/docker-compose.prod.yml
++++ b/docker-compose.prod.yml
+@@ -9,0 +10,2 @@
++name: jeongsan
++
+@@ -15 +17 @@ services:
+-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
++      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?필수 운영 설정}
+@@ -22 +24 @@ services:
+-      test: ["CMD", "mysqladmin", "ping", "-uroot", "-p${DB_PASSWORD}"]
++      test: ["CMD", "mysqladmin", "ping", "-uroot", "-p${DB_PASSWORD:?필수 운영 설정}"]
+@@ -33 +35 @@ services:
+-    image: jeongsan-server:latest
++    image: ${APP_IMAGE:?배포할 커밋의 이미지 태그가 필요합니다}
+@@ -44,10 +46,10 @@ services:
+-      DB_PASSWORD: ${DB_PASSWORD}
+-      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+-      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+-      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI}
+-      JWT_SECRET: ${JWT_SECRET}
+-      PAYOUT_ENCRYPTION_KEY: ${PAYOUT_ENCRYPTION_KEY}
+-      AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY}
+-      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
+-      APPLE_TEAM_ID: ${APPLE_TEAM_ID}
+-      APPLE_KEY_ID: ${APPLE_KEY_ID}
++      DB_PASSWORD: ${DB_PASSWORD:?필수 운영 설정}
++      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?필수 운영 설정}
++      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?필수 운영 설정}
++      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:?필수 운영 설정}
++      JWT_SECRET: ${JWT_SECRET:?필수 운영 설정}
++      PAYOUT_ENCRYPTION_KEY: ${PAYOUT_ENCRYPTION_KEY:?필수 운영 설정}
++      AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?필수 운영 설정}
++      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:?필수 운영 설정}
++      APPLE_TEAM_ID: ${APPLE_TEAM_ID:?필수 운영 설정}
++      APPLE_KEY_ID: ${APPLE_KEY_ID:?필수 운영 설정}
+@@ -55,3 +57,3 @@ services:
+-      APPLE_REDIRECT_URI: ${APPLE_REDIRECT_URI}
+-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+-      LOGIN_SUCCESS_URL: ${LOGIN_SUCCESS_URL}
++      APPLE_REDIRECT_URI: ${APPLE_REDIRECT_URI:?필수 운영 설정}
++      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?필수 운영 설정}
++      LOGIN_SUCCESS_URL: ${LOGIN_SUCCESS_URL:?필수 운영 설정}
+@@ -61 +63 @@ services:
+-      - "127.0.0.1:8080:8080"
++      - "127.0.0.1:18080:8080"
+diff --git a/docs/API.md b/docs/API.md
+index 8ab8932..e7d08e5 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1 +1,15 @@
+-# 정산어택 — API 계약 · v7
++# 정산어택 — API 계약 · v8
++
++> **v8 변경(2026-10-10)** — FC-016~018·020. 기존 버전 이력은 유지한다.
++>
++> | 절 | 변경 |
++> |---|---|
++> | [자동 정산](AUTO_SETTLEMENT.md) | 생성 선택 headcount, PUT 단위/headcount, 응답 headcount·autoSettlementError |
++> | 알림 | 사람이 읽는 title, HEADCOUNT_EXCEEDED·MEMBER_EXCLUDED·SETTLED_HOST, 송금 요약 |
++> | 시간 | 로컬·운영 JDBC UTC 고정, 타임라인 신규 금액 천 단위 쉼표 |
++> | ERD 018 | changeSet 028, 인원·초과 알림 플래그·자동 계산 보류 오류 |
++
++자동·수동 정산의 현재 계약은 [AUTO_SETTLEMENT.md](AUTO_SETTLEMENT.md)가 우선한다.
++인원 수정의 범위/형식 오류는 400 `MALFORMED_REQUEST`, 권한은 403 `NOT_SETTLEMENT_UNIT_HOST`,
++상태는 409 `SETTLEMENT_UNIT_NOT_OPEN`이다. 자동 계산이 보류되어도 응답 저장은 성공하며 상세의
++`autoSettlementError`가 `REMOVE_PAYER` 또는 기존 Core 오류 코드를 알려 준다.
+diff --git a/docs/AUTO_SETTLEMENT.md b/docs/AUTO_SETTLEMENT.md
+new file mode 100644
+index 0000000..96027a0
+--- /dev/null
++++ b/docs/AUTO_SETTLEMENT.md
+@@ -0,0 +1,28 @@
++# 인원 기준 자동 정산 — FC-020 구현 계약
++
++총무가 인원을 입력하고 그 인원 안의 모든 사람이 모든 차수에 응답하면 서버가 같은 트랜잭션에서 확정한다.
++인원 미입력은 자동 정산을 끈다. 수동 미리보기·확정은 현재 ACTIVE 명단 전원을 대상으로 유지한다.
++
++- `POST /api/v1/gatherings`의 선택 본문 `{headcount?: 2..50}`. 본문을 생략한 기존 호출도 지원한다.
++- `POST /api/v1/gatherings/{gid}/settlement-units`에 선택 `headcount`를 추가한다. 멱등 요청의 비교 대상에도 포함한다.
++- `PUT /api/v1/gatherings/{gid}/settlement-units/{id}/headcount {headcount: 2..50}`는 해당 OPEN 단위 총무만 가능하며 204를 반환한다.
++- 상세·목록·단위 생성 응답에 `headcount`, `autoSettlementError`를 포함한다. 후자는 정상일 때 null이다.
++- 인원 순서는 총무가 첫째, 나머지는 단위 `joined_at` 오름차순, 동률은 participant id다. 재포함은 새 가입 시각으로 센다.
++- 응답은 해당 단위의 실제 차수와 SELF/HOST 응답 행으로 판정한다. 빈칸·AUTO는 응답 완료가 아니다.
++- 가입, 본인/대리 응답, 인원 수정, 차수 수정/삭제 뒤 판정한다. 차수 추가·정산 되돌리기 직후에는 판정하지 않는다.
++- 자동 확정에서만 인원 밖 명단을 REMOVED로 바꾸고 해당 단위 응답을 삭제한다. 공유 participant·다른 단위는 유지한다.
++- 단위 `FOR UPDATE` → 술자리 `FOR UPDATE` 순서로 잠근다. 검증, 제외, 송금 스냅샷, 알림은 한 트랜잭션이다.
++- 수동·자동 확정은 같은 Core 및 스냅샷 저장 함수를 호출한다. 자동에는 클라이언트 미리보기 해시 비교가 없다.
++
++## 알림과 계산 실패
++
++`HEADCOUNT_EXCEEDED`는 인원을 넘는 구간에 처음 진입할 때 총무에게 한 번 보낸다. 다시 인원 이내가 되면 다음 초과를 알릴 수 있다.
++`MEMBER_EXCLUDED`는 제외된 사람에게, `SETTLED_HOST`는 총무에게, `SETTLED`는 실제 송금자에게 수취인·금액 요약을 보낸다.
++자동 확정 타임라인은 "모두 응답해서 자동으로 계산했어요"다. 푸시는 후속이며 내부 알림만 저장한다.
++
++**설계 가정:** 인원 밖 사람 중 결제자가 있으면 기존 `REMOVE_PAYER` 금지와 충돌하므로 자동 확정을 보류한다.
++`autoSettlementError=REMOVE_PAYER`로 총무에게 보이고 인원을 늘리거나 결제자를 수정하거나 수동 정산한다.
++Core 검증 실패도 해당 오류 코드를 저장하고 OPEN을 유지한다. 응답 저장을 취소하지 않으며 명단·스냅샷을 변경하지 않는다.
++이 가정은 돈 받을 사람을 조용히 제거하지 않기 위한 것이며 PR에서 CTO 검토 대상으로 남긴다.
++
++새 물리 스키마는 `018-auto-settlement.yaml`, changeSet `028`이다. 기존 migration은 수정하지 않는다.
+diff --git a/docs/DEPLOY.md b/docs/DEPLOY.md
+index a6caf80..3fc6ff8 100644
+--- a/docs/DEPLOY.md
++++ b/docs/DEPLOY.md
+@@ -10 +10 @@ GitHub Actions (ARM 러너)                  OCI Ubuntu
+-  │ 도커 이미지 빌드          │              │   ├ app   (127.0.0.1:8080)│
++  │ 도커 이미지 빌드          │              │   ├ app   (127.0.0.1:18080)│
+@@ -184,3 +184,3 @@ cd ~/jeongsan
+-docker compose -f docker-compose.prod.yml ps
+-docker compose -f docker-compose.prod.yml logs -f app
+-curl -s localhost:8080/actuator/health
++APP_IMAGE=$(sed -n 's/^APP_IMAGE=//p' .release.env) docker compose -f docker-compose.prod.yml ps
++APP_IMAGE=$(sed -n 's/^APP_IMAGE=//p' .release.env) docker compose -f docker-compose.prod.yml logs -f app
++bash scripts/deploy/health.sh
+@@ -196,0 +197,15 @@ curl -s localhost:8080/actuator/health
++# 운영 준비 갱신 (2026-10-10)
++
++실제 OCI의 8080은 기존 n8n Kafka 앱이 사용한다. 정산어택 compose project는 `jeongsan`,
++앱은 `127.0.0.1:18080`에만 바인딩한다. Cloudflare의 `api.devkdk.com` 서비스 주소를
++`http://127.0.0.1:18080`으로 맞춘다. 현재 터널은 원격 관리 방식이므로 Cloudflare 설정에서 수정한다.
++기존 n8n/Kafka 포트·컨테이너·이미지·볼륨은 변경하지 않는다.
++
++이미지 태그는 `jeongsan-server:<main 40자리 SHA>`다. 성공한 태그만 서버 `.release.env`에 남기며,
++헬스체크는 해당 compose 앱의 이미지·컨테이너 healthy·18080 바인딩·HTTP UP을 모두 검사한다.
++첫 디렉터리는 파이프라인이 만들지만 **필수 운영 .env는 미리 준비해야 한다**. 키·설정이 없으면 출시가 끝난 것이 아니다.
++실행 중인 배포는 취소하지 않으며 서버 잠금도 사용한다. 실패하면 이전 앱 이미지로 복원하고 DB는 유지한다.
++새 migration은 이전 앱이 읽을 수 있는 추가 컬럼 방식으로 작성한다. 제거·타입 변경 migration은 별도 복구 계획이 필요하다.
++이전 성공 이미지가 없는 최초 배포의 실패는 자동 복원이 불가능하다. 실패 원인을 고친 뒤 같은 SHA로 다시 배포한다.
++수동 실행도 `bash scripts/deploy/deploy.sh <배포 디렉터리의 tar> jeongsan-server:<SHA>`를 쓴다.
++운영 로그는 CI에 자동으로 덤프하지 않으며 OCI에서 필요한 부분만 확인한다.
+diff --git a/docs/ERD.md b/docs/ERD.md
+index 1ea2a6e..d63ceca 100644
+--- a/docs/ERD.md
++++ b/docs/ERD.md
+@@ -335,0 +336,5 @@ NULL 좌석은 탈퇴 자료에만 사용한다. 가입 API는 항상 유효한
++# FC-020 추가 스키마 (2026-10-10)
++
++물리 정의는 `018-auto-settlement.yaml`, changeSet `028`이다. `settlement_units`에 nullable `headcount INT`,
++`headcount_exceeded_notified BOOLEAN NOT NULL DEFAULT FALSE`, nullable `auto_settlement_error VARCHAR(40)`를 추가한다.
++인원 범위는 서비스가 검증하며 기존 단위의 NULL은 자동 정산을 끈다. 기존 테이블·FK·송금 스냅샷은 유지한다.
+diff --git a/docs/RELEASE_READINESS.md b/docs/RELEASE_READINESS.md
+new file mode 100644
+index 0000000..81f824f
+--- /dev/null
++++ b/docs/RELEASE_READINESS.md
+@@ -0,0 +1,30 @@
++# 출시 준비 검증과 남은 조건 — 2026-10-10
++
++이번 브랜치는 PR #10·#16 구현 포함 #18·#20·#21의 기능을 모은 기반에 FC-016~018·020과 운영 배포 수정을 더한다.
++기존 PR의 리뷰·고정 학습 자료는 삭제하지 않는다. PR #26은 백엔드 전체 학습 이력 인덱스다.
++새 출시 PR의 head를 기준으로 검증하며 과거 CI 성공을 새 커밋 성공으로 대신하지 않는다.
++
++## 구현 및 로컬 검증
++
++- Core 54, Server 116: 실패·오류·테스트 건너뛰기 0. 서버 빌드와 인증 가드 포함.
++- 실제 MySQL 8.4 + Spring Boot 자동 정산/UTC/알림 20건: 마지막 응답 경합 1회 확정, 초과 명단·응답 제외, 다른 단위·공유 신원 보존, 인원 변경, Core 실패 보류, 수동 AUTO 예비, 삭제 차수 재판정.
++- 실제 HTTP 인증 17건: WEB/APP 경계, 로그아웃 재사용 거절, 티켓 4건 중 1건 성공, 탈퇴/추가 단위 생성 4회 경합.
++- 실제 DB 인증 probe 15건: state/티켓 만료·rollback, 한 번 교환, 계정 익명화, Apple 해제 실패 재시도. 외부 제공자는 가짜다.
++- 배포 분기 모의 6건: 다른 서비스 포트·다른 이미지 거절, 성공 SHA 기록, 새 앱 실패 시 이전 앱 이미지 복원, 잠금 실패 중단. 실제 OCI 배포 시험은 아니다.
++- actionlint 1.7.12: 두 workflow 오류 0. 배포·CI 셸 문법 검사 통과.
++- `028`은 테스트 DB에 적용됐으며 이전 migration checksum을 수정하지 않았다. JVM Asia/Seoul에서 응답 UTC와 실제 시각을 비교했다.
++
++## 운영 전 필수 확인
++
++1. 병합 권한: 과거 CTO 직접 병합 지침의 변경 여부를 확인한다. 승인된 출시 PR이 main에 들어가야 배포한다.
++2. 운영 `.env`: 카카오 Client ID·Secret, Apple Services ID·Team ID·Key ID·p8, 콜백, 독립 JWT/계좌/인증 암호화 키. 저장소·CI 로그에 값은 남기지 않는다.
++3. GitHub OCI_HOST/OCI_SSH_KEY가 CTO가 지정한 OCI와 준비된 키를 가리키는지 확인한다. 값이 있는 것과 맞는 것은 다르다.
++4. Cloudflare 원격 터널 `api.devkdk.com` → `http://127.0.0.1:18080`. 기존 8080의 n8n/Kafka는 유지한다.
++5. 실제 운영 DB·백업과 기존 v1 CONFIRMED 자료 확인. 새 배포 디렉터리가 없다는 사실만으로 다른 위치의 DB가 없다고 단정하지 않는다.
++6. 카카오 Redirect URI와 Apple Services ID Return URL은 `https://api.devkdk.com/api/v1/auth/{provider}/callback`.
++7. main SHA의 Deploy to OCI 성공·정산어택 컨테이너·외부 health 200/UP·비로그인 auth/me 401.
++8. 웹 Vercel API base URL 적용·재배포, 실제 카카오/Apple 계정·TestFlight 앱 티켓 교환·로그아웃·탈퇴까지 시험한다.
++
++App Store·Google Play 정식 출시·심사 통과는 이 백엔드 PR이나 자동 테스트 결과로 완료 처리하지 않는다.
++면제 API, 복수 총무 스푼 정책, FCM/APNs, WebSocket은 기존 보류·미결 범위를 유지한다.
++FC-020 인원 밖 결제자 보류 가정과 프론트 `autoSettlementError` 표시가 검토 사항이다.
+diff --git a/docs/REQUIREMENTS.md b/docs/REQUIREMENTS.md
+index 08919d4..c7eb42f 100644
+--- a/docs/REQUIREMENTS.md
++++ b/docs/REQUIREMENTS.md
+@@ -2,0 +3,4 @@
++> **2026-10-10 FC-020:** 기본 정산 주체는 서버다. 총무 포함 목표 인원을 입력하고 인원 안 전원이
++> 모든 차수에 응답하면 자동 확정한다. 수동 [지금 계산하기]는 응답 누락과 자동 계산 보류의 예비다.
++> 인원 밖 사람은 자동 확정에서만 해당 단위에서 제외한다. 세부 계약·결제자 예외는 [AUTO_SETTLEMENT](AUTO_SETTLEMENT.md).
++
+diff --git a/docs/SETTLEMENT_UNITS.md b/docs/SETTLEMENT_UNITS.md
+index f278fb2..9ec7839 100644
+--- a/docs/SETTLEMENT_UNITS.md
++++ b/docs/SETTLEMENT_UNITS.md
+@@ -2,0 +3,3 @@
++> **2026-10-10 갱신:** 단위 API 구현은 PR #18·#20에 있으며 운영 반영 여부와 구분한다.
++> 인원 기준 자동 확정과 새 headcount API는 [AUTO_SETTLEMENT.md](AUTO_SETTLEMENT.md)가 아래 수동 기본 흐름을 대체한다.
++
+diff --git a/docs/flow-changes/2026-10-09-auto-settle.md b/docs/flow-changes/2026-10-09-auto-settle.md
+index d7a5e0c..ba78ae4 100644
+--- a/docs/flow-changes/2026-10-09-auto-settle.md
++++ b/docs/flow-changes/2026-10-09-auto-settle.md
+@@ -5 +5,4 @@
+-- **상태:** 열림 (CTO 결정 2026-10-09)
++- **상태:** 열림 (API v8·018/028·Java/Kotlin 구현 및 실제 MySQL 20건 검증, 인원 밖 결제자 예외·운영 연결 검토 후속)
++
++서버 구현 계약은 [AUTO_SETTLEMENT.md](../AUTO_SETTLEMENT.md)다. 인원 밖 결제자는 REMOVE_PAYER로 자동 확정을 보류한다.
++해당 예외와 Core 실패 시 OPEN/응답 보존 규칙은 출시 PR의 확인 사항이다. 나머지 인원 선택·초과 알림·제외·자동 확정은 구현했다.
+diff --git a/docs/flow-changes/2026-10-09-b-integration.md b/docs/flow-changes/2026-10-09-b-integration.md
+index e825427..6e7187c 100644
+--- a/docs/flow-changes/2026-10-09-b-integration.md
++++ b/docs/flow-changes/2026-10-09-b-integration.md
+@@ -9 +9 @@ FC-015(같은 술자리의 새 총무)는 `docs/host-settlement-units` 브랜치
+-- **상태:** 열림
++- **상태:** 반영됨 — API v8, local/prod connectionTimeZone=UTC + 세션 UTC, JPA JDBC UTC. Asia/Seoul JVM·실제 MySQL HTTP 비교 통과. 운영 응답 확인은 후속.
+@@ -20 +20 @@ FC-015(같은 술자리의 새 총무)는 `docs/host-settlement-units` 브랜치
+-- **상태:** 열림
++- **상태:** 반영됨 — NotificationText Java/Kotlin·ROUND_SAVED, `184,000원` 실제 HTTP 확인. 기존 저장 문구는 유지.
+@@ -28 +28 @@ FC-015(같은 술자리의 새 총무)는 `docs/host-settlement-units` 브랜치
+-- **상태:** 열림
++- **상태:** 반영됨 — NotificationText Java/Kotlin, notify의 title/type 분리, 기존 종류와 새 자동 정산 종류 모두 적용.
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index ca1460e..aeda655 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -63,3 +63,3 @@
+-| FC-016 | 시간이 9시간 밀려 내려온다 — 로컬 프로필 JDBC 시간대 | 열림 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-016-시간이-9시간-밀려-내려온다--로컬-프로필) |
+-| FC-017 | 타임라인 금액에 천 단위 쉼표 | 열림 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-017-타임라인-금액에-천-단위-쉼표가-없다) |
+-| FC-018 | 알림 `title`에 종류 코드가 그대로 | 열림 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-018-알림-title에-종류-코드가-그대로-들어-있다) |
++| FC-016 | 시간이 9시간 밀려 내려온다 — 로컬 프로필 JDBC 시간대 | 반영됨 (API v8 · JDBC/JPA UTC · 실제 MySQL 20건, 운영 확인 후속) | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-016-시간이-9시간-밀려-내려온다--로컬-프로필) |
++| FC-017 | 타임라인 금액에 천 단위 쉼표 | 반영됨 (API v8 · NotificationText 양쪽 구현) | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-017-타임라인-금액에-천-단위-쉼표가-없다) |
++| FC-018 | 알림 `title`에 종류 코드가 그대로 | 반영됨 (API v8 · NotificationText 양쪽 구현) | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-018-알림-title에-종류-코드가-그대로-들어-있다) |
+@@ -67 +67 @@
+-| FC-020 | 총무 인원 입력 · 전원 응답 시 자동 정산 · 입금 요청 | 열림 (결정 2026-10-09) | [2026-10-09-auto-settle.md](2026-10-09-auto-settle.md) |
++| FC-020 | 총무 인원 입력 · 전원 응답 시 자동 정산 · 입금 요청 | 열림 (API v8·028·Java/Kotlin 구현, 인원 밖 결제자 예외 검토·운영 연결 후속) | [2026-10-09-auto-settle.md](2026-10-09-auto-settle.md) |
+diff --git a/scripts/deploy/common.sh b/scripts/deploy/common.sh
+index 69d170f..6fd3b96 100644
+--- a/scripts/deploy/common.sh
++++ b/scripts/deploy/common.sh
+@@ -28,0 +29,6 @@ COMPOSE_FILE="${DEPLOY_ROOT}/docker-compose.prod.yml"
++# 성공한 이미지 태그만 저장한 파일이다. 비밀 설정 .env는 셸로 실행하지 않는다.
++if [ -z "${APP_IMAGE:-}" ] && [ -f "${DEPLOY_ROOT}/.release.env" ]; then
++  APP_IMAGE="$(sed -n 's/^APP_IMAGE=//p' "${DEPLOY_ROOT}/.release.env")"
++  export APP_IMAGE
++fi
++
+@@ -31 +37 @@ compose() {
+-  docker compose -f "$COMPOSE_FILE" "$@"
++  docker compose --project-directory "$DEPLOY_ROOT" --env-file "${DEPLOY_ROOT}/.env" -p jeongsan -f "$COMPOSE_FILE" "$@"
+diff --git a/scripts/deploy/deploy.sh b/scripts/deploy/deploy.sh
+index a796c3c..5a3c959 100644
+--- a/scripts/deploy/deploy.sh
++++ b/scripts/deploy/deploy.sh
+@@ -2,11 +2 @@
+-# 서버에서 실행하는 배포 스크립트.
+-#
+-#   CI 에서:  ssh ... "cd ~/jeongsan && bash scripts/deploy/deploy.sh"
+-#   손으로:   ssh ubuntu@서버 && cd ~/jeongsan && bash scripts/deploy/deploy.sh
+-#
+-# **둘의 동작이 같아야 한다.** 배포가 깨졌을 때 CI 로그만 보고 추측하는 대신
+-# 서버에서 같은 명령을 그대로 돌려볼 수 있어야 원인이 빨리 잡힌다.
+-#
+-# 인자로 이미지 tar 경로를 받는다. 없으면 이미 로드된 이미지로 재시작만 한다
+-# (설정만 바꾸고 다시 띄우는 경우).
+-
++# 배포는 성공한 SHA를 기록하며 실패하면 이전 앱 이미지를 복원한다. DB는 되돌리지 않는다.
+@@ -14,3 +3,0 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+-
+-IMAGE_TAR="${1:-}"
+-
+@@ -18,4 +5 @@ cd "$DEPLOY_ROOT"
+-
+-# .env 가 없으면 여기서 멈춘다. 빈 값으로 뜨면 카카오 로그인이 조용히 깨져
+-# "왜 안 되지"를 한참 헤매게 된다 — 차라리 배포를 실패시킨다.
+-require_file "${DEPLOY_ROOT}/.env" "docs/DEPLOY.md 의 '서버에 .env 만들기' 참조."
++require_file "${DEPLOY_ROOT}/.env" "필수 운영 인증 설정을 먼저 준비한다."
+@@ -23,6 +7,24 @@ require_file "$COMPOSE_FILE"
+-
+-if [ -n "$IMAGE_TAR" ]; then
+-  require_file "$IMAGE_TAR"
+-  log "이미지 로드: $IMAGE_TAR"
+-  docker load < "$IMAGE_TAR"
+-  rm -f "$IMAGE_TAR"
++exec 9> "${DEPLOY_ROOT}/.deploy.lock"
++flock -n 9 || die "다른 정산어택 배포가 진행 중이다."
++
++previous_image="${APP_IMAGE:-}"
++image_tar="${1:-}"
++target_image="${2:-${APP_IMAGE:-}}"
++[[ "$target_image" =~ ^jeongsan-server:[a-f0-9]{40}$ ]] || die "main 커밋 SHA 이미지 태그가 필요하다."
++export APP_IMAGE="$target_image"
++compose config --quiet
++
++if [ -n "$image_tar" ]; then
++  require_file "$image_tar"
++  resolved_tar="$(realpath "$image_tar")"
++  [[ "$resolved_tar" == "$DEPLOY_ROOT/"* ]] || die "이미지 tar는 정산어택 배포 디렉터리에 있어야 한다."
++  docker load < "$resolved_tar"
++fi
++docker image inspect "$APP_IMAGE" >/dev/null
++
++# 기존 서비스의 컨테이너·이미지·볼륨을 정리하지 않는다. 실패 복원용 이전 이미지도 보존한다.
++if compose up -d && bash "${DEPLOY_ROOT}/scripts/deploy/health.sh"; then
++  printf 'APP_IMAGE=%s\n' "$APP_IMAGE" > "${DEPLOY_ROOT}/.release.env.tmp"
++  mv "${DEPLOY_ROOT}/.release.env.tmp" "${DEPLOY_ROOT}/.release.env"
++  [ -z "$image_tar" ] || rm -f -- "$resolved_tar"
++  ok "운영 이미지 확인 완료: $APP_IMAGE"
+@@ -30 +32,6 @@ else
+-  warn "이미지 tar 인자가 없다 — 이미 로드된 이미지로 재시작만 한다"
++  if [[ "$previous_image" =~ ^jeongsan-server:[a-f0-9]{40}$ ]] && [ "$previous_image" != "$target_image" ]; then
++    export APP_IMAGE="$previous_image"
++    warn "이전 앱 이미지 복원: $previous_image (DB는 유지)"
++    compose up -d app && bash "${DEPLOY_ROOT}/scripts/deploy/health.sh" || die "이전 앱 복원도 실패했다. 수동 확인이 필요하다."
++  fi
++  die "새 이미지 배포 실패. 성공 이력은 갱신하지 않았다."
+@@ -32,12 +38,0 @@ fi
+-
+-log "컨테이너 기동"
+-# --remove-orphans: compose 에서 서비스를 뺐을 때 남은 컨테이너를 정리한다.
+-compose up -d --remove-orphans
+-
+-log "태그 없는 이전 이미지 정리"
+-# 배포할 때마다 :latest 가 옮겨가면서 이전 이미지가 dangling 으로 남는다.
+-# 안 지우면 디스크가 금방 찬다(이미지 하나가 ~600MB).
+-docker image prune -f
+-
+-ok "배포 완료"
+-compose ps
+diff --git a/scripts/deploy/health.sh b/scripts/deploy/health.sh
+index 8da2fd8..2c3d08b 100644
+--- a/scripts/deploy/health.sh
++++ b/scripts/deploy/health.sh
+@@ -2,9 +2 @@
+-# 앱이 실제로 응답할 때까지 기다린다. 실패하면 로그를 남기고 0 이 아닌 값으로 끝난다.
+-#
+-#   bash scripts/deploy/health.sh          기본 30회 × 5초 = 최대 150초
+-#   TRIES=60 bash scripts/deploy/health.sh
+-#
+-# "컨테이너가 떴다"와 "서비스가 응답한다"는 다르다. compose up 이 성공해도
+-# Liquibase 마이그레이션 중이거나 DB 연결에 실패해 죽는 중일 수 있다 —
+-# 그래서 헬스 엔드포인트가 UP 을 줄 때까지 확인한다.
+-
++# 다른 앱의 8080 응답을 정산어택 성공으로 판정하지 않는다.
+@@ -12 +3,0 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+-
+@@ -15 +6 @@ INTERVAL="${INTERVAL:-5}"
+-URL="${HEALTH_URL:-http://127.0.0.1:8080/actuator/health}"
++URL="http://127.0.0.1:18080/actuator/health"
+@@ -17,6 +8,11 @@ URL="${HEALTH_URL:-http://127.0.0.1:8080/actuator/health}"
+-log "헬스체크: $URL (최대 $((TRIES * INTERVAL))초)"
+-
+-for i in $(seq 1 "$TRIES"); do
+-  if curl -fsS --max-time 3 "$URL" 2>/dev/null | grep -q '"status":"UP"'; then
+-    ok "헬스체크 통과 (${i}회차, $((i * INTERVAL))초)"
+-    exit 0
++for attempt in $(seq 1 "$TRIES"); do
++  container_id="$(compose ps -q app)"
++  if [ -n "$container_id" ]; then
++    image="$(docker inspect --format '{{.Config.Image}}' "$container_id")"
++    health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container_id")"
++    binding="$(compose port app 8080 2>/dev/null || true)"
++    if [ "$image" = "${APP_IMAGE:-}" ] && [ "$health" = healthy ] && [ "$binding" = '127.0.0.1:18080' ] &&
++      curl -fsS --max-time 3 "$URL" 2>/dev/null | grep -q '"status":"UP"'; then
++      ok "정산어택 이미지·컨테이너·18080 HTTP 확인 ($attempt 회차)"
++      exit 0
++    fi
+@@ -26,3 +21,0 @@ done
+-
+-echo ""
+-warn "헬스체크 실패 — 컨테이너 상태:"
+@@ -30,4 +23,2 @@ compose ps || true
+-echo ""
+-warn "app 최근 로그 60줄:"
+-compose logs --tail 60 app || true
+-die "앱이 ${TRIES}회 시도 동안 UP 을 반환하지 않았다"
++# 제공자·사용자 값이 포함될 수 있는 운영 로그는 CI에 자동 출력하지 않는다.
++die "정산어택이 $TRIES 회 시도 동안 정상 응답하지 않았다. 서버에서 앱 로그를 확인한다."
+diff --git a/scripts/verify-auto-settlement.py b/scripts/verify-auto-settlement.py
+new file mode 100644
+index 0000000..d478a8e
+--- /dev/null
++++ b/scripts/verify-auto-settlement.py
+@@ -0,0 +1,133 @@
++"""실제 DB 대상은 전용 로컬 auth DB/18081뿐이다. 운영이나 프론트 개발 DB를 받지 않는다."""
++import base64, hashlib, hmac, json, subprocess, time, uuid, sys
++from datetime import datetime, timezone
++from urllib.request import Request, urlopen
++from urllib.error import HTTPError
++from concurrent.futures import ThreadPoolExecutor
++
++sys.stdout.reconfigure(encoding="utf-8")
++BASE="http://127.0.0.1:18081/api/v1"
++DATABASE="jeongsan_auth_test"
++checks=0
++
++def sql(query):
++    reply=subprocess.run(["docker","exec","jeongsan-v4-verification","mysql","--default-character-set=utf8mb4",
++        "-uroot","-plocal-v4-test","-N","-s",DATABASE,"-e",query],capture_output=True,text=True,encoding="utf-8")
++    assert reply.returncode==0,reply.stderr
++    return reply.stdout.strip()
++
++assert sql("SELECT DATABASE()")==DATABASE
++
++def check(value,label):
++    global checks
++    assert value,label
++    checks+=1
++    print(f"PASS {checks}: {label}",flush=True)
++
++def call(verb,path,user=None,body=None,status=200):
++    headers={"Content-Type":"application/json"}
++    if user:
++        def enc(value): return base64.urlsafe_b64encode(value).rstrip(b"=").decode()
++        signed=enc(b'{"alg":"HS256"}')+"."+enc(json.dumps({"sub":str(user),"client":"WEB","jti":str(uuid.uuid4()),"exp":int(time.time())+3600}).encode())
++        headers["Cookie"]="jeongsan_token="+signed+"."+enc(hmac.new(b"local-only-dev-secret-please-change-32b",signed.encode(),hashlib.sha256).digest())
++    request=Request(BASE+path,method=verb,headers=headers,data=json.dumps(body).encode() if body is not None else None)
++    try:
++        with urlopen(request,timeout=20) as response: actual=response.status;raw=response.read()
++    except HTTPError as error: actual=error.code;raw=error.read()
++    data=json.loads(raw) if raw else None
++    if status is not None: assert actual==status,(verb,path,actual,status,data)
++    return actual,data
++
++users=[]
++for name in ("자동총무","자동둘째","자동셋째","자동넷째"):
++    key=str(uuid.uuid4())
++    sql(f"INSERT INTO users(provider,provider_id,nickname,display_name,tier,created_at) VALUES('AUTO_TEST','{key}','검증','{name}','FREE',UTC_TIMESTAMP())")
++    users.append(int(sql(f"SELECT id FROM users WHERE provider_id='{key}'")))
++host,second,third,fourth=users
++
++def create(headcount):
++    _,room=call("POST","/gatherings",host,{"headcount":headcount},201)
++    unit=room["settlementUnits"][0]
++    assert unit["headcount"]==headcount
++    return room,unit,f"/gatherings/{room['id']}/settlement-units/{unit['id']}"
++
++def add_round(root,payer,total=10000):
++    return call("POST",root+"/rounds",host,{"total":total,"payerParticipantId":payer},201)[1]["id"]
++
++def join(room,unit,user,answers=None):
++    return call("POST","/join/"+room["shareToken"],user,{"settlementUnitId":unit["id"],"responses":answers or []})[1]["participantId"]
++
++def respond(root,user,round_id,kind="SOBER",status=204):
++    return call("PUT",root+"/responses/me",user,{"answers":[{"roundId":round_id,"type":kind}]},status)
++
++room,unit,root=create(3)
++host_id=room["me"]["participantId"]
++round_id=add_round(root,host_id,184000)
++answer=[{"roundId":round_id,"type":"SOBER"}]
++second_id=join(room,unit,second,answer)
++third_id=join(room,unit,third,answer)
++fourth_id=join(room,unit,fourth,answer)
++respond(root,fourth,round_id,"DRANK")
++_,notifications=call("GET","/me/notifications",host)
++check(sum(item["type"]=="HEADCOUNT_EXCEEDED" and item["settlementUnitId"]==unit["id"] for item in notifications)==1,"인원 초과 알림은 같은 초과 구간에서 1건")
++other=call("POST",f"/gatherings/{room['id']}/settlement-units",fourth,{"requestId":str(uuid.uuid4()),"participantIds":[fourth_id,host_id]},201)[1]
++with ThreadPoolExecutor(2) as pool:
++    results=list(pool.map(lambda _:respond(root,host,round_id,status=None),range(2)))
++check(sorted(result[0] for result in results)==[204,409],"마지막 응답 동시 2건은 한 번 확정 후 다른 요청을 거절")
++_,detail=call("GET",f"/gatherings/{room['id']}",host)
++active=next(item for item in detail["settlementUnits"] if item["id"]==unit["id"])
++check(active["status"]=="SETTLING" and active["participantIds"]==[host_id,second_id,third_id],"가입 순서 인원 안 3명만 확정")
++check(sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={unit['id']}")=="1","스냅샷 UNIQUE와 단위 잠금으로 정확히 1건")
++check(sql(f"SELECT COUNT(*) FROM round_responses WHERE round_id={round_id} AND participant_id={fourth_id}")=="0","인원 밖 응답은 자동 확정 때 삭제")
++check(any(item["id"]==fourth_id for item in detail["participants"]) and set(next(item for item in detail["settlementUnits"] if item["id"]==other["id"])["participantIds"])=={fourth_id,host_id},"공유 신원과 다른 단위 명단은 보존")
++check(len([item for item in detail["transfers"] if item["settlementUnitId"]==unit["id"]])==2,"인원 밖 사람의 송금은 생성하지 않음")
++check(any("184,000원" in item["body"] for item in detail["timeline"]),"새 타임라인 금액은 천 단위 쉼표")
++created=datetime.fromisoformat(detail["timeline"][0]["createdAt"].replace("Z","+00:00"))
++check(abs((datetime.now(timezone.utc)-created).total_seconds())<120,"Asia/Seoul JVM에서도 DATETIME 저장·조회·JSON은 실제 UTC")
++_,notifications=call("GET","/me/notifications",host)
++check(any(item["type"]=="SETTLED_HOST" and item["title"]=="계산이 끝났어요" for item in notifications),"마지막 응답자인 총무도 서버 계산 완료 알림 수신")
++_,notifications=call("GET","/me/notifications",fourth)
++check(any(item["type"]=="MEMBER_EXCLUDED" for item in notifications),"제외된 사람에게 내부 알림 기록")
++call("DELETE",root+"/settlement",host,status=204)
++check(sql(f"SELECT status FROM settlement_units WHERE id={unit['id']}")=="OPEN" and sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={unit['id']}")=="0","되돌리기 직후 자동 재정산하지 않음")
++respond(root,host,round_id)
++check(sql(f"SELECT status FROM settlement_units WHERE id={unit['id']}")=="OPEN","같은 응답 재전송은 되돌린 단위를 다시 정산하지 않음")
++respond(root,host,round_id,"DRANK")
++check(sql(f"SELECT status FROM settlement_units WHERE id={unit['id']}")=="SETTLING","되돌린 뒤 실제 응답 변경은 다시 자동 확정")
++
++room,unit,root=create(3)
++host_id=room["me"]["participantId"]
++round_id=add_round(root,host_id,1)
++join(room,unit,second,[{"roundId":round_id,"type":"SOBER"}]);join(room,unit,third,[{"roundId":round_id,"type":"SOBER"}])
++respond(root,host,round_id)
++_,detail=call("GET",f"/gatherings/{room['id']}",host)
++check(detail["settlementUnits"][0]["autoSettlementError"]=="NEGATIVE_ADJUSTED_AMOUNT" and sql(f"SELECT COUNT(*) FROM round_responses WHERE round_id={round_id}")=="3","Core 실패는 응답을 보존하고 자동 확정을 보류")
++call("PUT",root+f"/rounds/{round_id}",host,{"total":3,"payerParticipantId":host_id})
++check(sql(f"SELECT status,auto_settlement_error IS NULL FROM settlement_units WHERE id={unit['id']}")=="SETTLING\t1","차수 수정 후 같은 경로로 재평가하고 오류를 지움")
++
++room,unit,root=create(2)
++host_id=room["me"]["participantId"]
++second_id=join(room,unit,second);third_id=join(room,unit,third)
++round_id=add_round(root,third_id)
++respond(root,host,round_id);respond(root,second,round_id)
++check(sql(f"SELECT status,auto_settlement_error FROM settlement_units WHERE id={unit['id']}")=="OPEN\tREMOVE_PAYER","인원 밖 결제자는 자동으로 제거하지 않고 오류 공개")
++call("PUT",root+"/headcount",second,{"headcount":3},403)
++call("PUT",root+"/headcount",host,{"headcount":3},204)
++respond(root,third,round_id)
++check(sql(f"SELECT status FROM settlement_units WHERE id={unit['id']}")=="SETTLING","총무가 인원을 늘려 결제자를 포함하면 자동 확정")
++
++room,unit,root=create(4)
++host_id=room["me"]["participantId"]
++round_id=add_round(root,host_id)
++join(room,unit,second);join(room,unit,third)
++_,preview=call("GET",root+"/settlement/preview",host)
++_,detail=call("POST",root+"/settlement",host,{"inputRevision":preview["inputRevision"],"inputHash":preview["inputHash"]})
++check(len(detail["settlementUnits"][0]["participantIds"])==3 and sql(f"SELECT COUNT(*) FROM round_responses WHERE round_id={round_id} AND source='AUTO'")=="3","수동 예비 정산은 현재 명단 전원과 미응답 AUTO 유지")
++
++room,unit,root=create(2)
++host_id=room["me"]["participantId"]
++round_id=add_round(root,host_id);empty_round=add_round(root,host_id)
++join(room,unit,second,[{"roundId":round_id,"type":"SOBER"}]);respond(root,host,round_id)
++call("DELETE",root+f"/rounds/{empty_round}",host,status=204)
++check(sql(f"SELECT status FROM settlement_units WHERE id={unit['id']}")=="SETTLING","빈 응답 차수 삭제 뒤 자동 판정")
++print(f"AUTO/UTC/NOTIFICATION: {checks} checks passed")
+diff --git a/scripts/verify-deploy.py b/scripts/verify-deploy.py
+new file mode 100644
+index 0000000..8a0b1de
+--- /dev/null
++++ b/scripts/verify-deploy.py
+@@ -0,0 +1,77 @@
++"""운영 Docker/SSH를 호출하지 않고 배포 스크립트의 실패 분기와 이미지 복원을 시험한다."""
++import os, pathlib, shutil, subprocess, tempfile, sys
++
++sys.stdout.reconfigure(encoding="utf-8")
++repo=pathlib.Path(__file__).resolve().parents[1]
++bash=pathlib.Path("C:/Program Files/Git/bin/bash.exe") if os.name=="nt" else pathlib.Path("/bin/bash")
++target="jeongsan-server:"+"a"*40
++previous="jeongsan-server:"+"b"*40
++
++def shellpath(path):
++    text=path.as_posix()
++    return "/"+text[0].lower()+text[2:] if os.name=="nt" else text
++
++temporary_parent=(repo/"server"/"build").resolve()
++temporary_parent.mkdir(parents=True,exist_ok=True)
++with tempfile.TemporaryDirectory(prefix="jeongsan-deploy-test-",dir=temporary_parent) as folder:
++    root=pathlib.Path(folder)
++    assert root.resolve().parent==temporary_parent and root.name.startswith("jeongsan-deploy-test-")
++    destination=root/"scripts"/"deploy"
++    destination.mkdir(parents=True)
++    for file in (repo/"scripts"/"deploy").glob("*.sh"):
++        (destination/file.name).write_bytes(file.read_bytes())
++    (root/".env").write_text("DB_PASSWORD=test-only\n")
++    (root/"docker-compose.prod.yml").write_text("services: {}\n")
++    fake=root/"bin"
++    fake.mkdir()
++    mock='''#!/usr/bin/env bash
++set -eu
++case "$(basename "$0")" in
++  flock) [ "$SCENARIO" != busy ]; exit ;;
++  curl) printf '{"status":"UP"}'; exit ;;
++esac
++if [ "$1" = inspect ]; then
++  if [[ "$*" == *Config.Image* ]]; then cat "$MOCK_STATE";
++  elif [ "$SCENARIO" = rollback ] && [ "$(cat "$MOCK_STATE")" = "$TARGET" ]; then echo unhealthy;
++  else echo healthy; fi
++elif [ "$1" = compose ]; then
++  if [[ "$*" == *' ps -q app'* ]]; then echo mock-container;
++  elif [[ "$*" == *' port app 8080'* ]]; then
++    if [ "$SCENARIO" = wrongport ]; then echo 127.0.0.1:8080; else echo 127.0.0.1:18080; fi
++  elif [[ "$*" == *' up -d'* ]]; then printf '%s' "$APP_IMAGE" > "$MOCK_STATE"; fi
++fi
++'''
++    for name in ("docker","curl","flock"):
++        file=fake/name
++        file.write_text(mock,newline="\n")
++        file.chmod(0o755)
++    state=root/"current-image"
++    environment=os.environ.copy()
++    environment.update(PATH=shellpath(fake)+":"+environment.get("PATH",""),MOCK_STATE=shellpath(state),TARGET=target,TRIES="1",INTERVAL="0")
++    # Git Bash는 Windows PATH를 자동 변환하므로 fake 경로는 별도 셸 인자로 앞에 붙인다.
++    environment["FAKE_BIN"]=shellpath(fake)
++    def run(script,scenario,args=(),expected=0,image=None):
++        state.write_text(image or target)
++        env=environment.copy()
++        env["SCENARIO"]=scenario
++        if script=="health.sh": env["APP_IMAGE"]=target
++        else: env.pop("APP_IMAGE",None)
++        command='export PATH="$FAKE_BIN:$PATH"; bash "$1" "${@:2}"'
++        reply=subprocess.run([str(bash),"-c",command,"test",shellpath(destination/script),*args],env=env,capture_output=True,text=True,encoding="utf-8")
++        assert (reply.returncode==0)==(expected==0),(scenario,reply.returncode,reply.stdout,reply.stderr)
++    run("health.sh","healthy")
++    print("PASS: 동일 이미지·healthy·18080 HTTP는 성공")
++    run("health.sh","wrongport",expected=1)
++    print("PASS: 다른 앱의 8080 HTTP UP은 실패")
++    run("health.sh","healthy",expected=1,image=previous)
++    print("PASS: 컨테이너 이미지가 다르면 실패")
++    run("deploy.sh","healthy",args=("",target))
++    assert (root/".release.env").read_text().strip()=="APP_IMAGE="+target
++    print("PASS: 검증된 SHA만 성공 이력 저장")
++    (root/".release.env").write_text("APP_IMAGE="+previous+"\n")
++    run("deploy.sh","rollback",args=("",target),expected=1,image=previous)
++    assert state.read_text()==previous and (root/".release.env").read_text().strip()=="APP_IMAGE="+previous
++    print("PASS: 새 앱 실패 시 이전 이미지 복원·성공 이력 보존")
++    run("deploy.sh","busy",args=("",target),expected=1)
++    print("PASS: 서버 배포 잠금 획득 실패 시 실행 중단 (flock 자체 동시성은 운영 도구의 책임)")
++print("DEPLOY: 6 checks passed")
+diff --git a/scripts/verify-release.sh b/scripts/verify-release.sh
+new file mode 100644
+index 0000000..2b22af3
+--- /dev/null
++++ b/scripts/verify-release.sh
+@@ -0,0 +1,41 @@
++#!/usr/bin/env bash
++# CI가 생성한 전용 MySQL과 로컬 HTTP 서버만 사용한다. 운영·개발 중 컨테이너를 교체하지 않는다.
++set -euo pipefail
++[ "${GITHUB_ACTIONS:-}" = true ] || { echo 'GitHub Actions 전용 실행이다.' >&2; exit 1; }
++container=jeongsan-v4-verification
++if docker inspect "$container" >/dev/null 2>&1; then
++  echo '동일 이름의 기존 DB가 있어 실행하지 않는다.' >&2
++  exit 1
++fi
++server_pid=''
++cleanup() {
++  [ -z "$server_pid" ] || kill "$server_pid" 2>/dev/null || true
++  if [ "$(docker inspect --format '{{index .Config.Labels "jeongsan.ci"}}' "$container" 2>/dev/null)" = "$GITHUB_RUN_ID" ]; then
++    docker rm -f "$container" >/dev/null
++  fi
++}
++trap cleanup EXIT
++docker run -d --name "$container" --label "jeongsan.ci=$GITHUB_RUN_ID" -p 127.0.0.1:13306:3306 \
++  -e MYSQL_ROOT_PASSWORD=local-v4-test -e MYSQL_DATABASE=jeongsan_auth_test mysql:8.4 >/dev/null
++ready=false
++for attempt in $(seq 1 40); do
++  if docker exec "$container" mysql -uroot -plocal-v4-test -e 'SELECT 1' jeongsan_auth_test >/dev/null 2>&1; then ready=true; break; fi
++  sleep 2
++done
++[ "$ready" = true ] || { echo 'CI MySQL 준비 실패' >&2; exit 1; }
++mkdir -p server/build
++java -Duser.timezone=Asia/Seoul -jar server/build/libs/server.jar --server.port=18081 \
++  '--spring.datasource.url=jdbc:mysql://127.0.0.1:13306/jeongsan_auth_test?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true' \
++  --spring.datasource.password=local-v4-test > server/build/release-http.log 2>&1 &
++server_pid=$!
++ready=false
++for attempt in $(seq 1 40); do
++  if curl -fsS http://127.0.0.1:18081/actuator/health | grep -q '"status":"UP"'; then ready=true; break; fi
++  kill -0 "$server_pid" 2>/dev/null || break
++  sleep 2
++done
++[ "$ready" = true ] || { echo 'CI HTTP 서버 준비 실패' >&2; exit 1; }
++python3 scripts/verify-auto-settlement.py
++python3 scripts/verify-auth-release.py
++./gradlew :server:authDatabaseProbe --no-daemon
++python3 scripts/verify-deploy.py
+diff --git a/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java b/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java
+new file mode 100644
+index 0000000..661ad8e
+--- /dev/null
++++ b/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AutoSettlementPolicy.java
+@@ -0,0 +1,44 @@
++package app.jeongsan.server.gathering.javaimpl;
++
++import java.time.Instant;
++import java.util.Comparator;
++import java.util.List;
++import java.util.Set;
++import java.util.stream.Collectors;
++
++/** Kotlin을 호출하지 않는 인원 선택·응답 완료·결제자 보존 학습 구현. */
++public final class AutoSettlementPolicy {
++    private AutoSettlementPolicy() {}
++
++    public record Seat(long participantId, Instant joinedAt) {}
++    public record Round(long id, long unitId, long payerId) {}
++    public record Answer(long participantId, long roundId, String source) {}
++    private record Key(long participantId, long roundId) {}
++    public record Plan(List<Long> includedIds, List<Long> excludedIds, String error) {}
++
++    public static void validateHeadcount(Integer headcount) {
++        if (headcount != null && (headcount < 2 || headcount > 50))
++            throw new IllegalArgumentException("MALFORMED_REQUEST");
++    }
++
++    public static Plan plan(long unitId, long hostId, String state, Integer headcount,
++                            List<Long> activeIds, List<Seat> seats, List<Round> rounds, List<Answer> answers) {
++        validateHeadcount(headcount);
++        if (!"OPEN".equals(state) || headcount == null) return null;
++        List<Long> ordered = seats.stream().filter(seat -> activeIds.contains(seat.participantId()))
++                .sorted(Comparator.comparing((Seat seat) -> seat.participantId() != hostId)
++                        .thenComparing(Seat::joinedAt).thenComparingLong(Seat::participantId))
++                .map(Seat::participantId).toList();
++        List<Round> selectedRounds = rounds.stream().filter(round -> round.unitId() == unitId).toList();
++        if (ordered.size() < headcount || selectedRounds.isEmpty() || !ordered.contains(hostId)) return null;
++        List<Long> included = List.copyOf(ordered.subList(0, headcount));
++        Set<Key> answered = answers.stream().filter(answer -> "SELF".equals(answer.source()) || "HOST".equals(answer.source()))
++                .map(answer -> new Key(answer.participantId(), answer.roundId())).collect(Collectors.toSet());
++        for (long participantId : included)
++            for (Round round : selectedRounds)
++                if (!answered.contains(new Key(participantId, round.id()))) return null;
++        List<Long> excluded = List.copyOf(ordered.subList(headcount, ordered.size()));
++        String error = selectedRounds.stream().anyMatch(round -> excluded.contains(round.payerId())) ? "REMOVE_PAYER" : null;
++        return new Plan(included, excluded, error);
++    }
++}
+diff --git a/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationText.java b/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationText.java
+new file mode 100644
+index 0000000..6822d4f
+--- /dev/null
++++ b/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationText.java
+@@ -0,0 +1,26 @@
++package app.jeongsan.server.gathering.javaimpl;
++
++import java.util.Locale;
++
++public final class NotificationText {
++    private NotificationText() {}
++    public static String money(long amount) { return String.format(Locale.US, "%,d", amount); }
++    public static String title(String type) {
++        return switch (type) {
++            case "JOINED", "RESPONDED" -> "참여 응답이 도착했어요";
++            case "SETTLED" -> "정산이 나왔어요! 입금액을 확인해주세요";
++            case "SETTLED_HOST" -> "계산이 끝났어요";
++            case "AUTO_RESPONDED" -> "자동응답으로 계산된 사람이 있어요";
++            case "SENT" -> "입금을 확인해주세요";
++            case "CONFIRMED" -> "입금이 확인됐어요";
++            case "NOT_RECEIVED" -> "아직 입금이 확인되지 않았어요";
++            case "COMPLETED" -> "정산 완료! 🎉";
++            case "SETTLEMENT_REVERTED" -> "정산이 되돌려졌어요";
++            case "PAYOUT_REGISTERED" -> "계좌가 등록됐어요";
++            case "PAYOUT_MISSING" -> "받을 계좌를 등록해주세요";
++            case "HEADCOUNT_EXCEEDED" -> "참여 인원을 확인해주세요";
++            case "MEMBER_EXCLUDED", "REMOVED" -> "이번 정산에서 빠졌어요";
++            default -> "술자리 소식이 있어요";
++        };
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/AutoSettlementPolicy.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/AutoSettlementPolicy.kt
+new file mode 100644
+index 0000000..e407429
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/AutoSettlementPolicy.kt
+@@ -0,0 +1,32 @@
++package app.jeongsan.server.gathering
++
++import java.time.Instant
++
++data class MemberSeat(val participantId: Long, val joinedAt: Instant)
++data class AutoSettlementPlan(val includedIds: List<Long>, val excludedIds: List<Long>, val error: String? = null)
++
++/** 인원 밖 결제자를 삭제하기 전에 보류한다. DB 잠금·스냅샷 저장은 서비스의 책임이다. */
++object AutoSettlementPolicy {
++    fun validateHeadcount(headcount: Int?) {
++        if (headcount != null && headcount !in 2..50)
++            SettlementWorkflow.fail("MALFORMED_REQUEST", status = org.springframework.http.HttpStatus.BAD_REQUEST)
++    }
++
++    fun plan(unit: UnitInput, headcount: Int?, seats: List<MemberSeat>, rounds: List<RoundInput>, responses: List<ResponseInput>): AutoSettlementPlan? {
++        validateHeadcount(headcount)
++        if (unit.state != "OPEN" || headcount == null) return null
++        val ordered = seats.filter { it.participantId in unit.participantIds }
++            .sortedWith(compareBy<MemberSeat> { it.participantId != unit.hostId }.thenBy { it.joinedAt }.thenBy { it.participantId })
++            .map { it.participantId }
++        val selectedRounds = rounds.filter { it.unitId == unit.id }
++        if (ordered.size < headcount || selectedRounds.isEmpty() || unit.hostId !in ordered) return null
++        val included = ordered.take(headcount)
++        val answered = responses.filter { it.source == "SELF" || it.source == "HOST" }
++            .map { it.participantId to it.roundId }.toSet()
++        if (included.any { participantId -> selectedRounds.any { participantId to it.id !in answered } }) return null
++        val excluded = ordered.drop(headcount)
++        val error = if (selectedRounds.any { it.payerId in excluded }) "REMOVE_PAYER" else null
++        return AutoSettlementPlan(included, excluded, error)
++    }
++}
++
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt
+index 0d05f4a..eec37ed 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt
+@@ -16 +16,2 @@ class GatheringController(private val service: GatheringService) {
+-    fun create(@LoginUser userId: Long) = service.create(userId)
++    fun create(@LoginUser userId: Long, @Valid @RequestBody(required=false) request: GatheringCreateRequest? = null) =
++        service.create(userId, request?.headcount)
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt
+index b8866c8..2587b5d 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt
+@@ -7 +7,4 @@ import java.time.LocalDate
+-data class UnitCreateRequest(val requestId: java.util.UUID, @field:Size(min=1,max=1000) val participantIds: List<Long>)
++data class GatheringCreateRequest(@field:Min(2) @field:Max(50) val headcount: Int? = null)
++data class HeadcountRequest(@field:Min(2) @field:Max(50) val headcount: Int)
++data class UnitCreateRequest(val requestId: java.util.UUID, @field:Size(min=1,max=1000) val participantIds: List<Long>,
++    @field:Min(2) @field:Max(50) val headcount: Int? = null)
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
+index 8a67ba9..606aa17 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
+@@ -34 +34 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        val ids=db.rows("SELECT participant_id FROM settlement_unit_members WHERE settlement_unit_id=:id AND status='ACTIVE' ORDER BY participant_id","id" to id).map{it.long("participant_id")}
++        val ids=db.rows("SELECT participant_id FROM settlement_unit_members WHERE settlement_unit_id=:id AND status='ACTIVE' ORDER BY participant_id<>:host,joined_at,participant_id","id" to id,"host" to row.long("host_participant_id")).map{it.long("participant_id")}
+@@ -56 +56 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        userIds.distinct().filter{it > 0 && it != actor}.forEach { db.insert("INSERT INTO notifications(user_id,gathering_id,settlement_unit_id,type,title,body,created_at) VALUES(:u,:g,:s,:t,:t,:b,:n)","u" to it,"g" to gid,"s" to unitId,"t" to type,"b" to body,"n" to Instant.now()) }
++        userIds.distinct().filter{it > 0 && it != actor}.forEach { db.insert("INSERT INTO notifications(user_id,gathering_id,settlement_unit_id,type,title,body,created_at) VALUES(:u,:g,:s,:t,:title,:b,:n)","u" to it,"g" to gid,"s" to unitId,"t" to type,"title" to NotificationText.title(type),"b" to body,"n" to Instant.now()) }
+@@ -65 +65,2 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-    fun create(uid: Long): Map<String,Any?> {
++    fun create(uid: Long, headcount: Int? = null): Map<String,Any?> {
++        AutoSettlementPolicy.validateHeadcount(headcount)
+@@ -70 +71 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        val sid=db.insert("INSERT INTO settlement_units(gathering_id,host_participant_id,created_at) VALUES(:g,:p,:n)","g" to gid,"p" to pid,"n" to now)
++        val sid=db.insert("INSERT INTO settlement_units(gathering_id,host_participant_id,headcount,created_at) VALUES(:g,:p,:hc,:n)","g" to gid,"p" to pid,"hc" to headcount,"n" to now)
+@@ -82,0 +84 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        AutoSettlementPolicy.validateHeadcount(request.headcount)
+@@ -85 +87,3 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        val hash=MessageDigest.getInstance("SHA-256").digest(ids.joinToString(",").toByteArray()).joinToString(""){"%02x".format(it)}
++        // 인원 없는 기존 요청의 해시는 유지해 배포 전 재시도도 같은 단위를 반환한다.
++        val payload=ids.joinToString(",") + (request.headcount?.let { "|headcount=$it" } ?: "")
++        val hash=MessageDigest.getInstance("SHA-256").digest(payload.toByteArray()).joinToString(""){"%02x".format(it)}
+@@ -90 +94 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        val id=db.insert("INSERT INTO settlement_units(gathering_id,host_participant_id,created_at) VALUES(:g,:p,:n)","g" to gid,"p" to p.id,"n" to Instant.now())
++        val id=db.insert("INSERT INTO settlement_units(gathering_id,host_participant_id,headcount,created_at) VALUES(:g,:p,:hc,:n)","g" to gid,"p" to p.id,"hc" to request.headcount,"n" to Instant.now())
+@@ -94,0 +99 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        notifyExcess(gid,id)
+@@ -98 +103 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        db.update("INSERT INTO settlement_unit_members(settlement_unit_id,gathering_id,participant_id,status,joined_at) VALUES(:s,:g,:p,'ACTIVE',:n) ON DUPLICATE KEY UPDATE status='ACTIVE'","s" to id,"g" to gid,"p" to pid,"n" to Instant.now())
++        db.update("INSERT INTO settlement_unit_members(settlement_unit_id,gathering_id,participant_id,status,joined_at) VALUES(:s,:g,:p,'ACTIVE',:n) ON DUPLICATE KEY UPDATE joined_at=IF(status='REMOVED',VALUES(joined_at),joined_at),status='ACTIVE'","s" to id,"g" to gid,"p" to pid,"n" to Instant.now())
+@@ -104 +109,6 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        if(remove) { SettlementWorkflow.remove(u,pid,data(gid).second);db.update("UPDATE settlement_unit_members SET status='REMOVED' WHERE settlement_unit_id=:s AND participant_id=:p","s" to id,"p" to pid) }
++        room(gid,true)
++        if(remove) {
++            val loaded=data(gid)
++            SettlementWorkflow.remove(u,pid,loaded.second)
++            excludeMember(gid,id,loaded.first.first{it.id==pid},room(gid).text("name"),"이번 정산에서 빠졌어요",uid,"REMOVED")
++        }
+@@ -106,0 +117,2 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        notifyExcess(gid,id)
++        autoSettle(gid,id)
+@@ -124 +136,2 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        bump(gid,id);event(gid,id,"ROUND_SAVED","${seq}차 ${request.total}원을 넣었어요")
++        bump(gid,id);event(gid,id,"ROUND_SAVED","${seq}차 ${NotificationText.money(request.total)}원을 넣었어요")
++        if(rid!=null) autoSettle(gid,id)
+@@ -128,0 +142 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        room(gid,true)
+@@ -131,0 +146 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        autoSettle(gid,id)
+@@ -135,0 +151 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        SettlementWorkflow.open(u);SettlementWorkflow.member(u,target);room(gid,true)
+@@ -138,0 +155 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        var changed=false
+@@ -141,0 +159,3 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++            val source=if(pid==null) "SELF" else "HOST"
++            if(old?.type==a.type && old.source==source) return@forEach
++            changed=true
+@@ -142,0 +163 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        if(!changed) return
+@@ -143,0 +165,2 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        notify(gid,id,"RESPONDED","${actor.name}님이 응답했어요",loaded.first.filter{it.id==u.hostId}.map{it.userId},uid)
++        autoSettle(gid,id)
+@@ -151 +174 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-                mapOf("id" to s["id"],"status" to s["status"],"host" to mapOf("displayName" to s["display_name"],"spoonCount" to s["spoon_count"]),"rounds" to all.second.filter{it.unitId==s.long("id")}.map{mapOf("id" to it.id,"seq" to it.seq,"total" to it.total)})})
++                mapOf("id" to s["id"],"status" to s["status"],"headcount" to s["headcount"],"host" to mapOf("displayName" to s["display_name"],"spoonCount" to s["spoon_count"]),"rounds" to all.second.filter{it.unitId==s.long("id")}.map{mapOf("id" to it.id,"seq" to it.seq,"total" to it.total)})})
+@@ -162 +185,2 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        respond(gid,u.id,uid,null,ResponseRequest(request.responses))
++        bump(gid,u.id)
++        notifyExcess(gid,u.id)
+@@ -164,0 +189 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        respond(gid,u.id,uid,null,ResponseRequest(request.responses))
+@@ -173,0 +199,6 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
++        persistSettlement(gid,u,d,preview,uid,false)
++        return detail(gid,uid)
++    }
++    private fun persistSettlement(gid: Long,u: UnitInput,d: Triple<List<PersonInput>,List<RoundInput>,List<ResponseInput>>,
++        preview: Preview,actor: Long,automatic: Boolean) {
++        val id=u.id
+@@ -185,5 +216,68 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        db.update("UPDATE settlement_units SET status=:state,completed_at=:n WHERE id=:id","state" to state,"n" to if(state=="COMPLETED") Instant.now() else null,"id" to id)
+-        event(gid,id,"SETTLED","${person(gid,uid).name}님이 담당 차수를 정산했어요")
+-        notify(gid,id,"SETTLED","정산이 나왔어요! 입금액을 확인해주세요",d.first.filter{it.id in u.participantIds}.map{it.userId},uid)
+-        preview.lines.filter{it.auto}.forEach{line->notify(gid,id,"AUTO_RESPONDED","응답이 없어 참석·알코올로 계산됐어요",d.first.filter{it.id==line.participantId||it.id==u.hostId}.map{it.userId},uid)}
+-        updateSummary(gid);return detail(gid,uid)
++        db.update("UPDATE settlement_units SET status=:state,completed_at=:n,auto_settlement_error=NULL WHERE id=:id","state" to state,"n" to if(state=="COMPLETED") Instant.now() else null,"id" to id)
++        val host=d.first.first{it.id==u.hostId}
++        event(gid,id,"SETTLED",if(automatic) "모두 응답해서 자동으로 계산했어요" else "${host.name}님이 담당 차수를 정산했어요")
++        preview.transfers.groupBy{it.from}.forEach{(sender,transfers)->
++            val first=transfers.first();val recipient=d.first.first{it.id==first.to}
++            val body="${recipient.name}님께 ${NotificationText.money(first.amount)}원" + if(transfers.size>1) " 외 ${transfers.size-1}건" else " 보내주세요"
++            notify(gid,id,"SETTLED",body,d.first.filter{it.id==sender}.map{it.userId},if(automatic) 0 else actor)
++        }
++        notify(gid,id,"SETTLED_HOST","계산이 끝났어요. 단톡방에 입금 요청을 보내주세요",listOf(host.userId),0)
++        preview.lines.filter{it.auto}.forEach{line->notify(gid,id,"AUTO_RESPONDED","응답이 없어 참석·알코올로 계산됐어요",d.first.filter{it.id==line.participantId||it.id==u.hostId}.map{it.userId},actor)}
++        if(state=="COMPLETED") notify(gid,id,"COMPLETED","정산 완료! 7일 뒤 사라져요",d.first.filter{it.id in u.participantIds}.map{it.userId},actor)
++        updateSummary(gid)
++    }
++    fun headcount(gid: Long,id: Long,uid: Long,headcount: Int) {
++        AutoSettlementPolicy.validateHeadcount(headcount)
++        authorize(gid,id,uid);room(gid,true)
++        val old=db.rows("SELECT headcount FROM settlement_units WHERE id=:s","s" to id).single()["headcount"]
++        if((old as? Number)?.toInt()!=headcount) {
++            db.update("UPDATE settlement_units SET headcount=:hc WHERE id=:s","hc" to headcount,"s" to id)
++            bump(gid,id)
++        }
++        notifyExcess(gid,id);autoSettle(gid,id)
++    }
++    // 호출자가 단위→술자리 순으로 잠근 같은 트랜잭션 안에서만 호출한다.
++    private fun notifyExcess(gid: Long,id: Long) {
++        val row=db.rows("SELECT headcount,headcount_exceeded_notified,host_participant_id FROM settlement_units WHERE id=:s","s" to id).single()
++        val headcount=(row["headcount"] as? Number)?.toInt() ?: return
++        val count=db.rows("SELECT COUNT(*) n FROM settlement_unit_members WHERE settlement_unit_id=:s AND status='ACTIVE'","s" to id).single().long("n")
++        val notified=row["headcount_exceeded_notified"] as Boolean
++        val exceeded=count>headcount
++        if(exceeded && !notified) {
++            val host=db.rows("SELECT user_id FROM participants WHERE id=:p","p" to row.long("host_participant_id")).single()["user_id"] as? Number
++            notify(gid,id,"HEADCOUNT_EXCEEDED","현재 ${count}명이 참여했어요. 그대로면 ${headcount}명으로 계산되고 마지막에 들어온 사람은 빠져요",listOfNotNull(host?.toLong()),0)
++        }
++        if(exceeded!=notified) db.update("UPDATE settlement_units SET headcount_exceeded_notified=:flag WHERE id=:s","flag" to exceeded,"s" to id)
++    }
++    private fun excludeMember(gid: Long,id: Long,participant: PersonInput,title: String,reason: String,actor: Long,notificationType: String="MEMBER_EXCLUDED") {
++        val pid=participant.id
++        db.update("UPDATE settlement_unit_members SET status='REMOVED' WHERE settlement_unit_id=:s AND participant_id=:p","s" to id,"p" to pid)
++        db.update("DELETE a FROM round_responses a JOIN rounds r ON r.id=a.round_id WHERE r.settlement_unit_id=:s AND a.participant_id=:p","s" to id,"p" to pid)
++        event(gid,id,"REMOVED","${participant.name}님은 $reason")
++        notify(gid,id,notificationType,"$title 술자리: $reason",listOf(participant.userId),actor)
++    }
++    private fun autoSettle(gid: Long,id: Long) {
++        val original=unit(gid,id)
++        if(original.state!="OPEN") return
++        val headcount=(db.rows("SELECT headcount FROM settlement_units WHERE id=:s","s" to id).single()["headcount"] as? Number)?.toInt()
++        if(headcount==null) return
++        val loaded=data(gid)
++        val seats=db.rows("SELECT participant_id,joined_at FROM settlement_unit_members WHERE settlement_unit_id=:s AND status='ACTIVE'","s" to id)
++            .map{MemberSeat(it.long("participant_id"),checkNotNull(it.instant("joined_at")))}
++        val plan=AutoSettlementPolicy.plan(original,headcount,seats,loaded.second,loaded.third)
++        var error=plan?.error
++        var preview: Preview?=null
++        val selected=original.copy(participantIds=plan?.includedIds ?: original.participantIds,
++            revision=original.revision + if(plan?.excludedIds?.isNotEmpty()==true) 1 else 0)
++        if(plan!=null && error==null) {
++            try { preview=SettlementWorkflow.preview(selected,loaded.first,loaded.second,loaded.third) }
++            catch(validation: SettlementValidationException) { error=validation.details.first().code.name }
++        }
++        db.update("UPDATE settlement_units SET auto_settlement_error=:error WHERE id=:s","error" to error,"s" to id)
++        if(preview==null || plan==null) return
++        room(gid,true)
++        val title=room(gid).text("name")
++        val peopleById=loaded.first.associateBy{it.id}
++        plan.excludedIds.forEach{excludeMember(gid,id,peopleById.getValue(it),title,"인원(${headcount}명) 밖이라 이번 정산에서 빠졌어요",0)}
++        if(plan.excludedIds.isNotEmpty()) bump(gid,id)
++        persistSettlement(gid,selected,loaded,preview,0,true)
+@@ -199 +293 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        db.update("UPDATE settlement_units SET status='OPEN',completed_at=NULL,input_revision=input_revision+1 WHERE id=:s","s" to id)
++        db.update("UPDATE settlement_units SET status='OPEN',completed_at=NULL,auto_settlement_error=NULL,input_revision=input_revision+1 WHERE id=:s","s" to id)
+@@ -241 +335,2 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-        return mapOf("id" to id,"hostParticipantId" to u.hostId,"status" to u.state,"inputRevision" to u.revision,"participantIds" to u.participantIds,"me" to mapOf("included" to (pid in u.participantIds),"settlementViewed" to viewed))
++        val automatic=db.rows("SELECT headcount,auto_settlement_error FROM settlement_units WHERE id=:s","s" to id).single()
++        return mapOf("id" to id,"hostParticipantId" to u.hostId,"status" to u.state,"inputRevision" to u.revision,"headcount" to automatic["headcount"],"autoSettlementError" to automatic["auto_settlement_error"],"participantIds" to u.participantIds,"me" to mapOf("included" to (pid in u.participantIds),"settlementViewed" to viewed))
+@@ -264 +359 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+-                "settlementUnits" to units[gid].orEmpty().map{u->val ms=members[u.long("id")].orEmpty();mapOf("id" to u["id"],"hostParticipantId" to u["host_participant_id"],"status" to u["status"],"inputRevision" to u["input_revision"],"completedAt" to u.instant("completed_at"),"participantIds" to ms.filter{it.text("status")=="ACTIVE"}.map{it.long("participant_id")},"me" to mapOf("included" to ms.any{it.long("participant_id")==me&&it.text("status")=="ACTIVE"},"settlementViewed" to ms.any{it.long("participant_id")==me&&it["settlement_viewed_at"]!=null}))},
++                "settlementUnits" to units[gid].orEmpty().map{u->val ms=members[u.long("id")].orEmpty();mapOf("id" to u["id"],"hostParticipantId" to u["host_participant_id"],"status" to u["status"],"inputRevision" to u["input_revision"],"headcount" to u["headcount"],"autoSettlementError" to u["auto_settlement_error"],"completedAt" to u.instant("completed_at"),"participantIds" to ms.filter{it.text("status")=="ACTIVE"}.sortedWith(compareBy<Map<String,Any?>> {it.long("participant_id")!=u.long("host_participant_id")}.thenBy{it.instant("joined_at")}.thenBy{it.long("participant_id")}).map{it.long("participant_id")},"me" to mapOf("included" to ms.any{it.long("participant_id")==me&&it.text("status")=="ACTIVE"},"settlementViewed" to ms.any{it.long("participant_id")==me&&it["settlement_viewed_at"]!=null}))},
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/NotificationText.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/NotificationText.kt
+new file mode 100644
+index 0000000..73809cf
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/NotificationText.kt
+@@ -0,0 +1,22 @@
++package app.jeongsan.server.gathering
++
++/** 로케일에 따라 금액 구분 기호가 달라지지 않게 고정한다. Java는 javaimpl에 독립 구현한다. */
++object NotificationText {
++    fun money(amount: Long): String = String.format(java.util.Locale.US, "%,d", amount)
++    fun title(type: String): String = when (type) {
++        "JOINED", "RESPONDED" -> "참여 응답이 도착했어요"
++        "SETTLED" -> "정산이 나왔어요! 입금액을 확인해주세요"
++        "SETTLED_HOST" -> "계산이 끝났어요"
++        "AUTO_RESPONDED" -> "자동응답으로 계산된 사람이 있어요"
++        "SENT" -> "입금을 확인해주세요"
++        "CONFIRMED" -> "입금이 확인됐어요"
++        "NOT_RECEIVED" -> "아직 입금이 확인되지 않았어요"
++        "COMPLETED" -> "정산 완료! 🎉"
++        "SETTLEMENT_REVERTED" -> "정산이 되돌려졌어요"
++        "PAYOUT_REGISTERED" -> "계좌가 등록됐어요"
++        "PAYOUT_MISSING" -> "받을 계좌를 등록해주세요"
++        "HEADCOUNT_EXCEEDED" -> "참여 인원을 확인해주세요"
++        "MEMBER_EXCLUDED", "REMOVED" -> "이번 정산에서 빠졌어요"
++        else -> "술자리 소식이 있어요"
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/SettlementUnitController.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/SettlementUnitController.kt
+index 746bede..9026040 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/SettlementUnitController.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/SettlementUnitController.kt
+@@ -10,0 +11,5 @@ class SettlementUnitController(private val service: GatheringService) {
++    @PutMapping("/{id}/headcount")
++    @ResponseStatus(HttpStatus.NO_CONTENT)
++    fun headcount(@PathVariable gid: Long, @PathVariable id: Long, @LoginUser userId: Long,
++        @Valid @RequestBody request: HeadcountRequest) = service.headcount(gid,id,userId,request.headcount)
++
+diff --git a/server/src/main/resources/application-local.yml b/server/src/main/resources/application-local.yml
+index 0043314..49a5a24 100644
+--- a/server/src/main/resources/application-local.yml
++++ b/server/src/main/resources/application-local.yml
+@@ -9 +9 @@ spring:
+-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:jeongsan}?allowPublicKeyRetrieval=true&useSSL=false&characterEncoding=UTF-8
++    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:jeongsan}?allowPublicKeyRetrieval=true&useSSL=false&characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+diff --git a/server/src/main/resources/application-prod.yml b/server/src/main/resources/application-prod.yml
+index 7350f27..8a01a60 100644
+--- a/server/src/main/resources/application-prod.yml
++++ b/server/src/main/resources/application-prod.yml
+@@ -12 +12 @@ spring:
+-    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&characterEncoding=UTF-8&serverTimezone=UTC
++    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+diff --git a/server/src/main/resources/application.yml b/server/src/main/resources/application.yml
+index ccda605..e578751 100644
+--- a/server/src/main/resources/application.yml
++++ b/server/src/main/resources/application.yml
+@@ -16,0 +17,4 @@ spring:
++    properties:
++      hibernate:
++        jdbc:
++          time_zone: UTC
+diff --git a/server/src/main/resources/db/changelog/018-auto-settlement.yaml b/server/src/main/resources/db/changelog/018-auto-settlement.yaml
+new file mode 100644
+index 0000000..2d1d54b
+--- /dev/null
++++ b/server/src/main/resources/db/changelog/018-auto-settlement.yaml
+@@ -0,0 +1,12 @@
++databaseChangeLog:
++  - changeSet:
++      id: 028-auto-settlement
++      author: jeongsan
++      comment: "FC-020. 총무가 정한 인원과 자동 계산 보류 사유를 단위별로 유지하고 초과 알림 중복을 막는다."
++      changes:
++        - sql:
++            sql: |
++              ALTER TABLE settlement_units
++                ADD headcount INT NULL COMMENT '총무 포함 목표 인원 2~50, NULL은 자동 정산 없음',
++                ADD headcount_exceeded_notified BOOLEAN NOT NULL DEFAULT FALSE COMMENT '현재 초과 구간에서 총무 알림을 이미 보냈는지',
++                ADD auto_settlement_error VARCHAR(40) NULL COMMENT '마지막 자동 계산 보류 오류, 정상 입력 변경 때 재평가';
+diff --git a/server/src/main/resources/db/changelog/db.changelog-master.yaml b/server/src/main/resources/db/changelog/db.changelog-master.yaml
+index 76380aa..531a3fd 100644
+--- a/server/src/main/resources/db/changelog/db.changelog-master.yaml
++++ b/server/src/main/resources/db/changelog/db.changelog-master.yaml
+@@ -32,0 +33,2 @@ databaseChangeLog:
++  - include:
++      file: db/changelog/018-auto-settlement.yaml
+diff --git a/server/src/test/kotlin/app/jeongsan/server/gathering/AutoSettlementPolicySpec.kt b/server/src/test/kotlin/app/jeongsan/server/gathering/AutoSettlementPolicySpec.kt
+new file mode 100644
+index 0000000..e876110
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/gathering/AutoSettlementPolicySpec.kt
+@@ -0,0 +1,62 @@
++package app.jeongsan.server.gathering
++
++import app.jeongsan.server.gathering.javaimpl.AutoSettlementPolicy as JavaPolicy
++import app.jeongsan.server.gathering.javaimpl.NotificationText as JavaText
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++import io.kotest.assertions.throwables.shouldThrow
++import java.time.Instant
++
++class AutoSettlementPolicySpec : StringSpec({
++    val instant=Instant.parse("2026-10-10T06:00:00Z")
++    val unit=UnitInput(10,3,"OPEN",4,listOf(1,2,3,4))
++    val seats=listOf(MemberSeat(4,instant.plusSeconds(1)),MemberSeat(2,instant),MemberSeat(3,instant.plusSeconds(5)),MemberSeat(1,instant))
++    val rounds=listOf(RoundInput(100,10,1,10000,3,emptyList()))
++    val answers=listOf(1L,2L,3L).map{ResponseInput(it,100,"SOBER","SELF")}
++    fun checked(unit: UnitInput, headcount: Int?, rounds: List<RoundInput>, responses: List<ResponseInput>): AutoSettlementPlan? {
++        val kotlin=AutoSettlementPolicy.plan(unit,headcount,seats,rounds,responses)
++        val java=JavaPolicy.plan(unit.id,unit.hostId,unit.state,headcount,unit.participantIds,
++            seats.map{JavaPolicy.Seat(it.participantId,it.joinedAt)},rounds.map{JavaPolicy.Round(it.id,it.unitId,it.payerId)},
++            responses.map{JavaPolicy.Answer(it.participantId,it.roundId,it.source)})
++        kotlin shouldBe java?.let{AutoSettlementPlan(it.includedIds(),it.excludedIds(),it.error())}
++        return kotlin
++    }
++    "총무는 먼저, 나머지는 가입 시각과 id로 선택하며 인원 밖 무응답은 막지 않는다" {
++        checked(unit,3,rounds,answers) shouldBe AutoSettlementPlan(listOf(3,1,2),listOf(4))
++    }
++    "NULL 인원·미달·빈 차수·이미 정산된 단위는 자동 정산하지 않는다" {
++        checked(unit,null,rounds,answers) shouldBe null
++        checked(unit,5,rounds,answers) shouldBe null
++        checked(unit,3,emptyList(),answers) shouldBe null
++        for(state in listOf("SETTLING","COMPLETED")) checked(unit.copy(state=state),3,rounds,answers) shouldBe null
++    }
++    "인원 안 모든 차수의 실제 응답이 필요하며 AUTO와 다른 단위 응답을 재사용하지 않는다" {
++        checked(unit,3,rounds,answers.dropLast(1)) shouldBe null
++        checked(unit,3,rounds,answers.map{it.copy(source="AUTO")}) shouldBe null
++        checked(unit,3,rounds+rounds[0].copy(id=101),answers) shouldBe null
++        checked(unit,3,rounds+rounds[0].copy(id=102,unitId=20),answers) shouldBe AutoSettlementPlan(listOf(3,1,2),listOf(4))
++    }
++    "인원 밖 결제자는 보류하고 명단을 임의로 늘리지 않는다" {
++        checked(unit,3,rounds.map{it.copy(payerId=4)},answers) shouldBe AutoSettlementPlan(listOf(3,1,2),listOf(4),"REMOVE_PAYER")
++    }
++    "제외된 공유 신원은 다시 계산에 끼워 넣지 않는다" {
++        checked(unit.copy(participantIds=listOf(2,3,4)),2,rounds,answers) shouldBe AutoSettlementPlan(listOf(3,2),listOf(4))
++    }
++    "인원 경계는 양쪽 구현이 각각 검증한다" {
++        for(value in listOf(1,51)) {
++            shouldThrow<app.jeongsan.server.common.ApiException>{AutoSettlementPolicy.validateHeadcount(value)}.code shouldBe "MALFORMED_REQUEST"
++            shouldThrow<IllegalArgumentException>{JavaPolicy.validateHeadcount(value)}.message shouldBe "MALFORMED_REQUEST"
++        }
++        checked(unit,2,rounds,answers)!!.includedIds shouldBe listOf(3,1)
++        checked(unit,50,rounds,answers) shouldBe null
++    }
++    "금액 구분과 사람이 읽는 알림 제목은 코드 enum과 구분한다" {
++        NotificationText.money(184000) shouldBe "184,000"
++        JavaText.money(184000) shouldBe "184,000"
++        for(type in listOf("SETTLED","SETTLED_HOST","HEADCOUNT_EXCEEDED","MEMBER_EXCLUDED","REMOVED","SENT","COMPLETED","PAYOUT_REGISTERED")) {
++            NotificationText.title(type) shouldBe JavaText.title(type)
++            (NotificationText.title(type)==type) shouldBe false
++        }
++        NotificationText.title("SETTLED_HOST") shouldBe "계산이 끝났어요"
++    }
++})
+diff --git a/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringApiSpec.kt b/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringApiSpec.kt
+index 6a7925b..b05d79e 100644
+--- a/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringApiSpec.kt
++++ b/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringApiSpec.kt
+@@ -42,0 +43 @@ class GatheringApiSpec : StringSpec({
++        Case("PUT",root+"/headcount","""{"headcount":3}""",204),
+@@ -74,0 +76,9 @@ class GatheringApiSpec : StringSpec({
++    "인원은 2~50이며 본문 없는 술자리 생성도 유지한다" {
++        for (body in listOf("""{"headcount":1}""", """{"headcount":51}""", "{}")) {
++            mvc.perform(request(HttpMethod.PUT,root+"/headcount").cookie(cookie).contentType(MediaType.APPLICATION_JSON).content(body))
++                .andExpect(status().isBadRequest)
++        }
++        Mockito.verifyNoInteractions(service)
++        mvc.perform(request(HttpMethod.POST,"/api/v1/gatherings").cookie(cookie)).andExpect(status().isCreated)
++        Mockito.verify(service).create(12,null)
++    }

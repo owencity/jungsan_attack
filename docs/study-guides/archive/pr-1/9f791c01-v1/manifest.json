@@ -1,0 +1,27 @@
+{
+  "version": "v1",
+  "pr": 1,
+  "title": "chore(automation): n8n PR 자동 코드리뷰 파이프라인 설계 메모 추가",
+  "url": "https://github.com/owencity/jungsan_attack/pull/1",
+  "sourceBase": "e6223c8c9200d809a8bc231fe2af9ceb603e4a4f",
+  "sourceHead": "9f791c01e9adfbda1b2f32a923c28ecacab96b8d",
+  "baseBranch": "main",
+  "observedBaseHead": "e6223c8c9200d809a8bc231fe2af9ceb603e4a4f",
+  "catalogCommit": "f094e884580159ffb82844bd3d759cf028c96458",
+  "policyCommit": "f094e884580159ffb82844bd3d759cf028c96458",
+  "date": "2026-10-10",
+  "languages": [],
+  "learningItemCount": 0,
+  "studyStatus": "UNRECORDED",
+  "sha256": {
+    ".gitattributes": "ceedd74c89b1fbc4714921b1fd12de96460aa0c868cbd02caa67cc5f99f80287",
+    "after/automation/n8n-review/README.md": "5f3b13c8d41a60b6116e2bf3b5c8e18ead55dd8b44dbc49268c64b9340ef19cb",
+    "catalog.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+    "changes.patch": "3b74f6ecc34e9877b78a15b2f344f1a45746280655ca1e4f2fe9bd0099a14ac0",
+    "guide.json": "06c15af97d402decee1c185ce9eb24fa74f7cb8c29bff7e4ead35717c4f14880",
+    "guide.md": "a10793834de0c0dcf36676cae649949d1a3bc7f61327f5e500c4f4997f6b050a",
+    "policy.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+    "progress.md": "03fe61aeb531a88263f2884ffe3eb41eec7897a249b6b60fac607ace3d64250b",
+    "review.md": "19f7cce5f89636123b94ce2924c931b99d4c5abcb6ecf6c5645f3fd47a3aa54d"
+  }
+}

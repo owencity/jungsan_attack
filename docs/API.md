@@ -1,4 +1,68 @@
-# 정산어택 — API 계약 · v3
+# 정산어택 — API 계약 · v8
+
+> **v8 변경(2026-10-10)** — FC-016~018·020. 기존 버전 이력은 유지한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | [자동 정산](AUTO_SETTLEMENT.md) | 생성 선택 headcount, PUT 단위/headcount, 응답 headcount·autoSettlementError |
+> | 알림 | 사람이 읽는 title, HEADCOUNT_EXCEEDED·MEMBER_EXCLUDED·SETTLED_HOST, 송금 요약 |
+> | 시간 | 로컬·운영 JDBC UTC 고정, 타임라인 신규 금액 천 단위 쉼표 |
+> | ERD 018 | changeSet 028, 인원·초과 알림 플래그·자동 계산 보류 오류 |
+
+자동·수동 정산의 현재 계약은 [AUTO_SETTLEMENT.md](AUTO_SETTLEMENT.md)가 우선한다.
+인원 수정의 범위/형식 오류는 400 `MALFORMED_REQUEST`, 권한은 403 `NOT_SETTLEMENT_UNIT_HOST`,
+상태는 409 `SETTLEMENT_UNIT_NOT_OPEN`이다. 자동 계산이 보류되어도 응답 저장은 성공하며 상세의
+`autoSettlementError`가 `REMOVE_PAYER` 또는 기존 Core 오류 코드를 알려 준다.
+
+> **v7 변경(2026-10-09)** — CTO 결정: 앱 Bearer / 웹 쿠키. 이전 v3의 쿠키 전용 규칙은 웹에 적용한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | AUTH_RELEASE 로그인 | 카카오 state·웹 복귀, Apple form_post·nonce·서명 검증 |
+> | AUTH_RELEASE 앱 교환 | 60초 일회용 티켓 + 앱 verifier, `{token,expiresAt}` |
+> | §2 인증 확장 | WEB JWT는 쿠키, APP JWT는 Bearer. 잘못된 헤더의 쿠키 우회 금지 |
+> | 로그아웃·탈퇴 | POST auth/logout, DELETE users/me, 토큰 무효화·완료 좌석 익명화 |
+> | §1.4 추가 오류 | AUTH_PROVIDER_UNAVAILABLE(503), ACTIVE_GATHERING_EXISTS(409), ACCOUNT_STATE_CHANGED(409) |
+> | ERD 017 | changeSet 027, 인증 state/ticket/credentials/revocations/revoke jobs |
+
+현재 인증·탈퇴의 정확한 요청·응답·권한은 [AUTH_RELEASE.md](AUTH_RELEASE.md)가 우선한다.
+앱 `GET /auth/{provider}/login?client=app`에는 `codeChallenge`가 필수이고, 교환 JSON에는 `codeVerifier`가 추가된다.
+제공자 콜백과 티켓 교환은 로그인 전 단계라 공개이며, 새 로그아웃·탈퇴는 `@LoginUser`가 필수다.
+로그인 콜백은 POST 본문을 프론트로 재전송하지 않도록 303을 반환한다. 웹 쿠키의 만료는 JWT 설정과 같다.
+`AUTH_PROVIDER_UNAVAILABLE`은 로컬 제공자 미설정, `ACTIVE_GATHERING_EXISTS`는 진행 중 탈퇴,
+`ACCOUNT_STATE_CHANGED`는 탈퇴 잠금 중 참여/단위 목록 변경으로 재시도할 때 반환한다.
+기존 `UNAUTHENTICATED`(401)는 state/상관 쿠키/nonce/서명/티켓/verifier/로그아웃 토큰/탈퇴 계정 검증 실패에도 사용한다.
+
+> **v6 변경(2026-10-07)** — `feat/backend-v4` 구현 계약. 병합·운영 배포 여부와 구현 여부를 구분한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | §0.5 | 아래 구현 범위·독립 단위 응답·HTTP 상태·오류 코드 |
+> | SETTLEMENT_UNITS §4 | 같은 술자리의 초기/추가 단위, 명단·차수·응답·정산·송금 API 구현 |
+> | §1.4 추가 표 | Core v2와 단위 권한·상태 오류 |
+> | ERD 구현 스키마 | Liquibase 016, changeSet 024~026 및 JDBC 매핑 |
+> | 인증 가드 | 비로그인 링크 미리보기만 공개 목록에 추가, 기타 핸들러는 쿠키 인증 |
+> | 내 정보 | `payout`, `spoonCount`, `unreadNotificationCount` 추가 |
+
+
+> **v5 변경(2026-10-06)** — 제품 v4의 같은 술자리·복수 총무·독립 정산 계약. **구현 예정**이다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | §0.4 | 현재 설계와 기존 구현·역사적 계약의 우선순위 명시 |
+> | SETTLEMENT_UNITS §4.1 | `settlementUnits` 추가, 전역 host/revision/열람 상태를 단위별 필드로 대체 |
+> | SETTLEMENT_UNITS §4.2 | 단위 생성·명단·차수·응답·미리보기·정산·취소·완료 API |
+> | SETTLEMENT_UNITS §4.3 | 단위 권한·상태·입력 충돌 오류 계약 |
+> | SETTLEMENT_UNITS §5 | 단위별 입력 hash와 동시성 규칙 |
+
+> **v4 변경(2026-10-04)** — FC-013 실명 등록 계약 반영. 제품 버전은 v3다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | §1.4 | `DISPLAY_NAME_ALREADY_SET`(409) 추가 |
+> | §2.1·§2.2 | 실명 미입력 여부를 `/auth/me`의 `needsName`으로 전달 |
+> | §2.2-a | 최초 실명 등록 API 추가 |
+> | §3.1 | 기존 목록 뼈대에 로그인 필수·총무 본인 필터 적용 |
 
 > **v3 변경(2026-08-26)** — **구현이 계약을 앞지른 부분을 문서에 반영했다.**
 > 이 문서는 "합의하는 형식"인데, 인증을 먼저 구현하면서 계약과 어긋난 채로
@@ -89,6 +153,18 @@ JSON 숫자로 보내면 프론트에서 조용히 값이 바뀐다.
 그 외에는 전부 REST API 서비스다.
 
 ---
+
+### 0.4 제품 v4 계약과 구현 상태
+
+공통 형식·오류 표현(§1), 인증·실명(§2)은 유지한다. JWT 14일/30일 미결도 그대로다.
+현재 금융/참여 설계는 [SETTLEMENT_UNITS §4](SETTLEMENT_UNITS.md#4-api-v5-변경-계약--구현-예정)와
+정정된 FC-015를 우선한다. FC-014는 충돌하지 않는 응답 필드·계좌 공개·실명·알림 등의 기준이다.
+§3~§9의 단일 총무·전역 입력·기타 항목·Group·전역 정산 API는 **종전 계약 기록**이며 신규 개발에 쓰지 않는다.
+이 문서의 미래 API가 존재한다는 의미가 아니다. 현재 컨트롤러와 Liquibase로 실제 지원 여부를 확인한다.
+§0.3의 MSA·§5-b의 별도 채팅 서비스는 보류 기록이며 운영 구조는 ADR-014 모놀리스다.
+단위 관련 API 오류의 전체 추가 목록은 SETTLEMENT_UNITS §4.3을 참조한다.
+실제 구현 PR에서는 이 표와 서버 enum/핸들러를 필드·코드별로 대조하여 지원 상태를 갱신한다.
+FC-014의 앱 Bearer 인증 제안은 이 PR에서 채택하지 않는다. 기존 쿠키 전용 규칙과의 충돌은 인증 작업에서 다룬다.
 
 ## 1. 공통 형식
 
@@ -207,6 +283,7 @@ GET /api/v1/gatherings
 | 코드 | HTTP | 뜻 |
 |---|---|---|
 | `UNAUTHENTICATED` | 401 | 토큰 없음 |
+| `DISPLAY_NAME_ALREADY_SET` | 409 | 등록한 실명과 다른 값으로 변경 요청 |
 | `TOKEN_EXPIRED` | 401 | 만료 — 프론트는 재로그인으로 보낸다 |
 | `PROVIDER_AUTH_FAILED` | 401 | 카카오가 code 를 거부 |
 | `NOT_HOST` | 403 | 주최자 전용 기능 |
@@ -260,14 +337,12 @@ Set-Cookie: jeongsan_token=eyJ...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-A
 
 **`code`·클라이언트 시크릿은 서버만 다룬다.** 프론트는 아무것도 다루지 않는다.
 
-> **`firstLogin` 이 없어졌다.** 리다이렉트에는 body 가 없기 때문이다.
-> 최초 로그인 안내가 필요해지면 `GET /auth/me` 응답에 얹거나
-> 리다이렉트 URL 에 쿼리 파라미터로 붙인다. **아직 정하지 않았다.**
+> **FC-013 결정:** 첫 실명 입력 여부는 `GET /auth/me`의 `needsName`으로 전달한다.
+> `displayName`이 NULL이면 true다. 기존 계정도 아직 실명을 등록하지 않았다면 true다.
 
 > **구글은 아직 없다.** `users.provider` 에 자리는 있으나 구현은 카카오뿐이다.
 
-**`firstLogin` 을 주는 이유** — 최초 로그인이면 화면이 안내를 더 보여줄 수 있다.
-UPSERT 결과를 서버는 알지만 프론트는 알 수 없다.
+카카오 닉네임은 로그인마다 갱신하지만 등록한 실명은 변경하지 않는다.
 
 ### 2.2 내 정보 — `GET /api/v1/auth/me`
 
@@ -275,16 +350,25 @@ UPSERT 결과를 서버는 알지만 프론트는 알 수 없다.
 GET /api/v1/auth/me
 Cookie: jeongsan_token=eyJ...          ← 브라우저가 자동으로 붙인다
 
-200   { "id": 12, "nickname": "🌸봄이🌸", "profileImageUrl": "https://..." }
+200   { "id": 12, "displayName": null, "nickname": "🌸봄이🌸", "needsName": true, "profileImageUrl": "https://..." }
 401   쿠키가 없거나 서명이 안 맞거나 만료됨
 ```
 
 **새로고침할 때마다 프론트가 이걸 부른다.** 쿠키가 httpOnly 라 JS 가 읽을 수 없어
 **로그인 여부를 프론트가 스스로 알 방법이 없다** — 서버에 물어봐야 한다.
 
-**응답에 닉네임·프로필이 있는 이유** — 토큰에는 `userId` 만 담기 때문이다(§2.3).
-화면에 이름을 보여주려면 매번 DB 에서 읽어야 하고, 그래야 카카오에서 닉네임을
-바꿨을 때 바로 반영된다.
+`displayName`은 본인이 등록한 실명, `nickname`은 카카오 닉네임이다.
+목록의 `실명(닉네임)` 표시는 프론트가 조합한다. 토큰에는 `userId`만 담고 DB에서 조회한다.
+
+### 2.2-a 실명 등록 — `PUT /api/v1/users/me/display-name`
+
+로그인 쿠키 필수. `{ "displayName": "김동규" }`를 보내면 §2.2와 같은 갱신된 내 정보를 200으로 반환한다.
+앞뒤 공백 제거 후 2~10 Unicode 코드포인트를 허용한다(🍺 = 1자). 별도 이름 형식은 검사하지 않는다.
+빈 값은 400 `MALFORMED_REQUEST` / `이름을 넣어주세요`, 1자는 `성까지 적어주세요`,
+10자 초과는 `이름은 10자까지예요`. 누락·null·깨진 JSON도 400이다.
+같은 정규화된 값 재요청은 200, 이미 등록한 이름과 다른 값은 409 `DISPLAY_NAME_ALREADY_SET`이다.
+동시 최초 등록도 하나만 성공한다. 로그인 없는 요청·삭제된 사용자 토큰은 401이다.
+P1에서는 이 요청이 성공한 뒤 참여 요청을 보낸다. 두 요청은 별도 트랜잭션이다.
 
 ### 2.3 토큰 정책
 
@@ -339,6 +423,10 @@ httpOnly 쿠키는 읽을 수 없다.
 ## 3. 모임 — 주최자
 
 ### 3.1 목록 — `GET /gatherings`  (H0)
+
+**현재 구현 범위(v4):** 로그인 쿠키 필수(없으면 401). `hostUserId = 로그인 사용자`인 술자리만
+`date DESC`로 반환한다. 현재 뼈대 응답은 `id`, `name`, `date`, `status` 네 필드다.
+v3 활성 참여 술자리와 집계 필드는 후속 PR에서 구현하며 아직 이 응답을 완성된 v3 목록으로 사용하지 않는다.
 
 ```
 200   GatheringSummary[]          // types.ts
@@ -1230,3 +1318,64 @@ UI는 없는 상태**(SPEC v4 §9가 이걸 알고 있다: `Group` 통계·활�
 
 SPEC 갱신 때 §4 를 함께 고친다. (`SPEC.md` v4 상단의 "누적된 미반영 변경
 목록"에 이 항목이 이미 들어 있다 — 이 v2 개정도 그 목록을 다루지 않았다.)
+
+
+## 0.5 v6 구현 범위와 HTTP 계약
+
+이 절과 [SETTLEMENT_UNITS §4](SETTLEMENT_UNITS.md#4-api-계약)가 아래의 역사적 v1~v3 모임/전역 정산 경로를 대체한다.
+`U=/api/v1/gatherings/{gid}/settlement-units/{uid}`. 모든 보호 API는 `jeongsan_token` httpOnly JWT 쿠키를 받는다.
+
+| 메서드·경로 | 성공 응답 |
+|---|---|
+| POST `/api/v1/gatherings` | 201 상세. 본문 없음, KST 오늘·기본 제목·공유 참여자·초기 단위를 함께 생성 |
+| GET `/api/v1/gatherings/{gid}` | 200 상세, 공유 ACTIVE 참여자만 |
+| GET `/api/v1/me/gatherings` 또는 `/api/v1/gatherings` | 200 상세 배열, 참여한 방의 날짜·ID 내림차순, 테이블별 IN 배치 |
+| PATCH `/api/v1/gatherings/{gid}` | 200 상세, 생성자만 제목·날짜. 금융 hash에는 영향 없음 |
+| POST `/api/v1/gatherings/{gid}/settlement-units` | 201 Unit. requestId(UUID)와 participantIds, 순서는 의미 없음 |
+| PUT/DELETE `U/participants/{pid}` | 204, 해당 총무·OPEN, 중복 변경 멱등 |
+| POST `U/rounds` | 201 Round, `{total,payerParticipantId,drinks:[{name,unitPrice,quantity}]}` |
+| PUT/DELETE `U/rounds/{rid}` | 200 Round / 204, 해당 총무·OPEN, 다른 단위 차수는 404 |
+| PUT `U/responses/me` 또는 `U/participants/{pid}/responses` | 204, `{answers:[{roundId,type}]}`, SELF / 총무 HOST |
+| GET `U/settlement/preview` | 200 FC-002 Preview: `settlementUnitId,inputRevision,inputHash,lines,transfers,grandTotal` |
+| POST `U/settlement` | 200 상세. `{inputRevision,inputHash}`, 변경 시 409, AUTO와 송금 snapshot 원자 저장 |
+| DELETE `U/settlement` | 204, SETTLING·송금 이력 없음. SELF/HOST 유지, AUTO·snapshot·열람만 제거 |
+| POST `U/settlement/viewed` 또는 `U/complete` | 204, 단위별 최초 열람 / 총무 수동 완료 |
+| GET `/api/v1/join/{token}` | 공개 미리보기, 이름 명단·응답·계좌 제외, 단위의 host 이름과 차수 요약만 |
+| POST `/api/v1/join/{token}` | 200 `{gatheringId,participantId}`, 같은 신원을 재사용, 기존 ACTIVE 응답은 덮지 않음 |
+| PUT `/api/v1/users/me/payout` | 200 `{payout:{bank,accountNo,holder}}`, 본인 계좌, 하이픈 제거, AES-GCM 저장 |
+| POST `/api/v1/transfers/{tid}/sent`, `/confirm`, `/not-received` | 204, 송금자 / 수취인 / 수취인. 계좌 없는 신규 sent는 409 |
+| POST `/api/v1/gatherings/{gid}/messages` | 201 TimelineEntry, 참여자, 1~200자 |
+| GET `/api/v1/me/notifications` | 200 Notification 최신 50개 배열, UTC createdAt/readAt |
+| POST `/api/v1/me/notifications/{id}/read` 또는 `/read-all` | 204, 본인 알림에만 멱등 |
+
+상세는 `id,title,date,createdByUserId,shareToken,status,completedAt,deleteScheduledAt,participants,settlementUnits,rounds,responses,transfers,timeline,me`다.
+단위는 `id,hostParticipantId,status,inputRevision,completedAt,participantIds,me{included,settlementViewed}`다.
+공유 `me={participantId}`. round·transfer에는 `settlementUnitId`를 붙인다. 전역 host/revision/viewed는 반환하지 않는다.
+송금 근거와 미리보기 금액은 정수 원이다. 근거 절단 차이는 마지막 차수에 반영되어 basis 합 = amount를 지킨다.
+본인과 실제 송금 대상 수취인의 payout만 공개하고 다른 참여자는 null + hasPayout만 반환한다.
+계좌는 사용자 단위이며 암호문은 서버 밖으로 응답하지 않는다. 운영에는 독립된 32바이트 Base64 `PAYOUT_ENCRYPTION_KEY`가 필요하다.
+
+**아직 구현하지 않은 출시 기능:** Apple/앱 인증·링크 로그인 복귀·탈퇴, 복수 총무 스푼 정책, 실시간 타임라인 전달과 알림 전체 문구/대상 정합성.
+앱 Bearer 제안은 쿠키 전용 규칙과 충돌하므로 이 PR에서 자동 확정하지 않는다. 면제 API는 사용자 보류 그대로다.
+역사적 `/groups` 핸들러는 제거했다. 기존 DB의 모임 테이블은 적용된 changelog 보존 때문에 물리적으로 남는다.
+
+### 1.4 추가 — v6 실제 오류
+
+정산 검증은 409 `VALIDATION_FAILED` + `errors[{code,message,roundId?,participantId?,field?}]`이다.
+일반 Bean Validation은 기존대로 400, 깨진 JSON도 400이다.
+Core v2 코드: `TOTAL_NOT_POSITIVE`, `ALCOHOL_NEGATIVE`, `ALCOHOL_EXCEEDS_TOTAL`, `PAYER_NOT_FOUND`, `INVALID_DRINK_ITEM`,
+`DRINK_ITEM_ROUND_NOT_FOUND`, `ATTENDANCE_REFERENCE_NOT_FOUND`, `MISSING_ATTENDANCE`, `DUPLICATE_ID`, `DUPLICATE_ROUND_SEQ`,
+`AMOUNT_TOO_LARGE`, `TOO_FEW_PARTICIPANTS`, `NO_ATTENDEE`, `NO_DRINKER_WITH_ALCOHOL`, `NEGATIVE_ADJUSTED_AMOUNT`.
+
+| HTTP | code | 조건 |
+|---|---|---|
+| 401 | UNAUTHENTICATED | 로그인 없음 또는 삭제된 계정 |
+| 403 | NOT_PARTICIPANT / NOT_SETTLEMENT_UNIT_MEMBER | 공유 방 / 단위 ACTIVE 명단에 없음 |
+| 403 | NOT_GATHERING_CREATOR / NOT_SETTLEMENT_UNIT_HOST / NOT_TRANSFER_OWNER | 제목·날짜 / 단위 관리 / 송금 역할 권한 없음 |
+| 404 | GATHERING_NOT_FOUND / SETTLEMENT_UNIT_NOT_FOUND / ROUND_NOT_FOUND / TRANSFER_NOT_FOUND | 해당 부모 범위에 리소스 없음 |
+| 409 | DISPLAY_NAME_REQUIRED | 생성·참여 전 실명 등록 필요 |
+| 409 | SETTLEMENT_UNIT_NOT_OPEN / SETTLEMENT_UNIT_NOT_SETTLING | 상태 전이 불가 |
+| 409 | SETTLEMENT_INPUT_CHANGED / IDEMPOTENCY_KEY_REUSED | 오래된 preview 또는 requestId의 본문 불일치 |
+| 409 | NO_ROUNDS / REMOVE_HOST / REMOVE_PAYER | 차수 없음 또는 보호 명단 제외 시도 |
+| 409 | PAYOUT_MISSING / TRANSFER_ALREADY_SENT / INVALID_TRANSFER_TRANSITION | 수취 계좌 없음 / sentAt·confirmedAt 이력으로 취소 금지 / 송금 상태 불일치 |
+| 400 | MALFORMED_REQUEST | 잘못된 명단·응답 타입·계좌·본문 |

@@ -1,0 +1,157 @@
+databaseChangeLog:
+  - changeSet:
+      id: 024-independent-units-foundation
+      author: jeongsan
+      comment: "FC-015. 기존 OPEN 자료를 첫 단위로 옮기며 다른 총무의 입력과 상태를 분리한다. 018~023은 재사용하지 않는다."
+      preConditions:
+        - onFail: HALT
+        - sqlCheck:
+            expectedResult: '0'
+            sql: "SELECT COUNT(*) FROM gatherings WHERE status='CONFIRMED'"
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              ALTER TABLE gatherings ADD next_round_seq INT NOT NULL DEFAULT 1 COMMENT '다른 총무의 동시 차수 생성도 중복 없이 채번',
+                ADD last_activity_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '30일 미활동 삭제의 기준',
+                ADD completed_at DATETIME(6) NULL COMMENT '모든 단위가 완료된 마지막 시각';
+              ALTER TABLE participants ADD UNIQUE KEY uq_participant_room (id,gathering_id);
+              CREATE TABLE settlement_units (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '독립 정산 단위 식별자',
+                gathering_id BIGINT NOT NULL COMMENT '신원과 링크를 공유하는 술자리',
+                host_participant_id BIGINT NOT NULL COMMENT '이 단위만 관리하는 총무',
+                status VARCHAR(12) NOT NULL DEFAULT 'OPEN' COMMENT 'OPEN SETTLING COMPLETED, 검증은 서비스',
+                input_revision BIGINT NOT NULL DEFAULT 0 COMMENT '다른 단위의 변경으로 무효화되지 않는 입력 버전',
+                completed_at DATETIME(6) NULL COMMENT '이 단위가 완료된 시각',
+                created_at DATETIME(6) NOT NULL COMMENT '총무가 추가 단위를 시작한 시각',
+                UNIQUE KEY uq_unit_room (id,gathering_id),
+                CONSTRAINT fk_unit_room FOREIGN KEY (gathering_id) REFERENCES gatherings(id),
+                CONSTRAINT fk_unit_host_room FOREIGN KEY (host_participant_id,gathering_id) REFERENCES participants(id,gathering_id)
+              ) COMMENT='같은 술자리에서 총무별 입력과 정산 상태를 독립시킨다';
+              CREATE TABLE settlement_unit_members (
+                settlement_unit_id BIGINT NOT NULL COMMENT '계산과 참여 상태가 적용되는 단위',
+                gathering_id BIGINT NOT NULL COMMENT '다른 술자리의 신원 참조를 FK로 차단',
+                participant_id BIGINT NOT NULL COMMENT '공유 신원을 복제하지 않고 재사용',
+                status VARCHAR(10) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE REMOVED, 제외는 이 단위에만 적용',
+                settlement_viewed_at DATETIME(6) NULL COMMENT '다른 단위의 열람과 구분한 최초 정산 조회',
+                joined_at DATETIME(6) NOT NULL COMMENT '이 계산 대상 명단에 포함된 시각',
+                PRIMARY KEY (settlement_unit_id,participant_id),
+                CONSTRAINT fk_member_unit_room FOREIGN KEY (settlement_unit_id,gathering_id) REFERENCES settlement_units(id,gathering_id),
+                CONSTRAINT fk_member_participant_room FOREIGN KEY (participant_id,gathering_id) REFERENCES participants(id,gathering_id)
+              ) COMMENT='재가입 없이 신원을 공유하되 늦은 가입이 이미 정산된 분모를 바꾸지 않게 한다';
+              CREATE TABLE settlement_unit_requests (
+                gathering_id BIGINT NOT NULL COMMENT '요청 키를 술자리별로 구분',
+                user_id BIGINT NOT NULL COMMENT '동일 사용자의 재시도만 합친다',
+                request_id CHAR(36) NOT NULL COMMENT '클라이언트가 재시도에 재사용하는 UUID',
+                payload_hash CHAR(64) NOT NULL COMMENT '같은 키로 다른 명단을 보내면 거절',
+                settlement_unit_id BIGINT NOT NULL COMMENT '이미 만든 단위를 재반환',
+                PRIMARY KEY(gathering_id,user_id,request_id),
+                CONSTRAINT fk_unit_request_room FOREIGN KEY (gathering_id) REFERENCES gatherings(id),
+                CONSTRAINT fk_unit_request_unit FOREIGN KEY (settlement_unit_id) REFERENCES settlement_units(id)
+              ) COMMENT='더블클릭으로 추가 총무 단위가 중복 생성되지 않도록 보존';
+              INSERT INTO participants(gathering_id,user_id,name,status,created_at)
+               SELECT g.id,g.host_user_id,COALESCE(u.display_name,u.nickname),'ACTIVE',g.created_at
+               FROM gatherings g JOIN users u ON u.id=g.host_user_id
+               WHERE NOT EXISTS(SELECT 1 FROM participants p WHERE p.gathering_id=g.id AND p.user_id=g.host_user_id);
+              UPDATE participants SET status=CASE WHEN status='PENDING' THEN 'REMOVED' ELSE 'ACTIVE' END;
+              INSERT INTO settlement_units(gathering_id,host_participant_id,status,created_at)
+               SELECT g.id,p.id,'OPEN',g.created_at FROM gatherings g JOIN participants p
+               ON p.gathering_id=g.id AND p.user_id=g.host_user_id;
+              INSERT INTO settlement_unit_members(settlement_unit_id,gathering_id,participant_id,status,joined_at)
+               SELECT s.id,s.gathering_id,p.id,p.status,p.created_at FROM settlement_units s
+               JOIN participants p ON p.gathering_id=s.gathering_id;
+              ALTER TABLE rounds ADD settlement_unit_id BIGINT NULL COMMENT '총무의 관리와 입력 버전이 독립되는 경계';
+              UPDATE rounds r JOIN settlement_units u ON u.gathering_id=r.gathering_id SET r.settlement_unit_id=u.id;
+              ALTER TABLE rounds MODIFY settlement_unit_id BIGINT NOT NULL COMMENT '총무의 관리와 입력 버전이 독립되는 경계',
+               ADD CONSTRAINT fk_round_unit_room FOREIGN KEY (settlement_unit_id,gathering_id) REFERENCES settlement_units(id,gathering_id),
+               ADD CONSTRAINT fk_round_payer_member FOREIGN KEY (settlement_unit_id,payer_id) REFERENCES settlement_unit_members(settlement_unit_id,participant_id);
+              UPDATE gatherings g SET g.status='OPEN',g.last_activity_at=g.created_at,
+               g.next_round_seq=COALESCE((SELECT MAX(seq)+1 FROM rounds r WHERE r.gathering_id=g.id),1);
+              CREATE TABLE round_responses (
+                participant_id BIGINT NOT NULL COMMENT '응답한 공유 참여자',
+                round_id BIGINT NOT NULL COMMENT '단위 권한 검사에 쓰는 실제 차수',
+                type VARCHAR(8) NOT NULL COMMENT 'ABSENT SOBER DRANK EXEMPT, 면제 API는 보류',
+                source VARCHAR(8) NOT NULL COMMENT 'SELF HOST AUTO, 자동응답만 되돌리기에서 삭제',
+                PRIMARY KEY(participant_id,round_id),
+                CONSTRAINT fk_response_participant FOREIGN KEY(participant_id) REFERENCES participants(id),
+                CONSTRAINT fk_response_round FOREIGN KEY(round_id) REFERENCES rounds(id) ON DELETE CASCADE
+              ) COMMENT='빈칸을 행 부재로 유지하여 정산 전 미응답과 불참을 구별';
+              INSERT INTO round_responses(participant_id,round_id,type,source)
+               SELECT participant_id,round_id,CASE WHEN attended=0 THEN 'ABSENT' WHEN drank=1 THEN 'DRANK' ELSE 'SOBER' END,'SELF' FROM attendances;
+  - changeSet:
+      id: 025-v4-snapshots
+      author: jeongsan
+      comment: "확정 송금과 근거만 저장 ADR-015"
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              CREATE TABLE settlements (
+               id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '정산 실행 식별자',
+               gathering_id BIGINT NOT NULL COMMENT '술자리 삭제 범위',
+               settlement_unit_id BIGINT NOT NULL UNIQUE COMMENT '동일 단위의 중복 정산 방지',
+               input_revision BIGINT NOT NULL COMMENT '총무가 확인한 입력 버전',
+               input_hash CHAR(64) NOT NULL COMMENT '자동응답까지 포함한 미리보기 일치 검증',
+               grand_total BIGINT NOT NULL COMMENT '스냅샷 송금과 함께 정산 실행의 원금 기록',
+               settled_at DATETIME(6) NOT NULL COMMENT '송금 명세가 고정된 시각',
+               CONSTRAINT fk_settlement_unit FOREIGN KEY(settlement_unit_id) REFERENCES settlement_units(id)
+              ) COMMENT='미리보기 캐시가 아니라 확정 송금 명세의 소유자 ADR-015';
+              CREATE TABLE settlement_transfers (
+               id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '송금자와 수취인이 조작하는 송금 식별자',
+               settlement_id BIGINT NOT NULL COMMENT '되돌리기 시 함께 폐기할 정산',
+               sender_participant_id BIGINT NOT NULL COMMENT '본인만 보냈어요를 누를 수 있는 신원',
+               recipient_participant_id BIGINT NOT NULL COMMENT '실제 결제자만 입금을 확인',
+               amount BIGINT NOT NULL COMMENT 'Core가 계산한 불변 정수 송금액',
+               status VARCHAR(12) NOT NULL DEFAULT 'WAITING' COMMENT 'WAITING SENT CONFIRMED',
+               sent_at DATETIME(6) NULL COMMENT '되돌리기 방지를 위해 상태를 되돌려도 보존',
+               confirmed_at DATETIME(6) NULL COMMENT '현금 확인 이력도 취소 판정에 보존',
+               not_received_at DATETIME(6) NULL COMMENT '마지막 미수취 안내 시각',
+               UNIQUE KEY uq_transfer_pair(settlement_id,sender_participant_id,recipient_participant_id),
+               CONSTRAINT fk_transfer_settlement FOREIGN KEY(settlement_id) REFERENCES settlements(id) ON DELETE CASCADE,
+               CONSTRAINT fk_transfer_sender FOREIGN KEY(sender_participant_id) REFERENCES participants(id),
+               CONSTRAINT fk_transfer_recipient FOREIGN KEY(recipient_participant_id) REFERENCES participants(id)
+              ) COMMENT='다른 총무 단위와 합산하거나 상계하지 않는 실제 송금 지시';
+              CREATE TABLE settlement_transfer_items (
+               transfer_id BIGINT NOT NULL COMMENT '근거가 설명하는 송금',
+               round_id BIGINT NOT NULL COMMENT '정산 당시 담당 차수',
+               type VARCHAR(8) NOT NULL COMMENT '정산 당시 참석 음주 상태',
+               amount BIGINT NOT NULL COMMENT 'Core 표시 변환, 마지막 차수 잔액으로 송금액과 합 일치',
+               PRIMARY KEY(transfer_id,round_id),
+               CONSTRAINT fk_basis_transfer FOREIGN KEY(transfer_id) REFERENCES settlement_transfers(id) ON DELETE CASCADE,
+               CONSTRAINT fk_basis_round FOREIGN KEY(round_id) REFERENCES rounds(id)
+              ) COMMENT='정산 뒤 원본 입력 변경 없이 공개하는 송금 근거 스냅샷 FC-014 D2';
+  - changeSet:
+      id: 026-v4-events-payout
+      author: jeongsan
+      comment: "공유 타임라인 내부 알림과 암호화 계좌 FC-005 FC-011"
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              CREATE TABLE timeline_entries (
+               id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '증분 조회에 쓰는 타임라인 순서',
+               gathering_id BIGINT NOT NULL COMMENT '모두가 공유하는 같은 방',
+               settlement_unit_id BIGINT NULL COMMENT '시스템 소식이 속한 총무 단위, 공통 대화는 NULL',
+               type VARCHAR(10) NOT NULL COMMENT 'SYSTEM MESSAGE',
+               author_participant_id BIGINT NULL COMMENT '대화 작성자, 시스템 소식은 NULL',
+               system_code VARCHAR(40) NULL COMMENT '이름 변경과 무관한 이벤트 종류',
+               body VARCHAR(500) NOT NULL COMMENT '생성 당시 실명으로 완성한 문장, 계좌번호는 넣지 않음',
+               created_at DATETIME(6) NOT NULL COMMENT 'UTC 생성 시각',
+               INDEX idx_timeline_room(gathering_id,id),
+               CONSTRAINT fk_timeline_room FOREIGN KEY(gathering_id) REFERENCES gatherings(id)
+              ) COMMENT='단위가 달라도 같은 술자리에서 읽는 한 줄 타임라인';
+              CREATE TABLE notifications (
+               id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '내부 알림 식별자',
+               user_id BIGINT NOT NULL COMMENT '알림 소유자',
+               gathering_id BIGINT NOT NULL COMMENT '술자리 삭제 시 함께 제거하는 개인정보',
+               settlement_unit_id BIGINT NULL COMMENT '단위별 이동과 알림 범위',
+               type VARCHAR(40) NOT NULL COMMENT 'SETTLED SENT NOT_RECEIVED 등 프론트 이동 기준',
+               title VARCHAR(100) NOT NULL COMMENT '요약 안내 문구',
+               body VARCHAR(500) NOT NULL COMMENT '이벤트 당시 실명과 금액 안내',
+               created_at DATETIME(6) NOT NULL COMMENT '최신순 조회 기준',
+               read_at DATETIME(6) NULL COMMENT '본인 읽음 처리',
+               INDEX idx_notification_user(user_id,id),
+               CONSTRAINT fk_notification_room FOREIGN KEY(gathering_id) REFERENCES gatherings(id)
+              ) COMMENT='이번 출시에는 푸시 없이 내부 알림함을 제공 FC-014';
+              ALTER TABLE users ADD payout_encrypted VARBINARY(512) NULL COMMENT 'AES-GCM 인증 암호문, 원문 계좌를 DB에 저장하지 않음',
+               ADD spoon_count BIGINT NOT NULL DEFAULT 0 COMMENT '술자리 삭제 후에도 남는 감사 표시 누적';

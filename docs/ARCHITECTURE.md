@@ -1,5 +1,10 @@
 # 정산어택 — 아키텍처 개요
 
+> **2026-10-06 제품 v4 계약:** 같은 Gathering의 공유 참여자와 총무별 정산 단위를 분리한다.
+> 서버는 단위의 입력만 모아 기존 Core v2를 호출한다. 설계는
+> [SETTLEMENT_UNITS](SETTLEMENT_UNITS.md), 실제 DB/API 구현은 후속이다.
+> 아래 과거 스냅샷의 “술자리당 한 총무·한 정산” 표현보다 이 계약이 우선한다.
+
 > **스냅샷 문서다.** 며칠이면 낡는다. 구체적인 스펙은 여기 다시 적지 않고
 > 원본 문서로 링크한다 — 두 곳에 같은 내용을 적으면 반드시 한쪽이 낡는다.
 > **작성일:** 2026-09-13
@@ -16,7 +21,7 @@
 **정산어택**은 **일회용** 술자리 정산 서비스다. 총무 혼자 참여자의 참석·음주
 여부를 입력하지 않는다 — 참여자 각자 버튼으로 응답하고, 차수마다 결제자가 따로
 있을 수 있고, 수취인별로 송금액이 갈라진다. 정산이 끝나면 7일 뒤 사라진다.
-제품 규칙의 단일 출처는 [`REQUIREMENTS.md`](REQUIREMENTS.md) v3다.
+제품 규칙의 단일 출처는 [`REQUIREMENTS.md`](REQUIREMENTS.md) v4다.
 
 **움직이지 않는 제약**
 
@@ -299,3 +304,13 @@ GitHub push (main)
 - 코드리뷰 기준으로 이 문서를 쓴다면: PR이 §2의 전략(functional
   core/imperative shell, feature 패키지, schema-first)에서 벗어나거나,
   §8에 적힌 "아직 v1"인 지점을 v2 방식으로 몰래 바꾸는지를 먼저 본다.
+
+
+## backend-v4 구현 체크포인트
+
+GatheringController·SettlementUnitController → GatheringService의 READ_COMMITTED 트랜잭션 → GatheringStore의 명시 JDBC.
+단위 입력은 SettlementWorkflow → 순수 core Settlement로 전달한다. 금융 계산·단위 인가/hash/상태/계좌 규칙의 Java 구현은
+각 javaimpl 패키지에 있으며 Kotlin을 호출하는 계산 래퍼가 아니다. 운영 Spring Bean과 HTTP/JDBC 배선은 Kotlin으로 공유한다.
+송금 스냅샷·내부 알림·공유 REST 타임라인·RetentionJob은 같은 서버 프로세스에서 동작한다.
+옛 GroupController/Service와 v1 Gathering JPA는 제거했으며 새 쿼리는 모임 코드를 참조하지 않는다.
+이 체크포인트는 작업 브랜치의 상태다. main 병합/운영 배포/실시간 타임라인 완료를 뜻하지 않는다.

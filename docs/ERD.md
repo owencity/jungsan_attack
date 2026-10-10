@@ -1,5 +1,10 @@
 # 정산어택 — ERD
 
+> **제품 v4 설계와 구분(2026-10-06):** 총무별 단위·명단·snapshot의 논리 스키마는
+> [SETTLEMENT_UNITS §3](SETTLEMENT_UNITS.md#3-논리-스키마--아직-적용되지-않음)에 있다.
+> 이번 계약 PR에는 migration이 없으므로 아래 실제 ERD에 미래 테이블을 적용된 것처럼 추가하지 않는다.
+> 후속 신규 Liquibase PR에서 이 실제 ERD를 함께 갱신한다.
+
 > `server/src/main/resources/db/changelog/`의 Liquibase YAML을 손으로 옮긴 것이다.
 > **스키마가 바뀌면 이 문서가 아니라 changelog를 먼저 고치고, 이 문서를 그에 맞춰
 > 갱신한다** (`00-README.md` — 명세서는 손으로 쓰지 않는다의 정신을 ERD에도 적용).
@@ -98,6 +103,7 @@ erDiagram
         varchar provider "KAKAO|GOOGLE"
         varchar provider_id
         varchar nickname
+        varchar display_name "NULL=미입력 실명, 최초 등록 후 불변(015)"
         varchar profile_image_url
         varchar tier "FREE|PRO"
         datetime tier_expires_at
@@ -279,3 +285,56 @@ docker rm -f jeongsan-mysql-test && docker network rm jeongsan-test-net
       비용이 컸다
 - [ ] `groups` → `user_groups` 리네임(migration `011`)에 맞춰 `docs/table-spec.xlsx`
       갱신 — 엑셀은 이 문서와 달리 손으로 열어 고쳐야 한다, 아직 안 함
+
+
+## 2026-10-07 v4 구현 스키마
+
+진실은 `016-independent-settlement-units.yaml`의 새 changeSet 024~026이다. 기존 changelog는 수정하지 않았다.
+새 테이블은 `GatheringStore` JDBC와 같은 DataSource의 Spring 트랜잭션으로 매핑한다. ORM 자동 DDL은 사용하지 않는다.
+
+| 테이블 | 키·참조·역할 |
+|---|---|
+| settlement_units | id, gathering_id, host_participant_id. `(host_participant_id,gathering_id)` FK로 다른 방 총무 차단 |
+| settlement_unit_members | PK(unit,participant), 같은 방 compound FK. ACTIVE/REMOVED·viewed_at은 단위별 |
+| settlement_unit_requests | PK(gathering,user,request UUID), 생성 단위와 본문 hash. 동시 재시도 중복 차단 |
+| round_responses | PK(participant,round), 행 부재=미응답, SELF/HOST/AUTO, round 삭제 cascade |
+| settlements | UNIQUE(unit), 확정 revision/hash/실행 원금/시각. 미리보기 계산 결과를 캐시하지 않음 |
+| settlement_transfers | UNIQUE(settlement,sender,recipient), 금액·WAITING/SENT/CONFIRMED·보낸/확인/미수취 시각 |
+| settlement_transfer_items | PK(transfer,round), 확정 당시 참석 타입과 정수 근거, transfer 삭제 cascade |
+| timeline_entries | 방 전체 타임라인, unit은 시스템 소식의 선택 정보, MESSAGE/SYSTEM |
+| notifications | 사용자별 읽음·방/단위 참조·문구·UTC 시각 |
+
+`gatherings`에는 next_round_seq, last_activity_at, completed_at을 추가한다.
+`rounds`에는 unit ID와 `(unit,payer)` 명단 FK를 추가한다. 사용자의 지급 계좌는 users.payout_encrypted에만 신규 저장한다.
+`spoon_count` 기본 0은 조회 기반이며 복수 총무의 지급 정책을 구현한 것으로 보지 않는다.
+
+물리 이름은 기존 name/host_user_id/gathering_date를 유지하고 API에서 title/createdByUserId/date로 매핑한다.
+레거시 group_id·모임/기타 항목/attendance 테이블과 컬럼은 이 단계에서 삭제하지 않았다. 새 API는 사용하지 않는다.
+업그레이드는 COLLECTING 입력을 최초 단위에 붙이고 기존 출석을 SELF로 옮긴다.
+CONFIRMED v1 자료가 있으면 024의 precondition으로 중단한다. 기존 확정 금액을 v2로 조용히 재계산하지 않는다.
+완료 7일 또는 30일 미활동 삭제는 단위 오름차순 잠금→방 잠금→최신 상태 재검사 후 자식부터 제거한다.
+
+## 2026-10-09 인증·탈퇴 스키마
+
+진실은 새 `017-release-auth.yaml`, changeSet `027-release-auth-and-account-deletion`이다.
+users 계정 행은 탈퇴 때 삭제하고, 완료 participants.user_id와 gatherings.host_user_id는 NULL로 끊는다.
+NULL 좌석은 탈퇴 자료에만 사용한다. 가입 API는 항상 유효한 사용자 ID를 저장해 기존 중복 참여 UNIQUE를 유지한다.
+레거시 user_groups.created_by_user_id도 삭제 가능한 NULL 참조로 변경한다.
+
+| 테이블 | 역할·수명 |
+|---|---|
+| auth_challenges | state 해시·provider·client·nonce·상관 쿠키 해시·앱 challenge·복귀 경로, 5분 |
+| auth_tickets | 티켓 해시·user FK(cascade)·앱 challenge, 60초·한 번 교환 |
+| auth_credentials | user PK/FK(cascade)·Apple client ID·암호화 refresh token |
+| auth_revocations | 로그아웃 JWT 해시·실제 JWT 만료, 만료 후 정리 |
+| auth_revoke_jobs | 탈퇴 트랜잭션에서 복사한 Apple client ID·암호문·재시도 시각, 성공 후 삭제 |
+
+로그인·탈퇴 모두 GatheringStore의 같은 DataSource와 트랜잭션을 사용한다.
+티켓 교환 잠금은 users→ticket으로 탈퇴의 cascade와 순서를 맞춘다.
+탈퇴는 관련 unit→Gathering→users 순서로 잡고, 사용자 잠금 뒤 목록 변경을 재검사한다.
+계좌 저장도 알림 대상 Gathering→users 순서로 맞춘다. 요청에 이미 시작된 다른 작업을 취소하는 것은 아니다.
+# FC-020 추가 스키마 (2026-10-10)
+
+물리 정의는 `018-auto-settlement.yaml`, changeSet `028`이다. `settlement_units`에 nullable `headcount INT`,
+`headcount_exceeded_notified BOOLEAN NOT NULL DEFAULT FALSE`, nullable `auto_settlement_error VARCHAR(40)`를 추가한다.
+인원 범위는 서비스가 검증하며 기존 단위의 NULL은 자동 정산을 끈다. 기존 테이블·FK·송금 스냅샷은 유지한다.
