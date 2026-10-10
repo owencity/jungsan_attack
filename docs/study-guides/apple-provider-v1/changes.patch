@@ -1,0 +1,486 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index beac8f3..75ccdab 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,5 +1,11 @@
+ # AGENTS.md — 정산어택 백엔드 (jungsan_attack)
+ 
++> **2026-10-10 운영 설정 추가 결정:** Codex가 OCI `.env`를 만들고 카카오·내부 키를 준비한다.
++> Apple 로그인용 키는 CTO가 서버에 직접 입력하며 App Store Connect 배포 키를 사용하지 않는다.
++> Apple 설정이 비면 운영 기동을 허용하되 Apple 요청만 503으로 닫는다. 모두 채운 Apple 키의
++> 오류와 카카오·DB·JWT·암호화 필수 설정 오류는 기동 시 거절한다. prod 기본값은 추가하지 않는다.
++> CTO가 OCI Tunnel의 새 호스트 추가를 완료했다. 과거 준비 요청보다 이 결정을 우선한다.
++
+ > **2026-10-10 운영 호스트 정정:** 정산어택은 `jungsan-api.devkdk.com`이다.
+ > `api.devkdk.com`은 노트북 터널이므로 수정하지 않는다. OCI Tunnel에는 새 호스트를
+ > `http://localhost:18080`으로 추가하며 기존 `webhook.devkdk.com` → 8080은 유지한다.
+diff --git a/DEVLOG.md b/DEVLOG.md
+index d05d35a..dce139c 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,11 @@
+ # 개발 결정 로그
+ 
++## [2026-10-10] Apple 발급 대기와 카카오 운영을 분리
++- 문제: Apple 로그인 키 발급 전 운영 설정 검증이 서버 전체 기동을 막았다. 파일 생성과 실제 제공자 키 확보도 서로 다른 작업이었다.
++- 고려한 대안: 모든 Apple 키 발급까지 배포 대기, 배포용 키 재사용, Apple 요청만 닫고 카카오·기존 기능을 먼저 운영한다.
++- 선택 이유·트레이드오프: CTO가 마지막 방식을 결정했다. Codex가 .env와 독립 내부 키·카카오 설정을 만들고 Apple 미설정은 503으로 닫는다. 설정을 모두 채운 잘못된 개인키와 다른 필수 값은 계속 기동 시 거절한다.
++- 아쉬운 점: 실제 Apple 로그인·앱 연결은 새 로그인용 키 입력·재배포·실계정 시험까지 기다려야 한다. 자동 검증은 실제 제공자 성공을 대신하지 않는다.
++
+ ## [2026-10-10] 노트북 API를 보존하고 정산어택 운영 호스트를 추가
+ - 문제: api.devkdk.com을 OCI 주소로 추정했지만 CTO의 서버 확인 결과 노트북의 다른 터널 주소였다.
+ - 고려한 대안: 기존 API 호스트를 OCI로 이동하거나, 정산어택 전용 호스트를 OCI Tunnel에 추가한다.
+diff --git a/docker-compose.prod.yml b/docker-compose.prod.yml
+index 0039ffe..4942435 100644
+--- a/docker-compose.prod.yml
++++ b/docker-compose.prod.yml
+@@ -50,10 +50,11 @@ services:
+       JWT_SECRET: ${JWT_SECRET:?필수 운영 설정}
+       PAYOUT_ENCRYPTION_KEY: ${PAYOUT_ENCRYPTION_KEY:?필수 운영 설정}
+       AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?필수 운영 설정}
+-      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:?필수 운영 설정}
+-      APPLE_TEAM_ID: ${APPLE_TEAM_ID:?필수 운영 설정}
+-      APPLE_KEY_ID: ${APPLE_KEY_ID:?필수 운영 설정}
+-      APPLE_PRIVATE_KEY_BASE64: ${APPLE_PRIVATE_KEY_BASE64}
++      # 키 이름은 선언하되 발급 전 빈 값은 허용한다. Apple 진입만 503으로 닫는다.
++      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID?Apple 설정 키를 선언하세요 (빈 값 허용)}
++      APPLE_TEAM_ID: ${APPLE_TEAM_ID?Apple 설정 키를 선언하세요 (빈 값 허용)}
++      APPLE_KEY_ID: ${APPLE_KEY_ID?Apple 설정 키를 선언하세요 (빈 값 허용)}
++      APPLE_PRIVATE_KEY_BASE64: ${APPLE_PRIVATE_KEY_BASE64?Apple 설정 키를 선언하세요 (빈 값 허용)}
+       APPLE_REDIRECT_URI: ${APPLE_REDIRECT_URI:?필수 운영 설정}
+       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?필수 운영 설정}
+       LOGIN_SUCCESS_URL: ${LOGIN_SUCCESS_URL:?필수 운영 설정}
+diff --git a/docs/API.md b/docs/API.md
+index e7d08e5..fdd5a97 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1,5 +1,12 @@
+-# 정산어택 — API 계약 · v8
++# 정산어택 — API 계약 · v9
+ 
++> **v9 변경(2026-10-10)** — CTO 결정: Apple 로그인 설정 발급 중에도 카카오·서버를 운영한다.
++>
++> | 절 | 변경 |
++> |---|---|
++> | AUTH_RELEASE 운영 설정 | Apple 설정이 비면 서버 기동 허용, Apple 요청만 503 |
++> | §1.4 AUTH_PROVIDER_UNAVAILABLE | 운영 Apple 미설정에도 반환, 카카오·DB·JWT 필수 설정은 계속 기동 시 검증 |
++>
+ > **v8 변경(2026-10-10)** — FC-016~018·020. 기존 버전 이력은 유지한다.
+ >
+ > | 절 | 변경 |
+@@ -29,7 +36,7 @@
+ 앱 `GET /auth/{provider}/login?client=app`에는 `codeChallenge`가 필수이고, 교환 JSON에는 `codeVerifier`가 추가된다.
+ 제공자 콜백과 티켓 교환은 로그인 전 단계라 공개이며, 새 로그아웃·탈퇴는 `@LoginUser`가 필수다.
+ 로그인 콜백은 POST 본문을 프론트로 재전송하지 않도록 303을 반환한다. 웹 쿠키의 만료는 JWT 설정과 같다.
+-`AUTH_PROVIDER_UNAVAILABLE`은 로컬 제공자 미설정, `ACTIVE_GATHERING_EXISTS`는 진행 중 탈퇴,
++`AUTH_PROVIDER_UNAVAILABLE`은 제공자 미설정(운영 Apple 포함), `ACTIVE_GATHERING_EXISTS`는 진행 중 탈퇴,
+ `ACCOUNT_STATE_CHANGED`는 탈퇴 잠금 중 참여/단위 목록 변경으로 재시도할 때 반환한다.
+ 기존 `UNAUTHENTICATED`(401)는 state/상관 쿠키/nonce/서명/티켓/verifier/로그아웃 토큰/탈퇴 계정 검증 실패에도 사용한다.
+ 
+@@ -286,6 +293,7 @@ GET /api/v1/gatherings
+ | `DISPLAY_NAME_ALREADY_SET` | 409 | 등록한 실명과 다른 값으로 변경 요청 |
+ | `TOKEN_EXPIRED` | 401 | 만료 — 프론트는 재로그인으로 보낸다 |
+ | `PROVIDER_AUTH_FAILED` | 401 | 카카오가 code 를 거부 |
++| `AUTH_PROVIDER_UNAVAILABLE` | 503 | 제공자 설정 미완료. 운영 Apple 미설정은 해당 제공자만 중단 |
+ | `NOT_HOST` | 403 | 주최자 전용 기능 |
+ | `NOT_SELF` | 403 | 남의 체크·입금 상태를 바꾸려 함 |
+ | `NOT_FOUND` | 404 | 없음 또는 내 것이 아님 |
+diff --git a/docs/AUTH_RELEASE.md b/docs/AUTH_RELEASE.md
+index 1534bf5..33b78f9 100644
+--- a/docs/AUTH_RELEASE.md
++++ b/docs/AUTH_RELEASE.md
+@@ -28,7 +28,8 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
+ 
+ ## 검증·운영
+ 
+-Apple 키·ID는 환경설정만 참조한다. 로컬은 미설정이어도 부팅되며 Apple 진입만 503 `AUTH_PROVIDER_UNAVAILABLE`; 운영은 필수값 누락/빈값에 즉시 실패한다. 기존 의존성과 JDK/JJWT만 사용한다.
++Apple 키·ID는 환경설정만 참조한다. 2026-10-10 CTO 결정으로 로컬·운영 모두 Apple 설정이 비면 서버는 기동하고 Apple 인가·코드 교환·연결 해제만 503 `AUTH_PROVIDER_UNAVAILABLE`로 닫는다. 카카오와 기존 기능의 인증은 그대로 적용한다.
++운영 `.env`에는 Apple 설정 키 이름을 모두 선언하고 발급 전 값은 빈칸으로 둔다. placeholder를 실제 설정으로 취급하지 않는다. 설정을 모두 채웠다면 잘못된 EC 개인키는 기동 시 거절한다. 카카오·DB·JWT·독립 암호화 키 등 나머지 필수 설정은 계속 즉시 실패한다. 기존 의존성과 JDK/JJWT만 사용한다.
+ 
+ 이 구현과 앱의 실제 연결, 운영 제공자 로그인 시험, 심사 제출·승인은 별도 상태다. 진행 중 술자리 탈퇴 거절이 심사에서 수용되는지는 단정하지 않는다.
+ 
+diff --git a/docs/DEPLOY.md b/docs/DEPLOY.md
+index 56700eb..d16f3a5 100644
+--- a/docs/DEPLOY.md
++++ b/docs/DEPLOY.md
+@@ -54,7 +54,8 @@ ssh ubuntu@<OCI_HOST> uname -m
+ ### (c) 서버에 `.env` 만들기
+ 
+ 저장소에 두지 않는다(카카오 시크릿·DB 비밀번호). OCI 에서 직접 만든다.
+-CTO가 `~/jeongsan/.env`의 실제 값을 입력한다(2026-10-10 결정). 에이전트는 값 대신 필요한 키와 검증 결과를 남긴다.
++2026-10-10 추가 결정: Codex가 `~/jeongsan/.env`를 생성하고 카카오 기존 설정과 새 내부 키를 채운다.
++CTO가 Sign in with Apple 로그인용 Key ID·개인키를 서버에 직접 입력한다. 키 값은 저장소·채팅·로그에 남기지 않는다.
+ 
+ | 필요한 키 | 용도·입력 기준 |
+ |---|---|
+@@ -85,10 +86,11 @@ KAKAO_REDIRECT_URI=https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback
+ JWT_SECRET=<32자 이상 랜덤>
+ PAYOUT_ENCRYPTION_KEY=<계좌용 독립 32바이트 키의 Base64>
+ AUTH_ENCRYPTION_KEY=<외부 인증 자격용 독립 32바이트 키의 Base64>
+-APPLE_CLIENT_ID=<웹 Apple Services ID>
+-APPLE_TEAM_ID=<Apple Team ID>
+-APPLE_KEY_ID=<Sign in with Apple Key ID>
+-APPLE_PRIVATE_KEY_BASE64=<Apple p8의 PKCS8 DER 바이트를 Base64로 변환한 값>
++# Apple 로그인 설정 발급 전에는 아래 값을 비워 둔다
++APPLE_CLIENT_ID=
++APPLE_TEAM_ID=
++APPLE_KEY_ID=
++APPLE_PRIVATE_KEY_BASE64=
+ APPLE_REDIRECT_URI=https://jungsan-api.devkdk.com/api/v1/auth/apple/callback
+ FRONTEND_ORIGIN=https://jungsan.devkdk.com
+ LOGIN_SUCCESS_URL=https://jungsan.devkdk.com/jungsan
+@@ -98,7 +100,12 @@ chmod 600 .env
+ 
+ Apple 웹 Services ID의 등록 도메인·Return URL과 위 callback을 맞춘다. 앱도 시스템 인증 브라우저에서 같은 Services ID 흐름을 사용한다.
+ `APPLE_PRIVATE_KEY_BASE64`는 PEM 헤더·푸터를 제외한 Base64 본문이다. 원본 p8은 저장소에 넣지 않는다.
+-prod는 필수 설정이 없거나 비었거나 EC 개인키가 잘못되면 시작이 실패한다.
++Apple 키 발급 전에는 `APPLE_CLIENT_ID/TEAM_ID/KEY_ID/PRIVATE_KEY_BASE64` 값을 빈칸으로 둘 수 있다.
++키 이름은 `.env`에 모두 선언하고 자리표시 문자열 대신 `APPLE_KEY_ID=`처럼 둔다.
++이때 서버·카카오는 기동하며 Apple 요청은 503 `AUTH_PROVIDER_UNAVAILABLE`이다.
++Apple 설정을 모두 채웠는데 개인키가 잘못되면 기동이 실패한다. 나머지 필수 운영 값에는 이 예외를 적용하지 않는다.
++App Store Connect/TestFlight 배포용 p8은 로그인용이 아니므로 서버 설정에 넣지 않는다.
++설정을 완성한 뒤 재배포해야 새 컨테이너가 Apple 값을 읽는다.
+ AUTH_ENCRYPTION_KEY는 JWT/PAYOUT 키와 별개이며 연결 해제 대기 작업이 있는 동안 변경하면 기존 토큰을 읽을 수 없다.
+ 실제 Apple 로그인→앱 티켓 교환→탈퇴→Apple 연결 해제까지 확인한 뒤 앱 심사 자료에 결과를 기록한다.
+ 
+@@ -264,3 +271,11 @@ bash scripts/deploy/health.sh
+ SSH 인증 거절은 이 실행의 원인이 아니다. CTO가 위 필수 키와 **새 콜백 주소**를 넣고
+ `chmod 600 ~/jeongsan/.env`로 보호한 뒤 최신 main의 배포를 재실행한다.
+ Tunnel 추가·개발자 콘솔 등록·실제 로그인은 이 빌드 결과와 별도로 확인한다.
++
++## 운영 설정 생성과 Tunnel 추가 (2026-10-10 · 추가 확인)
++
++CTO가 OCI Tunnel에 `jungsan-api.devkdk.com` → `http://localhost:18080`을 추가했다고 확인했다.
++Codex가 OCI `~/jeongsan/.env`를 권한 600으로 생성했다. 기존 DB·앱이 없는 것을 확인한 뒤
++DB 비밀번호·JWT 서명·서로 독립인 계좌/인증 암호화 키를 새로 생성했고 기존 카카오 설정을 채웠다.
++Apple 로그인용 설정은 발급 전 빈 값이다. 위 기존 배포 실패 기록은 파일 생성 전 시점이다.
++Apple 미설정 기동 변경은 PR 검증·병합 뒤 배포하며, 실제 운영 health·카카오 로그인 성공은 따로 확인한다.
+diff --git a/docs/RELEASE_READINESS.md b/docs/RELEASE_READINESS.md
+index 8f56801..d4f11e2 100644
+--- a/docs/RELEASE_READINESS.md
++++ b/docs/RELEASE_READINESS.md
+@@ -4,9 +4,9 @@
+ 기존 PR의 리뷰·고정 학습 자료는 삭제하지 않는다. PR #26은 백엔드 전체 학습 이력 인덱스다.
+ 새 출시 PR의 head를 기준으로 검증하며 과거 CI 성공을 새 커밋 성공으로 대신하지 않는다.
+ 
+-CTO는 실제 `.env`를 OCI의 `~/jeongsan/.env`에 직접 넣는다. 필수 키 목록은 DEPLOY.md에 보존했다.
++추가 결정으로 Codex가 OCI `~/jeongsan/.env`를 생성했고 카카오·내부 키를 채웠다. Apple 로그인용 개인키는 CTO가 서버에서 직접 입력한다. 필수 키 목록은 DEPLOY.md에 보존했다.
+ DNS 전용 `CLOUDFLARE_API_TOKEN`은 GitHub Secret, 확인한 OCI Tunnel ID는 GitHub Variable로 준비한다.
+-CTO가 OCI Tunnel에 새 호스트 → localhost:18080을 추가한다. 기존 노트북 `api.devkdk.com`과
++CTO가 OCI Tunnel에 새 호스트 → localhost:18080 추가를 완료했다고 확인했다. 기존 노트북 `api.devkdk.com`과
+ 웹훅 `webhook.devkdk.com` → localhost:8080은 변경하지 않는다. DNS 작업은 새 호스트만 대상으로 한다.
+ 실제 GitHub 리뷰 댓글 10개와 구현자 재검토는 [리뷰 기록](pr-reviews/2026-10-10-release/README.md)에 있다.
+ 
+@@ -25,7 +25,7 @@ CTO가 OCI Tunnel에 새 호스트 → localhost:18080을 추가한다. 기존 
+ 
+ 1. 병합 권한: CTO가 2026-10-10에 CI 전체 통과·미결 결정 없음·리뷰/스터디 보존 조건으로 Codex 병합을 승인했다. REMOVE_PAYER 보류도 승인했다. [PR #27](https://github.com/owencity/jungsan_attack/pull/27)은 CI 전체 성공 후 병합됐다. 새 호스트 수정도 별도 PR·최신 CI를 거친다.
+ 2. 운영 `.env`: 카카오 Client ID·Secret, Apple Services ID·Team ID·Key ID·p8, 콜백, 독립 JWT/계좌/인증 암호화 키. 저장소·CI 로그에 값은 남기지 않는다.
+-3. GitHub OCI_HOST/OCI_SSH_KEY가 CTO가 지정한 OCI와 준비된 키를 가리키는지 확인한다. PR #27 main 배포에서 SSH 전송은 성공했다. 현재 기동 중단 원인은 `~/jeongsan/.env` 부재다.
++3. GitHub OCI_HOST/OCI_SSH_KEY가 CTO가 지정한 OCI와 준비된 키를 가리키는지 확인한다. PR #27 main 배포에서 SSH 전송은 성공했다. 그 배포는 `.env` 생성 전 실패였다. 현재 파일은 생성됐으며 Apple 미설정 기동 변경을 검증·배포한다.
+ 4. OCI Tunnel에 `jungsan-api.devkdk.com` → `http://localhost:18080` 새 항목 추가. 기존 8080의 n8n/Kafka는 유지한다.
+ 5. 실제 운영 DB·백업과 기존 v1 CONFIRMED 자료 확인. 새 배포 디렉터리가 없다는 사실만으로 다른 위치의 DB가 없다고 단정하지 않는다.
+ 6. 카카오 Redirect URI와 Apple Services ID Return URL은 `https://jungsan-api.devkdk.com/api/v1/auth/{provider}/callback`.
+@@ -39,3 +39,6 @@ FC-020 인원 밖 결제자 보류는 CTO가 승인했다. 프론트 `autoSettle
+ 실제 배포 기록: [실행 38030304729](https://github.com/owencity/jungsan_attack/actions/runs/38030304729)은
+ 테스트·빌드·전송 성공, 배포 단계 실패다. OCI에서 `.env` 부재와 정산어택 컨테이너 미생성을 확인했다.
+ 운영 health·웹/앱 로그인을 성공으로 기록하지 않는다.
++
++Apple 값 발급 전 카카오·기존 기능 운영을 허용하는 CTO 결정이 추가됐다. Apple 미설정은 해당 제공자의 503이며
++DB/JWT/카카오/암호화 필수 설정과 인증 가드는 계속 검사한다. 실제 Apple 로그인·앱 심사는 미완료다.
+diff --git a/docs/flow-changes/2026-10-10-auth-deploy.md b/docs/flow-changes/2026-10-10-auth-deploy.md
+index bcdbd87..54bd869 100644
+--- a/docs/flow-changes/2026-10-10-auth-deploy.md
++++ b/docs/flow-changes/2026-10-10-auth-deploy.md
+@@ -4,6 +4,13 @@
+ 
+ - **상태:** 열림 (jungsan-api.devkdk.com 확정·배포 문서/DNS 범위 수정, 운영·콘솔·연결 시험 후속)
+ 
++### 운영 준비 추가 확인 (2026-10-10)
++
++- CTO가 OCI Tunnel의 새 호스트 추가를 완료했다고 확인했다. 기존 API·웹훅 경로는 유지한다.
++- Codex가 운영 `.env`를 권한 600으로 생성하고 카카오·독립 내부 키·새 콜백을 채웠다. Apple 배포 키는 서버에 넣지 않았다.
++- CTO 결정: 로그인용 Apple 키 발급 전에는 해당 값이 비어도 카카오·서버를 기동하고 Apple 요청만 503으로 닫는다. 계약은 API v9·AUTH_RELEASE를 따른다.
++- 로그인용 Apple 개인키는 CTO가 서버에서 직접 입력한다. 실제 카카오/Apple 웹·앱 연결 시험 전까지 상태는 열림이다.
++
+ ### 현재 운영 결정 (2026-10-10 · CTO 서버 확인)
+ 
+ - 정산어택 API는 `https://jungsan-api.devkdk.com`이다. 아래 초기 요청·PR #20 시점의 api.devkdk.com 통일 판단을 대체한다.
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index fcb5285..cf2772f 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -80,4 +80,4 @@
+ | FC-018 | 알림 `title`에 종류 코드가 그대로 | 반영됨 (API v8 · NotificationText 양쪽 구현) | PR #27 · API v8·실제 MySQL/HTTP CI·운영 준비 문서, 운영·프론트 연결 후속 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-018-알림-title에-종류-코드가-그대로-들어-있다) |
+ | FC-019 | 총무 본인의 차수 응답 — R2에서 같이 받기(A안) | 프론트만 (결정 2026-10-09) | 서버 변경 없음 · 기존 차수/응답 API 사용 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-019-총무-본인의-차수-응답--차수-입력-화면에서-같이-받는다) |
+ | FC-020 | 총무 인원 입력 · 전원 응답 시 자동 정산 · 입금 요청 | 열림 (API v8·028·Java/Kotlin 구현, 인원 밖 결제자 보류 승인 2026-10-10·운영 연결 후속) | PR #27 · API v8·실제 MySQL/HTTP CI·운영 준비 문서, 운영·프론트 연결 후속 | [2026-10-09-auto-settle.md](2026-10-09-auto-settle.md) |
+-| FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (jungsan-api.devkdk.com 확정, 운영/콘솔/연결 시험 후속) | PR #27 병합·SSH 전송 성공, .env 부재로 기동 중단 · 새 호스트 문서/DNS 범위 수정, 실제 로그인 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
++| FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (jungsan-api.devkdk.com 확정, 운영/콘솔/연결 시험 후속) | PR #27/#28 병합 · CTO Tunnel 추가 완료 · .env 생성, Apple 미설정 503 분리(API v9), 운영/실제 로그인 검증 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
+diff --git a/scripts/verify-provider-availability.py b/scripts/verify-provider-availability.py
+new file mode 100644
+index 0000000..24ff1ab
+--- /dev/null
++++ b/scripts/verify-provider-availability.py
+@@ -0,0 +1,46 @@
++"""CI 전용 운영 프로필에서 Apple 미설정과 카카오 인가·인증 경계를 검증한다."""
++import json
++import os
++import urllib.error
++import urllib.parse
++import urllib.request
++
++if os.environ.get('GITHUB_ACTIONS') != 'true':
++    raise SystemExit('CI 전용 로컬 서버만 검증한다.')
++base = 'http://127.0.0.1:18081'
++
++class NoRedirect(urllib.request.HTTPRedirectHandler):
++    def redirect_request(self, request, file, code, message, headers, new_url):
++        return None
++
++opener = urllib.request.build_opener(NoRedirect())
++
++def get(path):
++    try:
++        response = opener.open(base + path, timeout=10)
++    except urllib.error.HTTPError as error:
++        response = error
++    with response:
++        return response.status, response.headers, response.read()
++
++status, _, body = get('/actuator/health')
++assert status == 200 and json.loads(body)['status'] == 'UP'
++for client_query in ('', '?client=app&codeChallenge=' + 'a' * 43):
++    status, headers, body = get('/api/v1/auth/apple/login' + client_query)
++    assert status == 503 and json.loads(body)['code'] == 'AUTH_PROVIDER_UNAVAILABLE'
++    assert not headers.get('Location') and not headers.get('Set-Cookie')
++status, headers, _ = get('/api/v1/auth/kakao/login')
++assert status == 302
++location = urllib.parse.urlsplit(headers['Location'])
++assert location.scheme == 'https' and location.hostname == 'kauth.kakao.com'
++parameters = urllib.parse.parse_qs(location.query)
++assert parameters['client_id'] == ['ci-kakao-client']
++assert parameters['redirect_uri'] == ['https://api.test/api/v1/auth/kakao/callback']
++assert len(parameters['state'][0]) == 43
++cookie = headers['Set-Cookie']
++assert 'jeongsan_auth_' in cookie and 'HttpOnly' in cookie and 'Secure' in cookie and 'SameSite=Lax' in cookie
++status, _, body = get('/api/v1/auth/me')
++assert status == 401 and json.loads(body)['code'] == 'UNAUTHENTICATED'
++status, _, body = get('/api/v1/me/gatherings')
++assert status == 401 and json.loads(body)['code'] == 'UNAUTHENTICATED'
++print('prod Apple 미설정 HTTP 6건 통과: health·WEB/APP 503·카카오 인가·인증 가드')
+diff --git a/scripts/verify-release.sh b/scripts/verify-release.sh
+index 2b22af3..4939cdc 100644
+--- a/scripts/verify-release.sh
++++ b/scripts/verify-release.sh
+@@ -39,3 +39,28 @@ python3 scripts/verify-auto-settlement.py
+ python3 scripts/verify-auth-release.py
+ ./gradlew :server:authDatabaseProbe --no-daemon
+ python3 scripts/verify-deploy.py
++
++# 운영 프로필에서 Apple만 비어 있어도 DB·카카오·기존 인증 가드는 정상이어야 한다.
++kill "$server_pid"
++wait "$server_pid" 2>/dev/null || true
++server_pid=''
++docker exec "$container" mysql -uroot -plocal-v4-test -e 'FLUSH PRIVILEGES' >/dev/null 2>&1
++env SPRING_PROFILES_ACTIVE=prod DB_HOST=127.0.0.1 DB_PORT=13306 DB_NAME=jeongsan_auth_test DB_USER=root \
++  DB_PASSWORD=local-v4-test JWT_SECRET=01234567890123456789012345678901 \
++  PAYOUT_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
++  AUTH_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
++  KAKAO_CLIENT_ID=ci-kakao-client KAKAO_CLIENT_SECRET=ci-kakao-secret \
++  KAKAO_REDIRECT_URI=https://api.test/api/v1/auth/kakao/callback \
++  APPLE_CLIENT_ID='' APPLE_TEAM_ID='' APPLE_KEY_ID='' APPLE_PRIVATE_KEY_BASE64='' \
++  APPLE_REDIRECT_URI=https://api.test/api/v1/auth/apple/callback \
++  FRONTEND_ORIGIN=https://web.test LOGIN_SUCCESS_URL=https://web.test/jungsan \
++  java -jar server/build/libs/server.jar --server.port=18081 > server/build/release-prod-http.log 2>&1 &
++server_pid=$!
++ready=false
++for attempt in $(seq 1 40); do
++  if curl -fsS http://127.0.0.1:18081/actuator/health | grep -q '"status":"UP"'; then ready=true; break; fi
++  kill -0 "$server_pid" 2>/dev/null || break
++  sleep 2
++done
++[ "$ready" = true ] || { echo 'Apple 미설정 운영 프로필 기동 실패' >&2; tail -n 45 server/build/release-prod-http.log; exit 1; }
++python3 scripts/verify-provider-availability.py
+diff --git a/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java b/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java
+index 914228e..cf99e07 100644
+--- a/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java
++++ b/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java
+@@ -3,6 +3,7 @@ package app.jeongsan.server.user.javaimpl;
+ import app.jeongsan.server.common.MalformedRequestException;
+ import app.jeongsan.server.common.UnauthenticatedException;
+ import java.net.URI;
++import java.util.List;
+ import java.nio.charset.StandardCharsets;
+ import java.security.MessageDigest;
+ import java.security.NoSuchAlgorithmException;
+@@ -12,6 +13,14 @@ import java.util.HexFormat;
+ 
+ /** Java 학습 구현. Kotlin 정책으로 위임하지 않는다. */
+ public final class AuthPolicy {
++    public static boolean providerAvailable(String provider, List<String> kakaoSettings, List<String> appleSettings) {
++        if (!"KAKAO".equals(provider) && !"APPLE".equals(provider)) return false;
++        List<String> settings = "KAKAO".equals(provider) ? kakaoSettings : appleSettings;
++        int expectedSize = "KAKAO".equals(provider) ? 3 : 5;
++        return settings.size() == expectedSize && settings.stream().allMatch(value ->
++                value.codePoints().anyMatch(character -> !Character.isWhitespace(character) && !Character.isSpaceChar(character)));
++    }
++
+     private AuthPolicy() {}
+     public record Credential(String token, String client) {}
+     public static String returnTo(String value) {
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt b/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt
+index 201fef3..40b8622 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt
+@@ -9,6 +9,12 @@ import java.util.Base64
+ 
+ /** 같은 리다이렉트·티켓 규칙을 Java와 독립 비교한다. 시계·DB·HTTP는 호출부에서 제공한다. */
+ object AuthPolicy {
++    fun providerAvailable(provider: String, kakaoSettings: List<String>, appleSettings: List<String>): Boolean = when (provider) {
++        "KAKAO" -> kakaoSettings.size == 3 && kakaoSettings.all { it.isNotBlank() }
++        "APPLE" -> appleSettings.size == 5 && appleSettings.all { it.isNotBlank() }
++        else -> false
++    }
++
+     fun returnTo(value: String?): String {
+         val path = value ?: "/jungsan/"
+         if (path.length > 500 || !path.startsWith("/jungsan/") || path.contains("//") ||
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt b/server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt
+index ca2a699..37fdda1 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt
+@@ -34,18 +34,21 @@ class RestProviderGateway(
+     @Value("\${apple.redirect-uri}") private val appleRedirect: String,
+     env: Environment,
+ ) : ProviderGateway {
++    private val kakaoSettings = listOf(kakaoId, kakaoSecret, kakaoRedirect)
++    private val appleSettings = listOf(appleId, appleTeam, appleKeyId, appleKey, appleRedirect)
+     private val http = RestClient.builder().requestFactory(SimpleClientHttpRequestFactory().apply {
+         setConnectTimeout(5000); setReadTimeout(5000)
+     }).build()
+     init {
+         if (env.activeProfiles.contains("prod")) {
+-            require(listOf(kakaoId, kakaoSecret, kakaoRedirect, appleId, appleTeam, appleKeyId, appleKey, appleRedirect).all { it.isNotBlank() }) { "로그인 운영 설정이 비었습니다." }
+-            AppleTokens.clientSecret(appleTeam, appleKeyId, appleId, appleKey, Instant.now())
++            require(AuthPolicy.providerAvailable("KAKAO", kakaoSettings, appleSettings)) { "카카오 운영 설정이 비었습니다." }
++            // Apple 키 발급 전에는 해당 제공자만 닫는다. 모두 설정했다면 잘못된 키는 기동 시 발견한다.
++            if (AuthPolicy.providerAvailable("APPLE", kakaoSettings, appleSettings))
++                AppleTokens.clientSecret(appleTeam, appleKeyId, appleId, appleKey, Instant.now())
+         }
+     }
+     private fun available(provider: String) {
+-        val ready = if (provider == "KAKAO") kakaoId.isNotBlank() else provider == "APPLE" &&
+-            listOf(appleId,appleTeam,appleKeyId,appleKey,appleRedirect).all { it.isNotBlank() }
++        val ready = AuthPolicy.providerAvailable(provider, kakaoSettings, appleSettings)
+         if (!ready) throw ApiException("AUTH_PROVIDER_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, "로그인 설정을 확인해 주세요.")
+     }
+     override fun authorize(provider: String, state: String, nonce: String): String {
+diff --git a/server/src/test/kotlin/app/jeongsan/server/user/ProviderAvailabilitySpec.kt b/server/src/test/kotlin/app/jeongsan/server/user/ProviderAvailabilitySpec.kt
+new file mode 100644
+index 0000000..d94db1b
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/user/ProviderAvailabilitySpec.kt
+@@ -0,0 +1,104 @@
++package app.jeongsan.server.user
++
++import app.jeongsan.server.common.ApiException
++import app.jeongsan.server.common.GlobalExceptionHandler
++import app.jeongsan.server.gathering.GatheringStore
++import app.jeongsan.server.user.javaimpl.AuthPolicy as JavaPolicy
++import io.kotest.assertions.throwables.shouldThrow
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++import org.springframework.http.HttpStatus
++import org.springframework.mock.env.MockEnvironment
++import org.mockito.Mockito
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
++import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
++import org.springframework.test.web.servlet.setup.MockMvcBuilders
++import java.security.KeyPairGenerator
++import java.security.spec.ECGenParameterSpec
++import java.util.Base64
++
++class ProviderAvailabilitySpec : StringSpec({
++    val kakaoSettings = listOf("kakao-client", "kakao-secret", "https://api.test/kakao/callback")
++    val appleSettings = listOf("apple-service", "apple-team", "apple-key", "private-key", "https://api.test/apple/callback")
++    fun gateway(kakao: List<String> = kakaoSettings, apple: List<String> = appleSettings) = RestProviderGateway(
++        kakao[0], kakao[1], kakao[2], apple[0], apple[1], apple[2], apple[3], apple[4],
++        MockEnvironment().apply { setActiveProfiles("prod") },
++    )
++
++    "Apple 필수 설정 하나라도 비면 양쪽 언어에서 Apple만 닫는다" {
++        appleSettings.indices.forEach { index ->
++            listOf("", " ", "\u00a0").forEach { blank ->
++                val incomplete = appleSettings.toMutableList().apply { this[index] = blank }
++                AuthPolicy.providerAvailable("APPLE", kakaoSettings, incomplete) shouldBe false
++                JavaPolicy.providerAvailable("APPLE", kakaoSettings, incomplete) shouldBe false
++                AuthPolicy.providerAvailable("KAKAO", kakaoSettings, incomplete) shouldBe true
++                JavaPolicy.providerAvailable("KAKAO", kakaoSettings, incomplete) shouldBe true
++            }
++        }
++        AuthPolicy.providerAvailable("APPLE", kakaoSettings, appleSettings) shouldBe true
++        JavaPolicy.providerAvailable("APPLE", kakaoSettings, appleSettings) shouldBe true
++    }
++
++    "빈 설정 목록이나 알 수 없는 제공자를 사용 가능으로 보지 않는다" {
++        listOf("KAKAO", "APPLE", "UNKNOWN").forEach { provider ->
++            AuthPolicy.providerAvailable(provider, emptyList(), emptyList()) shouldBe false
++            JavaPolicy.providerAvailable(provider, emptyList(), emptyList()) shouldBe false
++        }
++    }
++
++    "운영에서 Apple 키가 비어도 카카오 인가 주소를 만들고 Apple 진입·교환·해제는 503이다" {
++        val adapter = gateway(apple = appleSettings.toMutableList().apply { this[2] = ""; this[3] = "" })
++        adapter.authorize("KAKAO", "state", "nonce").startsWith("https://kauth.kakao.com/oauth/authorize?") shouldBe true
++        listOf<() -> Any?>(
++            { adapter.authorize("APPLE", "state", "nonce") },
++            { adapter.identity("APPLE", "code", "nonce") },
++            { adapter.revokeApple("apple-service", "token") },
++        ).forEach { operation ->
++            val failure = shouldThrow<ApiException> { operation() }
++            failure.code shouldBe "AUTH_PROVIDER_UNAVAILABLE"
++            failure.status shouldBe HttpStatus.SERVICE_UNAVAILABLE
++        }
++    }
++
++    "운영 카카오 설정 누락은 Apple 보류와 관계없이 기동을 막는다" {
++        kakaoSettings.indices.forEach { index ->
++            val incomplete = kakaoSettings.toMutableList().apply { this[index] = "" }
++            AuthPolicy.providerAvailable("KAKAO", incomplete, appleSettings) shouldBe false
++            JavaPolicy.providerAvailable("KAKAO", incomplete, appleSettings) shouldBe false
++            shouldThrow<IllegalArgumentException> { gateway(incomplete, List(5) { "" }) }
++        }
++    }
++
++    "모든 Apple 설정을 채웠지만 개인키가 잘못됐으면 운영 기동 시 거절한다" {
++        shouldThrow<IllegalArgumentException> { gateway() }
++    }
++
++    "유효한 로그인용 P256 키를 모두 채우면 운영 Apple 인가를 다시 연다" {
++        val keyPair = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
++        val configured = appleSettings.toMutableList().apply { this[3] = Base64.getEncoder().encodeToString(keyPair.private.encoded) }
++        gateway(apple = configured).authorize("APPLE", "state", "nonce").startsWith("https://appleid.apple.com/auth/authorize?") shouldBe true
++    }
++
++    "실제 인증 흐름의 Apple 진입은 503 JSON이며 DB에 로그인 시도를 만들지 않는다" {
++        val database = Mockito.mock(GatheringStore::class.java)
++        val flow = AuthFlowService(database, gateway(apple = List(5) { "" }),
++            JwtService("01234567890123456789012345678901", 30), Base64.getEncoder().encodeToString(ByteArray(32)))
++        val mvc = MockMvcBuilders.standaloneSetup(AuthController(flow, Mockito.mock(UserService::class.java),
++            "https://web.test/jungsan", "https://web.test", true, 30)).setControllerAdvice(GlobalExceptionHandler()).build()
++        mvc.perform(get("/api/v1/auth/apple/login")).andExpect(status().isServiceUnavailable)
++            .andExpect(jsonPath("$.code").value("AUTH_PROVIDER_UNAVAILABLE"))
++            .andExpect(header().doesNotExist("Location")).andExpect(header().doesNotExist("Set-Cookie"))
++        Mockito.verifyNoInteractions(database)
++    }
++
++    "실제 인증 흐름은 Apple 미설정과 무관하게 카카오 state와 상관 쿠키를 발급한다" {
++        val database = Mockito.mock(GatheringStore::class.java)
++        val flow = AuthFlowService(database, gateway(apple = List(5) { "" }),
++            JwtService("01234567890123456789012345678901", 30), Base64.getEncoder().encodeToString(ByteArray(32)))
++        val mvc = MockMvcBuilders.standaloneSetup(AuthController(flow, Mockito.mock(UserService::class.java),
++            "https://web.test/jungsan", "https://web.test", true, 30)).setControllerAdvice(GlobalExceptionHandler()).build()
++        mvc.perform(get("/api/v1/auth/kakao/login")).andExpect(status().isFound)
++            .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("https://kauth.kakao.com/oauth/authorize?")))
++            .andExpect(header().exists("Set-Cookie"))
++    }
++})
