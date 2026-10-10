@@ -1,0 +1,11 @@
+{
+  "sha": "250b9848df38e3d5766c7214bab4d12049f7b9bd",
+  "checks": [
+    {
+      "name": "Core · Server 테스트와 빌드",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/owencity/jungsan_attack/actions/runs/38046962685/job/114198317335"
+    }
+  ]
+}

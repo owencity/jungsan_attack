@@ -30,14 +30,6 @@ class AppleTokensSpec : StringSpec({
         AppleTokens.verify(token(),listOf(key),"client","nonce") shouldBe "apple-subject"
         JavaApple.verify(token(),listOf(jkey),"client","nonce") shouldBe "apple-subject"
     }
-    "이전에 동의한 이메일이 ID 토큰에 있어도 양쪽 언어는 사용자 식별자만 반환한다" {
-        val identityToken = Jwts.builder().header().keyId("test-key").and().issuer("https://appleid.apple.com")
-            .subject("apple-subject").audience().add("client").and().claim("nonce", "nonce")
-            .claim("email", "unused@example.test").claim("email_verified", true)
-            .expiration(Date.from(Instant.now().plusSeconds(60))).signWith(pair.private, Jwts.SIG.RS256).compact()
-        AppleTokens.verify(identityToken, listOf(key), "client", "nonce") shouldBe "apple-subject"
-        JavaApple.verify(identityToken, listOf(jkey), "client", "nonce") shouldBe "apple-subject"
-    }
     "다른 앱 audience와 다른 nonce와 issuer를 거절한다" {
         reject(token(aud="other")); reject(token(nonce="other")); reject(token(issuer="https://evil.test"))
     }

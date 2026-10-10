@@ -81,4 +81,3 @@
 | FC-019 | 총무 본인의 차수 응답 — R2에서 같이 받기(A안) | 프론트만 (결정 2026-10-09) | 서버 변경 없음 · 기존 차수/응답 API 사용 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-019-총무-본인의-차수-응답--차수-입력-화면에서-같이-받는다) |
 | FC-020 | 총무 인원 입력 · 전원 응답 시 자동 정산 · 입금 요청 | 열림 (API v8·028·Java/Kotlin 구현, 인원 밖 결제자 보류 승인 2026-10-10·운영 연결 후속) | PR #27 · API v8·실제 MySQL/HTTP CI·운영 준비 문서, 운영·프론트 연결 후속 | [2026-10-09-auto-settle.md](2026-10-09-auto-settle.md) |
 | FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (jungsan-api.devkdk.com 확정, 운영/콘솔/연결 시험 후속) | PR #27/#28 병합 · CTO Tunnel 추가 완료 · .env 생성, Apple 미설정 503 분리(API v9), 운영/실제 로그인 검증 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
-| FC-022 | Apple 이름·이메일 동의 요청 제거 | 반영됨 (API v10·양쪽 언어·서버 130건, 병합·운영·실계정 후속) | AuthPolicy.kt/java·ProviderGateway·ApplePrivacySpec·AppleTokensSpec · 기존 FC-021 전체 로그인 시험은 후속 | [2026-10-10-apple-privacy.md](2026-10-10-apple-privacy.md) |

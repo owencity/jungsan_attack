@@ -4,7 +4,6 @@ import app.jeongsan.server.common.MalformedRequestException;
 import app.jeongsan.server.common.UnauthenticatedException;
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -14,11 +13,6 @@ import java.util.HexFormat;
 
 /** Java 학습 구현. Kotlin 정책으로 위임하지 않는다. */
 public final class AuthPolicy {
-    // 실명은 L2에서 받으므로 Apple 이름·이메일 동의를 요청하지 않는다.
-    public static Map<String, String> appleAuthorizationParameters(String nonce) {
-        return Map.of("response_mode", "form_post", "nonce", nonce);
-    }
-
     public static boolean providerAvailable(String provider, List<String> kakaoSettings, List<String> appleSettings) {
         if (!"KAKAO".equals(provider) && !"APPLE".equals(provider)) return false;
         List<String> settings = "KAKAO".equals(provider) ? kakaoSettings : appleSettings;
