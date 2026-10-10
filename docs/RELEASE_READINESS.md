@@ -6,7 +6,8 @@
 
 CTO는 실제 `.env`를 OCI의 `~/jeongsan/.env`에 직접 넣는다. 필수 키 목록은 DEPLOY.md에 보존했다.
 DNS 전용 `CLOUDFLARE_API_TOKEN`은 GitHub Secret, 확인한 OCI Tunnel ID는 GitHub Variable로 준비한다.
-DNS 편집은 Tunnel의 원본 service 포트를 바꾸지 않으므로 18080 연결을 별도로 확인한다.
+CTO가 OCI Tunnel에 새 호스트 → localhost:18080을 추가한다. 기존 노트북 `api.devkdk.com`과
+웹훅 `webhook.devkdk.com` → localhost:8080은 변경하지 않는다. DNS 작업은 새 호스트만 대상으로 한다.
 실제 GitHub 리뷰 댓글 10개와 구현자 재검토는 [리뷰 기록](pr-reviews/2026-10-10-release/README.md)에 있다.
 
 ## 구현 및 로컬 검증
@@ -22,15 +23,19 @@ DNS 편집은 Tunnel의 원본 service 포트를 바꾸지 않으므로 18080 �
 
 ## 운영 전 필수 확인
 
-1. 병합 권한: CTO가 2026-10-10에 CI 전체 통과·미결 결정 없음·리뷰/스터디 보존 조건으로 Codex 병합을 승인했다. REMOVE_PAYER 보류도 승인했다. 승인된 출시 PR이 main에 들어가야 배포한다.
+1. 병합 권한: CTO가 2026-10-10에 CI 전체 통과·미결 결정 없음·리뷰/스터디 보존 조건으로 Codex 병합을 승인했다. REMOVE_PAYER 보류도 승인했다. [PR #27](https://github.com/owencity/jungsan_attack/pull/27)은 CI 전체 성공 후 병합됐다. 새 호스트 수정도 별도 PR·최신 CI를 거친다.
 2. 운영 `.env`: 카카오 Client ID·Secret, Apple Services ID·Team ID·Key ID·p8, 콜백, 독립 JWT/계좌/인증 암호화 키. 저장소·CI 로그에 값은 남기지 않는다.
-3. GitHub OCI_HOST/OCI_SSH_KEY가 CTO가 지정한 OCI와 준비된 키를 가리키는지 확인한다. 값이 있는 것과 맞는 것은 다르다.
-4. Cloudflare 원격 터널 `api.devkdk.com` → `http://127.0.0.1:18080`. 기존 8080의 n8n/Kafka는 유지한다.
+3. GitHub OCI_HOST/OCI_SSH_KEY가 CTO가 지정한 OCI와 준비된 키를 가리키는지 확인한다. PR #27 main 배포에서 SSH 전송은 성공했다. 현재 기동 중단 원인은 `~/jeongsan/.env` 부재다.
+4. OCI Tunnel에 `jungsan-api.devkdk.com` → `http://localhost:18080` 새 항목 추가. 기존 8080의 n8n/Kafka는 유지한다.
 5. 실제 운영 DB·백업과 기존 v1 CONFIRMED 자료 확인. 새 배포 디렉터리가 없다는 사실만으로 다른 위치의 DB가 없다고 단정하지 않는다.
-6. 카카오 Redirect URI와 Apple Services ID Return URL은 `https://api.devkdk.com/api/v1/auth/{provider}/callback`.
+6. 카카오 Redirect URI와 Apple Services ID Return URL은 `https://jungsan-api.devkdk.com/api/v1/auth/{provider}/callback`.
 7. main SHA의 Deploy to OCI 성공·정산어택 컨테이너·외부 health 200/UP·비로그인 auth/me 401.
 8. 웹 Vercel API base URL 적용·재배포, 실제 카카오/Apple 계정·TestFlight 앱 티켓 교환·로그아웃·탈퇴까지 시험한다.
 
 App Store·Google Play 정식 출시·심사 통과는 이 백엔드 PR이나 자동 테스트 결과로 완료 처리하지 않는다.
 면제 API, 복수 총무 스푼 정책, FCM/APNs, WebSocket은 기존 보류·미결 범위를 유지한다.
 FC-020 인원 밖 결제자 보류는 CTO가 승인했다. 프론트 `autoSettlementError` 배너 표시·운영 연결 시험은 후속이다.
+
+실제 배포 기록: [실행 38030304729](https://github.com/owencity/jungsan_attack/actions/runs/38030304729)은
+테스트·빌드·전송 성공, 배포 단계 실패다. OCI에서 `.env` 부재와 정산어택 컨테이너 미생성을 확인했다.
+운영 health·웹/앱 로그인을 성공으로 기록하지 않는다.

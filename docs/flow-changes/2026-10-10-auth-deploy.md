@@ -2,7 +2,18 @@
 
 ## FC-021 앱 로그인 연결 완료 · 운영 서버가 아직 안 떠 있음 · Apple 콜백 도메인 불일치
 
-- **상태:** 열림 (DEPLOY.md 도메인·설정 절차 수정, 운영·콘솔·연결 시험 후속)
+- **상태:** 열림 (jungsan-api.devkdk.com 확정·배포 문서/DNS 범위 수정, 운영·콘솔·연결 시험 후속)
+
+### 현재 운영 결정 (2026-10-10 · CTO 서버 확인)
+
+- 정산어택 API는 `https://jungsan-api.devkdk.com`이다. 아래 초기 요청·PR #20 시점의 api.devkdk.com 통일 판단을 대체한다.
+- `api.devkdk.com`은 노트북 터널이다. OCI의 기존 `webhook.devkdk.com` `/webhooks/github` → localhost:8080과 함께 그대로 둔다.
+- CTO가 OCI Tunnel에 `jungsan-api.devkdk.com` → HTTP localhost:18080을 새 항목으로 추가하고 카카오/Apple 콘솔에 새 콜백을 등록한다.
+- `KAKAO_REDIRECT_URI` / `APPLE_REDIRECT_URI`는 `https://jungsan-api.devkdk.com/api/v1/auth/{kakao,apple}/callback`, Vercel API base는 `https://jungsan-api.devkdk.com`이다.
+- PR #27은 CI 성공 후 병합됐다. main 배포의 SSH 전송은 성공했으나 `~/jeongsan/.env` 부재로 기동 단계가 중단됐다. 설정·대시보드·웹 재배포·실제 계정 로그인은 후속이며 FC를 닫지 않는다.
+
+### 초기 요청과 관찰 (과거 주소·판단을 보존)
+
 - **바뀐 흐름:** 앱·웹 프론트가 `feat/auth-release` 계약에 붙었다(앱 084ce79 · 웹 eac5f99).
   - 앱: 브라우저로 `/auth/{kakao|apple}/login?client=app&codeChallenge=BASE64URL(SHA256(verifier))` →
     `jeongsan://auth?ticket=…` 복귀(Android intent-filter·iOS URL scheme) → `POST /auth/app/exchange {ticket, codeVerifier}` → Bearer 저장.

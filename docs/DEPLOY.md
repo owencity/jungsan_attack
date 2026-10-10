@@ -17,6 +17,10 @@ GitHub Actions (ARM 러너)                  OCI Ubuntu
 서비스가 하나뿐이라 레지스트리 인증·권한 설정이 얻는 것보다 비용이 크다.
 서비스가 늘면 그때 GHCR 로 옮긴다.
 
+> **운영 주소 확정 (2026-10-10):** `https://jungsan-api.devkdk.com`.
+> `api.devkdk.com`은 노트북 터널의 다른 서비스이므로 변경하지 않는다.
+> OCI의 기존 `webhook.devkdk.com` → 8080 규칙도 유지한다. 아래 새 호스트·콜백만 추가한다.
+
 ## 1회성 준비
 
 ### (a) GitHub Secrets
@@ -59,10 +63,10 @@ CTO가 `~/jeongsan/.env`의 실제 값을 입력한다(2026-10-10 결정). 에�
 | `PAYOUT_ENCRYPTION_KEY` | 계좌용 독립 32바이트 키의 Base64 |
 | `AUTH_ENCRYPTION_KEY` | Apple 해제 작업용 독립 32바이트 키의 Base64 |
 | `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` | 카카오 운영 REST API 키·로그인 시크릿 |
-| `KAKAO_REDIRECT_URI` | `https://api.devkdk.com/api/v1/auth/kakao/callback` |
+| `KAKAO_REDIRECT_URI` | `https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback` |
 | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID` | 웹 Services ID·Developer Team ID·Sign in with Apple Key ID |
 | `APPLE_PRIVATE_KEY_BASE64` | 해당 Apple p8의 PEM 헤더/푸터를 제외한 Base64 본문 |
-| `APPLE_REDIRECT_URI` | `https://api.devkdk.com/api/v1/auth/apple/callback` |
+| `APPLE_REDIRECT_URI` | `https://jungsan-api.devkdk.com/api/v1/auth/apple/callback` |
 | `FRONTEND_ORIGIN` | `https://jungsan.devkdk.com` |
 | `LOGIN_SUCCESS_URL` | `https://jungsan.devkdk.com/jungsan` |
 
@@ -77,7 +81,7 @@ cat > .env <<'EOF'
 DB_PASSWORD=<강한 비밀번호>
 KAKAO_CLIENT_ID=<REST API 키>
 KAKAO_CLIENT_SECRET=<카카오 로그인 시크릿>
-KAKAO_REDIRECT_URI=https://api.devkdk.com/api/v1/auth/kakao/callback
+KAKAO_REDIRECT_URI=https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback
 JWT_SECRET=<32자 이상 랜덤>
 PAYOUT_ENCRYPTION_KEY=<계좌용 독립 32바이트 키의 Base64>
 AUTH_ENCRYPTION_KEY=<외부 인증 자격용 독립 32바이트 키의 Base64>
@@ -85,7 +89,7 @@ APPLE_CLIENT_ID=<웹 Apple Services ID>
 APPLE_TEAM_ID=<Apple Team ID>
 APPLE_KEY_ID=<Sign in with Apple Key ID>
 APPLE_PRIVATE_KEY_BASE64=<Apple p8의 PKCS8 DER 바이트를 Base64로 변환한 값>
-APPLE_REDIRECT_URI=https://api.devkdk.com/api/v1/auth/apple/callback
+APPLE_REDIRECT_URI=https://jungsan-api.devkdk.com/api/v1/auth/apple/callback
 FRONTEND_ORIGIN=https://jungsan.devkdk.com
 LOGIN_SUCCESS_URL=https://jungsan.devkdk.com/jungsan
 EOF
@@ -110,7 +114,7 @@ openssl rand -base64 48
 
 REST API 키 수정 → 카카오 로그인 리다이렉트 URI 에 추가:
 ```
-https://api.devkdk.com/api/v1/auth/kakao/callback
+https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback
 ```
 로컬용(`http://localhost:8080/...`)은 그대로 두고 **한 줄 더** 넣는다.
 
@@ -121,8 +125,8 @@ Sign in with Apple → Configure에서 기존 primary App ID와 연결된 웹 �
 
 | 항목 | 운영 값 |
 |---|---|
-| Domains and Subdomains | `api.devkdk.com` |
-| Return URLs | `https://api.devkdk.com/api/v1/auth/apple/callback` |
+| Domains and Subdomains | `jungsan-api.devkdk.com` |
+| Return URLs | `https://jungsan-api.devkdk.com/api/v1/auth/apple/callback` |
 
 Done → Continue → Save까지 저장한다. 등록 값과 OCI `.env`의 `APPLE_REDIRECT_URI`는 정확히 같아야 한다.
 `api.jungsan.devkdk.com`은 현재 DNS가 없어 운영 콜백으로 사용하지 않는다.
@@ -141,7 +145,7 @@ Done → Continue → Save까지 저장한다. 등록 값과 OCI `.env`의 `APPL
 웹 `profile` 프로젝트 → Settings → Environment Variables에 아래 값을 Production 범위로 저장한다.
 
 ```text
-VITE_JEONGSAN_API_BASE_URL=https://api.devkdk.com
+VITE_JEONGSAN_API_BASE_URL=https://jungsan-api.devkdk.com
 ```
 
 웹 `src/jeongsan/v3/api.ts`는 이 값에 `/api/v1/...`을 직접 붙인다. 값에는 `/api/v1`이나 끝의 `/`를 넣지 않는다.
@@ -160,7 +164,7 @@ API 복구·쿠키/CORS 확인 뒤 웹을 서버 모드로 전환한다.
 4. 최신 CI 전체 통과·리뷰/스터디 보존·미결 CTO 결정 없음 조건으로 승인된 PR을 병합한 뒤 해당 main 커밋의 **Deploy to OCI**를 확인한다.
    `feat/auth-release`의 Backend CI 성공만으로는 운영 서버에 배포되지 않는다.
    병합 전 브랜치의 직접 운영 배포는 현재 절차에 포함되지 않는다.
-5. 외부 `https://api.devkdk.com/actuator/health`에서 200·UP을 확인하고,
+5. 외부 `https://jungsan-api.devkdk.com/actuator/health`에서 200·UP을 확인하고,
    로그인 없이 `GET /api/v1/auth/me`가 401을 반환하는지 확인한다.
 6. 웹 환경변수를 반영해 재배포하고 웹 카카오 로그인·로그아웃·탈퇴와 TestFlight 앱의
    카카오/Apple 로그인 → 앱 복귀 → 티켓 교환 → 인증 API까지 실제로 시험한다.
@@ -170,20 +174,23 @@ FC-021은 문서 수정, 콘솔 저장, 운영 배포, 웹 재배포, 실제 로
 
 ### Cloudflare DNS 실행과 Tunnel 연결
 
-운영 API 도메인은 **`api.devkdk.com` 하나**다. Apple·카카오 콜백에도 이 주소를 사용한다.
+운영 API 도메인은 **`jungsan-api.devkdk.com` 하나**다. Apple·카카오 콜백에도 이 주소를 사용한다.
 CTO는 GitHub Repository Secret `CLOUDFLARE_API_TOKEN`에 **devkdk.com DNS 편집 전용** 토큰을 넣는다.
 GitHub Repository Variable `CLOUDFLARE_TUNNEL_ID`는 확인한 OCI 기존 Tunnel UUID다.
 토큰에 Zone 조회 권한이 없으면 같은 화면의 Variable `CLOUDFLARE_ZONE_ID`에 devkdk.com Zone ID를 넣는다.
 Zone ID를 지정한 경로는 Zone 조회 권한을 요구하지 않는다. API 토큰 값은 저장소나 출력에 기록하지 않는다.
 
-main에 병합된 **Cloudflare API DNS** workflow를 명시적으로 실행한다. 이 작업은 `api.devkdk.com`의
+CTO의 대시보드 추가가 DNS 레코드도 만들었다면 별도 DNS 작업은 필요 없다.
+DNS 확인·보정이 필요할 때만 **새 호스트 수정 PR이 main에 병합된 뒤** **Cloudflare API DNS** workflow를 명시적으로 실행한다. 이 작업은 `jungsan-api.devkdk.com`의
 CNAME을 `<기존 Tunnel UUID>.cfargotunnel.com`으로 맞추고 proxied=true를 확인한다. 같은 값이면 변경하지 않는다.
 중복 레코드·다른 이름·A/AAAA 레코드는 임의 삭제/교체하지 않으며, 쓰기 뒤 레코드를 다시 조회한다.
 PR에서는 이 동작을 가짜 API로만 시험한다. 다른 도메인·n8n·웹 DNS는 수정하지 않는다.
 
 **DNS 편집 권한은 Tunnel 연결 포트를 편집하는 권한이 아니다.** 현재 OCI의 cloudflared는 원격 관리 방식이다.
-Cloudflare의 해당 Tunnel Public Hostname/Published application route에서 `api.devkdk.com`의 service를
-`http://127.0.0.1:18080`으로 지정해야 한다. 기존 n8n의 8080 연결은 유지한다.
+CTO가 Cloudflare Zero Trust → Networks → Tunnels에서 OCI 커넥터의 Public Hostname에 **새 항목을 추가**한다.
+Subdomain `jungsan-api`, Domain `devkdk.com`, Service `HTTP`, URL `localhost:18080`이다.
+기존 `webhook.devkdk.com`의 `/webhooks/github` → `localhost:8080` 규칙과
+노트북 터널의 `api.devkdk.com`은 그대로 둔다. 기존 항목을 편집하거나 교체하지 않는다.
 DNS 성공·OCI 앱 health·외부 API health·실제 계정 로그인은 각각 따로 기록한다.
 [Cloudflare DNS API](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/edit/)와
 [Tunnel 관리 방식](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/)을 참고한다.
@@ -236,8 +243,8 @@ bash scripts/deploy/health.sh
 # 운영 준비 갱신 (2026-10-10)
 
 실제 OCI의 8080은 기존 n8n Kafka 앱이 사용한다. 정산어택 compose project는 `jeongsan`,
-앱은 `127.0.0.1:18080`에만 바인딩한다. Cloudflare의 `api.devkdk.com` 서비스 주소를
-`http://127.0.0.1:18080`으로 맞춘다. 현재 터널은 원격 관리 방식이므로 Cloudflare 설정에서 수정한다.
+앱은 `127.0.0.1:18080`에만 바인딩한다. OCI의 원격 관리 Tunnel에
+`jungsan-api.devkdk.com` → `http://localhost:18080`을 새 항목으로 추가한다.
 기존 n8n/Kafka 포트·컨테이너·이미지·볼륨은 변경하지 않는다.
 
 이미지 태그는 `jeongsan-server:<main 40자리 SHA>`다. 성공한 태그만 서버 `.release.env`에 남기며,
@@ -248,3 +255,12 @@ bash scripts/deploy/health.sh
 이전 성공 이미지가 없는 최초 배포의 실패는 자동 복원이 불가능하다. 실패 원인을 고친 뒤 같은 SHA로 다시 배포한다.
 수동 실행도 `bash scripts/deploy/deploy.sh <배포 디렉터리의 tar> jeongsan-server:<SHA>`를 쓴다.
 운영 로그는 CI에 자동으로 덤프하지 않으며 OCI에서 필요한 부분만 확인한다.
+
+## 실제 배포 확인 (2026-10-10 · PR #27)
+
+[main 배포 실행](https://github.com/owencity/jungsan_attack/actions/runs/38030304729)은
+테스트·실제 MySQL/HTTP 검증·이미지 빌드·SSH 동기화·전송까지 성공했다.
+배포 단계는 OCI `~/jeongsan/.env` 부재로 중단됐고 정산어택 컨테이너·18080은 아직 없다.
+SSH 인증 거절은 이 실행의 원인이 아니다. CTO가 위 필수 키와 **새 콜백 주소**를 넣고
+`chmod 600 ~/jeongsan/.env`로 보호한 뒤 최신 main의 배포를 재실행한다.
+Tunnel 추가·개발자 콘솔 등록·실제 로그인은 이 빌드 결과와 별도로 확인한다.

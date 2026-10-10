@@ -1,4 +1,4 @@
-"""api.devkdk.com 한 레코드만 기존 OCI Tunnel에 맞춘다. 토큰·응답 원문은 로그에 쓰지 않는다."""
+"""정산어택의 새 호스트만 OCI Tunnel에 맞춘다. 기존 노트북·웹훅 DNS는 변경하지 않는다."""
 import json
 import os
 import re
@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-HOSTNAME = "api.devkdk.com"
+HOSTNAME = "jungsan-api.devkdk.com"
 ZONE_NAME = "devkdk.com"
 API_BASE = "https://api.cloudflare.com/client/v4"
 
@@ -55,12 +55,12 @@ def sync(client, tunnel_id, zone_id=""):
         zone_id = zones[0]["id"]
         if not re.fullmatch(r"[0-9a-f]{32}", zone_id):
             raise DnsError("Cloudflare Zone ID 응답이 잘못됐습니다.")
-    # 지정한 Zone ID가 다른 도메인이어도 api.devkdk.com 외 이름은 생성/변경하지 않는다.
+    # api.devkdk.com은 노트북 터널이다. 정산어택의 새 이름 외에는 생성/변경하지 않는다.
     path = f"/zones/{zone_id}/dns_records"
     query = "?" + urlencode({"name": HOSTNAME, "per_page": 100})
     records = client.request("GET", path + query)
     if len(records) > 1 or any(record.get("name") != HOSTNAME for record in records):
-        raise DnsError("api.devkdk.com 레코드가 중복되거나 범위를 벗어났습니다. 자동 변경을 중단합니다.")
+        raise DnsError(f"{HOSTNAME} 레코드가 중복되거나 범위를 벗어났습니다. 자동 변경을 중단합니다.")
     desired = {"type": "CNAME", "name": HOSTNAME, "content": target, "proxied": True, "ttl": 1}
     action = "unchanged"
     if not records:
@@ -69,7 +69,7 @@ def sync(client, tunnel_id, zone_id=""):
     else:
         record = records[0]
         if record.get("type") != "CNAME":
-            raise DnsError("기존 api 레코드가 CNAME이 아닙니다. 기존 A/AAAA 레코드는 임의 교체하지 않습니다.")
+            raise DnsError(f"기존 {HOSTNAME} 레코드가 CNAME이 아닙니다. A/AAAA 레코드는 임의 교체하지 않습니다.")
         if record.get("content", "").rstrip(".").lower() != target or record.get("proxied") is not True:
             if not re.fullmatch(r"[0-9a-f]{32}", record.get("id", "")):
                 raise DnsError("Cloudflare 레코드 ID가 잘못됐습니다.")
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     try:
         result = sync(Cloudflare(os.environ.get("CLOUDFLARE_API_TOKEN", "")),
                       os.environ.get("CLOUDFLARE_TUNNEL_ID", ""), os.environ.get("CLOUDFLARE_ZONE_ID", ""))
-        print(f"api.devkdk.com DNS {result}; Tunnel 원본 포트와 실제 로그인은 별도 확인")
+        print(f"{HOSTNAME} DNS {result}; Tunnel 원본 포트와 실제 로그인은 별도 확인")
     except DnsError as error:
         print(str(error), file=sys.stderr)
         sys.exit(1)
