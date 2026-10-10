@@ -1,0 +1,340 @@
+diff --git a/.github/workflows/cloudflare-dns.yml b/.github/workflows/cloudflare-dns.yml
+index 0e32b5c..b4dcbb9 100644
+--- a/.github/workflows/cloudflare-dns.yml
++++ b/.github/workflows/cloudflare-dns.yml
+@@ -18,7 +18,7 @@ jobs:
+     timeout-minutes: 5
+     steps:
+       - uses: actions/checkout@v5
+-      - name: 운영 API DNS 확인·맞춤
++      - name: 정산어택 새 호스트 DNS 확인·맞춤
+         env:
+           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+           CLOUDFLARE_TUNNEL_ID: ${{ vars.CLOUDFLARE_TUNNEL_ID }}
+diff --git a/AGENTS.md b/AGENTS.md
+index e3382fc..beac8f3 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,5 +1,10 @@
+ # AGENTS.md — 정산어택 백엔드 (jungsan_attack)
+ 
++> **2026-10-10 운영 호스트 정정:** 정산어택은 `jungsan-api.devkdk.com`이다.
++> `api.devkdk.com`은 노트북 터널이므로 수정하지 않는다. OCI Tunnel에는 새 호스트를
++> `http://localhost:18080`으로 추가하며 기존 `webhook.devkdk.com` → 8080은 유지한다.
++> CTO가 대시보드·카카오/Apple 콘솔·운영 `.env`를 준비한다. 과거 도메인 기록보다 이 결정을 우선한다.
++
+ > **2026-10-09 인증 결정:** CTO가 앱은 Bearer, 웹은 기존 httpOnly 쿠키를 사용하도록 확정했다.
+ > 아래 §4-7 쿠키 전용 규칙은 웹에 적용하며 앱은 [AUTH_RELEASE](docs/AUTH_RELEASE.md)를 따른다.
+ > APP/WEB 토큰은 교차 사용하지 않고, 앱의 일회용 티켓은 verifier와 함께 교환한다.
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 151b65c..d05d35a 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,3 +1,11 @@
++# 개발 결정 로그
++
++## [2026-10-10] 노트북 API를 보존하고 정산어택 운영 호스트를 추가
++- 문제: api.devkdk.com을 OCI 주소로 추정했지만 CTO의 서버 확인 결과 노트북의 다른 터널 주소였다.
++- 고려한 대안: 기존 API 호스트를 OCI로 이동하거나, 정산어택 전용 호스트를 OCI Tunnel에 추가한다.
++- 선택 이유·트레이드오프: jungsan-api.devkdk.com만 추가하고 콜백·DNS 작업 범위를 맞춘다. 기존 노트북 API와 웹훅 8080을 보존하는 대신 프론트·외부 콘솔의 새 주소 등록이 필요하다.
++- 아쉬운 점: PR #27 배포는 .env 부재로 중단됐다. 대시보드·운영 설정·제공자 콘솔·실제 로그인 시험은 CTO 준비 후 다시 확인해야 한다.
++
+ ## [2026-10-10] 검증 후 병합 승인과 운영 설정·DNS 책임
+ - 문제: 이전 CTO 직접 병합 규칙과 운영 준비 범위가 최신 출시 요청과 달랐고 실제 리뷰 댓글을 코드·학습 기록과 함께 보존해야 했다.
+ - 고려한 대안: 각 과거 PR을 순서대로 운영 배포, 스터디만 저장, DNS 토큰으로 Tunnel 설정까지 바뀐다고 가정하기.
+diff --git a/docs/DEPLOY.md b/docs/DEPLOY.md
+index 87ee786..56700eb 100644
+--- a/docs/DEPLOY.md
++++ b/docs/DEPLOY.md
+@@ -17,6 +17,10 @@ GitHub Actions (ARM 러너)                  OCI Ubuntu
+ 서비스가 하나뿐이라 레지스트리 인증·권한 설정이 얻는 것보다 비용이 크다.
+ 서비스가 늘면 그때 GHCR 로 옮긴다.
+ 
++> **운영 주소 확정 (2026-10-10):** `https://jungsan-api.devkdk.com`.
++> `api.devkdk.com`은 노트북 터널의 다른 서비스이므로 변경하지 않는다.
++> OCI의 기존 `webhook.devkdk.com` → 8080 규칙도 유지한다. 아래 새 호스트·콜백만 추가한다.
++
+ ## 1회성 준비
+ 
+ ### (a) GitHub Secrets
+@@ -59,10 +63,10 @@ CTO가 `~/jeongsan/.env`의 실제 값을 입력한다(2026-10-10 결정). 에
+ | `PAYOUT_ENCRYPTION_KEY` | 계좌용 독립 32바이트 키의 Base64 |
+ | `AUTH_ENCRYPTION_KEY` | Apple 해제 작업용 독립 32바이트 키의 Base64 |
+ | `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` | 카카오 운영 REST API 키·로그인 시크릿 |
+-| `KAKAO_REDIRECT_URI` | `https://api.devkdk.com/api/v1/auth/kakao/callback` |
++| `KAKAO_REDIRECT_URI` | `https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback` |
+ | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID` | 웹 Services ID·Developer Team ID·Sign in with Apple Key ID |
+ | `APPLE_PRIVATE_KEY_BASE64` | 해당 Apple p8의 PEM 헤더/푸터를 제외한 Base64 본문 |
+-| `APPLE_REDIRECT_URI` | `https://api.devkdk.com/api/v1/auth/apple/callback` |
++| `APPLE_REDIRECT_URI` | `https://jungsan-api.devkdk.com/api/v1/auth/apple/callback` |
+ | `FRONTEND_ORIGIN` | `https://jungsan.devkdk.com` |
+ | `LOGIN_SUCCESS_URL` | `https://jungsan.devkdk.com/jungsan` |
+ 
+@@ -77,7 +81,7 @@ cat > .env <<'EOF'
+ DB_PASSWORD=<강한 비밀번호>
+ KAKAO_CLIENT_ID=<REST API 키>
+ KAKAO_CLIENT_SECRET=<카카오 로그인 시크릿>
+-KAKAO_REDIRECT_URI=https://api.devkdk.com/api/v1/auth/kakao/callback
++KAKAO_REDIRECT_URI=https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback
+ JWT_SECRET=<32자 이상 랜덤>
+ PAYOUT_ENCRYPTION_KEY=<계좌용 독립 32바이트 키의 Base64>
+ AUTH_ENCRYPTION_KEY=<외부 인증 자격용 독립 32바이트 키의 Base64>
+@@ -85,7 +89,7 @@ APPLE_CLIENT_ID=<웹 Apple Services ID>
+ APPLE_TEAM_ID=<Apple Team ID>
+ APPLE_KEY_ID=<Sign in with Apple Key ID>
+ APPLE_PRIVATE_KEY_BASE64=<Apple p8의 PKCS8 DER 바이트를 Base64로 변환한 값>
+-APPLE_REDIRECT_URI=https://api.devkdk.com/api/v1/auth/apple/callback
++APPLE_REDIRECT_URI=https://jungsan-api.devkdk.com/api/v1/auth/apple/callback
+ FRONTEND_ORIGIN=https://jungsan.devkdk.com
+ LOGIN_SUCCESS_URL=https://jungsan.devkdk.com/jungsan
+ EOF
+@@ -110,7 +114,7 @@ openssl rand -base64 48
+ 
+ REST API 키 수정 → 카카오 로그인 리다이렉트 URI 에 추가:
+ ```
+-https://api.devkdk.com/api/v1/auth/kakao/callback
++https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback
+ ```
+ 로컬용(`http://localhost:8080/...`)은 그대로 두고 **한 줄 더** 넣는다.
+ 
+@@ -121,8 +125,8 @@ Sign in with Apple → Configure에서 기존 primary App ID와 연결된 웹 
+ 
+ | 항목 | 운영 값 |
+ |---|---|
+-| Domains and Subdomains | `api.devkdk.com` |
+-| Return URLs | `https://api.devkdk.com/api/v1/auth/apple/callback` |
++| Domains and Subdomains | `jungsan-api.devkdk.com` |
++| Return URLs | `https://jungsan-api.devkdk.com/api/v1/auth/apple/callback` |
+ 
+ Done → Continue → Save까지 저장한다. 등록 값과 OCI `.env`의 `APPLE_REDIRECT_URI`는 정확히 같아야 한다.
+ `api.jungsan.devkdk.com`은 현재 DNS가 없어 운영 콜백으로 사용하지 않는다.
+@@ -141,7 +145,7 @@ Done → Continue → Save까지 저장한다. 등록 값과 OCI `.env`의 `APPL
+ 웹 `profile` 프로젝트 → Settings → Environment Variables에 아래 값을 Production 범위로 저장한다.
+ 
+ ```text
+-VITE_JEONGSAN_API_BASE_URL=https://api.devkdk.com
++VITE_JEONGSAN_API_BASE_URL=https://jungsan-api.devkdk.com
+ ```
+ 
+ 웹 `src/jeongsan/v3/api.ts`는 이 값에 `/api/v1/...`을 직접 붙인다. 값에는 `/api/v1`이나 끝의 `/`를 넣지 않는다.
+@@ -160,7 +164,7 @@ API 복구·쿠키/CORS 확인 뒤 웹을 서버 모드로 전환한다.
+ 4. 최신 CI 전체 통과·리뷰/스터디 보존·미결 CTO 결정 없음 조건으로 승인된 PR을 병합한 뒤 해당 main 커밋의 **Deploy to OCI**를 확인한다.
+    `feat/auth-release`의 Backend CI 성공만으로는 운영 서버에 배포되지 않는다.
+    병합 전 브랜치의 직접 운영 배포는 현재 절차에 포함되지 않는다.
+-5. 외부 `https://api.devkdk.com/actuator/health`에서 200·UP을 확인하고,
++5. 외부 `https://jungsan-api.devkdk.com/actuator/health`에서 200·UP을 확인하고,
+    로그인 없이 `GET /api/v1/auth/me`가 401을 반환하는지 확인한다.
+ 6. 웹 환경변수를 반영해 재배포하고 웹 카카오 로그인·로그아웃·탈퇴와 TestFlight 앱의
+    카카오/Apple 로그인 → 앱 복귀 → 티켓 교환 → 인증 API까지 실제로 시험한다.
+@@ -170,20 +174,23 @@ FC-021은 문서 수정, 콘솔 저장, 운영 배포, 웹 재배포, 실제 로
+ 
+ ### Cloudflare DNS 실행과 Tunnel 연결
+ 
+-운영 API 도메인은 **`api.devkdk.com` 하나**다. Apple·카카오 콜백에도 이 주소를 사용한다.
++운영 API 도메인은 **`jungsan-api.devkdk.com` 하나**다. Apple·카카오 콜백에도 이 주소를 사용한다.
+ CTO는 GitHub Repository Secret `CLOUDFLARE_API_TOKEN`에 **devkdk.com DNS 편집 전용** 토큰을 넣는다.
+ GitHub Repository Variable `CLOUDFLARE_TUNNEL_ID`는 확인한 OCI 기존 Tunnel UUID다.
+ 토큰에 Zone 조회 권한이 없으면 같은 화면의 Variable `CLOUDFLARE_ZONE_ID`에 devkdk.com Zone ID를 넣는다.
+ Zone ID를 지정한 경로는 Zone 조회 권한을 요구하지 않는다. API 토큰 값은 저장소나 출력에 기록하지 않는다.
+ 
+-main에 병합된 **Cloudflare API DNS** workflow를 명시적으로 실행한다. 이 작업은 `api.devkdk.com`의
++CTO의 대시보드 추가가 DNS 레코드도 만들었다면 별도 DNS 작업은 필요 없다.
++DNS 확인·보정이 필요할 때만 **새 호스트 수정 PR이 main에 병합된 뒤** **Cloudflare API DNS** workflow를 명시적으로 실행한다. 이 작업은 `jungsan-api.devkdk.com`의
+ CNAME을 `<기존 Tunnel UUID>.cfargotunnel.com`으로 맞추고 proxied=true를 확인한다. 같은 값이면 변경하지 않는다.
+ 중복 레코드·다른 이름·A/AAAA 레코드는 임의 삭제/교체하지 않으며, 쓰기 뒤 레코드를 다시 조회한다.
+ PR에서는 이 동작을 가짜 API로만 시험한다. 다른 도메인·n8n·웹 DNS는 수정하지 않는다.
+ 
+ **DNS 편집 권한은 Tunnel 연결 포트를 편집하는 권한이 아니다.** 현재 OCI의 cloudflared는 원격 관리 방식이다.
+-Cloudflare의 해당 Tunnel Public Hostname/Published application route에서 `api.devkdk.com`의 service를
+-`http://127.0.0.1:18080`으로 지정해야 한다. 기존 n8n의 8080 연결은 유지한다.
++CTO가 Cloudflare Zero Trust → Networks → Tunnels에서 OCI 커넥터의 Public Hostname에 **새 항목을 추가**한다.
++Subdomain `jungsan-api`, Domain `devkdk.com`, Service `HTTP`, URL `localhost:18080`이다.
++기존 `webhook.devkdk.com`의 `/webhooks/github` → `localhost:8080` 규칙과
++노트북 터널의 `api.devkdk.com`은 그대로 둔다. 기존 항목을 편집하거나 교체하지 않는다.
+ DNS 성공·OCI 앱 health·외부 API health·실제 계정 로그인은 각각 따로 기록한다.
+ [Cloudflare DNS API](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/edit/)와
+ [Tunnel 관리 방식](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/)을 참고한다.
+@@ -236,8 +243,8 @@ bash scripts/deploy/health.sh
+ # 운영 준비 갱신 (2026-10-10)
+ 
+ 실제 OCI의 8080은 기존 n8n Kafka 앱이 사용한다. 정산어택 compose project는 `jeongsan`,
+-앱은 `127.0.0.1:18080`에만 바인딩한다. Cloudflare의 `api.devkdk.com` 서비스 주소를
+-`http://127.0.0.1:18080`으로 맞춘다. 현재 터널은 원격 관리 방식이므로 Cloudflare 설정에서 수정한다.
++앱은 `127.0.0.1:18080`에만 바인딩한다. OCI의 원격 관리 Tunnel에
++`jungsan-api.devkdk.com` → `http://localhost:18080`을 새 항목으로 추가한다.
+ 기존 n8n/Kafka 포트·컨테이너·이미지·볼륨은 변경하지 않는다.
+ 
+ 이미지 태그는 `jeongsan-server:<main 40자리 SHA>`다. 성공한 태그만 서버 `.release.env`에 남기며,
+@@ -248,3 +255,12 @@ bash scripts/deploy/health.sh
+ 이전 성공 이미지가 없는 최초 배포의 실패는 자동 복원이 불가능하다. 실패 원인을 고친 뒤 같은 SHA로 다시 배포한다.
+ 수동 실행도 `bash scripts/deploy/deploy.sh <배포 디렉터리의 tar> jeongsan-server:<SHA>`를 쓴다.
+ 운영 로그는 CI에 자동으로 덤프하지 않으며 OCI에서 필요한 부분만 확인한다.
++
++## 실제 배포 확인 (2026-10-10 · PR #27)
++
++[main 배포 실행](https://github.com/owencity/jungsan_attack/actions/runs/38030304729)은
++테스트·실제 MySQL/HTTP 검증·이미지 빌드·SSH 동기화·전송까지 성공했다.
++배포 단계는 OCI `~/jeongsan/.env` 부재로 중단됐고 정산어택 컨테이너·18080은 아직 없다.
++SSH 인증 거절은 이 실행의 원인이 아니다. CTO가 위 필수 키와 **새 콜백 주소**를 넣고
++`chmod 600 ~/jeongsan/.env`로 보호한 뒤 최신 main의 배포를 재실행한다.
++Tunnel 추가·개발자 콘솔 등록·실제 로그인은 이 빌드 결과와 별도로 확인한다.
+diff --git a/docs/RELEASE_READINESS.md b/docs/RELEASE_READINESS.md
+index 7e1f596..8f56801 100644
+--- a/docs/RELEASE_READINESS.md
++++ b/docs/RELEASE_READINESS.md
+@@ -6,7 +6,8 @@
+ 
+ CTO는 실제 `.env`를 OCI의 `~/jeongsan/.env`에 직접 넣는다. 필수 키 목록은 DEPLOY.md에 보존했다.
+ DNS 전용 `CLOUDFLARE_API_TOKEN`은 GitHub Secret, 확인한 OCI Tunnel ID는 GitHub Variable로 준비한다.
+-DNS 편집은 Tunnel의 원본 service 포트를 바꾸지 않으므로 18080 연결을 별도로 확인한다.
++CTO가 OCI Tunnel에 새 호스트 → localhost:18080을 추가한다. 기존 노트북 `api.devkdk.com`과
++웹훅 `webhook.devkdk.com` → localhost:8080은 변경하지 않는다. DNS 작업은 새 호스트만 대상으로 한다.
+ 실제 GitHub 리뷰 댓글 10개와 구현자 재검토는 [리뷰 기록](pr-reviews/2026-10-10-release/README.md)에 있다.
+ 
+ ## 구현 및 로컬 검증
+@@ -22,15 +23,19 @@ DNS 편집은 Tunnel의 원본 service 포트를 바꾸지 않으므로 18080 
+ 
+ ## 운영 전 필수 확인
+ 
+-1. 병합 권한: CTO가 2026-10-10에 CI 전체 통과·미결 결정 없음·리뷰/스터디 보존 조건으로 Codex 병합을 승인했다. REMOVE_PAYER 보류도 승인했다. 승인된 출시 PR이 main에 들어가야 배포한다.
++1. 병합 권한: CTO가 2026-10-10에 CI 전체 통과·미결 결정 없음·리뷰/스터디 보존 조건으로 Codex 병합을 승인했다. REMOVE_PAYER 보류도 승인했다. [PR #27](https://github.com/owencity/jungsan_attack/pull/27)은 CI 전체 성공 후 병합됐다. 새 호스트 수정도 별도 PR·최신 CI를 거친다.
+ 2. 운영 `.env`: 카카오 Client ID·Secret, Apple Services ID·Team ID·Key ID·p8, 콜백, 독립 JWT/계좌/인증 암호화 키. 저장소·CI 로그에 값은 남기지 않는다.
+-3. GitHub OCI_HOST/OCI_SSH_KEY가 CTO가 지정한 OCI와 준비된 키를 가리키는지 확인한다. 값이 있는 것과 맞는 것은 다르다.
+-4. Cloudflare 원격 터널 `api.devkdk.com` → `http://127.0.0.1:18080`. 기존 8080의 n8n/Kafka는 유지한다.
++3. GitHub OCI_HOST/OCI_SSH_KEY가 CTO가 지정한 OCI와 준비된 키를 가리키는지 확인한다. PR #27 main 배포에서 SSH 전송은 성공했다. 현재 기동 중단 원인은 `~/jeongsan/.env` 부재다.
++4. OCI Tunnel에 `jungsan-api.devkdk.com` → `http://localhost:18080` 새 항목 추가. 기존 8080의 n8n/Kafka는 유지한다.
+ 5. 실제 운영 DB·백업과 기존 v1 CONFIRMED 자료 확인. 새 배포 디렉터리가 없다는 사실만으로 다른 위치의 DB가 없다고 단정하지 않는다.
+-6. 카카오 Redirect URI와 Apple Services ID Return URL은 `https://api.devkdk.com/api/v1/auth/{provider}/callback`.
++6. 카카오 Redirect URI와 Apple Services ID Return URL은 `https://jungsan-api.devkdk.com/api/v1/auth/{provider}/callback`.
+ 7. main SHA의 Deploy to OCI 성공·정산어택 컨테이너·외부 health 200/UP·비로그인 auth/me 401.
+ 8. 웹 Vercel API base URL 적용·재배포, 실제 카카오/Apple 계정·TestFlight 앱 티켓 교환·로그아웃·탈퇴까지 시험한다.
+ 
+ App Store·Google Play 정식 출시·심사 통과는 이 백엔드 PR이나 자동 테스트 결과로 완료 처리하지 않는다.
+ 면제 API, 복수 총무 스푼 정책, FCM/APNs, WebSocket은 기존 보류·미결 범위를 유지한다.
+ FC-020 인원 밖 결제자 보류는 CTO가 승인했다. 프론트 `autoSettlementError` 배너 표시·운영 연결 시험은 후속이다.
++
++실제 배포 기록: [실행 38030304729](https://github.com/owencity/jungsan_attack/actions/runs/38030304729)은
++테스트·빌드·전송 성공, 배포 단계 실패다. OCI에서 `.env` 부재와 정산어택 컨테이너 미생성을 확인했다.
++운영 health·웹/앱 로그인을 성공으로 기록하지 않는다.
+diff --git a/docs/flow-changes/2026-10-10-auth-deploy.md b/docs/flow-changes/2026-10-10-auth-deploy.md
+index a62a2c5..bcdbd87 100644
+--- a/docs/flow-changes/2026-10-10-auth-deploy.md
++++ b/docs/flow-changes/2026-10-10-auth-deploy.md
+@@ -2,7 +2,18 @@
+ 
+ ## FC-021 앱 로그인 연결 완료 · 운영 서버가 아직 안 떠 있음 · Apple 콜백 도메인 불일치
+ 
+-- **상태:** 열림 (DEPLOY.md 도메인·설정 절차 수정, 운영·콘솔·연결 시험 후속)
++- **상태:** 열림 (jungsan-api.devkdk.com 확정·배포 문서/DNS 범위 수정, 운영·콘솔·연결 시험 후속)
++
++### 현재 운영 결정 (2026-10-10 · CTO 서버 확인)
++
++- 정산어택 API는 `https://jungsan-api.devkdk.com`이다. 아래 초기 요청·PR #20 시점의 api.devkdk.com 통일 판단을 대체한다.
++- `api.devkdk.com`은 노트북 터널이다. OCI의 기존 `webhook.devkdk.com` `/webhooks/github` → localhost:8080과 함께 그대로 둔다.
++- CTO가 OCI Tunnel에 `jungsan-api.devkdk.com` → HTTP localhost:18080을 새 항목으로 추가하고 카카오/Apple 콘솔에 새 콜백을 등록한다.
++- `KAKAO_REDIRECT_URI` / `APPLE_REDIRECT_URI`는 `https://jungsan-api.devkdk.com/api/v1/auth/{kakao,apple}/callback`, Vercel API base는 `https://jungsan-api.devkdk.com`이다.
++- PR #27은 CI 성공 후 병합됐다. main 배포의 SSH 전송은 성공했으나 `~/jeongsan/.env` 부재로 기동 단계가 중단됐다. 설정·대시보드·웹 재배포·실제 계정 로그인은 후속이며 FC를 닫지 않는다.
++
++### 초기 요청과 관찰 (과거 주소·판단을 보존)
++
+ - **바뀐 흐름:** 앱·웹 프론트가 `feat/auth-release` 계약에 붙었다(앱 084ce79 · 웹 eac5f99).
+   - 앱: 브라우저로 `/auth/{kakao|apple}/login?client=app&codeChallenge=BASE64URL(SHA256(verifier))` →
+     `jeongsan://auth?ticket=…` 복귀(Android intent-filter·iOS URL scheme) → `POST /auth/app/exchange {ticket, codeVerifier}` → Bearer 저장.
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index b2fcdd7..fcb5285 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -80,4 +80,4 @@
+ | FC-018 | 알림 `title`에 종류 코드가 그대로 | 반영됨 (API v8 · NotificationText 양쪽 구현) | PR #27 · API v8·실제 MySQL/HTTP CI·운영 준비 문서, 운영·프론트 연결 후속 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-018-알림-title에-종류-코드가-그대로-들어-있다) |
+ | FC-019 | 총무 본인의 차수 응답 — R2에서 같이 받기(A안) | 프론트만 (결정 2026-10-09) | 서버 변경 없음 · 기존 차수/응답 API 사용 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-019-총무-본인의-차수-응답--차수-입력-화면에서-같이-받는다) |
+ | FC-020 | 총무 인원 입력 · 전원 응답 시 자동 정산 · 입금 요청 | 열림 (API v8·028·Java/Kotlin 구현, 인원 밖 결제자 보류 승인 2026-10-10·운영 연결 후속) | PR #27 · API v8·실제 MySQL/HTTP CI·운영 준비 문서, 운영·프론트 연결 후속 | [2026-10-09-auto-settle.md](2026-10-09-auto-settle.md) |
+-| FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (DEPLOY.md 수정 · 운영/콘솔/연결 시험 후속, PR #20) | PR #27 · API v8·실제 MySQL/HTTP CI·운영 준비 문서, 운영·프론트 연결 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
++| FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (jungsan-api.devkdk.com 확정, 운영/콘솔/연결 시험 후속) | PR #27 병합·SSH 전송 성공, .env 부재로 기동 중단 · 새 호스트 문서/DNS 범위 수정, 실제 로그인 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
+diff --git a/scripts/cloudflare-dns.py b/scripts/cloudflare-dns.py
+index 25afdf3..3f774b5 100644
+--- a/scripts/cloudflare-dns.py
++++ b/scripts/cloudflare-dns.py
+@@ -1,4 +1,4 @@
+-"""api.devkdk.com 한 레코드만 기존 OCI Tunnel에 맞춘다. 토큰·응답 원문은 로그에 쓰지 않는다."""
++"""정산어택의 새 호스트만 OCI Tunnel에 맞춘다. 기존 노트북·웹훅 DNS는 변경하지 않는다."""
+ import json
+ import os
+ import re
+@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
+ from urllib.parse import urlencode
+ from urllib.request import Request, urlopen
+ 
+-HOSTNAME = "api.devkdk.com"
++HOSTNAME = "jungsan-api.devkdk.com"
+ ZONE_NAME = "devkdk.com"
+ API_BASE = "https://api.cloudflare.com/client/v4"
+ 
+@@ -55,12 +55,12 @@ def sync(client, tunnel_id, zone_id=""):
+         zone_id = zones[0]["id"]
+         if not re.fullmatch(r"[0-9a-f]{32}", zone_id):
+             raise DnsError("Cloudflare Zone ID 응답이 잘못됐습니다.")
+-    # 지정한 Zone ID가 다른 도메인이어도 api.devkdk.com 외 이름은 생성/변경하지 않는다.
++    # api.devkdk.com은 노트북 터널이다. 정산어택의 새 이름 외에는 생성/변경하지 않는다.
+     path = f"/zones/{zone_id}/dns_records"
+     query = "?" + urlencode({"name": HOSTNAME, "per_page": 100})
+     records = client.request("GET", path + query)
+     if len(records) > 1 or any(record.get("name") != HOSTNAME for record in records):
+-        raise DnsError("api.devkdk.com 레코드가 중복되거나 범위를 벗어났습니다. 자동 변경을 중단합니다.")
++        raise DnsError(f"{HOSTNAME} 레코드가 중복되거나 범위를 벗어났습니다. 자동 변경을 중단합니다.")
+     desired = {"type": "CNAME", "name": HOSTNAME, "content": target, "proxied": True, "ttl": 1}
+     action = "unchanged"
+     if not records:
+@@ -69,7 +69,7 @@ def sync(client, tunnel_id, zone_id=""):
+     else:
+         record = records[0]
+         if record.get("type") != "CNAME":
+-            raise DnsError("기존 api 레코드가 CNAME이 아닙니다. 기존 A/AAAA 레코드는 임의 교체하지 않습니다.")
++            raise DnsError(f"기존 {HOSTNAME} 레코드가 CNAME이 아닙니다. A/AAAA 레코드는 임의 교체하지 않습니다.")
+         if record.get("content", "").rstrip(".").lower() != target or record.get("proxied") is not True:
+             if not re.fullmatch(r"[0-9a-f]{32}", record.get("id", "")):
+                 raise DnsError("Cloudflare 레코드 ID가 잘못됐습니다.")
+@@ -85,7 +85,7 @@ if __name__ == "__main__":
+     try:
+         result = sync(Cloudflare(os.environ.get("CLOUDFLARE_API_TOKEN", "")),
+                       os.environ.get("CLOUDFLARE_TUNNEL_ID", ""), os.environ.get("CLOUDFLARE_ZONE_ID", ""))
+-        print(f"api.devkdk.com DNS {result}; Tunnel 원본 포트와 실제 로그인은 별도 확인")
++        print(f"{HOSTNAME} DNS {result}; Tunnel 원본 포트와 실제 로그인은 별도 확인")
+     except DnsError as error:
+         print(str(error), file=sys.stderr)
+         sys.exit(1)
+diff --git a/scripts/verify-cloudflare-dns.py b/scripts/verify-cloudflare-dns.py
+index 1b74d61..45b59f6 100644
+--- a/scripts/verify-cloudflare-dns.py
++++ b/scripts/verify-cloudflare-dns.py
+@@ -2,6 +2,7 @@
+ import importlib.util
+ import pathlib
+ import unittest
++from urllib.parse import parse_qs, urlsplit
+ 
+ spec = importlib.util.spec_from_file_location("dns_sync", pathlib.Path(__file__).with_name("cloudflare-dns.py"))
+ dns = importlib.util.module_from_spec(spec)
+@@ -29,6 +30,23 @@ class FakeCloudflare:
+ 
+ 
+ class DnsSpec(unittest.TestCase):
++    def test_requests_and_writes_target_only_approved_new_hostname(self):
++        client = FakeCloudflare([])
++        self.assertEqual(dns.sync(client, TUNNEL, ZONE), "created")
++        for method, path, body in client.calls:
++            if method == "GET":
++                self.assertEqual(parse_qs(urlsplit(path).query)["name"], ["jungsan-api.devkdk.com"])
++            else:
++                self.assertEqual(body["name"], "jungsan-api.devkdk.com")
++
++    def test_laptop_and_webhook_records_are_never_modified(self):
++        for hostname in ("api.devkdk.com", "webhook.devkdk.com"):
++            with self.subTest(hostname=hostname):
++                client = FakeCloudflare([{"name": hostname, "id": RECORD, "type": "CNAME", "content": "existing.cfargotunnel.com"}])
++                with self.assertRaises(dns.DnsError):
++                    dns.sync(client, TUNNEL, ZONE)
++                self.assertTrue(all(call[0] == "GET" for call in client.calls))
++
+     def test_missing_record_created_then_retry_does_not_write(self):
+         client = FakeCloudflare([])
+         self.assertEqual(dns.sync(client, TUNNEL), "created")

@@ -2,7 +2,6 @@
 import importlib.util
 import pathlib
 import unittest
-from urllib.parse import parse_qs, urlsplit
 
 spec = importlib.util.spec_from_file_location("dns_sync", pathlib.Path(__file__).with_name("cloudflare-dns.py"))
 dns = importlib.util.module_from_spec(spec)
@@ -30,23 +29,6 @@ class FakeCloudflare:
 
 
 class DnsSpec(unittest.TestCase):
-    def test_requests_and_writes_target_only_approved_new_hostname(self):
-        client = FakeCloudflare([])
-        self.assertEqual(dns.sync(client, TUNNEL, ZONE), "created")
-        for method, path, body in client.calls:
-            if method == "GET":
-                self.assertEqual(parse_qs(urlsplit(path).query)["name"], ["jungsan-api.devkdk.com"])
-            else:
-                self.assertEqual(body["name"], "jungsan-api.devkdk.com")
-
-    def test_laptop_and_webhook_records_are_never_modified(self):
-        for hostname in ("api.devkdk.com", "webhook.devkdk.com"):
-            with self.subTest(hostname=hostname):
-                client = FakeCloudflare([{"name": hostname, "id": RECORD, "type": "CNAME", "content": "existing.cfargotunnel.com"}])
-                with self.assertRaises(dns.DnsError):
-                    dns.sync(client, TUNNEL, ZONE)
-                self.assertTrue(all(call[0] == "GET" for call in client.calls))
-
     def test_missing_record_created_then_retry_does_not_write(self):
         client = FakeCloudflare([])
         self.assertEqual(dns.sync(client, TUNNEL), "created")

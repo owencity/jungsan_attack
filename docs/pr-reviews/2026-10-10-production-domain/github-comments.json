@@ -1,0 +1,9 @@
+{
+  "pr_url": "https://github.com/owencity/jungsan_attack/pull/28",
+  "captured_date": "2026-10-10",
+  "head_at_capture": "67faf11e8180eec77b549b06594b01ff5cf5b7d2",
+  "note": "head_at_capture는 조회 당시 PR head이며 Issue comment의 리뷰 대상 commit을 추정하지 않는다.",
+  "reviews": [],
+  "comments": [],
+  "inline_comments": []
+}

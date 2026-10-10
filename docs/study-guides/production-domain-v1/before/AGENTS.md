@@ -1,10 +1,5 @@
 # AGENTS.md — 정산어택 백엔드 (jungsan_attack)
 
-> **2026-10-10 운영 호스트 정정:** 정산어택은 `jungsan-api.devkdk.com`이다.
-> `api.devkdk.com`은 노트북 터널이므로 수정하지 않는다. OCI Tunnel에는 새 호스트를
-> `http://localhost:18080`으로 추가하며 기존 `webhook.devkdk.com` → 8080은 유지한다.
-> CTO가 대시보드·카카오/Apple 콘솔·운영 `.env`를 준비한다. 과거 도메인 기록보다 이 결정을 우선한다.
-
 > **2026-10-09 인증 결정:** CTO가 앱은 Bearer, 웹은 기존 httpOnly 쿠키를 사용하도록 확정했다.
 > 아래 §4-7 쿠키 전용 규칙은 웹에 적용하며 앱은 [AUTH_RELEASE](docs/AUTH_RELEASE.md)를 따른다.
 > APP/WEB 토큰은 교차 사용하지 않고, 앱의 일회용 티켓은 verifier와 함께 교환한다.
