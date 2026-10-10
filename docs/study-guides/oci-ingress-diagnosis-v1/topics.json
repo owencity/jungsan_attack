@@ -1,0 +1,31 @@
+{
+  "source_base": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "source_head": "2d0d8348906cbca1638e65f21c6a47d2e98c160c",
+  "categories": [
+    {
+      "category": "Java 기본기",
+      "items": []
+    },
+    {
+      "category": "Effective Java",
+      "items": []
+    },
+    {
+      "category": "함수형 Java",
+      "items": []
+    },
+    {
+      "category": "Kotlin 기본",
+      "items": []
+    },
+    {
+      "category": "Kotlin 고급",
+      "items": []
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "items": []
+    }
+  ],
+  "reason": "문서만 추가한 PR이다. 기존 코드 설명을 새 코드 변경에서 나온 학습 주제로 분류하지 않는다."
+}
