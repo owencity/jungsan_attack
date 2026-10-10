@@ -1,0 +1,13 @@
+{
+  "source_head": "250b9848df38e3d5766c7214bab4d12049f7b9bd",
+  "server": {
+    "tests": 130,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "server_compile": "passed",
+  "new_tests": 6,
+  "core_modified": false,
+  "real_provider_login_verified": false
+}

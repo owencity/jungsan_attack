@@ -1,0 +1,229 @@
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 5b516ce..a1a00b2 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,11 @@
+ # 개발 결정 로그
+ 
++## [2026-10-10] Apple 이름·이메일 요청을 실제 사용 범위에 맞춘다
++- 문제: Apple 인가 요청은 name email scope를 포함했지만 서버는 이름·이메일을 사용하거나 저장하지 않아 프론트 개인정보 안내와 어긋났다.
++- 고려한 대안: 이름·이메일을 받도록 방침을 확대하거나, 사용하지 않는 scope를 제거한다.
++- 선택 이유·트레이드오프: CTO 요청에 따라 scope를 제거한다. Java·Kotlin에서 동일한 최소 인가 정책을 독립 구현하고 공통 HTTP 어댑터가 사용한다. state·nonce·form_post·서명 검증과 탈퇴용 refresh token 암호화 저장은 유지한다.
++- 아쉬운 점: 이전 동의로 이메일 claim이 다시 전달될 수 있어 미수신을 보장하지 않는다. 서버는 이를 사용·저장하지 않으며 실제 계정 로그인·프론트 방침 대조는 별도 확인한다.
++
+ ## [2026-10-10] 운영 DB 최초 인증 실패를 실제 prod 검증으로 고친다
+ - 문제: PR #29 CI의 실제 prod 기동에서 MySQL 인증 캐시를 비운 뒤 Public Key Retrieval is not allowed로 실패했다. 기존 로컬 URL 검증만으로는 운영 URL 누락이 드러나지 않았다.
+ - 고려한 대안: TLS와 서버 인증서 배포, 서버 RSA 공개키를 파일로 고정, 외부 포트 없는 현재 compose 내부 DB에서 공개키 교환 허용.
+diff --git a/docs/API.md b/docs/API.md
+index fdd5a97..3672811 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1,4 +1,12 @@
+-# 정산어택 — API 계약 · v9
++# 정산어택 — API 계약 · v10
++
++> **v10 변경(2026-10-10)** — Apple 이름·이메일을 사용하지 않는 서버 동작에 인가 요청을 맞춘다.
++>
++> | 절 | 변경 |
++> |---|---|
++> | AUTH_RELEASE 로그인 | Apple `scope` 생략, `form_post`·state·nonce·서명 검증 유지, 실명은 L2 입력 |
++> | Apple 개인정보 | 계정 연결은 `sub`; 이름·이메일 사용·저장 없음. 이전 동의 이메일 claim도 무시 |
++>
+ 
+ > **v9 변경(2026-10-10)** — CTO 결정: Apple 로그인 설정 발급 중에도 카카오·서버를 운영한다.
+ >
+diff --git a/docs/AUTH_RELEASE.md b/docs/AUTH_RELEASE.md
+index 33b78f9..ee972f8 100644
+--- a/docs/AUTH_RELEASE.md
++++ b/docs/AUTH_RELEASE.md
+@@ -9,8 +9,8 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
+   - 웹 기본값. 상대 경로 `/jungsan/`만 허용하며 `//`, 역슬래시, 제어문자, percent 인코딩을 거절한다.
+   - 앱은 추가로 `codeChallenge` (SHA-256, base64url 43자)를 보낸다. 앱이 생성한 43~128자 `codeVerifier`는 앱에만 보관한다. [RFC 7636 §4.1·4.2](https://www.rfc-editor.org/rfc/rfc7636#section-4.1)의 문자·길이·S256 방식을 티켓 교환에 적용한다.
+   - 5분짜리 일회용 state·nonce를 DB에 저장한다. 브라우저 httpOnly 상관 쿠키와 state를 함께 검증한다.
+-  - Apple은 `response_mode=form_post`, `scope=name email`. HTTPS 상관 쿠키는 SameSite=None이다.
+-- 카카오 콜백 GET / Apple 콜백 POST(form-urlencoded). 코드 교환 뒤 Apple ID 토큰의 RS256 서명·kid·issuer·audience·exp·nonce·subject를 검증한다. 이름은 처음만 주므로 실명은 기존 등록 화면에서 받는다.
++  - Apple은 `response_mode=form_post`를 유지하고 `scope`를 보내지 않는다. 이름·이메일 제공 동의를 요청하지 않는다. HTTPS 상관 쿠키는 SameSite=None이다.
++- 카카오 콜백 GET / Apple 콜백 POST(form-urlencoded). 코드 교환 뒤 Apple ID 토큰의 RS256 서명·kid·issuer·audience·exp·nonce·subject를 검증한다. 계정 연결에는 `sub`만 사용하며 Apple 이름·이메일은 사용하거나 저장하지 않는다. 실명은 L2 등록 화면에서 따로 받는다. 이전 동의로 ID 토큰에 이메일이 포함되더라도 무시한다([Apple 인가 문서](https://developer.apple.com/documentation/signinwithapplerestapi/request-an-authorization-to-the-sign-in-with-apple-server)).
+ - 웹: `jeongsan_token` 쿠키 발급, 원래 경로로 복귀. 앱: 고정 `jeongsan://auth?ticket=...`로 복귀. JWT는 URL에 넣지 않는다.
+ - `POST /api/v1/auth/app/exchange {ticket,codeVerifier}` → `{token,expiresAt}`. 60초 티켓은 DB 잠금·삭제로 한 번만 교환되고 앱의 challenge와 대조한다.
+ - 앱 Authorization Bearer는 APP 토큰만 받는다. 쿠키는 WEB 토큰만 받는다. 둘 다 있으면 Bearer를 우선하고 잘못된 헤더를 쿠키로 우회하지 않는다.
+diff --git a/docs/flow-changes/2026-10-10-apple-privacy.md b/docs/flow-changes/2026-10-10-apple-privacy.md
+new file mode 100644
+index 0000000..7c286c2
+--- /dev/null
++++ b/docs/flow-changes/2026-10-10-apple-privacy.md
+@@ -0,0 +1,11 @@
++# Apple 로그인 개인정보 요청
++
++## FC-022 Apple 이름·이메일 동의 요청 제거
++
++- **상태:** 반영됨 (API v10·양쪽 언어 정책·서버 130건 검증, PR 병합·운영 적용·실계정 검증은 별도)
++- **바뀐 흐름:** Apple 로그인에서 이름·이메일 제공 동의를 요청하지 않는다. 실명은 기존 L2 이름 등록 화면에서 받는다.
++- **백엔드 영향:** Apple 인가 URL에서 `scope=name email`을 제거한다. 계정 연결에는 검증된 `sub`만 사용하고 이름·이메일은 사용하거나 저장하지 않는다. 이전 동의 이메일 claim은 무시한다.
++- **기존 문서와 충돌:** AUTH_RELEASE가 이름·이메일 요청을 명시했지만 서버 사용 범위 및 CTO가 전달한 프론트 개인정보 안내는 식별자 기반이다. 프론트 방침 파일 자체는 이 저장소에 없어 문구 검수 완료로 표시하지 않는다.
++- **결정 근거:** 2026-10-10 CTO 요청 — 서버가 사용하지 않으면 scope를 제거한다. 실제 ProviderGateway·AppleTokens·AuthFlowService·User 확인에서 이름·이메일 사용·저장 없음.
++- **반영할 곳:** API v10·AUTH_RELEASE·AuthPolicy Kotlin/Java·ProviderGateway·회귀 테스트. 프론트 네이티브 구현이 별도 scope를 요청한다면 프론트에서도 확인한다.
++- **백엔드 반영·근거:** AuthPolicy.kt/java는 인가 인자를 독립 구현하고 공유 ProviderGateway가 사용한다. ApplePrivacySpec 5건과 AppleTokensSpec의 이전 동의 이메일 1건을 추가했으며 서버 전체 130건에서 실패·오류·건너뛰기 0, 서버 컴파일 성공. state·nonce·form_post·안전한 상관 쿠키·서명 검증·탈퇴용 암호화 refresh token 저장은 유지한다. PR 병합·운영 배포와 실제 사용자 로그인은 별도 확인한다. FC-021 전체 연결 시험 완료로 표시하지 않는다.
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index cf2772f..647b376 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -81,3 +81,4 @@
+ | FC-019 | 총무 본인의 차수 응답 — R2에서 같이 받기(A안) | 프론트만 (결정 2026-10-09) | 서버 변경 없음 · 기존 차수/응답 API 사용 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-019-총무-본인의-차수-응답--차수-입력-화면에서-같이-받는다) |
+ | FC-020 | 총무 인원 입력 · 전원 응답 시 자동 정산 · 입금 요청 | 열림 (API v8·028·Java/Kotlin 구현, 인원 밖 결제자 보류 승인 2026-10-10·운영 연결 후속) | PR #27 · API v8·실제 MySQL/HTTP CI·운영 준비 문서, 운영·프론트 연결 후속 | [2026-10-09-auto-settle.md](2026-10-09-auto-settle.md) |
+ | FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (jungsan-api.devkdk.com 확정, 운영/콘솔/연결 시험 후속) | PR #27/#28 병합 · CTO Tunnel 추가 완료 · .env 생성, Apple 미설정 503 분리(API v9), 운영/실제 로그인 검증 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
++| FC-022 | Apple 이름·이메일 동의 요청 제거 | 반영됨 (API v10·양쪽 언어·서버 130건, 병합·운영·실계정 후속) | AuthPolicy.kt/java·ProviderGateway·ApplePrivacySpec·AppleTokensSpec · 기존 FC-021 전체 로그인 시험은 후속 | [2026-10-10-apple-privacy.md](2026-10-10-apple-privacy.md) |
+diff --git a/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java b/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java
+index cf99e07..348df62 100644
+--- a/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java
++++ b/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java
+@@ -4,6 +4,7 @@ import app.jeongsan.server.common.MalformedRequestException;
+ import app.jeongsan.server.common.UnauthenticatedException;
+ import java.net.URI;
+ import java.util.List;
++import java.util.Map;
+ import java.nio.charset.StandardCharsets;
+ import java.security.MessageDigest;
+ import java.security.NoSuchAlgorithmException;
+@@ -13,6 +14,11 @@ import java.util.HexFormat;
+ 
+ /** Java 학습 구현. Kotlin 정책으로 위임하지 않는다. */
+ public final class AuthPolicy {
++    // 실명은 L2에서 받으므로 Apple 이름·이메일 동의를 요청하지 않는다.
++    public static Map<String, String> appleAuthorizationParameters(String nonce) {
++        return Map.of("response_mode", "form_post", "nonce", nonce);
++    }
++
+     public static boolean providerAvailable(String provider, List<String> kakaoSettings, List<String> appleSettings) {
+         if (!"KAKAO".equals(provider) && !"APPLE".equals(provider)) return false;
+         List<String> settings = "KAKAO".equals(provider) ? kakaoSettings : appleSettings;
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt b/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt
+index 40b8622..698e00b 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt
+@@ -9,6 +9,12 @@ import java.util.Base64
+ 
+ /** 같은 리다이렉트·티켓 규칙을 Java와 독립 비교한다. 시계·DB·HTTP는 호출부에서 제공한다. */
+ object AuthPolicy {
++    // 실명은 L2에서 받으므로 Apple 이름·이메일 동의를 요청하지 않는다.
++    fun appleAuthorizationParameters(nonce: String): Map<String, String> = mapOf(
++        "response_mode" to "form_post",
++        "nonce" to nonce,
++    )
++
+     fun providerAvailable(provider: String, kakaoSettings: List<String>, appleSettings: List<String>): Boolean = when (provider) {
+         "KAKAO" -> kakaoSettings.size == 3 && kakaoSettings.all { it.isNotBlank() }
+         "APPLE" -> appleSettings.size == 5 && appleSettings.all { it.isNotBlank() }
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt b/server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt
+index 37fdda1..c2e89b0 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt
+@@ -57,7 +57,9 @@ class RestProviderGateway(
+         val builder = UriComponentsBuilder.fromUriString(if (apple) "https://appleid.apple.com/auth/authorize" else "https://kauth.kakao.com/oauth/authorize")
+             .queryParam("client_id", if(apple) appleId else kakaoId).queryParam("redirect_uri",if(apple) appleRedirect else kakaoRedirect)
+             .queryParam("response_type","code").queryParam("state",state)
+-        if (apple) builder.queryParam("response_mode","form_post").queryParam("scope","name email").queryParam("nonce",nonce)
++        if (apple) AuthPolicy.appleAuthorizationParameters(nonce).forEach { (parameterName, parameterValue) ->
++            builder.queryParam(parameterName, parameterValue)
++        }
+         return builder.build().encode().toUriString()
+     }
+     @Suppress("UNCHECKED_CAST")
+diff --git a/server/src/test/kotlin/app/jeongsan/server/user/ApplePrivacySpec.kt b/server/src/test/kotlin/app/jeongsan/server/user/ApplePrivacySpec.kt
+new file mode 100644
+index 0000000..242f65e
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/user/ApplePrivacySpec.kt
+@@ -0,0 +1,73 @@
++package app.jeongsan.server.user
++
++import app.jeongsan.server.common.GlobalExceptionHandler
++import app.jeongsan.server.gathering.GatheringStore
++import app.jeongsan.server.user.javaimpl.AuthPolicy as JavaPolicy
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++import org.mockito.Mockito
++import org.springframework.mock.env.MockEnvironment
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
++import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
++import org.springframework.test.web.servlet.setup.MockMvcBuilders
++import org.springframework.web.util.UriComponentsBuilder
++import org.springframework.web.util.UriUtils
++import java.nio.charset.StandardCharsets
++import java.util.Base64
++
++class ApplePrivacySpec : StringSpec({
++    fun decodedParameters(authorizationUrl: String) = UriComponentsBuilder.fromUriString(authorizationUrl).build()
++        .queryParams.toSingleValueMap().mapValues { (_, parameterValue) -> UriUtils.decode(parameterValue, StandardCharsets.UTF_8) }
++
++    fun configuredGateway() = RestProviderGateway(
++        "kakao-client", "kakao-secret", "https://api.test/api/v1/auth/kakao/callback",
++        "apple-service", "apple-team", "apple-key", "unused-local-key", "https://api.test/api/v1/auth/apple/callback",
++        MockEnvironment().apply { setActiveProfiles("local") },
++    )
++
++    "Apple 전용 인가 인자는 양쪽 언어에서 이름·이메일 scope 없이 nonce와 POST 응답 방식만 포함한다" {
++        val expectedParameters = mapOf("response_mode" to "form_post", "nonce" to "test-nonce")
++        AuthPolicy.appleAuthorizationParameters("test-nonce") shouldBe expectedParameters
++        JavaPolicy.appleAuthorizationParameters("test-nonce") shouldBe expectedParameters
++    }
++
++    "실제 Apple 인가 URL은 scope 없이 client·callback·state·nonce·code·form_post를 보존한다" {
++        val authorizationUri = UriComponentsBuilder.fromUriString(configuredGateway().authorize("APPLE", "test-state", "test-nonce")).build()
++        authorizationUri.host shouldBe "appleid.apple.com"
++        authorizationUri.path shouldBe "/auth/authorize"
++        decodedParameters(authorizationUri.toUriString()) shouldBe mapOf(
++            "client_id" to "apple-service", "redirect_uri" to "https://api.test/api/v1/auth/apple/callback",
++            "response_type" to "code", "state" to "test-state", "response_mode" to "form_post", "nonce" to "test-nonce",
++        )
++    }
++
++    "카카오 인가 URL에는 Apple 전용 인자나 추가 scope가 섞이지 않는다" {
++        val authorizationUri = UriComponentsBuilder.fromUriString(configuredGateway().authorize("KAKAO", "test-state", "unused-nonce")).build()
++        authorizationUri.host shouldBe "kauth.kakao.com"
++        decodedParameters(authorizationUri.toUriString()) shouldBe mapOf(
++            "client_id" to "kakao-client", "redirect_uri" to "https://api.test/api/v1/auth/kakao/callback",
++            "response_type" to "code", "state" to "test-state",
++        )
++    }
++
++    listOf("web", "app").forEach { clientType ->
++        "Apple $clientType 로그인은 scope 없이 리다이렉트하며 안전한 상관 쿠키를 유지한다" {
++            val database = Mockito.mock(GatheringStore::class.java)
++            val flow = AuthFlowService(database, configuredGateway(), JwtService("01234567890123456789012345678901", 30),
++                Base64.getEncoder().encodeToString(ByteArray(32)))
++            val controller = AuthController(flow, Mockito.mock(UserService::class.java), "https://web.test/jungsan", "https://web.test", true, 30)
++            val mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(GlobalExceptionHandler()).build()
++            val loginRequest = get("/api/v1/auth/apple/login").param("client", clientType)
++            if (clientType == "app") loginRequest.param("codeChallenge", "a".repeat(43))
++            val response = mvc.perform(loginRequest).andExpect(status().isFound)
++                .andExpect(header().string("Cache-Control", "no-store")).andReturn().response
++            val parameters = UriComponentsBuilder.fromUriString(checkNotNull(response.getHeader("Location"))).build().queryParams
++            parameters.containsKey("scope") shouldBe false
++            checkNotNull(parameters.getFirst("state")).length shouldBe 43
++            checkNotNull(parameters.getFirst("nonce")).length shouldBe 43
++            parameters.getFirst("response_mode") shouldBe "form_post"
++            val bindingCookie = checkNotNull(response.getHeader("Set-Cookie"))
++            listOf("Secure", "HttpOnly", "SameSite=None").forEach { attribute -> bindingCookie.contains(attribute) shouldBe true }
++        }
++    }
++})
+diff --git a/server/src/test/kotlin/app/jeongsan/server/user/AppleTokensSpec.kt b/server/src/test/kotlin/app/jeongsan/server/user/AppleTokensSpec.kt
+index 88f7520..42718d3 100644
+--- a/server/src/test/kotlin/app/jeongsan/server/user/AppleTokensSpec.kt
++++ b/server/src/test/kotlin/app/jeongsan/server/user/AppleTokensSpec.kt
+@@ -30,6 +30,14 @@ class AppleTokensSpec : StringSpec({
+         AppleTokens.verify(token(),listOf(key),"client","nonce") shouldBe "apple-subject"
+         JavaApple.verify(token(),listOf(jkey),"client","nonce") shouldBe "apple-subject"
+     }
++    "이전에 동의한 이메일이 ID 토큰에 있어도 양쪽 언어는 사용자 식별자만 반환한다" {
++        val identityToken = Jwts.builder().header().keyId("test-key").and().issuer("https://appleid.apple.com")
++            .subject("apple-subject").audience().add("client").and().claim("nonce", "nonce")
++            .claim("email", "unused@example.test").claim("email_verified", true)
++            .expiration(Date.from(Instant.now().plusSeconds(60))).signWith(pair.private, Jwts.SIG.RS256).compact()
++        AppleTokens.verify(identityToken, listOf(key), "client", "nonce") shouldBe "apple-subject"
++        JavaApple.verify(identityToken, listOf(jkey), "client", "nonce") shouldBe "apple-subject"
++    }
+     "다른 앱 audience와 다른 nonce와 issuer를 거절한다" {
+         reject(token(aud="other")); reject(token(nonce="other")); reject(token(issuer="https://evil.test"))
+     }
