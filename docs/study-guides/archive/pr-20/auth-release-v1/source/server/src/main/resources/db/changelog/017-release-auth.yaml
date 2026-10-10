@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-release-auth-and-account-deletion
+      author: jeongsan
+      comment: "FC-014 D6 D7. 일회용 로그인과 앱 교환을 DB로 직렬화하고 완료 좌석의 FK를 끊어 계정을 삭제한다."
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              ALTER TABLE participants MODIFY user_id BIGINT NULL COMMENT '로그인 계정 연결, 탈퇴한 완료 좌석만 NULL';
+              ALTER TABLE gatherings MODIFY host_user_id BIGINT NULL COMMENT '생성 계정, 완료 후 탈퇴하면 NULL';
+              ALTER TABLE user_groups MODIFY created_by_user_id BIGINT NULL COMMENT '레거시 모임 생성 계정, 탈퇴하면 NULL';
+              CREATE TABLE auth_challenges (
+                state_hash CHAR(64) NOT NULL PRIMARY KEY COMMENT 'URL state 원문 대신 SHA256',
+                provider VARCHAR(10) NOT NULL COMMENT 'KAKAO APPLE',
+                client VARCHAR(3) NOT NULL COMMENT 'web app',
+                return_to VARCHAR(500) NOT NULL COMMENT '허용된 웹 상대 복귀 경로',
+                nonce VARCHAR(43) NOT NULL COMMENT 'Apple ID 토큰 재생 방지',
+                browser_hash CHAR(64) NOT NULL COMMENT '상관 쿠키의 해시, 로그인 CSRF 방지',
+                app_challenge VARCHAR(43) NULL COMMENT '앱만 아는 verifier의 S256',
+                expires_at DATETIME(6) NOT NULL COMMENT '인가 시작부터 5분',
+                INDEX idx_auth_challenge_expiry(expires_at)
+              ) COMMENT='일회용 OAuth 인가 상관 관계';
+              CREATE TABLE auth_tickets (
+                ticket_hash CHAR(64) NOT NULL PRIMARY KEY COMMENT '딥링크 티켓 원문 대신 SHA256',
+                user_id BIGINT NOT NULL COMMENT '발급 대상 로그인 계정',
+                app_challenge VARCHAR(43) NOT NULL COMMENT '티켓을 가로채도 verifier 없이는 교환 불가',
+                expires_at DATETIME(6) NOT NULL COMMENT '발급부터 60초',
+                INDEX idx_auth_ticket_expiry(expires_at),
+                CONSTRAINT fk_auth_ticket_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+              ) COMMENT='브라우저와 네이티브 앱 사이 일회용 로그인 교환';
+              CREATE TABLE auth_credentials (
+                user_id BIGINT NOT NULL PRIMARY KEY COMMENT 'Apple 로그인 계정',
+                client_id VARCHAR(200) NOT NULL COMMENT '해당 refresh token을 발급한 Services ID',
+                token_encrypted VARBINARY(4096) NOT NULL COMMENT 'Apple 연결 해제를 위한 AES GCM refresh token',
+                CONSTRAINT fk_auth_credential_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+              ) COMMENT='외부 로그인 연결 해제용 암호화 자격';
+              CREATE TABLE auth_revocations (
+                token_hash CHAR(64) NOT NULL PRIMARY KEY COMMENT '로그아웃 JWT 원문 대신 SHA256',
+                expires_at DATETIME(6) NOT NULL COMMENT 'JWT 만료 뒤 정리 가능',
+                INDEX idx_auth_revocation_expiry(expires_at)
+              ) COMMENT='로그아웃한 쿠키와 앱 JWT의 재사용 방지';
+              CREATE TABLE auth_revoke_jobs (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '탈퇴와 함께 기록되는 외부 연결 해제 작업',
+                client_id VARCHAR(200) NOT NULL COMMENT 'Apple 발급 대상 ID',
+                token_encrypted VARBINARY(4096) NOT NULL COMMENT '전송에 필요한 토큰만 암호화해 성공까지 보관',
+                attempts INT NOT NULL DEFAULT 0 COMMENT '재시도 횟수',
+                next_attempt_at DATETIME(6) NOT NULL COMMENT '다음 시도 시각',
+                INDEX idx_auth_revoke_due(next_attempt_at)
+              ) COMMENT='계정 삭제 뒤 Apple 연결 해제 재시도, 성공하면 삭제';

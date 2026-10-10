@@ -16,7 +16,7 @@
 
 ## 운영 전 필수 확인
 
-1. 병합 권한: 과거 CTO 직접 병합 지침의 변경 여부를 확인한다. 승인된 출시 PR이 main에 들어가야 배포한다.
+1. 병합 권한: CTO가 2026-10-10에 CI 전체 통과·미결 결정 없음·리뷰/스터디 보존 조건으로 Codex 병합을 승인했다. REMOVE_PAYER 보류도 승인했다. 승인된 출시 PR이 main에 들어가야 배포한다.
 2. 운영 `.env`: 카카오 Client ID·Secret, Apple Services ID·Team ID·Key ID·p8, 콜백, 독립 JWT/계좌/인증 암호화 키. 저장소·CI 로그에 값은 남기지 않는다.
 3. GitHub OCI_HOST/OCI_SSH_KEY가 CTO가 지정한 OCI와 준비된 키를 가리키는지 확인한다. 값이 있는 것과 맞는 것은 다르다.
 4. Cloudflare 원격 터널 `api.devkdk.com` → `http://127.0.0.1:18080`. 기존 8080의 n8n/Kafka는 유지한다.
@@ -27,4 +27,4 @@
 
 App Store·Google Play 정식 출시·심사 통과는 이 백엔드 PR이나 자동 테스트 결과로 완료 처리하지 않는다.
 면제 API, 복수 총무 스푼 정책, FCM/APNs, WebSocket은 기존 보류·미결 범위를 유지한다.
-FC-020 인원 밖 결제자 보류 가정과 프론트 `autoSettlementError` 표시가 검토 사항이다.
+FC-020 인원 밖 결제자 보류는 CTO가 승인했다. 프론트 `autoSettlementError` 배너 표시·운영 연결 시험은 후속이다.

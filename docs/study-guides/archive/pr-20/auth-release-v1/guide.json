@@ -1,0 +1,261 @@
+{
+  "sourceHead": "73efc65702d0d017715e9e1342ee5091ec88ce3c",
+  "catalogCommit": "c4fa119854137596c5da7f88922ed487900e5637",
+  "items": [
+    {
+      "category": "Java 기본기",
+      "catalogIds": [
+        "JST-06-05-01"
+      ],
+      "read": "JST-06-05-01 생성자란? (자바의 정석 / 6장 객체지향 프로그래밍 I / 5. 생성자(Constructor) / 5.1 / p.315)",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java",
+      "line": 15,
+      "symbol": "AuthPolicy 생성자",
+      "perspective": "private 생성자와 static 정책 메서드를 함께 보고 인스턴스를 만들 필요가 없는 이유를 diff에서 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "catalogIds": [
+        "JST-08-01-03"
+      ],
+      "read": "JST-08-01-03 예외 처리하기 - try-catch문 (자바의 정석 / 8장 예외 처리(exception handling) / 1. 예외 처리(exception handling) / 1.3 / p.446)",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java",
+      "line": 35,
+      "symbol": "AppleTokens.verify",
+      "perspective": "서명·claim 검증의 예외가 동일한 인증 실패로 변환되는 경계를 확인한다."
+    },
+    {
+      "category": "Java 기본기",
+      "catalogIds": [
+        "JST-14-02-03"
+      ],
+      "read": "JST-14-02-03 스트림의 중간연산 (자바의 정석 / 14장 람다와 스트림 / 2. 스트림(stream) / 2.3 / p.958)",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java",
+      "line": 25,
+      "symbol": "AppleTokens.verify",
+      "perspective": "kid·alg·kty를 고르는 filter와 toList 이후 정확히 한 키만 허용하는 조건을 연결해서 본다."
+    },
+    {
+      "category": "Java 기본기",
+      "catalogIds": [
+        "JST-07-04-03"
+      ],
+      "read": "JST-07-04-03 final - 마지막의, 변경될 수 없는 (자바의 정석 / 7장 객체지향 프로그래밍 II / 4. 제어자(modifier) / 4.3 / p.369)",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/JwtService.java",
+      "line": 13,
+      "symbol": "JwtService 타입",
+      "perspective": "final 클래스와 final key 필드가 각각 어떤 변경을 막는지 구분한다."
+    },
+    {
+      "category": "Effective Java",
+      "catalogIds": [
+        "EJ-04"
+      ],
+      "read": "EJ-04 인스턴스화를 막으려거든 private 생성자를 사용하라 (Effective Java / 2장 객체 생성과 파괴)",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java",
+      "line": 15,
+      "symbol": "AuthPolicy 생성자",
+      "perspective": "인스턴스화를 막은 유틸리티 타입이 상속 금지와 별개로 어떤 API 사용을 제한하는지 본다."
+    },
+    {
+      "category": "Effective Java",
+      "catalogIds": [
+        "EJ-49"
+      ],
+      "read": "EJ-49 매개변수가 유효한지 검사하라 (Effective Java / 8장 메서드)",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java",
+      "line": 31,
+      "symbol": "AuthPolicy.verifyVerifier",
+      "perspective": "허용 문자·길이 검사를 해시 계산보다 앞에 둔 입력 경계를 확인한다."
+    },
+    {
+      "category": "Effective Java",
+      "catalogIds": [
+        "EJ-05"
+      ],
+      "read": "EJ-05 자원을 직접 명시하지 말고 의존 객체 주입을 사용하라 (Effective Java / 2장 객체 생성과 파괴)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "line": 24,
+      "symbol": "AuthFlowService 생성자",
+      "perspective": "외부 제공자 의존성을 주입받는 구조를 실제 DB probe의 가짜 gateway와 연결해 본다."
+    },
+    {
+      "category": "함수형 Java",
+      "catalogIds": [
+        "FJ-05-02"
+      ],
+      "read": "FJ-05-02 도움을 주기 위한 레코드 (함수형 프로그래밍 with 자바 / 5 / 5.2)",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java",
+      "line": 19,
+      "symbol": "AppleTokens.Key",
+      "perspective": "검증에 필요한 kid·kty·alg·n·e를 record 값 타입으로 묶은 형태와 Kotlin AppleKey를 비교한다."
+    },
+    {
+      "category": "함수형 Java",
+      "catalogIds": [
+        "FJ-06-03"
+      ],
+      "read": "FJ-06-03 스트림 파이프라인 구축하기 (함수형 프로그래밍 with 자바 / 6 / 6.3)",
+      "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java",
+      "line": 25,
+      "symbol": "AppleTokens.verify",
+      "perspective": "키 후보 스트림의 중간 연산과 최종 연산 사이에 무엇이 실행되고 언제 목록이 만들어지는지 본다."
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-02"
+      ],
+      "read": "KB-02 코틀린에서 null을 다루는 방법 (Kotlin 기본 / 섹션 2. 코틀린에서 변수와 타입, 연산자를 다루는 방법 / 2강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "line": 40,
+      "symbol": "AuthFlowService.finish",
+      "perspective": "단일 행이 없을 때 nullable 값을 인증 실패로 바꾸는 ?: 경계를 확인한다."
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-03"
+      ],
+      "read": "KB-03 코틀린에서 Type을 다루는 방법 (Kotlin 기본 / 섹션 2. 코틀린에서 변수와 타입, 연산자를 다루는 방법 / 3강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt",
+      "line": 24,
+      "symbol": "AppleTokens.verify",
+      "perspective": "KeyFactory 반환 타입을 RSA 공개키로 명시적으로 캐스팅하는 이유를 호출 API와 함께 본다."
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-12"
+      ],
+      "read": "KB-12 코틀린에서 object 키워드를 다루는 방법 (Kotlin 기본 / 섹션 4. 코틀린에서의 OOP / 12강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt",
+      "line": 11,
+      "symbol": "AuthPolicy",
+      "perspective": "Spring Bean과 분리한 object 정책의 생성 방식과 상태 없는 메서드를 확인한다."
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-14"
+      ],
+      "read": "KB-14 코틀린에서 다양한 클래스를 다루는 방법 (Kotlin 기본 / 섹션 4. 코틀린에서의 OOP / 14강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/JwtService.kt",
+      "line": 45,
+      "symbol": "JwtService.Identity",
+      "perspective": "JWT 검증 결과를 data class로 반환하는 형태를 Java JwtService.Identity record와 비교한다."
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-18"
+      ],
+      "read": "KB-18 코틀린에서 컬렉션을 함수형으로 다루는 방법 (Kotlin 기본 / 섹션 5. 코틀린에서의 FP / 18강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AccountPolicy.kt",
+      "line": 8,
+      "symbol": "AccountPolicy.deletable",
+      "perspective": "상태 목록에 대한 any 조건이 진행 중 하나만 있어도 탈퇴를 거절하는지 본다."
+    },
+    {
+      "category": "Kotlin 기본",
+      "catalogIds": [
+        "KB-20"
+      ],
+      "read": "KB-20 코틀린의 scope function (Kotlin 기본 / 섹션 6. 추가적으로 알아두어야 할 코틀린 특성 / 20강)",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt",
+      "line": 37,
+      "symbol": "RestProviderGateway http 초기화",
+      "perspective": "apply 안의 수신 객체와 반환 객체를 따라가며 타임아웃 설정이 어느 HTTP 클라이언트에 적용되는지 본다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "RFC 7636 §4.1·4.2·4.6 — verifier 길이, S256 변환, 교환 대조",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt",
+      "line": 31,
+      "symbol": "AuthPolicy.verifyVerifier",
+      "perspective": "앱이 보관한 verifier가 start의 challenge와 티켓 교환을 어떻게 묶어 딥링크 가로채기를 막는지 본다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "Apple Verifying a user — 서명과 ID token claim 검증",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt",
+      "line": 21,
+      "symbol": "AppleTokens.verify",
+      "perspective": "RS256·kid로 고른 공개키와 issuer·audience·nonce·exp 검증을 순서대로 확인한다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "Apple client secret — ES256, kid, team issuer, client subject, 제한된 exp",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AppleTokens.kt",
+      "line": 31,
+      "symbol": "AppleTokens.clientSecret",
+      "perspective": "Apple ID 토큰용 RSA 검증과 client secret용 EC 서명이 서로 다른 역할인지 구분한다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "MySQL 행 잠금 — 공유/배타 잠금, FK cascade, 일회용 교환",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "line": 65,
+      "symbol": "AuthFlowService.exchange",
+      "perspective": "탈퇴 cascade와 맞춘 users→ticket 잠금 순서 및 동시 교환 1건 성공 근거를 확인한다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "Spring 트랜잭션 — READ_COMMITTED, 프록시 경계, 외부 부수효과",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "line": 23,
+      "symbol": "AuthFlowService 트랜잭션",
+      "perspective": "가입·state 소비·티켓 발급이 실패 때 함께 rollback되는 범위와 외부 제공자 HTTP의 차이를 확인한다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "동시성 — 잠금 순서, 목록 재검사, 실제 HTTP 경합",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AccountDeletionService.kt",
+      "line": 23,
+      "symbol": "AccountDeletionService.delete",
+      "perspective": "단위→방→사용자 잠금 후 목록을 재검사해 탈퇴와 새 단위 생성이 동시에 성공하지 못하는 근거를 본다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "운영 — 외부 연결 해제 작업, 재시도, SKIP LOCKED",
+      "file": "server/src/main/kotlin/app/jeongsan/server/user/AuthMaintenance.kt",
+      "line": 30,
+      "symbol": "AuthMaintenance.run",
+      "perspective": "계정 삭제 뒤의 연결 해제 실패가 재시도 행으로 남고 성공 때만 지워지는 경계를 본다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "인증 — 토큰 채널 구분, 탈퇴/로그아웃 후 JWT 무효화",
+      "file": "server/src/main/kotlin/app/jeongsan/server/common/LoginUser.kt",
+      "line": 65,
+      "symbol": "LoginUserArgumentResolver.resolveArgument",
+      "perspective": "앱 Bearer·웹 쿠키 선택 뒤 사용자 존재·로그아웃 해시를 확인하는 실제 인증 경로를 본다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "DB — nullable FK, NULL과 복합 UNIQUE, 익명화된 완료 좌석",
+      "file": "server/src/main/resources/db/changelog/017-release-auth.yaml",
+      "line": 10,
+      "symbol": "027-release-auth-and-account-deletion",
+      "perspective": "로그인 사용자 삭제와 완료 좌석 보존을 nullable FK와 기존 UNIQUE가 어떻게 함께 지원하는지 본다."
+    },
+    {
+      "category": "기술별 학습 포인트",
+      "catalogIds": [],
+      "read": "테스트 — 암호 서명 단위 시험, 실제 DB 잠금 시험, 실제 제공자 연결의 구분",
+      "file": "server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt",
+      "line": 69,
+      "symbol": "AuthDatabaseProbe.main",
+      "perspective": "제공자만 가짜로 바꾸고 실제 DB에서 4개 교환 중 1개 성공을 확인하는 시험의 범위를 본다."
+    }
+  ]
+}

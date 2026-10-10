@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-add-user-display-name
+      author: jeongsan
+      comment: >
+        FC-013 입금자와 참여자를 대조할 실명을 카카오 닉네임과 분리한다.
+        기존 계정도 실명을 직접 입력하도록 NULL로 유지한다. 018~022는 예약된 번호다.
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: display_name
+                  type: VARCHAR(10)
+                  remarks: "입금자 대조용 실명. NULL은 미입력, 공백 제거 후 2~10 코드포인트, 최초 등록 후 불변"
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: users
+            columnName: display_name

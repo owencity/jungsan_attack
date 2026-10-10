@@ -1,0 +1,677 @@
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 8dca8b30b2b1279f4ee65e77b753a4b6a5b9ff21..15493d003c3b5d2e82e76013b0ba55891bb93d18 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -5,6 +5,15 @@
+ 
+ ---
+ 
++## [2026-10-04] 실명은 닉네임과 분리하고 최초 등록을 원자적으로 처리한다
++
++- **문제:** FC-013에서 입금자 대조를 위해 실명을 직접 한 번 등록하도록 결정했다. 동시 요청과 재로그인이 이름을 덮어쓰면 입금 확인 기준이 바뀐다.
++- **고려한 대안:** 서비스에서 먼저 NULL인지 읽고 save / 사용자 행 잠금 / NULL 조건부 UPDATE와 결과 재조회.
++- **선택 이유 / 트레이드오프:** 조건부 UPDATE로 한 요청만 등록하고 같은 값 재시도는 200, 다른 값은 409로 처리한다. 일반 JPA 갱신에서는 실명 컬럼을 제외해 카카오 닉네임 갱신과 분리한다. 첫 서버 테스트는 기존 의존성만으로 Kotest + standalone MockMvc를 선택했다. 전체 인증 가드가 발견한 공개 술자리 목록도 로그인·본인 필터를 적용했다.
++- **아쉬운 점:** 오타 정정 정책은 미결이고 현재 이름을 바꿀 수 없다. MockMvc의 repository mock은 DB 동시성까지 검증하지 않으므로 MySQL 검증을 별도로 수행한다. 현재 목록은 총무 본인만 조회하며 참여 술자리 집계는 후속 v3 구현에 남는다.
++
++---
++
+ ## [2026-10-01] 프론트 흐름 변경을 `docs/flow-changes/`로 백엔드에 넘긴다
+ 
+ - **문제:** 프론트(웹·Android·iOS)는 목데이터로 먼저 만들고 써 보며 흐름을 계속 고친다. 하루 만에도
+diff --git a/docs/API.md b/docs/API.md
+index 5701fcc2e139d8578fa248d7b1ad9b7a95a7f074..1a0a9dbfe6217e46ae8de74d962df22793615e45 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1,4 +1,13 @@
+-# 정산어택 — API 계약 · v3
++# 정산어택 — API 계약 · v4
++
++> **v4 변경(2026-10-04)** — FC-013 실명 등록 계약 반영. 제품 버전은 v3다.
++>
++> | 절 | 변경 |
++> |---|---|
++> | §1.4 | `DISPLAY_NAME_ALREADY_SET`(409) 추가 |
++> | §2.1·§2.2 | 실명 미입력 여부를 `/auth/me`의 `needsName`으로 전달 |
++> | §2.2-a | 최초 실명 등록 API 추가 |
++> | §3.1 | 기존 목록 뼈대에 로그인 필수·총무 본인 필터 적용 |
+ 
+ > **v3 변경(2026-08-26)** — **구현이 계약을 앞지른 부분을 문서에 반영했다.**
+ > 이 문서는 "합의하는 형식"인데, 인증을 먼저 구현하면서 계약과 어긋난 채로
+@@ -207,6 +216,7 @@ GET /api/v1/gatherings
+ | 코드 | HTTP | 뜻 |
+ |---|---|---|
+ | `UNAUTHENTICATED` | 401 | 토큰 없음 |
++| `DISPLAY_NAME_ALREADY_SET` | 409 | 등록한 실명과 다른 값으로 변경 요청 |
+ | `TOKEN_EXPIRED` | 401 | 만료 — 프론트는 재로그인으로 보낸다 |
+ | `PROVIDER_AUTH_FAILED` | 401 | 카카오가 code 를 거부 |
+ | `NOT_HOST` | 403 | 주최자 전용 기능 |
+@@ -260,14 +270,12 @@ Set-Cookie: jeongsan_token=eyJ...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-A
+ 
+ **`code`·클라이언트 시크릿은 서버만 다룬다.** 프론트는 아무것도 다루지 않는다.
+ 
+-> **`firstLogin` 이 없어졌다.** 리다이렉트에는 body 가 없기 때문이다.
+-> 최초 로그인 안내가 필요해지면 `GET /auth/me` 응답에 얹거나
+-> 리다이렉트 URL 에 쿼리 파라미터로 붙인다. **아직 정하지 않았다.**
++> **FC-013 결정:** 첫 실명 입력 여부는 `GET /auth/me`의 `needsName`으로 전달한다.
++> `displayName`이 NULL이면 true다. 기존 계정도 아직 실명을 등록하지 않았다면 true다.
+ 
+ > **구글은 아직 없다.** `users.provider` 에 자리는 있으나 구현은 카카오뿐이다.
+ 
+-**`firstLogin` 을 주는 이유** — 최초 로그인이면 화면이 안내를 더 보여줄 수 있다.
+-UPSERT 결과를 서버는 알지만 프론트는 알 수 없다.
++카카오 닉네임은 로그인마다 갱신하지만 등록한 실명은 변경하지 않는다.
+ 
+ ### 2.2 내 정보 — `GET /api/v1/auth/me`
+ 
+@@ -275,16 +283,25 @@ UPSERT 결과를 서버는 알지만 프론트는 알 수 없다.
+ GET /api/v1/auth/me
+ Cookie: jeongsan_token=eyJ...          ← 브라우저가 자동으로 붙인다
+ 
+-200   { "id": 12, "nickname": "🌸봄이🌸", "profileImageUrl": "https://..." }
++200   { "id": 12, "displayName": null, "nickname": "🌸봄이🌸", "needsName": true, "profileImageUrl": "https://..." }
+ 401   쿠키가 없거나 서명이 안 맞거나 만료됨
+ ```
+ 
+ **새로고침할 때마다 프론트가 이걸 부른다.** 쿠키가 httpOnly 라 JS 가 읽을 수 없어
+ **로그인 여부를 프론트가 스스로 알 방법이 없다** — 서버에 물어봐야 한다.
+ 
+-**응답에 닉네임·프로필이 있는 이유** — 토큰에는 `userId` 만 담기 때문이다(§2.3).
+-화면에 이름을 보여주려면 매번 DB 에서 읽어야 하고, 그래야 카카오에서 닉네임을
+-바꿨을 때 바로 반영된다.
++`displayName`은 본인이 등록한 실명, `nickname`은 카카오 닉네임이다.
++목록의 `실명(닉네임)` 표시는 프론트가 조합한다. 토큰에는 `userId`만 담고 DB에서 조회한다.
++
++### 2.2-a 실명 등록 — `PUT /api/v1/users/me/display-name`
++
++로그인 쿠키 필수. `{ "displayName": "김동규" }`를 보내면 §2.2와 같은 갱신된 내 정보를 200으로 반환한다.
++앞뒤 공백 제거 후 2~10 Unicode 코드포인트를 허용한다(🍺 = 1자). 별도 이름 형식은 검사하지 않는다.
++빈 값은 400 `MALFORMED_REQUEST` / `이름을 넣어주세요`, 1자는 `성까지 적어주세요`,
++10자 초과는 `이름은 10자까지예요`. 누락·null·깨진 JSON도 400이다.
++같은 정규화된 값 재요청은 200, 이미 등록한 이름과 다른 값은 409 `DISPLAY_NAME_ALREADY_SET`이다.
++동시 최초 등록도 하나만 성공한다. 로그인 없는 요청·삭제된 사용자 토큰은 401이다.
++P1에서는 이 요청이 성공한 뒤 참여 요청을 보낸다. 두 요청은 별도 트랜잭션이다.
+ 
+ ### 2.3 토큰 정책
+ 
+@@ -340,6 +357,10 @@ httpOnly 쿠키는 읽을 수 없다.
+ 
+ ### 3.1 목록 — `GET /gatherings`  (H0)
+ 
++**현재 구현 범위(v4):** 로그인 쿠키 필수(없으면 401). `hostUserId = 로그인 사용자`인 술자리만
++`date DESC`로 반환한다. 현재 뼈대 응답은 `id`, `name`, `date`, `status` 네 필드다.
++v3 활성 참여 술자리와 집계 필드는 후속 PR에서 구현하며 아직 이 응답을 완성된 v3 목록으로 사용하지 않는다.
++
+ ```
+ 200   GatheringSummary[]          // types.ts
+ ```
+diff --git a/docs/DOMAIN_DB_DESIGN_V2.md b/docs/DOMAIN_DB_DESIGN_V2.md
+index f85f1d29f51bece82e1b3eaacbf042d306720dc6..303a212de6609d9e724cc843eccd00c779573421 100644
+--- a/docs/DOMAIN_DB_DESIGN_V2.md
++++ b/docs/DOMAIN_DB_DESIGN_V2.md
+@@ -119,7 +119,8 @@ CONFIRMED ──수취인 확인 취소──▶ WAITING   (술자리가 SETTLIN
+ | 항목 | 결정 |
+ |---|---|
+ | 로그인 식별자 | 유지 |
+-| `display_name` | 추가. 카카오 닉네임 기본값, 사용자가 한 번 확인·수정 |
++| `display_name` | 실명(FC-013). nullable `VARCHAR(10)`, 최초 로그인·기존 사용자는 NULL. 앞뒤 공백 제거 후 2~10 Unicode 코드포인트. 최초 등록만 허용하며 같은 값 재요청은 멱등, 다른 값은 409. `015-user-display-name.yaml`로 추가 |
++| `nickname` | 기존 컬럼 유지. 카카오 닉네임을 로그인마다 갱신한다. 실명과 분리하며 실명 기본값으로 사용하지 않는다 |
+ | 받을 계좌 | `payout_bank`, `payout_account_no`, `payout_holder` 추가. 암호화·마스킹은 §9 |
+ | `spoon_count` | 추가. 받은 스푼 누적 수(`INT NOT NULL DEFAULT 0`). 술자리가 삭제돼도 줄지 않는다. 칭호는 이 값에서 계산하며 저장하지 않는다. **전설(10,000 이상) 순위**도 저장하지 않고 조회 시 `SELECT COUNT(*) + 1 FROM users WHERE spoon_count > :mine`로 계산한다 — 이를 위해 `INDEX (spoon_count)`를 둔다 |
+ | 탈퇴 | 개인정보 삭제. 술자리가 일회용이라 정산 FK 보존용 익명화는 필요 없다 — 탈퇴 전 진행 중 술자리 처리는 §9 미결 |
+diff --git a/docs/ERD.md b/docs/ERD.md
+index a29c87633377a0f3ddddab23a40253c6a6a80a0d..d28a920b085748e5072e37d63b3445b2dec7c4f2 100644
+--- a/docs/ERD.md
++++ b/docs/ERD.md
+@@ -98,6 +98,7 @@ erDiagram
+         varchar provider "KAKAO|GOOGLE"
+         varchar provider_id
+         varchar nickname
++        varchar display_name "NULL=미입력 실명, 최초 등록 후 불변(015)"
+         varchar profile_image_url
+         varchar tier "FREE|PRO"
+         datetime tier_expires_at
+diff --git a/docs/RELEASE_2026_10_11.md b/docs/RELEASE_2026_10_11.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..5ed2894b036ca68c671e6fd310c255159221c4ff
+--- /dev/null
++++ b/docs/RELEASE_2026_10_11.md
+@@ -0,0 +1,29 @@
++# 2026-10-11 정식 출시 작업표
++
++2026-10-04 CTO 목표: 백엔드 개발 완료와 iOS App Store·Android Google Play 정식 출시.
++백엔드는 Codex, 웹·앱은 별도 저장소에서 Claude가 담당한다. 아래 날짜는 작업 목표이며 완료 기록과 구분한다.
++백엔드 PR 병합은 CTO만 수행한다. 스터디·n8n 변경은 이번 작업에서 제외한다.
++
++| 목표일 | 백엔드 작업 | 앱·출시 작업 |
++|---|---|---|
++| 10/04 | 실명 등록 FC-013, v3 술자리 스키마·생성 계약 | 개발자 계정·프로덕션 권한·iOS 서명 환경 확인 |
++| 10/05 | 술자리 생성·조회, 링크 미리보기·참여, 차수·응답 | 로그인·실명·술자리 API 연결 |
++| 10/06 | Core v2 연결, 미리보기·확정, 계좌·송금 상태 | 정산·송금 API 연결, 실기기 플로우 검증 |
++| 10/07 | 타임라인·알림·스푼·완료 및 7일 삭제 | 배포용 빌드, 개인정보·스토어 자료 준비 |
++| 10/08 | 전체 흐름·권한·동시성·DB 업그레이드 검증, 배포 준비 | 심사 제출 목표, 양 플랫폼 실기기 검증 |
++| 10/09~11 | 리뷰 수정·운영 배포 확인 | 심사 대응, 승인 후 정식 출시 |
++
++## 완료·대기 구분
++
++- Core v2 구현·48건 검증: PR #7 열림, CTO 병합 대기.
++- FC-013: `feat/user-real-name` 구현. 서버 테스트와 MySQL 마이그레이션·동시 등록 검증.
++- 나머지 v3 서버 기능: 구현 전. 날짜만 정했다고 완료로 취급하지 않는다.
++- 면제 API·화면: CTO 보류. 기존 Core의 EXEMPT 계산은 유지한다.
++
++## 먼저 풀어야 할 의존성
++
++- `docs/flow-changes/README.md`의 결정 필요 항목(FC-001·003·004·006·008·012)은 관련 기능 구현 전에 CTO 결정을 받아야 한다. 이미 결정된 문서 계약부터 진행한다.
++- 계좌 암호화·마스킹 정책, OAuth 링크 복귀, 푸시·WebSocket 연동은 관련 API·배포 설계에서 확인한다.
++- 앱 저장소·서명·스토어 계정 접근은 이 백엔드 저장소 작업과 별개다. 서명 키·비밀번호를 저장소에 기록하지 않는다.
++- 신규 Google Play 개인 계정이면 12명 이상이 연속 14일 참여하는 비공개 테스트 후 프로덕션 권한 신청이 필요하다. 아직 충족하지 않았다면 10/11 정식 출시는 불가능하다. [Google 공식 안내](https://support.google.com/googleplay/android-developer/answer/14151465)
++- 심사 제출은 출시 승인을 보장하지 않는다. Google은 일부 심사가 7일 이상 걸릴 수 있다고 안내한다. [Google 공식 안내](https://support.google.com/googleplay/android-developer/answer/9859751)
+diff --git a/docs/REQUIREMENTS.md b/docs/REQUIREMENTS.md
+index 6142ab1c4de7d5dd59fb6f7bc8e0452a1fb2b749..0f8c3fd1a1382807cd643d4dacbaa65548f29263 100644
+--- a/docs/REQUIREMENTS.md
++++ b/docs/REQUIREMENTS.md
+@@ -105,7 +105,9 @@
+ 
+ ### 3.3 참여자
+ 
+-- 링크로 들어와 카카오 로그인한다(처음 한 번). 표시 이름은 카카오 닉네임을 기본값으로 한 번 확인한다.
++- 링크로 들어와 카카오 로그인한다(처음 한 번). 성을 포함한 실명을 직접 한 번 등록한다(FC-013).
++  앞뒤 공백 제거 후 2~10 Unicode 코드포인트이며 최초 등록 후 변경하지 않는다.
++  카카오 닉네임은 별도 보조 표시다. 목록은 `실명(닉네임)`, 문장은 실명만 사용한다.
+ - 차수별로 **[불참] [참석·논알코올] [참석·알코올]** 중 하나를 누른다. **[전 차수 똑같이]**로 한 번에 처리할 수 있다.
+ - 정산하기 전까지 응답을 바꿀 수 있다.
+ - 금액이 공개되면 근거를 보고, **[계좌 복사]** 후 송금하고 **[보냈어요]**를 누른다.
+@@ -168,7 +170,7 @@ flowchart TD
+ 
+ ### 4.2 참여자 흐름
+ 
+-1. 링크 → 카카오 로그인(처음 한 번) → 표시 이름 확인(처음 한 번).
++1. 링크 → 카카오 로그인(처음 한 번) → 실명 등록(처음 한 번, 성공 뒤 참여 요청).
+ 2. 차수별 버튼을 누른다. 필요하면 [전 차수 똑같이].
+ 3. 정산되면 알림을 받는다. 내 금액과 근거를 본다.
+ 4. **[계좌 복사]** → 송금 → **[보냈어요]**.
+diff --git a/docs/flow-changes/2026-10-04-l2-name.md b/docs/flow-changes/2026-10-04-l2-name.md
+index 32c688d317cdb0d64e2329d2ae3ce0d69ab0ddac..4e3286ae4d01a16aed3acd8d25313b34cfb666af 100644
+--- a/docs/flow-changes/2026-10-04-l2-name.md
++++ b/docs/flow-changes/2026-10-04-l2-name.md
+@@ -4,7 +4,9 @@
+ 
+ ## FC-013 첫 로그인 실명 입력 — `needsName`, 실명 저장 API, 닉네임은 따로
+ 
+-- **상태:** 열림 (2026-10-04 CTO 결정: 실명을 성까지 받는다 · 한 번 정하면 안 바뀐다 · 표시는 `이름(닉네임)`)
++- **상태:** 반영됨 (2026-10-04, `feat/user-real-name`: API v4 §2.1·§2.2-a, DOMAIN §4.1, REQUIREMENTS §3.3, changelog 015, UserService·UserController·AuthController)
++  - 실명 등록·내 정보 계약을 구현했다. 참여자 이름 조인·타임라인 문구는 해당 API의 후속 구현에서 적용한다.
++  - 아래 오타 정정·개인정보처리방침 결정은 이번 구현에 포함하지 않는다.
+ - **바뀐 흐름:**
+   - **L2** — 첫 로그인 뒤 H1로 가기 전에 한 번 **실명을 성까지** 받는다. 안내 문구
+     "실명을 정확하게 성까지 적어주세요! 그래야 총무가 헷갈리지 않아요!". 칸은 비어 있다(카카오 닉네임을 채우지 않는다).
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index f250fb2648b3e7c923e2e1c9f998fee124c7e63d..360118db4bd9bf0c6d414dcb667eae159d8f6ccb 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -57,4 +57,4 @@
+ | FC-010 | 면제 해제는 빈칸으로 · 결제자는 내보낼 수 없음 · 관련 알림 | 열림 | [2026-10-03-r4-manage.md](2026-10-03-r4-manage.md) |
+ | FC-011 | 계좌 등록 — 검증 규칙·등록 알림·목록 요약에 "계좌 필요" | 열림 | [2026-10-03-a1-account.md](2026-10-03-a1-account.md) |
+ | FC-012 | 링크 공유 — 공유 주소 고정, 딥링크·카카오 키는 인프라 작업 | 결정 필요 | [2026-10-03-share.md](2026-10-03-share.md) |
+-| FC-013 | 첫 로그인 실명 입력 — `needsName`, 실명 저장 API, 닉네임은 따로 | 열림 | [2026-10-04-l2-name.md](2026-10-04-l2-name.md) |
++| FC-013 | 첫 로그인 실명 입력 — `needsName`, 실명 저장 API, 닉네임은 따로 | 반영됨 (실명 API, 참여·타임라인 후속) | [2026-10-04-l2-name.md](2026-10-04-l2-name.md) |
+diff --git a/server/src/main/kotlin/app/jeongsan/server/common/ApiException.kt b/server/src/main/kotlin/app/jeongsan/server/common/ApiException.kt
+index 518624536e068f9a1b31eb5c88ddce334022578d..8d627bab51288e1c18124a05c9f35863b902046e 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/common/ApiException.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/common/ApiException.kt
+@@ -30,6 +30,10 @@ class NotFoundException(message: String = "찾을 수 없습니다.") :
+ class MalformedRequestException(message: String) :
+     ApiException("MALFORMED_REQUEST", HttpStatus.BAD_REQUEST, message)
+ 
++/** 409 — FC-013 실명은 최초 등록 후 변경하지 않는다. 같은 값 재시도는 서비스에서 성공한다. */
++class DisplayNameAlreadySetException :
++    ApiException("DISPLAY_NAME_ALREADY_SET", HttpStatus.CONFLICT, "한 번 정한 이름은 바꿀 수 없어요")
++
+ /** 409 — 번개 모임은 술자리를 하나만 둔다(`API.md` §3-b.2). */
+ class FlashGroupHasGatheringException :
+     ApiException(
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt
+index 9b869f02b856cf352bc8114a8473ef6f803ca2c8..9e7c52c96cca2b3f6391f7465cde48bdc6ebccdc 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt
+@@ -1,6 +1,6 @@
+ package app.jeongsan.server.gathering
+ 
+-import org.springframework.data.domain.Sort
++import app.jeongsan.server.common.LoginUser
+ import org.springframework.web.bind.annotation.GetMapping
+ import org.springframework.web.bind.annotation.RequestMapping
+ import org.springframework.web.bind.annotation.RestController
+@@ -13,8 +13,7 @@ import java.time.LocalDate
+  * 구현했다. `participantCount`·`respondedCount`·`paidCount`·`payableCount` 는
+  * `Participant` 조립이 필요해 이번 뼈대에 없다 — 다음 작업이다.
+  *
+- * ⚠ 인증(§2)도 아직 안 걸었다. 지금은 전체 모임을 반환한다.
+- * 실제로 붙이기 전에 로그인한 사용자(`hostUserId`) 기준으로 필터링해야 한다.
++ * v3 참여자 목록 구현 전에도 타인의 데이터를 공개하지 않도록 총무 본인의 행만 반환한다.
+  */
+ @RestController
+ @RequestMapping("/api/v1/gatherings")
+@@ -22,8 +21,8 @@ class GatheringController(
+     private val gatheringRepository: GatheringRepository,
+ ) {
+     @GetMapping
+-    fun list(): List<GatheringSummaryResponse> =
+-        gatheringRepository.findAll(Sort.by(Sort.Direction.DESC, "gatheringDate"))
++    fun list(@LoginUser userId: Long): List<GatheringSummaryResponse> =
++        gatheringRepository.findByHostUserIdOrderByGatheringDateDesc(userId)
+             .map { it.toSummary() }
+ }
+ 
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringRepository.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringRepository.kt
+index 9615414c49f0d682d35b54b649d487a5bca6bfcf..316c491d454b7993c9db9b89354acbbe301dfceb 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringRepository.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringRepository.kt
+@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query
+ import org.springframework.data.repository.query.Param
+ 
+ interface GatheringRepository : JpaRepository<Gathering, Long> {
++    fun findByHostUserIdOrderByGatheringDateDesc(hostUserId: Long): List<Gathering>
+     fun findByGroupIdOrderByGatheringDateDesc(groupId: Long): List<Gathering>
+ 
+     /** 번개 모임에 술자리가 이미 있는지 — FLASH 는 하나만 갖는다(`API.md` §3-b.2). */
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt b/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt
+index 9611fbd649603b4b728ea74e5a452c3e581a4d50..54449446058c25fb422358532326f5100dca5ede 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt
+@@ -1,5 +1,6 @@
+ package app.jeongsan.server.user
+ 
++import app.jeongsan.server.common.LoginUser
+ import org.springframework.beans.factory.annotation.Value
+ import org.springframework.http.HttpHeaders
+ import org.springframework.http.HttpStatus
+@@ -7,7 +8,6 @@ import org.springframework.http.MediaType
+ import org.springframework.http.ResponseCookie
+ import org.springframework.http.ResponseEntity
+ import org.springframework.util.LinkedMultiValueMap
+-import org.springframework.web.bind.annotation.CookieValue
+ import org.springframework.web.bind.annotation.GetMapping
+ import org.springframework.web.bind.annotation.RequestParam
+ import org.springframework.web.bind.annotation.RestController
+@@ -31,6 +31,7 @@ import java.time.Duration
+ class AuthController(
+     private val userRepository: UserRepository,
+     private val jwtService: JwtService,
++    private val userService: UserService,
+     @Value("\${kakao.client-id}") private val kakaoClientId: String,
+     @Value("\${kakao.client-secret}") private val kakaoClientSecret: String,
+     @Value("\${kakao.redirect-uri}") private val kakaoRedirectUri: String,
+@@ -93,13 +94,7 @@ class AuthController(
+     }
+ 
+     @GetMapping("/api/v1/auth/me")
+-    fun me(@CookieValue(name = COOKIE_NAME, required = false) token: String?): ResponseEntity<MeResponse> {
+-        val userId = token?.let { jwtService.parseUserId(it) }
+-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+-        val user = userRepository.findById(userId).orElse(null)
+-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+-        return ResponseEntity.ok(MeResponse(user.id, user.nickname, user.profileImageUrl))
+-    }
++    fun me(@LoginUser userId: Long): MeResponse = userService.me(userId)
+ 
+     private fun exchangeToken(code: String): KakaoTokenResponse =
+         kakaoAuth.post()
+@@ -130,5 +125,3 @@ class AuthController(
+         const val COOKIE_NAME = "jeongsan_token"
+     }
+ }
+-
+-data class MeResponse(val id: Long, val nickname: String, val profileImageUrl: String?)
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/User.kt b/server/src/main/kotlin/app/jeongsan/server/user/User.kt
+index 3848ec149e54893ca63cd77a9c412fc523432cf7..31cfe13e7f7b2f7aed8228948ba9147d7ea89947 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/User.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/User.kt
+@@ -9,7 +9,7 @@ import jakarta.persistence.Table
+ import java.time.Instant
+ 
+ /**
+- * `users` 테이블 매핑. 컬럼 목록은 `server/src/main/resources/db/changelog/001-users.yaml`
++ * `users` 테이블 매핑. 기본 컬럼은 `001-users.yaml`, 실명은 `015-user-display-name.yaml`
+  * 이 유일한 진실이다 — 이 엔티티는 그것을 따라간다, 거꾸로가 아니다(`ddl-auto: none`).
+  */
+ @Entity
+@@ -26,6 +26,10 @@ class User(
+ 
+     var nickname: String = "",
+ 
++    // 일반 save(카카오 로그인 포함)로 실명을 덮어쓰지 않고 최초 등록 조건부 UPDATE만 허용한다.
++    @Column(name = "display_name", updatable = false)
++    val displayName: String? = null,
++
+     @Column(name = "profile_image_url")
+     var profileImageUrl: String? = null,
+ 
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/UserController.kt b/server/src/main/kotlin/app/jeongsan/server/user/UserController.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..1bb5be035720d892a0d12699c8e0a135133b3a46
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/user/UserController.kt
+@@ -0,0 +1,16 @@
++package app.jeongsan.server.user
++
++import app.jeongsan.server.common.LoginUser
++import jakarta.validation.Valid
++import org.springframework.web.bind.annotation.PutMapping
++import org.springframework.web.bind.annotation.RequestBody
++import org.springframework.web.bind.annotation.RequestMapping
++import org.springframework.web.bind.annotation.RestController
++
++@RestController
++@RequestMapping("/api/v1/users/me")
++class UserController(private val userService: UserService) {
++    @PutMapping("/display-name")
++    fun registerDisplayName(@LoginUser userId: Long, @Valid @RequestBody request: DisplayNameRequest): MeResponse =
++        userService.registerDisplayName(userId, request)
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt b/server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..7c62d07cd87d98cd90a5c2c5faafcf0b397f1045
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt
+@@ -0,0 +1,13 @@
++package app.jeongsan.server.user
++
++data class DisplayNameRequest(val displayName: String)
++
++data class MeResponse(
++    val id: Long,
++    val nickname: String,
++    val profileImageUrl: String?,
++    val displayName: String?,
++    val needsName: Boolean,
++)
++
++fun User.toMeResponse() = MeResponse(id, nickname, profileImageUrl, displayName, displayName == null)
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt b/server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt
+index 0ed6cb25a5a5c32035833d840bdb41b392c4d919..3de92550ca19bbb1f74af747cd1d3799a0ac0778 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt
+@@ -1,8 +1,16 @@
+ package app.jeongsan.server.user
+ 
+ import org.springframework.data.jpa.repository.JpaRepository
++import org.springframework.data.jpa.repository.Modifying
++import org.springframework.data.jpa.repository.Query
++import org.springframework.data.repository.query.Param
+ 
+ interface UserRepository : JpaRepository<User, Long> {
+     /** `uq_users_provider_id` 유니크 제약과 짝을 이루는 로그인 UPSERT 조회 키. */
+     fun findByProviderAndProviderId(provider: String, providerId: String): User?
++
++    /** 동시 최초 등록도 조건부 UPDATE로 하나만 성공시키고, 다시 읽어 저장된 값을 비교한다. */
++    @Modifying(flushAutomatically = true, clearAutomatically = true)
++    @Query("UPDATE User u SET u.displayName = :name WHERE u.id = :id AND u.displayName IS NULL")
++    fun registerDisplayName(@Param("id") userId: Long, @Param("name") displayName: String): Int
+ }
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/UserService.kt b/server/src/main/kotlin/app/jeongsan/server/user/UserService.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..64c3e06895bb5347e5168a29a8c6418e847336ee
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/user/UserService.kt
+@@ -0,0 +1,33 @@
++package app.jeongsan.server.user
++
++import app.jeongsan.server.common.DisplayNameAlreadySetException
++import app.jeongsan.server.common.MalformedRequestException
++import app.jeongsan.server.common.UnauthenticatedException
++import org.springframework.stereotype.Service
++import org.springframework.transaction.annotation.Transactional
++
++@Service
++class UserService(private val userRepository: UserRepository) {
++    @Transactional(readOnly = true)
++    fun me(userId: Long): MeResponse = findUser(userId).toMeResponse()
++
++    @Transactional
++    fun registerDisplayName(userId: Long, request: DisplayNameRequest): MeResponse {
++        val name = request.displayName.trim()
++        // UTF-16 length는 이모지를 두 글자로 세므로 프론트와 같은 코드포인트 기준으로 검증한다.
++        val count = name.codePointCount(0, name.length)
++        if (count == 0) throw MalformedRequestException("이름을 넣어주세요")
++        if (count == 1) throw MalformedRequestException("성까지 적어주세요")
++        if (count > 10) throw MalformedRequestException("이름은 10자까지예요")
++
++        userRepository.registerDisplayName(userId, name)
++        val user = findUser(userId)
++        if (user.displayName != name) {
++            throw DisplayNameAlreadySetException()
++        }
++        return user.toMeResponse()
++    }
++
++    private fun findUser(userId: Long): User =
++        userRepository.findById(userId).orElseThrow { UnauthenticatedException() }
++}
+diff --git a/server/src/main/resources/db/changelog/015-user-display-name.yaml b/server/src/main/resources/db/changelog/015-user-display-name.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..bc1ec20ae3103e84de370a7e959c0fac87fcc782
+--- /dev/null
++++ b/server/src/main/resources/db/changelog/015-user-display-name.yaml
+@@ -0,0 +1,21 @@
++databaseChangeLog:
++  - changeSet:
++      id: 023-add-user-display-name
++      author: jeongsan
++      comment: >
++        FC-013 입금자와 참여자를 대조할 실명을 카카오 닉네임과 분리한다.
++        기존 계정도 실명을 직접 입력하도록 NULL로 유지한다. 018~022는 예약된 번호다.
++      changes:
++        - addColumn:
++            tableName: users
++            columns:
++              - column:
++                  name: display_name
++                  type: VARCHAR(10)
++                  remarks: "입금자 대조용 실명. NULL은 미입력, 공백 제거 후 2~10 코드포인트, 최초 등록 후 불변"
++                  constraints:
++                    nullable: true
++      rollback:
++        - dropColumn:
++            tableName: users
++            columnName: display_name
+diff --git a/server/src/main/resources/db/changelog/db.changelog-master.yaml b/server/src/main/resources/db/changelog/db.changelog-master.yaml
+index dda72b7614e3f67041e805f085e3620bf760c20f..efb2fdc69f8705f01ff879c920e866ffc2aedeb6 100644
+--- a/server/src/main/resources/db/changelog/db.changelog-master.yaml
++++ b/server/src/main/resources/db/changelog/db.changelog-master.yaml
+@@ -24,3 +24,5 @@ databaseChangeLog:
+       file: db/changelog/010-table-korean-names.yaml
+   - include:
+       file: db/changelog/011-rename-groups.yaml
++  - include:
++      file: db/changelog/015-user-display-name.yaml
+diff --git a/server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt b/server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..01e43e015ea8d8ee4093f0d0d9c3b937117055d4
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt
+@@ -0,0 +1,30 @@
++package app.jeongsan.server.common
++
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
++import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
++import org.springframework.core.annotation.AnnotatedElementUtils
++import org.springframework.core.type.filter.AnnotationTypeFilter
++import org.springframework.web.bind.annotation.RequestMapping
++import org.springframework.web.bind.annotation.RestController
++
++class AuthenticationGuardSpec : StringSpec({
++    "로그인 공개 진입점 외 모든 컨트롤러 핸들러가 LoginUser를 받는다" {
++        // 로그인 전 카카오 인가 진입점과 콜백만 공개한다. 내 정보 조회도 인증 대상이다.
++        val publicMethods = setOf(
++            "app.jeongsan.server.user.AuthController#login",
++            "app.jeongsan.server.user.AuthController#callback",
++        )
++        val scanner = ClassPathScanningCandidateComponentProvider(false)
++        scanner.addIncludeFilter(AnnotationTypeFilter(RestController::class.java))
++        val handlers = scanner.findCandidateComponents("app.jeongsan.server").flatMap { definition ->
++            Class.forName(definition.beanClassName!!).declaredMethods.filter {
++                AnnotatedElementUtils.hasAnnotation(it, RequestMapping::class.java)
++            }
++        }
++        val unauthenticated = handlers.filter { method ->
++            method.parameters.none { it.isAnnotationPresent(LoginUser::class.java) }
++        }.map { "${it.declaringClass.name}#${it.name}" }
++        unauthenticated.shouldContainExactlyInAnyOrder(publicMethods)
++    }
++})
+diff --git a/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringAuthenticationSpec.kt b/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringAuthenticationSpec.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..a9fa43abf3ebbbaabec238aaad32a657beb385f5
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringAuthenticationSpec.kt
+@@ -0,0 +1,33 @@
++package app.jeongsan.server.gathering
++
++import app.jeongsan.server.common.GlobalExceptionHandler
++import app.jeongsan.server.common.LoginUserArgumentResolver
++import app.jeongsan.server.user.AuthController
++import app.jeongsan.server.user.JwtService
++import io.kotest.core.spec.style.StringSpec
++import jakarta.servlet.http.Cookie
++import org.mockito.Mockito
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
++import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
++import org.springframework.test.web.servlet.setup.MockMvcBuilders
++
++class GatheringAuthenticationSpec : StringSpec({
++    val repository = Mockito.mock(GatheringRepository::class.java)
++    val jwt = JwtService("01234567890123456789012345678901", 30)
++    val mvc = MockMvcBuilders.standaloneSetup(GatheringController(repository))
++        .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt))
++        .setControllerAdvice(GlobalExceptionHandler()).build()
++    beforeTest { Mockito.reset(repository) }
++
++    "술자리 목록은 로그인 없이 조회할 수 없다" {
++        mvc.perform(get("/api/v1/gatherings")).andExpect(status().isUnauthorized)
++        Mockito.verifyNoInteractions(repository)
++    }
++    "로그인한 총무 본인의 목록 조회만 호출한다" {
++        Mockito.`when`(repository.findByHostUserIdOrderByGatheringDateDesc(12)).thenReturn(emptyList())
++        mvc.perform(get("/api/v1/gatherings").cookie(Cookie(AuthController.COOKIE_NAME, jwt.issue(12))))
++            .andExpect(status().isOk)
++        Mockito.verify(repository).findByHostUserIdOrderByGatheringDateDesc(12)
++        Mockito.verifyNoMoreInteractions(repository)
++    }
++})
+diff --git a/server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt b/server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..3298c627f9dca835983bf33829523effe78898de
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/user/UserApiSpec.kt
+@@ -0,0 +1,110 @@
++package app.jeongsan.server.user
++
++import app.jeongsan.server.common.GlobalExceptionHandler
++import app.jeongsan.server.common.LoginUserArgumentResolver
++import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
++import io.kotest.core.spec.style.StringSpec
++import org.mockito.Mockito
++import org.springframework.http.MediaType
++import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
++import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
++import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
++import org.springframework.test.web.servlet.setup.MockMvcBuilders
++import jakarta.servlet.http.Cookie
++import java.util.Optional
++
++class UserApiSpec : StringSpec({
++    val jwt = JwtService("01234567890123456789012345678901", 30)
++    val cookie = Cookie(AuthController.COOKIE_NAME, jwt.issue(12))
++    val repository = Mockito.mock(UserRepository::class.java)
++    val service = UserService(repository)
++    val auth = AuthController(repository, jwt, service, "", "", "", "http://localhost", false)
++    val mvc = MockMvcBuilders.standaloneSetup(UserController(service), auth)
++        .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt))
++        .setControllerAdvice(GlobalExceptionHandler())
++        .setMessageConverters(MappingJackson2HttpMessageConverter(jacksonObjectMapper()))
++        .build()
++
++    beforeTest { Mockito.reset(repository) }
++
++    fun request(value: String) = put("/api/v1/users/me/display-name")
++        .cookie(cookie).contentType(MediaType.APPLICATION_JSON)
++        .content(jacksonObjectMapper().writeValueAsString(DisplayNameRequest(value)))
++
++    "미등록 사용자 조회는 실명 null과 needsName true를 반환한다" {
++        Mockito.`when`(repository.findById(12)).thenReturn(Optional.of(User(id = 12, nickname = "봄이")))
++        mvc.perform(get("/api/v1/auth/me").cookie(cookie)).andExpect(status().isOk)
++            .andExpect(jsonPath("$.needsName").value(true))
++            .andExpect(jsonPath("$.nickname").value("봄이"))
++            .andExpect(jsonPath("$.displayName").isEmpty)
++    }
++
++    "실명을 공백 제거해 최초 등록하고 갱신된 내 정보를 반환한다" {
++        Mockito.`when`(repository.registerDisplayName(12, "김동규")).thenReturn(1)
++        Mockito.`when`(repository.findById(12)).thenReturn(Optional.of(User(id = 12, displayName = "김동규")))
++        mvc.perform(request("  김동규  ")).andExpect(status().isOk)
++            .andExpect(jsonPath("$.displayName").value("김동규"))
++            .andExpect(jsonPath("$.needsName").value(false))
++        Mockito.verify(repository).registerDisplayName(12, "김동규")
++    }
++
++    "같은 실명 재요청은 성공한다" {
++        Mockito.`when`(repository.findById(12)).thenReturn(Optional.of(User(id = 12, displayName = "김동규")))
++        mvc.perform(request("김동규")).andExpect(status().isOk)
++    }
++
++    "이미 등록한 실명과 다르면 409를 반환한다" {
++        Mockito.`when`(repository.findById(12)).thenReturn(Optional.of(User(id = 12, displayName = "김동규")))
++        mvc.perform(request("박동규")).andExpect(status().isConflict)
++            .andExpect(jsonPath("$.code").value("DISPLAY_NAME_ALREADY_SET"))
++    }
++
++    "빈 이름과 한 글자와 11자는 안내 문구와 400을 반환한다" {
++        listOf("  " to "이름을 넣어주세요", "김" to "성까지 적어주세요", "12345678901" to "이름은 10자까지예요")
++            .forEach { (name, message) ->
++                mvc.perform(request(name)).andExpect(status().isBadRequest)
++                    .andExpect(jsonPath("$.message").value(message))
++            }
++        Mockito.verifyNoInteractions(repository)
++    }
++
++    "이모지 10개는 코드포인트 10자로 허용한다" {
++        val name = "🍺".repeat(10)
++        Mockito.`when`(repository.findById(12)).thenReturn(Optional.of(User(id = 12, displayName = name)))
++        mvc.perform(request(name)).andExpect(status().isOk)
++        Mockito.verify(repository).registerDisplayName(12, name)
++    }
++
++    "이모지 하나는 한 글자로 거절한다" {
++        mvc.perform(request("🍺")).andExpect(status().isBadRequest)
++            .andExpect(jsonPath("$.message").value("성까지 적어주세요"))
++    }
++
++    "로그인 없는 등록과 내 정보 조회는 401이다" {
++        mvc.perform(put("/api/v1/users/me/display-name").contentType(MediaType.APPLICATION_JSON)
++            .content("{\"displayName\":\"김동규\"}")).andExpect(status().isUnauthorized)
++        mvc.perform(get("/api/v1/auth/me")).andExpect(status().isUnauthorized)
++        Mockito.verifyNoInteractions(repository)
++    }
++
++    "위조된 쿠키로 등록할 수 없다" {
++        mvc.perform(put("/api/v1/users/me/display-name").contentType(MediaType.APPLICATION_JSON)
++            .content("{\"displayName\":\"김동규\"}").cookie(Cookie(AuthController.COOKIE_NAME, "invalid")))
++            .andExpect(status().isUnauthorized)
++        Mockito.verifyNoInteractions(repository)
++    }
++
++    "삭제된 사용자 토큰은 401이다" {
++        Mockito.`when`(repository.findById(12)).thenReturn(Optional.empty())
++        mvc.perform(request("김동규")).andExpect(status().isUnauthorized)
++    }
++
++    "누락 null 깨진 JSON은 400이다" {
++        listOf("{}", "{\"displayName\":null}", "{").forEach { body ->
++            mvc.perform(put("/api/v1/users/me/display-name").cookie(cookie)
++                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest)
++        }
++    }
++})

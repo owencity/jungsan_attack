@@ -1,0 +1,1414 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index b81841ffaeab39259b1ee7cec726dcd24c420864..af4a5fa895b6a3a83ff7c808380627b9be786c36 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -90,13 +90,13 @@ MVP 플로우 (제품 v3, 2026-09-29):
+ 
+ ---
+ 
+-## 3. 지금 상태 (2026-09-29 스냅샷)
++## 3. 지금 상태 (2026-09-29 스냅샷, Core는 2026-10-03 갱신)
+ 
+ 이 표는 며칠이면 낡는다. 작업 전에 `git log --oneline -10`과 실제 컨트롤러 파일로 교차 확인해라.
+ 
+ | 영역 | 상태 (`main` 기준) |
+ |---|---|
+-| `core` 계산 엔진 | ⚠️ **`main`은 아직 v1**(전역 대표결제자 + greedy 상계). v2(결제자별 수취·1원 올림)는 로컬 작업 트리에만 있고 **커밋된 적이 없다** — 최우선으로 검증·커밋할 대상 |
++| `core` 계산 엔진 | ✅ 이 브랜치는 Core v2(결제자별 수취·1원 올림). `feat/core-v2`의 구현·테스트를 선별 보존했고 Kotest 48건 통과(실패·건너뛰기 0). `main` 반영 여부는 PR 병합 상태로 확인한다. 면제 계산은 유지하지만 면제 API·화면 연동은 보류 |
+ | DB 스키마 | 🚧 changelog `011`(changeSet `017`)까지. 모임 관리 기반 `012`~`014`는 병합 안 됐고 v3에서 쓰지 않는다 |
+ | 카카오 로그인 | ✅ 동작. OAuth2 → httpOnly JWT 쿠키(`jeongsan_token`) → `GET /auth/me` |
+ | `Group` (모임) | ❌ **제거 대상**(`ADR-019`). `GroupController`와 테이블이 남아 있다 |
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 8dca8b30b2b1279f4ee65e77b753a4b6a5b9ff21..67cea27283513e94b39ad028a5e5187395bfe9bb 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -5,6 +5,15 @@
+ 
+ ---
+ 
++## [2026-10-03] 제품 v3 기준에서 Core v2만 선별 보존한다
++
++- **문제:** WIP에는 Core v2와 제품 v3에서 폐기한 Group 관리 기반이 섞여 있어 전체 병합하면 구형 제품 방향이 다시 들어온다.
++- **고려한 대안:** WIP 전체 병합, 44건 테스트 버전 보존, 기존 `feat/core-v2`의 48건 테스트 버전만 선별 적용.
++- **선택 이유 / 트레이드오프:** 최신 main에서 Core 구현과 API 변경 회수 커밋만 적용한다. 오버플로 검증·면제 근거·불변식 테스트를 보존하고 Group·DB·서버 API는 별도 PR로 둔다. 개발 전 최신 flow-changes와 미병합 문서 브랜치를 확인했으며 FC-010의 면제 화면·API 보류도 유지한다.
++- **아쉬운 점:** 엔진만 전환하므로 프론트는 아직 연결할 수 없다. 자동응답을 채우는 서버 경로와 v3 API 계약이 뒤따라야 하며, 송금 근거 표시 방식 등 결정 필요 항목은 이번 PR로 해결되지 않는다.
++
++---
++
+ ## [2026-10-01] 프론트 흐름 변경을 `docs/flow-changes/`로 백엔드에 넘긴다
+ 
+ - **문제:** 프론트(웹·Android·iOS)는 목데이터로 먼저 만들고 써 보며 흐름을 계속 고친다. 하루 만에도
+diff --git a/README.md b/README.md
+index 130abe63436eab1ee697b6ddb9a6208e1d3fa9ff..4042754fee10fa4cd9e0e74bd91f5eb506bd605f 100644
+--- a/README.md
++++ b/README.md
+@@ -250,7 +250,7 @@ erDiagram
+ 
+ | | 항목 | 상태 |
+ |---|---|---|
+-| ✅ | 계산 엔진 | 구현·테스트 완료 (46건 전부 통과) |
++| ✅ | 계산 엔진 | Core v2 구현·테스트 완료 (48건 전부 통과) |
+ | ✅ | 설계 문서 | SPEC · CALC_RULES · API 계약 · ADR 13건 |
+ | ✅ | 스키마 | Liquibase · ERD · 엑셀 명세, 실제 MySQL 실행 검증 완료 |
+ | ✅ | 웹 프론트 | 화면 12개, 실제 도메인에 배포 (백엔드 연동 전이라 목 데이터로 동작) |
+diff --git a/core/src/main/kotlin/app/jeongsan/core/Model.kt b/core/src/main/kotlin/app/jeongsan/core/Model.kt
+index 6fa5003124eb5802d42fd77259b318238a423b55..5a3868d31f99a8a75e17c2280fffc2df9ed82cd8 100644
+--- a/core/src/main/kotlin/app/jeongsan/core/Model.kt
++++ b/core/src/main/kotlin/app/jeongsan/core/Model.kt
+@@ -1,48 +1,66 @@
+ package app.jeongsan.core
+ 
++import java.math.BigInteger
++
+ /**
+- * 계산 엔진의 입력. DB도 UI도 모른다. `CALC_RULES.md` §1 참조.
++ * 계산 엔진의 입력. DB도 UI도 모른다. `CALC_RULES_V2.md` §2 참조.
+  *
+- * `id`는 `Long`이다. DB의 `BIGSERIAL`과 1:1로 맞고, `CALC_RULES.md` §2.2의
+- * 대표결제자 동률 규칙이 **"id가 작은 사람" = "먼저 등록된 사람"** 으로 자연스럽게 성립한다.
++ * `id`는 `Long`이다. DB의 `BIGINT`와 1:1로 맞고, 잔액 조정자 동률 규칙에서
++ * **"id가 작은 사람" = "먼저 등록된 사람"** 으로 자연스럽게 성립한다.
+  *
+  * 처음에는 `String`이었다. "엔진이 저장소 키 타입에 묶이지 않게" 하려는 것이었는데,
+- * `BIGSERIAL`을 문자열로 넘기면 사전순 비교가 `"10" < "2"` 가 되어
++ * MySQL `BIGINT` 식별자를 문자열로 넘기면 사전순 비교가 `"10" < "2"` 가 되어
+  * **10번 참여자가 2번보다 앞선다.** 결정론은 지켜지지만 설명할 수 없는 동작이 남는다.
+- * DB가 PostgreSQL로 확정된 이 프로젝트에서 그 유연성은 값을 하지 못했다.
++ * DB가 MySQL로 확정된 이 프로젝트에서 그 유연성은 값을 하지 못했다.
+  */
+ data class SettlementInput(
+     val participants: List<Participant>,
+     val rounds: List<Round>,
+     val attendance: Map<AttendanceKey, Attendance> = emptyMap(),
+     val drinkItems: List<DrinkItem> = emptyList(),
+-    val extras: List<ExtraItem> = emptyList(),
+-    val roundingUnit: Int = 10,
+ ) {
+     /**
+-     * `CALC_RULES.md` §2.1-b — 해당 차수에 [DrinkItem]이 하나라도 있으면
++     * `CALC_RULES_V2.md` §2.2 — 해당 차수에 [DrinkItem]이 하나라도 있으면
+      * `alcohol`을 무시하고 `Σ(bottleCount × unitPrice)`로 덮어쓴다.
+      *
+      * 검증도 이 값을 기준으로 해야 한다. 원본 `alcohol`은 이미 의미가 없다.
+      */
+     fun effectiveRounds(): List<Round> {
++        // 술병 상세가 없는 차수까지 복사하지 않는다. 입력 모델은 불변이므로 원본을 그대로
++        // 돌려줘도 안전하고, 호출자는 항상 이 함수의 결과만 검증·계산에 사용하면 된다.
+         if (drinkItems.isEmpty()) return rounds
+         val byRound = drinkItems.groupBy { it.roundId }
+         return rounds.map { round ->
+             val items = byRound[round.id] ?: return@map round
+-            round.copy(alcohol = items.sumOf { it.bottleCount.toLong() * it.unitPrice })
++            val alcohol = items.fold(BigInteger.ZERO) { total, item ->
++                total + BigInteger.valueOf(item.bottleCount.toLong()) * BigInteger.valueOf(item.unitPrice)
++            }
++            round.copy(
++                alcohol = when {
++                    alcohol > LONG_MAX -> Long.MAX_VALUE
++                    alcohol < LONG_MIN -> Long.MIN_VALUE
++                    else -> alcohol.longValueExact()
++                },
++            )
+         }
+     }
+ 
++    /**
++     * 출석 행이 없다는 것은 아직 체크하지 않았거나 불참한 상태다. 계산에서는 둘 다 부담이
++     * 없으므로 [Attendance.ABSENT]로 해석하고, 확정 가능 여부는 [Validator]가 별도로 판단한다.
++     */
+     fun attendanceOf(participantId: Long, roundId: Long): Attendance =
+         attendance[AttendanceKey(participantId, roundId)] ?: Attendance.ABSENT
++
++    private companion object {
++        val LONG_MAX: BigInteger = BigInteger.valueOf(Long.MAX_VALUE)
++        val LONG_MIN: BigInteger = BigInteger.valueOf(Long.MIN_VALUE)
++    }
+ }
+ 
+ data class Participant(
+     val id: Long,
+     val name: String,
+-    /** `CALC_RULES.md` §2.1-c — 부담 0이며 **모든 분모에서 제외**된다. 대표결제자가 될 수 없다. */
+-    val exempt: Boolean = false,
+ )
+ 
+ data class Round(
+@@ -61,27 +79,19 @@ data class DrinkItem(
+     val unitPrice: Long,
+ )
+ 
+-data class ExtraItem(
+-    val id: Long,
+-    val label: String,
+-    val amount: Long,
+-    val payerId: Long,
+-    /** 이 항목을 부담할 사람들. 면제자는 여기 있어도 분모에서 빠진다. */
+-    val bearerIds: List<Long>,
+-)
+-
+ data class AttendanceKey(val participantId: Long, val roundId: Long)
+ 
+ /**
+- * `attended == false && drank == true`는 모순이지만 **생성자에서 막지 않는다.**
+- * `CALC_RULES.md` §4가 이것을 *검증 대상*으로 규정하기 때문이다.
+- * 저장소에 이미 그런 행이 있다면 예외로 터지는 대신 검증 오류로 보고돼야 한다.
++ * 차수별 참여 상태. [EXEMPT]는 참석 사실은 남기되 해당 차수의 모든 부담과 분모에서
++ * 제외한다. 불가능한 `불참 + 음주` 조합을 타입으로 만들 수 없게 네 상태로 닫는다.
+  */
+-data class Attendance(val attended: Boolean, val drank: Boolean) {
+-
+-    companion object {
+-        val ABSENT = Attendance(attended = false, drank = false)
+-        val SOBER = Attendance(attended = true, drank = false)
+-        val DRANK = Attendance(attended = true, drank = true)
+-    }
++enum class Attendance(
++    val attended: Boolean,
++    val drank: Boolean,
++    val exempt: Boolean,
++) {
++    ABSENT(attended = false, drank = false, exempt = false),
++    EXEMPT(attended = true, drank = false, exempt = true),
++    SOBER(attended = true, drank = false, exempt = false),
++    DRANK(attended = true, drank = true, exempt = false),
+ }
+diff --git a/core/src/main/kotlin/app/jeongsan/core/Rational.kt b/core/src/main/kotlin/app/jeongsan/core/Rational.kt
+index 025ed65245d1fa76782c985655942394b6e5d2cf..73eb6104b81d708ca28eee4bb61d3d0b253be90a 100644
+--- a/core/src/main/kotlin/app/jeongsan/core/Rational.kt
++++ b/core/src/main/kotlin/app/jeongsan/core/Rational.kt
+@@ -9,7 +9,7 @@ import java.math.RoundingMode
+  *
+  * `Double`은 물론 `BigDecimal`도 쓰지 않는 이유는 ADR-001에 있다. 요약하면
+  * `1/3`은 어떤 진법에서도 유한 자릿수로 쓸 수 없어서 나누는 순간 반드시 정보가 버려지고,
+- * 마지막 [ceilTo]가 그 티끌만한 오차를 한 단위(10원·100원)로 증폭시킨다.
++ * 마지막 [ceilTo]가 그 티끌만한 오차를 올림 단위 전체로 증폭시킨다.
+  * 랜덤 정산 30,000건 중 210건(0.70%)에서 `BigDecimal`은 다른 금액을 냈다.
+  * 정밀도를 100자리로 올려도 결과는 바뀌지 않는다 — 오차의 *크기*가 아니라 *존재*가 문제이기 때문이다.
+  *
+@@ -45,7 +45,7 @@ class Rational private constructor(
+      * 정확한 유리수에서 정수로 내려오는 **유일한 지점**이다.
+      */
+     fun ceilTo(unit: Int): Long {
+-        require(unit > 0) { "반올림 단위는 양수여야 한다: $unit" }
++        require(unit > 0) { "올림 단위는 양수여야 한다: $unit" }
+         val u = BigInteger.valueOf(unit.toLong())
+         return (ceilDiv(numerator, denominator * u) * u).longValueExact()
+     }
+diff --git a/core/src/main/kotlin/app/jeongsan/core/Settlement.kt b/core/src/main/kotlin/app/jeongsan/core/Settlement.kt
+index 519a75027bd2728d65e1448684598cad05d5a938..1ddc9510d19c0f5c03afe57db9c05b175be372ff 100644
+--- a/core/src/main/kotlin/app/jeongsan/core/Settlement.kt
++++ b/core/src/main/kotlin/app/jeongsan/core/Settlement.kt
+@@ -3,55 +3,54 @@ package app.jeongsan.core
+ /**
+  * 정산 계산 엔진. **순수 함수다** — DB도 UI도 시간도 모르고, 예외를 던지지 않는다.
+  *
+- * `CALC_RULES.md` §2의 알고리즘을 그대로 구현한다.
++ * `CALC_RULES_V2.md` §3의 알고리즘을 그대로 구현한다.
+  */
+ object Settlement {
+ 
++    /**
++     * 검증 → 정확한 원부담 계산 → 최종 원화 금액 확정의 유일한 공개 진입점이다.
++     * 호출자는 내부 계산 함수를 우회할 수 없으므로 성공 결과는 항상 확정 단계 검증을 거친다.
++     */
+     fun settle(input: SettlementInput): SettlementOutcome {
+         val errors = Validator.validate(input, ValidationPhase.CONFIRM)
+         if (errors.isNotEmpty()) return SettlementOutcome.Failure(errors)
+ 
+-        val first = compute(input, input.roundingUnit)
+-
+-        // T7 — 대표결제자가 음수면 예외 처리 대신 단위를 10원으로 강등해 재계산한다.
+-        if (first.amounts.values.any { it < 0 } && input.roundingUnit != 10) {
+-            val retried = compute(input, unit = 10)
+-            if (retried.amounts.values.any { it < 0 }) {
+-                return SettlementOutcome.Failure(listOf(negativeAmountError(retried)))
+-            }
+-            return SettlementOutcome.Success(retried.copy(roundingUnitDowngraded = true))
++        val result = compute(input)
++        val negative = result.recipients.values.firstOrNull {
++            it.participantAmounts.values.any { amount -> amount < 0 }
+         }
+-
+-        if (first.amounts.values.any { it < 0 }) {
+-            return SettlementOutcome.Failure(listOf(negativeAmountError(first)))
++        if (negative != null) {
++            return SettlementOutcome.Failure(listOf(negativeAmountError(negative)))
+         }
+-        return SettlementOutcome.Success(first)
++        return SettlementOutcome.Success(result)
+     }
+ 
+-    private fun negativeAmountError(result: SettlementResult): ValidationError {
+-        val victim = result.amounts.entries.first { it.value < 0 }
++    private fun negativeAmountError(recipient: RecipientSettlement): ValidationError {
++        val victim = recipient.participantAmounts.entries.first { it.value < 0 }
+         return ValidationError(
+-            ErrorCode.NEGATIVE_FINAL_AMOUNT,
+-            "1인당 금액이 너무 작아 대표결제자의 부담이 음수가 됩니다. " +
++            ErrorCode.NEGATIVE_ADJUSTED_AMOUNT,
++            "결제 금액이 참여 인원에 비해 너무 작아 잔액 조정자의 부담이 음수가 됩니다. " +
+                 "(${victim.key}: ${victim.value}원) 인원을 줄이거나 금액을 확인해주세요.",
+             participantId = victim.key,
+         )
+     }
+ 
+-    private fun compute(input: SettlementInput, unit: Int): SettlementResult {
++    private fun compute(input: SettlementInput): SettlementResult {
+         val rounds = input.effectiveRounds()
+-        val exemptIds = input.participants.filter { it.exempt }.map { it.id }.toSet()
+ 
+-        // ── §2.1 원부담 계산 — 반올림 없음. 정확한 유리수로만 누적한다.
++        // ── 원부담 계산 — 정수 올림 전까지 정확한 유리수로만 누적한다.
+         val roundLines = mutableMapOf<Long, MutableList<RoundBreakdown>>()
+         input.participants.forEach { roundLines[it.id] = mutableListOf() }
+ 
+         rounds.sortedBy { it.seq }.forEach { round ->
+             val attendees = input.participants
+-                .filter { !it.exempt && input.attendanceOf(it.id, round.id).attended }
++                .filter {
++                    val attendance = input.attendanceOf(it.id, round.id)
++                    attendance.attended && !attendance.exempt
++                }
+                 .map { it.id }.toSet()
+             val drinkers = input.participants
+-                .filter { !it.exempt && input.attendanceOf(it.id, round.id).drank }
++                .filter { input.attendanceOf(it.id, round.id).drank }
+                 .map { it.id }.toSet()
+ 
+             val food = round.total - round.alcohol
+@@ -68,6 +67,7 @@ object Settlement {
+                     label = round.label,
+                     attended = a.attended,
+                     drank = a.drank,
++                    exempt = a.exempt,
+                     foodTotal = food,
+                     attendeeCount = attendees.size,
+                     foodShare = if (p.id in attendees) foodShare else Rational.ZERO,
+@@ -78,118 +78,94 @@ object Settlement {
+             }
+         }
+ 
+-        // ── §2.1-d 기타 항목 — 부담자(면제자 제외)끼리 균등 분담.
+-        val extraLines = mutableMapOf<Long, MutableList<ExtraBreakdown>>()
+-        input.participants.forEach { extraLines[it.id] = mutableListOf() }
+-
+-        input.extras.forEach { extra ->
+-            val bearers = extra.bearerIds.filter { it !in exemptIds }.toSet()
+-            if (bearers.isEmpty()) return@forEach
+-            val share = Rational.of(extra.amount) / bearers.size
+-            bearers.forEach { id ->
+-                extraLines.getValue(id) += ExtraBreakdown(
+-                    extraId = extra.id,
+-                    label = extra.label,
+-                    amount = extra.amount,
+-                    bearerCount = bearers.size,
+-                    share = share,
+-                )
+-            }
+-        }
+-
++        // raw는 아직 원 단위로 올리지 않은 각 참여자의 정확한 부담액이다.
+         val raw = input.participants.associate { p ->
+-            p.id to (
+-                roundLines.getValue(p.id).map { it.amount } +
+-                    extraLines.getValue(p.id).map { it.share }
+-                ).sum()
++            p.id to roundLines.getValue(p.id).map { it.amount }.sum()
+         }
+ 
+-        // ── §2.2 대표결제자 결정 — 면제자 제외, 결제총액 최대, 동률이면 id 사전순.
+         val paid = input.participants.associate { it.id to 0L }.toMutableMap()
+         rounds.forEach { paid[it.payerId] = paid.getValue(it.payerId) + it.total }
+-        input.extras.forEach { paid[it.payerId] = paid.getValue(it.payerId) + it.amount }
+-
+-        val grandTotal = rounds.sumOf { it.total } + input.extras.sumOf { it.amount }
+-
+-        val mainPayerId = input.participants
+-            .filter { !it.exempt }
+-            .sortedWith(compareByDescending<Participant> { paid.getValue(it.id) }.thenBy { it.id })
+-            .first().id
+-
+-        // ── §2.3 반올림. 대표결제자는 잔액을 가져가므로 구조적으로 합계가 원금과 일치한다.
+-        val amounts = mutableMapOf<Long, Long>()
+-        input.participants.forEach { p ->
+-            when {
+-                p.exempt -> amounts[p.id] = 0L
+-                p.id == mainPayerId -> Unit
+-                else -> amounts[p.id] = raw.getValue(p.id).ceilTo(unit)
++        val grandTotal = rounds.sumOf { it.total }
++
++        // 수취인(차수 총무)별로 정확한 원부담을 합친 뒤 1원 단위로 한 번만 올린다.
++        val recipients = rounds.groupBy { it.payerId }
++            .toSortedMap()
++            .mapValues { (recipientId, recipientRounds) ->
++                val roundIds = recipientRounds.map { it.id }.toSet()
++                val rawByParticipant = input.participants.associate { participant ->
++                    participant.id to roundLines.getValue(participant.id)
++                        .filter { it.roundId in roundIds }
++                        .map { it.amount }
++                        .sum()
++                }
++                val adjustmentId = if (rawByParticipant.getValue(recipientId).signum > 0) {
++                    recipientId
++                } else {
++                    rawByParticipant.entries
++                        .filter { it.value.signum > 0 }
++                        .sortedWith(
++                            compareByDescending<Map.Entry<Long, Rational>> { it.value }
++                                .thenBy { it.key },
++                        )
++                        .first().key
++                }
++                val participantAmounts = input.participants.associate { participant ->
++                    participant.id to if (participant.id == adjustmentId) {
++                        0L
++                    } else {
++                        rawByParticipant.getValue(participant.id).ceilTo(1)
++                    }
++                }.toMutableMap()
++                val paidTotal = recipientRounds.sumOf { it.total }
++                participantAmounts[adjustmentId] = paidTotal - participantAmounts.values.sum()
++                val incomingTotal = participantAmounts
++                    .filterKeys { it != recipientId }
++                    .values.sum()
++
++                RecipientSettlement(
++                    recipientId = recipientId,
++                    paidTotal = paidTotal,
++                    participantAmounts = participantAmounts,
++                    ownShare = participantAmounts.getValue(recipientId),
++                    incomingTotal = incomingTotal,
++                    adjustmentParticipantId = adjustmentId,
++                )
++            }
++
++        val amounts = input.participants.associate { participant ->
++            participant.id to recipients.values.sumOf {
++                it.participantAmounts.getValue(participant.id)
+             }
+         }
+-        // ★ 나눗셈이 아니라 뺄셈이다. 나눠서 구한 뒤 차이를 맞추는 방식으로 바꾸지 말 것.
+-        //   이 한 줄 때문에 합계가 원금과 어긋날 수가 없고, 보정 로직이 한 줄도 필요 없다.
+-        //   `amounts`에는 아직 대표결제자가 없으므로 sum()이 "나머지 전원의 합"이다.
+-        amounts[mainPayerId] = grandTotal - amounts.values.sum()
+ 
+         val breakdown = input.participants.associate { p ->
+             p.id to ParticipantBreakdown(
+                 participantId = p.id,
+                 name = p.name,
+-                isExempt = p.exempt,
+-                isMainPayer = p.id == mainPayerId,
+                 rounds = roundLines.getValue(p.id),
+-                extras = extraLines.getValue(p.id),
+-                rawTotal = if (p.exempt) Rational.ZERO else raw.getValue(p.id),
++                rawTotal = raw.getValue(p.id),
+                 finalAmount = amounts.getValue(p.id),
+                 paidTotal = paid.getValue(p.id),
+             )
+         }
+ 
+         return SettlementResult(
+-            mainPayerId = mainPayerId,
+             amounts = amounts,
+             breakdown = breakdown,
+-            transfers = buildTransfers(input, paid, amounts),
++            recipients = recipients,
++            transfers = buildTransfers(recipients),
+             grandTotal = grandTotal,
+-            appliedRoundingUnit = unit,
+-            roundingUnitDowngraded = false,
+         )
+     }
+ 
+-    /**
+-     * §2.4 송금 목록. 채권자·채무자를 각각 금액 내림차순(동률이면 id 사전순)으로 정렬하고
+-     * 큰 쪽부터 greedy 상계한다.
+-     *
+-     * **최소 송금 횟수의 최적해가 아니다. 최적화하지 말 것.**
+-     * 결과가 예측 가능한 것이 더 중요하다 — `CALC_RULES.md` §2.4.
+-     */
+-    private fun buildTransfers(
+-        input: SettlementInput,
+-        paid: Map<Long, Long>,
+-        amounts: Map<Long, Long>,
+-    ): List<Transfer> {
+-        val balance = input.participants.associate { p ->
+-            p.id to (paid.getValue(p.id) - amounts.getValue(p.id))
++    /** 수취인별 배정액을 그대로 송금으로 만든다. 서로 다른 총무의 채권은 상계하지 않는다. */
++    private fun buildTransfers(recipients: Map<Long, RecipientSettlement>): List<Transfer> =
++        recipients.values.flatMap { recipient ->
++            recipient.participantAmounts.entries
++                .filter { (participantId, amount) -> participantId != recipient.recipientId && amount > 0 }
++                .sortedBy { it.key }
++                .map { (participantId, amount) ->
++                    Transfer(fromId = participantId, toId = recipient.recipientId, amount = amount)
++                }
+         }
+-        val order = compareByDescending<Pair<Long, Long>> { it.second }.thenBy { it.first }
+-
+-        val creditors = balance.filter { it.value > 0 }
+-            .map { it.key to it.value }.sortedWith(order).toMutableList()
+-        val debtors = balance.filter { it.value < 0 }
+-            .map { it.key to -it.value }.sortedWith(order).toMutableList()
+-
+-        val transfers = mutableListOf<Transfer>()
+-        var ci = 0
+-        var di = 0
+-        while (ci < creditors.size && di < debtors.size) {
+-            val (creditorId, credit) = creditors[ci]
+-            val (debtorId, debt) = debtors[di]
+-            val amount = minOf(credit, debt)
+-            transfers += Transfer(fromId = debtorId, toId = creditorId, amount = amount)
+-            creditors[ci] = creditorId to (credit - amount)
+-            debtors[di] = debtorId to (debt - amount)
+-            if (creditors[ci].second == 0L) ci++
+-            if (debtors[di].second == 0L) di++
+-        }
+-        return transfers
+-    }
+ }
+diff --git a/core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt b/core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt
+index ae613ad3e12f7e0cecd7c66085227daacc1b9fca..4407ffe751483011465fdb4bda51f1f008f39be8 100644
+--- a/core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt
++++ b/core/src/main/kotlin/app/jeongsan/core/SettlementResult.kt
+@@ -1,7 +1,7 @@
+ package app.jeongsan.core
+ 
+ /**
+- * 계산 엔진의 결과. **예외를 던지지 않는다** — `CALC_RULES.md` §4.
++ * 계산 엔진의 결과. **예외를 던지지 않는다** — `CALC_RULES_V2.md` §5.
+  * HTTP 상태 코드 매핑은 API 계층의 몫이다.
+  */
+ sealed interface SettlementOutcome {
+@@ -10,33 +10,37 @@ sealed interface SettlementOutcome {
+ }
+ 
+ data class SettlementResult(
+-    /** 면제자를 제외하고 결제 총액이 가장 큰 참여자. 동률이면 id 사전순 첫 번째. */
+-    val mainPayerId: Long,
++    /** 각 참여자의 최종 부담액. 결제액이 아니라 정산 후 그 사람이 부담해야 할 몫이다. */
+     val amounts: Map<Long, Long>,
+-    /** 근거 화면(W2)용. **계산만 하고 버리지 말 것** — `CALC_RULES.md` §1. */
++    /** 근거 화면(W2)용. **계산만 하고 버리지 말 것** — `CALC_RULES_V2.md` §4. */
+     val breakdown: Map<Long, ParticipantBreakdown>,
++    /** 차수 총무별 결제액·참여자 배정액·잔액 조정 결과. */
++    val recipients: Map<Long, RecipientSettlement>,
++    /** 서로 다른 총무 사이를 상계하지 않은 실제 송금 지시 목록. */
+     val transfers: List<Transfer>,
+     val grandTotal: Long,
+-    /** 실제로 적용된 반올림 단위. 대표결제자 음수를 피하려 강등됐을 수 있다. */
+-    val appliedRoundingUnit: Int,
+-    /** 요청한 단위가 대표결제자를 음수로 만들어 10원으로 강등된 경우 `true` — `CALC_RULES.md` T7. */
+-    val roundingUnitDowngraded: Boolean,
+ )
+ 
+ data class ParticipantBreakdown(
+     val participantId: Long,
+     val name: String,
+-    val isExempt: Boolean,
+-    val isMainPayer: Boolean,
+     val rounds: List<RoundBreakdown>,
+-    val extras: List<ExtraBreakdown>,
+-    /** 반올림 전 원부담. 차수·기타 항목 몫의 정확한 합이다. */
++    /** 1원 올림 전 차수 몫의 정확한 합이다. */
+     val rawTotal: Rational,
+     val finalAmount: Long,
+-    /** 이 사람이 결제한 총액 (차수 + 기타 항목). */
++    /** 이 사람이 차수 총무로 결제한 총액. */
+     val paidTotal: Long,
+ )
+ 
++data class RecipientSettlement(
++    val recipientId: Long,
++    val paidTotal: Long,
++    val participantAmounts: Map<Long, Long>,
++    val ownShare: Long,
++    val incomingTotal: Long,
++    val adjustmentParticipantId: Long,
++)
++
+ /**
+  * 차수 하나에 대한 근거. 불참한 차수도 `amount = 0`으로 포함된다 —
+  * W2가 `2차 불참 → 0원`을 보여줘야 하기 때문이다.
+@@ -50,6 +54,8 @@ data class RoundBreakdown(
+     val label: String,
+     val attended: Boolean,
+     val drank: Boolean,
++    /** 참석했지만 이 차수의 모든 부담과 분모에서 제외됐는지 나타낸다. */
++    val exempt: Boolean,
+     val foodTotal: Long,
+     val attendeeCount: Int,
+     val foodShare: Rational,
+@@ -60,13 +66,5 @@ data class RoundBreakdown(
+     val amount: Rational get() = foodShare + alcoholShare
+ }
+ 
+-data class ExtraBreakdown(
+-    val extraId: Long,
+-    val label: String,
+-    val amount: Long,
+-    val bearerCount: Int,
+-    val share: Rational,
+-)
+-
+ /** `from`이 `to`에게 보낸다. */
+ data class Transfer(val fromId: Long, val toId: Long, val amount: Long)
+diff --git a/core/src/main/kotlin/app/jeongsan/core/Validation.kt b/core/src/main/kotlin/app/jeongsan/core/Validation.kt
+index dce6f8a0e6c0c02dbc1ac5b6d6168593c3324b97..49d60a06608ba76d1d465e992f315375923ed47e 100644
+--- a/core/src/main/kotlin/app/jeongsan/core/Validation.kt
++++ b/core/src/main/kotlin/app/jeongsan/core/Validation.kt
+@@ -1,7 +1,9 @@
+ package app.jeongsan.core
+ 
++import java.math.BigInteger
++
+ /**
+- * `CALC_RULES.md` §4 — 검증 시점은 둘로 나뉜다.
++ * `CALC_RULES_V2.md` §5 — 검증 시점은 둘로 나뉜다.
+  *
+  * [SAVE] 시점에 전체 검증을 걸면 **아직 아무도 체크하지 않았으므로 참석자가 0명이라
+  * 주최자가 차수를 입력조차 못 한다.**
+@@ -13,31 +15,27 @@ enum class ErrorCode {
+     ALCOHOL_NEGATIVE,
+     ALCOHOL_EXCEEDS_TOTAL,
+     PAYER_NOT_FOUND,
+-    BEARER_NOT_FOUND,
+     INVALID_DRINK_ITEM,
+-    INVALID_ROUNDING_UNIT,
+-    DRANK_WITHOUT_ATTEND,
++    DRINK_ITEM_ROUND_NOT_FOUND,
++    ATTENDANCE_REFERENCE_NOT_FOUND,
++    MISSING_ATTENDANCE,
+     DUPLICATE_ID,
+     DUPLICATE_ROUND_SEQ,
+     AMOUNT_TOO_LARGE,
+     TOO_FEW_PARTICIPANTS,
+     NO_ATTENDEE,
+-    NO_NON_EXEMPT_ATTENDEE,
+     NO_DRINKER_WITH_ALCOHOL,
+-    NO_NON_EXEMPT_BEARER,
+-    ALL_EXEMPT,
+-    NEGATIVE_FINAL_AMOUNT,
++    NEGATIVE_ADJUSTED_AMOUNT,
+ }
+ 
+ /**
+  * `"입력이 잘못되었습니다"`는 차수를 5개 입력한 주최자에게 아무 도움이 되지 않는다.
+- * **어느 차수, 어느 항목이 문제인지 반드시 식별자를 담는다** — `CALC_RULES.md` §4.
++ * **어느 차수, 어느 참여자가 문제인지 반드시 식별자를 담는다** — `CALC_RULES_V2.md` §5.
+  */
+ data class ValidationError(
+     val code: ErrorCode,
+     val message: String,
+     val roundId: Long? = null,
+-    val extraId: Long? = null,
+     val participantId: Long? = null,
+ )
+ 
+@@ -54,7 +52,12 @@ object Validator {
+      * 87,000원을 870,000,000원으로 잘못 입력하는 일은 실제로 난다.
+      */
+     const val MAX_AMOUNT: Long = 1_000_000_000_000L   // 1조 원
++    private val MAX_AMOUNT_BIG: BigInteger = BigInteger.valueOf(MAX_AMOUNT)
+ 
++    /**
++     * 검증 오류를 하나 발견해도 즉시 끝내지 않고 가능한 오류를 모두 모은다. 여러 차수를
++     * 입력한 사용자가 저장과 재시도를 반복하지 않고 한 번에 수정할 수 있게 하기 위해서다.
++     */
+     fun validate(input: SettlementInput, phase: ValidationPhase): List<ValidationError> {
+         val errors = mutableListOf<ValidationError>()
+         val rounds = input.effectiveRounds()          // F6 — 한 번만 계산해 넘긴다
+@@ -77,13 +80,6 @@ object Validator {
+         ids: Set<Long>,
+         errors: MutableList<ValidationError>,
+     ) {
+-        if (input.roundingUnit != 10 && input.roundingUnit != 100) {
+-            errors += ValidationError(
+-                ErrorCode.INVALID_ROUNDING_UNIT,
+-                "반올림 단위는 10원 또는 100원만 허용합니다. (입력: ${input.roundingUnit})",
+-            )
+-        }
+-
+         // ── 중복 id (F1) — 세 컬렉션 모두 검사하고 어느 id가 중복인지 담는다.
+         // 참여자만 검사하고 있었는데, 같은 roundId 가 둘이면 attendance 조회가 두 차수에
+         // 같은 값을 돌려주어 금액이 조용히 틀린다. 그런데 합계는 맞으므로 불변식으로도 안 잡힌다.
+@@ -97,11 +93,6 @@ object Validator {
+                 ErrorCode.DUPLICATE_ID, "차수 id가 중복되었습니다: $it", roundId = it,
+             )
+         }
+-        duplicatesOf(input.extras.map { it.id }).forEach {
+-            errors += ValidationError(
+-                ErrorCode.DUPLICATE_ID, "기타 항목 id가 중복되었습니다: $it", extraId = it,
+-            )
+-        }
+         duplicatesOf(input.rounds.map { it.seq }).forEach {
+             errors += ValidationError(
+                 ErrorCode.DUPLICATE_ROUND_SEQ,
+@@ -109,6 +100,7 @@ object Validator {
+             )
+         }
+ 
++        val roundIds = input.rounds.map { it.id }.toSet()
+         input.drinkItems.forEach { item ->
+             if (item.bottleCount <= 0 || item.unitPrice <= 0) {
+                 errors += ValidationError(
+@@ -117,6 +109,23 @@ object Validator {
+                         "(${item.bottleCount}병 × ${item.unitPrice}원)",
+                     roundId = item.roundId,
+                 )
++            } else {
++                val itemAmount = BigInteger.valueOf(item.bottleCount.toLong()) *
++                    BigInteger.valueOf(item.unitPrice)
++                if (itemAmount > MAX_AMOUNT_BIG) {
++                    errors += ValidationError(
++                        ErrorCode.AMOUNT_TOO_LARGE,
++                        "'${item.name}'의 술값이 너무 큽니다. 병 수와 단가를 확인해주세요.",
++                        roundId = item.roundId,
++                    )
++                }
++            }
++            if (item.roundId !in roundIds) {
++                errors += ValidationError(
++                    ErrorCode.DRINK_ITEM_ROUND_NOT_FOUND,
++                    "'${item.name}'이 존재하지 않는 차수를 참조합니다.",
++                    roundId = item.roundId,
++                )
+             }
+         }
+ 
+@@ -150,54 +159,28 @@ object Validator {
+                     roundId = round.id,
+                 )
+             }
+-            if (round.payerId !in ids) {
+-                errors += ValidationError(
+-                    ErrorCode.PAYER_NOT_FOUND,
+-                    "${round.label}의 결제자가 참여자 목록에 없습니다.",
+-                    roundId = round.id,
+-                    participantId = round.payerId,
+-                )
+-            }
+-        }
+-
+-        input.extras.forEach { extra ->
+-            if (extra.amount > MAX_AMOUNT) {
++            if (round.alcohol > MAX_AMOUNT) {
+                 errors += ValidationError(
+                     ErrorCode.AMOUNT_TOO_LARGE,
+-                    "'${extra.label}'의 금액이 너무 큽니다.",
+-                    extraId = extra.id,
+-                )
+-            }
+-            if (extra.amount <= 0) {
+-                errors += ValidationError(
+-                    ErrorCode.TOTAL_NOT_POSITIVE,
+-                    "'${extra.label}'의 금액은 1원 이상이어야 합니다.",
+-                    extraId = extra.id,
++                    "${round.label}의 술값이 너무 큽니다. 병 수와 단가를 확인해주세요.",
++                    roundId = round.id,
+                 )
+             }
+-            if (extra.payerId !in ids) {
++            if (round.payerId !in ids) {
+                 errors += ValidationError(
+                     ErrorCode.PAYER_NOT_FOUND,
+-                    "'${extra.label}'의 결제자가 참여자 목록에 없습니다.",
+-                    extraId = extra.id,
+-                    participantId = extra.payerId,
+-                )
+-            }
+-            extra.bearerIds.filterNot { it in ids }.forEach { unknown ->
+-                errors += ValidationError(
+-                    ErrorCode.BEARER_NOT_FOUND,
+-                    "'${extra.label}'의 부담자 중 참여자 목록에 없는 사람이 있습니다.",
+-                    extraId = extra.id,
+-                    participantId = unknown,
++                    "${round.label}의 결제자가 참여자 목록에 없습니다.",
++                    roundId = round.id,
++                    participantId = round.payerId,
+                 )
+             }
+         }
+ 
+-        input.attendance.forEach { (key, value) ->
+-            if (!value.attended && value.drank) {
++        input.attendance.keys.forEach { key ->
++            if (key.participantId !in ids || key.roundId !in roundIds) {
+                 errors += ValidationError(
+-                    ErrorCode.DRANK_WITHOUT_ATTEND,
+-                    "불참으로 표시됐는데 음주로 표시되어 있습니다.",
++                    ErrorCode.ATTENDANCE_REFERENCE_NOT_FOUND,
++                    "참여 응답이 존재하지 않는 참여자 또는 차수를 참조합니다.",
+                     roundId = key.roundId,
+                     participantId = key.participantId,
+                 )
+@@ -212,13 +195,17 @@ object Validator {
+         rounds: List<Round>,
+         errors: MutableList<ValidationError>,
+     ) {
+-        val grandTotal = rounds.sumOf { it.total } + input.extras.sumOf { it.amount }
+-        if (grandTotal > MAX_AMOUNT) {
++        val grandTotal = rounds.fold(BigInteger.ZERO) { total, round ->
++            total + BigInteger.valueOf(round.total)
++        }
++        if (grandTotal > MAX_AMOUNT_BIG) {
+             errors += ValidationError(
+                 ErrorCode.AMOUNT_TOO_LARGE, "전체 총액이 너무 큽니다. (${grandTotal}원)",
+             )
+         }
+ 
++        // 아래의 두 전역 조건이 실패하면 차수별 분모 검증도 같은 원인에서 파생된 오류를
++        // 쏟아낸다. 사용자가 먼저 해결해야 할 대표 오류만 반환하도록 여기서 중단한다.
+         if (input.participants.size < 2) {
+             errors += ValidationError(
+                 ErrorCode.TOO_FEW_PARTICIPANTS,
+@@ -227,36 +214,34 @@ object Validator {
+             return
+         }
+ 
+-        if (input.participants.all { it.exempt }) {
+-            errors += ValidationError(
+-                ErrorCode.ALL_EXEMPT,
+-                "참여자 전원이 면제자라 부담할 사람이 없습니다.",
+-            )
+-            return
+-        }
+-
+         rounds.forEach { round ->
+-            val attendees = input.participants.filter {
+-                input.attendanceOf(it.id, round.id).attended
++            val missing = input.participants.filter {
++                AttendanceKey(it.id, round.id) !in input.attendance
+             }
+-            if (attendees.isEmpty()) {
++            missing.forEach { participant ->
+                 errors += ValidationError(
+-                    ErrorCode.NO_ATTENDEE,
+-                    "${round.label}에 참석한 사람이 없습니다.",
++                    ErrorCode.MISSING_ATTENDANCE,
++                    "${round.label}에 '${participant.name}'의 응답이 없습니다.",
+                     roundId = round.id,
++                    participantId = participant.id,
+                 )
+-                return@forEach
+             }
+-            if (attendees.none { !it.exempt }) {
++
++            val attendees = input.participants.filter {
++                val attendance = input.attendanceOf(it.id, round.id)
++                attendance.attended && !attendance.exempt
++            }
++            if (attendees.isEmpty()) {
+                 errors += ValidationError(
+-                    ErrorCode.NO_NON_EXEMPT_ATTENDEE,
+-                    "${round.label}의 참석자가 전원 면제자라 나눌 대상이 없습니다.",
++                    ErrorCode.NO_ATTENDEE,
++                    "${round.label}에 비용을 부담할 참석자가 없습니다.",
+                     roundId = round.id,
+                 )
++                return@forEach
+             }
+             if (round.alcohol > 0) {
+                 val drinkers = input.participants.filter {
+-                    !it.exempt && input.attendanceOf(it.id, round.id).drank
++                    input.attendanceOf(it.id, round.id).drank
+                 }
+                 if (drinkers.isEmpty()) {
+                     errors += ValidationError(
+@@ -269,15 +254,5 @@ object Validator {
+             }
+         }
+ 
+-        val exemptIds = input.participants.filter { it.exempt }.map { it.id }.toSet()
+-        input.extras.forEach { extra ->
+-            if (extra.bearerIds.none { it !in exemptIds }) {
+-                errors += ValidationError(
+-                    ErrorCode.NO_NON_EXEMPT_BEARER,
+-                    "'${extra.label}'을 부담할 사람이 없습니다. (전원 면제이거나 부담자가 비어 있음)",
+-                    extraId = extra.id,
+-                )
+-            }
+-        }
+     }
+ }
+diff --git a/core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt b/core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt
+index 6a3da02b557c55d0088c70d656b875d835c21107..51e3fb9e55732d604ab5c66a1e0696f04398b792 100644
+--- a/core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt
++++ b/core/src/test/kotlin/app/jeongsan/core/InvariantSpec.kt
+@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
+ import kotlin.random.Random
+ 
+ /**
+- * `CALC_RULES.md` §5 불변식 테스트.
++ * `CALC_RULES_V2.md` §7 불변식 테스트.
+  *
+  * T1~T11은 **아는 케이스**만 막는다. 여기서는 랜덤 입력 30,000건에 대해
+  * 세 가지가 항상 참인지 확인한다. 시드가 고정돼 있어 실패는 항상 재현된다.
+@@ -25,47 +25,71 @@ class InvariantSpec : StringSpec({
+         verified shouldBeGreaterThan cases / 2
+     }
+ 
+-    "모든 최종 금액이 0 이상이다 — 대표결제자 포함 (T7 회귀)" {
++    "모든 최종 금액이 0 이상이다 — 잔액 조정자 포함" {
+         var verified = 0
+         repeat(cases) { seed ->
+             val result = scenario(seed).settleOrNull() ?: return@repeat
+             val negative = result.amounts.filterValues { it < 0 }
+             if (negative.isNotEmpty()) {
+-                error("seed=$seed 에서 음수 금액: $negative (unit=${result.appliedRoundingUnit})")
++                error("seed=$seed 에서 음수 금액: $negative")
+             }
+             verified++
+         }
+         verified shouldBeGreaterThan cases / 2
+     }
+ 
+-    "같은 입력은 항상 같은 출력을 낸다 — 금액·대표결제자·송금 순서 전부" {
++    "같은 입력은 항상 같은 출력을 낸다 — 금액·수취인·송금 순서 전부" {
+         repeat(2_000) { seed ->
+             val input = scenario(seed)
+             val a = input.settleOrNull() ?: return@repeat
+             val b = input.settleOrNull() ?: return@repeat
+-            a.mainPayerId shouldBe b.mainPayerId
+             a.amounts shouldBe b.amounts
++            a.recipients shouldBe b.recipients
+             a.transfers shouldBe b.transfers
+         }
+     }
+ 
+-    "송금 목록의 총액은 채권자들이 받아야 할 금액과 일치한다" {
++    "수취인별 자기 부담과 들어오는 송금의 합은 결제 원금과 일치한다" {
+         repeat(5_000) { seed ->
+             val result = scenario(seed).settleOrNull() ?: return@repeat
+-            val net = result.breakdown.values.associate {
+-                it.participantId to (it.paidTotal - it.finalAmount)
++            result.recipients.values.forEach { recipient ->
++                recipient.ownShare + recipient.incomingTotal shouldBe recipient.paidTotal
++                recipient.participantAmounts.values.sum() shouldBe recipient.paidTotal
+             }
+-            // 보내는 쪽은 줄고(−), 받는 쪽은 는다(+). 순잔액과 부호가 같아야 한다.
+-            val moved = mutableMapOf<Long, Long>()
+-            result.transfers.forEach {
+-                moved[it.fromId] = (moved[it.fromId] ?: 0L) - it.amount
+-                moved[it.toId] = (moved[it.toId] ?: 0L) + it.amount
++        }
++    }
++
++    "참여자 최종 부담액은 모든 수취인의 참여자별 금액 합과 일치한다" {
++        repeat(5_000) { seed ->
++            val result = scenario(seed).settleOrNull() ?: return@repeat
++            result.amounts.forEach { (participantId, amount) ->
++                amount shouldBe result.recipients.values.sumOf {
++                    it.participantAmounts.getValue(participantId)
++                }
+             }
+-            net.forEach { (id, balance) ->
+-                (moved[id] ?: 0L) shouldBe balance
++        }
++    }
++
++    "불참과 면제 차수의 부담은 언제나 0이다" {
++        repeat(5_000) { seed ->
++            val input = scenario(seed)
++            val result = input.settleOrNull() ?: return@repeat
++            input.attendance.forEach { (key, attendance) ->
++                if (attendance == Attendance.ABSENT || attendance == Attendance.EXEMPT) {
++                    result.breakdown.getValue(key.participantId).rounds
++                        .first { it.roundId == key.roundId }.amount shouldBe Rational.ZERO
++                }
+             }
+         }
+     }
++
++    "송금에는 자기 송금과 중복 송금자·수취인 조합이 없다" {
++        repeat(5_000) { seed ->
++            val result = scenario(seed).settleOrNull() ?: return@repeat
++            result.transfers.all { it.fromId != it.toId && it.amount > 0 } shouldBe true
++            result.transfers.map { it.fromId to it.toId }.distinct().size shouldBe result.transfers.size
++        }
++    }
+ })
+ 
+ private fun SettlementInput.settleOrNull(): SettlementResult? =
+@@ -74,7 +98,7 @@ private fun SettlementInput.settleOrNull(): SettlementResult? =
+         is SettlementOutcome.Failure -> null    // 검증에 걸린 입력은 불변식 대상이 아니다
+     }
+ 
+-/** 2~8명 / 1~4차수 / unit 10 또는 100. 시드가 같으면 항상 같은 시나리오다. */
++/** 2~8명 / 1~4차수. 시드가 같으면 항상 같은 시나리오다. */
+ private fun scenario(seed: Int): SettlementInput {
+     val rnd = Random(seed)
+     val n = rnd.nextInt(2, 9)
+@@ -94,6 +118,7 @@ private fun scenario(seed: Int): SettlementInput {
+         ps.forEach { p ->
+             att[AttendanceKey(p.id, roundId)] = when {
+                 p in drinkers -> Attendance.DRANK
++                p in attendees && rnd.nextDouble() < 0.1 -> Attendance.EXEMPT
+                 p in attendees -> Attendance.SOBER
+                 else -> Attendance.ABSENT
+             }
+@@ -104,6 +129,5 @@ private fun scenario(seed: Int): SettlementInput {
+         participants = ps,
+         rounds = rounds,
+         attendance = att,
+-        roundingUnit = if (rnd.nextBoolean()) 10 else 100,
+     )
+ }
+diff --git a/core/src/test/kotlin/app/jeongsan/core/SettlementSpec.kt b/core/src/test/kotlin/app/jeongsan/core/SettlementSpec.kt
+index 5e5051ef3fbb723806b30cc6f14a43c14d40a631..ab576678791cd23eaa1fc275f2a66290888b40f0 100644
+--- a/core/src/test/kotlin/app/jeongsan/core/SettlementSpec.kt
++++ b/core/src/test/kotlin/app/jeongsan/core/SettlementSpec.kt
+@@ -4,13 +4,12 @@ import io.kotest.core.spec.style.StringSpec
+ import io.kotest.matchers.shouldBe
+ 
+ /**
+- * `CALC_RULES.md` §3의 T1~T11을 그대로 옮긴 것이다.
+- * 기대값은 참조 구현(`docs/reference_impl.py`)으로 실제 계산해 검증된 값이다.
++ * `CALC_RULES_V2.md` §6의 예제와 핵심 조합을 옮긴 것이다.
+  * **구현 결과가 다르면 구현이 틀린 것이다.**
+  */
+ class SettlementSpec : StringSpec({
+ 
+-    "T1 · 기본 N빵 — 나머지가 대표결제자에게 간다" {
++    "T1 · 기본 N빵 — 차수 총무가 1원 올림 잔액을 조정한다" {
+         val ps = participants("A", "B", "C")
+         val result = SettlementInput(
+             participants = ps,
+@@ -18,13 +17,12 @@ class SettlementSpec : StringSpec({
+             attendance = ps.attendance { sober(1L, "A", "B", "C") },
+         ).succeed()
+ 
+-        result.mainPayerName(ps) shouldBe "A"
+-        result.amountsByName(ps) shouldBe mapOf("A" to 3_320L, "B" to 3_340L, "C" to 3_340L)
++        result.amountsByName(ps) shouldBe mapOf("A" to 3_332L, "B" to 3_334L, "C" to 3_334L)
+         result.amounts.values.sum() shouldBe 10_000L
+-        result.transfersByName(ps) shouldBe listOf("B→A 3340", "C→A 3340")
++        result.transfersByName(ps) shouldBe listOf("B→A 3334", "C→A 3334")
+     }
+ 
+-    "T2 · 2차 불참 — 올림이 없으면 대표결제자도 이득을 보지 않는다" {
++    "T2 · 2차 불참 — 나누어떨어지면 총무 잔액 조정도 없다" {
+         val ps = participants("A", "B", "C", "D")
+         val result = SettlementInput(
+             participants = ps,
+@@ -56,7 +54,7 @@ class SettlementSpec : StringSpec({
+         ).succeed()
+ 
+         result.amountsByName(ps) shouldBe
+-            mapOf("A" to 11_660L, "B" to 11_670L, "C" to 11_670L, "D" to 5_000L)
++            mapOf("A" to 11_666L, "B" to 11_667L, "C" to 11_667L, "D" to 5_000L)
+         result.amounts.values.sum() shouldBe 40_000L
+     }
+ 
+@@ -77,7 +75,9 @@ class SettlementSpec : StringSpec({
+ 
+         result.amountsByName(ps) shouldBe
+             mapOf("A" to 20_000L, "B" to 20_000L, "C" to 10_000L, "D" to 20_000L)
+-        result.transfersByName(ps) shouldBe listOf("D→A 20000", "C→B 10000")
++        result.transfersByName(ps) shouldBe listOf(
++            "B→A 10000", "C→A 10000", "D→A 10000", "A→B 10000", "D→B 10000",
++        )
+     }
+ 
+     "T5 · 복합 — E가 두 사람에게 나눠 보내는 것이 정상이다" {
+@@ -100,91 +100,97 @@ class SettlementSpec : StringSpec({
+             "A" to 33_150L, "B" to 33_150L, "C" to 33_150L, "D" to 19_150L, "E" to 10_400L,
+         )
+         result.amounts.values.sum() shouldBe 129_000L
+-        result.transfersByName(ps) shouldBe
+-            listOf("C→A 33150", "D→A 19150", "E→A 1550", "E→B 8850")
++        result.transfersByName(ps) shouldBe listOf(
++            "B→A 19150", "C→A 19150", "D→A 19150", "E→A 10400",
++            "A→B 14000", "C→B 14000",
++        )
+     }
+ 
+-    "T6 · unit=100 — 단위가 커질수록 대표결제자의 이득이 커진다" {
++    "T6 · 동일 총무의 차수는 원부담을 합친 뒤 한 번만 1원 올림한다" {
+         val ps = participants("A", "B", "C")
+         val result = SettlementInput(
+             participants = ps,
+-            rounds = listOf(round(1L, 1, total = 10_000, alcohol = 0, payerId = ps.id("A"))),
+-            attendance = ps.attendance { sober(1L, "A", "B", "C") },
+-            roundingUnit = 100,
++            rounds = listOf(
++                round(1L, 1, total = 10_000, alcohol = 0, payerId = ps.id("A")),
++                round(2L, 2, total = 20_000, alcohol = 0, payerId = ps.id("A")),
++            ),
++            attendance = ps.attendance {
++                sober(1L, "A", "B", "C")
++                sober(2L, "A", "B", "C")
++            },
+         ).succeed()
+ 
+-        result.amountsByName(ps) shouldBe mapOf("A" to 3_200L, "B" to 3_400L, "C" to 3_400L)
+-        result.appliedRoundingUnit shouldBe 100
+-        result.roundingUnitDowngraded shouldBe false
++        result.amountsByName(ps) shouldBe mapOf("A" to 10_000L, "B" to 10_000L, "C" to 10_000L)
++        result.transfersByName(ps) shouldBe listOf("B→A 10000", "C→A 10000")
+     }
+ 
+-    "T7 · unit=1000은 거부된다 — 대표결제자를 음수로 만들기 때문이다" {
+-        val ps = participants("A", "B", "C", "D")
++    "T7 · 1원 단위에서도 잔액 조정자가 음수면 거부한다" {
++        val ps = participants("A", "B", "C")
+         val errors = SettlementInput(
+             participants = ps,
+-            rounds = listOf(round(1L, 1, total = 4_100, alcohol = 0, payerId = ps.id("A"))),
+-            attendance = ps.attendance { sober(1L, "A", "B", "C", "D") },
+-            roundingUnit = 1_000,
++            rounds = listOf(round(1L, 1, total = 1, alcohol = 0, payerId = ps.id("A"))),
++            attendance = ps.attendance { sober(1L, "A", "B", "C") },
+         ).fail()
+ 
+-        errors.codes() shouldBe setOf(ErrorCode.INVALID_ROUNDING_UNIT)
++        errors.codes() shouldBe setOf(ErrorCode.NEGATIVE_ADJUSTED_AMOUNT)
+     }
+ 
+-    "T7-b · unit=100에서 대표결제자가 음수가 되면 10원으로 강등해 재계산한다" {
+-        // 15명 / 총액 15,100원 → 1인당 1,006.67원.
+-        // unit=100이면 14명이 1,100원씩 = 15,400원이라 대표결제자가 −300원이 된다.
+-        val names = (0 until 15).map { "p%02d".format(it) }
+-        val ps = participants(*names.toTypedArray())
++    "T7-b · 면제 총무면 비면제 부담자 중 한 명이 잔액을 조정한다" {
++        val ps = participants("A", "B", "C", "D")
+         val result = SettlementInput(
+             participants = ps,
+-            rounds = listOf(round(1L, 1, total = 15_100, alcohol = 0, payerId = ps.id("p00"))),
+-            attendance = ps.attendance { sober(1L, *names.toTypedArray()) },
+-            roundingUnit = 100,
++            rounds = listOf(round(1L, 1, total = 40_000, alcohol = 0, payerId = ps.id("D"))),
++            attendance = ps.attendance {
++                sober(1L, "A", "B", "C")
++                exempt(1L, "D")
++            },
+         ).succeed()
+ 
+-        result.roundingUnitDowngraded shouldBe true
+-        result.appliedRoundingUnit shouldBe 10
+-        result.amounts.values.all { it >= 0 } shouldBe true
+-        result.amounts.values.sum() shouldBe 15_100L
+-        result.amountsByName(ps)["p00"] shouldBe 960L    // 15,100 − (14 × 1,010)
++        result.amountsByName(ps) shouldBe mapOf(
++            "A" to 13_332L, "B" to 13_334L, "C" to 13_334L, "D" to 0L,
++        )
++        result.recipients.getValue(ps.id("D")).adjustmentParticipantId shouldBe ps.id("A")
++        result.transfersByName(ps) shouldBe
++            listOf("A→D 13332", "B→D 13334", "C→D 13334")
+     }
+ 
+     "T8 · 면제자 — 면제자의 몫을 나머지가 나눠 낸다" {
+         val ps = participants("동규", "민지", "재훈", "수아")
+-            .map { if (it.name == "수아") it.exempted() else it }
+         val result = SettlementInput(
+             participants = ps,
+             rounds = listOf(round(1L, 1, total = 40_000, alcohol = 0, payerId = ps.id("동규"))),
+-            attendance = ps.attendance { sober(1L, "동규", "민지", "재훈", "수아") },
++            attendance = ps.attendance {
++                sober(1L, "동규", "민지", "재훈")
++                exempt(1L, "수아")
++            },
+         ).succeed()
+ 
+-        result.mainPayerName(ps) shouldBe "동규"
+         result.amountsByName(ps) shouldBe mapOf(
+-            "동규" to 13_320L, "민지" to 13_340L, "재훈" to 13_340L, "수아" to 0L,
++            "동규" to 13_332L, "민지" to 13_334L, "재훈" to 13_334L, "수아" to 0L,
+         )
+         result.amounts.values.sum() shouldBe 40_000L
+-        result.transfersByName(ps) shouldBe listOf("민지→동규 13340", "재훈→동규 13340")
++        result.transfersByName(ps) shouldBe listOf("민지→동규 13334", "재훈→동규 13334")
+     }
+ 
+-    "T9 · 기타 항목 — 항목 결제자가 순잔액에 반영된다" {
+-        val ps = participants("동규", "민지", "재훈", "수아")
++    "T9 · 수취인별 원금은 자기 부담과 들어오는 송금의 합과 같다" {
++        val ps = participants("A", "B", "C", "D")
+         val result = SettlementInput(
+             participants = ps,
+-            rounds = listOf(round(1L, 1, total = 40_000, alcohol = 0, payerId = ps.id("동규"))),
+-            attendance = ps.attendance { sober(1L, "동규", "민지", "재훈", "수아") },
+-            extras = listOf(
+-                ExtraItem(101L, "택시비", 18_000, payerId = ps.id("재훈"),
+-                    bearerIds = listOf(ps.id("재훈"), ps.id("수아"))),
++            rounds = listOf(
++                round(1L, 1, total = 40_000, alcohol = 0, payerId = ps.id("A")),
++                round(2L, 2, total = 30_000, alcohol = 0, payerId = ps.id("B")),
+             ),
++            attendance = ps.attendance {
++                sober(1L, "A", "B", "C", "D")
++                sober(2L, "A", "B", "D")
++                absent(2L, "C")
++            },
+         ).succeed()
+ 
+-        result.amountsByName(ps) shouldBe mapOf(
+-            "동규" to 10_000L, "민지" to 10_000L, "재훈" to 19_000L, "수아" to 19_000L,
+-        )
+-        result.amounts.values.sum() shouldBe 58_000L
+-        // 재훈은 19,000을 부담하지만 택시비 18,000을 이미 냈으므로 1,000만 보낸다.
+-        result.transfersByName(ps) shouldBe
+-            listOf("수아→동규 19000", "민지→동규 10000", "재훈→동규 1000")
++        result.recipients.values.forEach {
++            it.ownShare + it.incomingTotal shouldBe it.paidTotal
++            it.participantAmounts.values.sum() shouldBe it.paidTotal
++        }
+     }
+ 
+     "T10 · 술병 계산 — DrinkItem이 alcoholAmount를 덮어쓴다" {
+@@ -204,14 +210,13 @@ class SettlementSpec : StringSpec({
+         ).succeed()
+ 
+         result.amountsByName(ps) shouldBe mapOf(
+-            "동규" to 26_320L, "민지" to 26_340L, "재훈" to 26_340L, "수아" to 12_000L,
++            "동규" to 26_332L, "민지" to 26_334L, "재훈" to 26_334L, "수아" to 12_000L,
+         )
+         result.amounts.values.sum() shouldBe 91_000L
+     }
+ 
+-    "T11 · 전체 통합 — 면제 + 기타 항목 + 다중 결제자" {
++    "T11 · 전체 통합 — 차수별 면제 + 다중 총무" {
+         val ps = participants("동규", "민지", "재훈", "수아", "지원")
+-            .map { if (it.name == "지원") it.exempted() else it }
+         val result = SettlementInput(
+             participants = ps,
+             rounds = listOf(
+@@ -220,47 +225,41 @@ class SettlementSpec : StringSpec({
+             ),
+             attendance = ps.attendance {
+                 drank(1L, "동규", "민지", "재훈", "수아")
+-                sober(1L, "지원")
++                exempt(1L, "지원")
+                 drank(2L, "동규", "민지", "재훈")
+                 absent(2L, "수아", "지원")
+             },
+-            extras = listOf(
+-                ExtraItem(101L, "택시비", 20_000, payerId = ps.id("민지"),
+-                    bearerIds = listOf(ps.id("수아"), ps.id("지원"))),
+-            ),
+         ).succeed()
+ 
+         result.amountsByName(ps) shouldBe mapOf(
+             "동규" to 35_750L, "민지" to 35_750L, "재훈" to 35_750L,
+-            "수아" to 41_750L, "지원" to 0L,
++            "수아" to 21_750L, "지원" to 0L,
+         )
+-        result.amounts.values.sum() shouldBe 149_000L
+-        result.transfersByName(ps) shouldBe
+-            listOf("수아→동규 41750", "재훈→동규 9500", "재훈→민지 26250")
++        result.amounts.values.sum() shouldBe 129_000L
+     }
+ 
+-    "면제자가 결제하면 전액 돌려받는다 — CALC_RULES §2.1-c" {
++    "면제 총무가 결제하면 전액 돌려받는다 — CALC_RULES_V2 §3.4" {
+         // 명세에 있는 규칙인데 T8·T11 어디에도 면제자가 결제자인 케이스가 없었다.
+         // 코드 리뷰 F3에서 찾은 공백을 메우는 테스트다.
+         val ps = participants("동규", "민지", "재훈", "수아")
+-            .map { if (it.name == "수아") it.exempted() else it }
+         val result = SettlementInput(
+             participants = ps,
+             // 면제자인 수아가 결제한다
+             rounds = listOf(round(1L, 1, total = 40_000, alcohol = 0, payerId = ps.id("수아"))),
+-            attendance = ps.attendance { sober(1L, "동규", "민지", "재훈", "수아") },
++            attendance = ps.attendance {
++                sober(1L, "동규", "민지", "재훈")
++                exempt(1L, "수아")
++            },
+         ).succeed()
+ 
+         result.amountsByName(ps)["수아"] shouldBe 0L                        // 부담 0
+         result.breakdown.getValue(ps.id("수아")).paidTotal shouldBe 40_000L  // 결제 40,000
+         result.amounts.values.sum() shouldBe 40_000L
++        result.breakdown.getValue(ps.id("수아")).rounds.single().exempt shouldBe true
+         // 수아는 부담 0에 결제 40,000이므로 전액 회수한다.
+-        // 채무자는 금액 내림차순이라 13,340인 민지·재훈이 먼저, 대표결제자 동규(13,320)가 마지막이다.
++        // 총무가 면제이므로 비면제 부담자 중 id가 가장 작은 동규가 잔액을 조정한다.
+         result.transfersByName(ps) shouldBe
+-            listOf("민지→수아 13340", "재훈→수아 13340", "동규→수아 13320")
+-        // 대표결제자는 면제자를 제외한 사람 중에서 뽑힌다. 수아가 40,000을 결제했지만
+-        // 면제자이므로 후보가 아니고, 나머지는 결제 0으로 동률이라 id가 가장 작은 동규가 된다.
+-        result.mainPayerName(ps) shouldBe "동규"
++            listOf("동규→수아 13332", "민지→수아 13334", "재훈→수아 13334")
+     }
+ 
+     "breakdown은 불참 차수도 0원으로 채워진다 — W2가 '2차 불참 → 0원'을 보여줘야 한다" {
+diff --git a/core/src/test/kotlin/app/jeongsan/core/TestFixtures.kt b/core/src/test/kotlin/app/jeongsan/core/TestFixtures.kt
+index a4e6fe77545fd41ab540516d73f164a0cf03a0f4..7d34e2d5244104191bd4ce8962e7e840e8cb3ae2 100644
+--- a/core/src/test/kotlin/app/jeongsan/core/TestFixtures.kt
++++ b/core/src/test/kotlin/app/jeongsan/core/TestFixtures.kt
+@@ -13,8 +13,6 @@ package app.jeongsan.core
+ fun participants(vararg names: String): List<Participant> =
+     names.mapIndexed { i, name -> Participant(id = (i + 1).toLong(), name = name) }
+ 
+-fun Participant.exempted(): Participant = copy(exempt = true)
+-
+ /** 이름으로 id를 찾는다. 픽스처 밖에서는 쓰지 않는다. */
+ fun List<Participant>.id(name: String): Long =
+     first { it.name == name }.id
+@@ -36,6 +34,7 @@ class AttendanceBuilder(private val ps: List<Participant>) {
+ 
+     fun drank(roundId: Long, vararg names: String) = mark(roundId, Attendance.DRANK, names)
+     fun sober(roundId: Long, vararg names: String) = mark(roundId, Attendance.SOBER, names)
++    fun exempt(roundId: Long, vararg names: String) = mark(roundId, Attendance.EXEMPT, names)
+     fun absent(roundId: Long, vararg names: String) = mark(roundId, Attendance.ABSENT, names)
+ 
+     private fun mark(roundId: Long, value: Attendance, names: Array<out String>) = apply {
+@@ -69,8 +68,6 @@ fun List<ValidationError>.codes(): Set<ErrorCode> = map { it.code }.toSet()
+ fun SettlementResult.amountsByName(ps: List<Participant>): Map<String, Long> =
+     ps.associate { it.name to amounts.getValue(it.id) }
+ 
+-fun SettlementResult.mainPayerName(ps: List<Participant>): String = ps.name(mainPayerId)
+-
+ /** `"B→A 3340"` 형태. 순서까지 검증하려면 리스트를 그대로 비교한다. */
+ fun SettlementResult.transfersByName(ps: List<Participant>): List<String> =
+     transfers.map { "${ps.name(it.fromId)}→${ps.name(it.toId)} ${it.amount}" }
+diff --git a/core/src/test/kotlin/app/jeongsan/core/ValidationSpec.kt b/core/src/test/kotlin/app/jeongsan/core/ValidationSpec.kt
+index 85e9f8be0d75019d6cc3927a8e5447fb6ef45642..8fc59202d9324afa9102674040c3bd3c8641e6ac 100644
+--- a/core/src/test/kotlin/app/jeongsan/core/ValidationSpec.kt
++++ b/core/src/test/kotlin/app/jeongsan/core/ValidationSpec.kt
+@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.StringSpec
+ import io.kotest.matchers.collections.shouldContain
+ import io.kotest.matchers.shouldBe
+ 
+-/** `CALC_RULES.md` §4 — 검증 시점이 둘로 나뉜다. */
++/** `CALC_RULES_V2.md` §5 — 검증 시점이 둘로 나뉜다. */
+ class ValidationSpec : StringSpec({
+ 
+     val base = participants("A", "B", "C", "D")
+@@ -13,10 +13,8 @@ class ValidationSpec : StringSpec({
+         ps: List<Participant> = base,
+         rounds: List<Round> = listOf(round(1L, 1, 40_000, 0, ps.id("A"))),
+         att: Map<AttendanceKey, Attendance> = ps.attendance { sober(1L, "A", "B", "C", "D") },
+-        extras: List<ExtraItem> = emptyList(),
+         drinkItems: List<DrinkItem> = emptyList(),
+-        unit: Int = 10,
+-    ) = SettlementInput(ps, rounds, att, drinkItems, extras, unit)
++    ) = SettlementInput(ps, rounds, att, drinkItems)
+ 
+     // ── 저장 시점에도 확정 시점에도 걸리는 형식 검증
+ 
+@@ -41,14 +39,28 @@ class ValidationSpec : StringSpec({
+         errors.codes() shouldContain ErrorCode.AMOUNT_TOO_LARGE
+     }
+ 
++    "전체 총액 합산이 Long 범위를 넘어도 예외 대신 검증 오류를 반환한다" {
++        val rounds = listOf(
++            round(1L, 1, Long.MAX_VALUE, 0, base.id("A")),
++            round(2L, 2, Long.MAX_VALUE, 0, base.id("A")),
++        )
++        val attendance = base.attendance {
++            sober(1L, "A", "B", "C", "D")
++            sober(2L, "A", "B", "C", "D")
++        }
++
++        input(rounds = rounds, att = attendance).fail()
++            .codes() shouldContain ErrorCode.AMOUNT_TOO_LARGE
++    }
++
+     "결제자가 참여자 목록에 없으면 거부한다" {
+         input(rounds = listOf(round(1L, 1, 40_000, 0, payerId = 999L))).fail()
+             .codes() shouldContain ErrorCode.PAYER_NOT_FOUND
+     }
+ 
+-    "기타 항목의 부담자가 참여자 목록에 없으면 거부한다" {
+-        input(extras = listOf(ExtraItem(101L, "택시비", 10_000, base.id("A"), listOf(base.id("A"), 999L))))
+-            .fail().codes() shouldContain ErrorCode.BEARER_NOT_FOUND
++    "술 항목이 존재하지 않는 차수를 참조하면 거부한다" {
++        input(drinkItems = listOf(DrinkItem(999L, "소주", 1, 5_000)))
++            .fail().codes() shouldContain ErrorCode.DRINK_ITEM_ROUND_NOT_FOUND
+     }
+ 
+     "술병의 병 수나 단가가 0 이하면 거부한다" {
+@@ -56,18 +68,18 @@ class ValidationSpec : StringSpec({
+             .fail().codes() shouldContain ErrorCode.INVALID_DRINK_ITEM
+     }
+ 
+-    "반올림 단위가 10·100이 아니면 거부한다" {
+-        input(unit = 1_000).fail().codes() shouldContain ErrorCode.INVALID_ROUNDING_UNIT
+-        input(unit = 1).fail().codes() shouldContain ErrorCode.INVALID_ROUNDING_UNIT
++    "술병 금액이 Long 범위를 넘어도 예외 대신 검증 오류를 반환한다" {
++        input(
++            drinkItems = listOf(
++                DrinkItem(1L, "소주", bottleCount = Int.MAX_VALUE, unitPrice = Long.MAX_VALUE),
++            ),
++        ).fail().codes() shouldContain ErrorCode.AMOUNT_TOO_LARGE
+     }
+ 
+-    "불참인데 음주면 거부한다 — 예외가 아니라 검증 오류다" {
+-        val errors = input(
+-            att = base.attendance { sober(1L, "A", "B", "C") } +
+-                mapOf(AttendanceKey(base.id("D"), 1L) to Attendance(attended = false, drank = true)),
+-        ).fail()
+-        errors.codes() shouldContain ErrorCode.DRANK_WITHOUT_ATTEND
+-        errors.first { it.code == ErrorCode.DRANK_WITHOUT_ATTEND }.participantId shouldBe base.id("D")
++    "참여 응답이 존재하지 않는 사용자를 참조하면 거부한다" {
++        val errors = input(att = base.attendance { sober(1L, "A", "B", "C", "D") } +
++            mapOf(AttendanceKey(999L, 1L) to Attendance.SOBER)).fail()
++        errors.codes() shouldContain ErrorCode.ATTENDANCE_REFERENCE_NOT_FOUND
+     }
+ 
+     // ── 중복 id (코드 리뷰 F1)
+@@ -97,17 +109,6 @@ class ValidationSpec : StringSpec({
+         errors.first { it.code == ErrorCode.DUPLICATE_ID }.roundId shouldBe 1L
+     }
+ 
+-    "기타 항목 id 중복을 거부한다" {
+-        val errors = input(
+-            extras = listOf(
+-                ExtraItem(101L, "택시비", 10_000, base.id("A"), listOf(base.id("A"))),
+-                ExtraItem(101L, "대리비", 20_000, base.id("A"), listOf(base.id("A"))),
+-            ),
+-        ).fail()
+-        errors.codes() shouldContain ErrorCode.DUPLICATE_ID
+-        errors.first { it.code == ErrorCode.DUPLICATE_ID }.extraId shouldBe 101L
+-    }
+-
+     "차수 순번(seq) 중복을 거부한다 — 근거 화면의 차수 순서가 흔들린다" {
+         val errors = input(
+             rounds = listOf(
+@@ -132,13 +133,13 @@ class ValidationSpec : StringSpec({
+             .codes() shouldContain ErrorCode.NO_ATTENDEE
+     }
+ 
+-    "참석자가 전원 면제자면 거부한다" {
+-        val ps = participants("A", "B", "C").map { if (it.name == "C") it else it.exempted() }
++    "참석자가 차수에서 전원 면제면 거부한다" {
++        val ps = participants("A", "B", "C")
+         input(
+             ps = ps,
+             rounds = listOf(round(1L, 1, 40_000, 0, ps.id("A"))),
+-            att = ps.attendance { sober(1L, "A", "B"); absent(1L, "C") },
+-        ).fail().codes() shouldContain ErrorCode.NO_NON_EXEMPT_ATTENDEE
++            att = ps.attendance { exempt(1L, "A", "B", "C") },
++        ).fail().codes() shouldContain ErrorCode.NO_ATTENDEE
+     }
+ 
+     "술값이 있는데 음주자가 0명이면 거부한다 — 안내 문구를 담는다" {
+@@ -149,23 +150,10 @@ class ValidationSpec : StringSpec({
+         e.message.contains("술값을 0으로 하거나") shouldBe true
+     }
+ 
+-    "기타 항목의 부담자가 전원 면제자면 거부한다" {
+-        val ps = participants("A", "B", "C", "D").map { if (it.name == "D") it.exempted() else it }
+-        input(
+-            ps = ps,
+-            rounds = listOf(round(1L, 1, 40_000, 0, ps.id("A"))),
+-            att = ps.attendance { sober(1L, "A", "B", "C", "D") },
+-            extras = listOf(ExtraItem(101L, "택시비", 10_000, ps.id("A"), listOf(ps.id("D")))),
+-        ).fail().codes() shouldContain ErrorCode.NO_NON_EXEMPT_BEARER
+-    }
+-
+-    "참여자 전원이 면제면 거부한다" {
+-        val ps = participants("A", "B").map { it.exempted() }
+-        input(
+-            ps = ps,
+-            rounds = listOf(round(1L, 1, 40_000, 0, ps.id("A"))),
+-            att = ps.attendance { sober(1L, "A", "B") },
+-        ).fail().codes() shouldContain ErrorCode.ALL_EXEMPT
++    "확정 시 모든 참여자의 명시적 응답이 필요하다" {
++        val errors = input(att = base.attendance { sober(1L, "A", "B", "C") }).fail()
++        errors.codes() shouldContain ErrorCode.MISSING_ATTENDANCE
++        errors.first { it.code == ErrorCode.MISSING_ATTENDANCE }.participantId shouldBe base.id("D")
+     }
+ 
+     // ── 시점 구분

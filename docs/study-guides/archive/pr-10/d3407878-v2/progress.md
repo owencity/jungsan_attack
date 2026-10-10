@@ -1,0 +1,22 @@
+# PR #10 학습 기록
+
+상태: UNRECORDED — 사용자의 학습 완료 여부를 추정하지 않는다.
+
+- [ ] KB-08 코틀린에서 함수를 다루는 방법 (Kotlin 기본 / 섹션 3. 코틀린에서 코드를 제어하는 방법 / 8강) → User.toMeResponse (server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt:13)
+- [ ] KB-14 코틀린에서 다양한 클래스를 다루는 방법 (Kotlin 기본 / 섹션 4. 코틀린에서의 OOP / 14강) → MeResponse (server/src/main/kotlin/app/jeongsan/server/user/UserDto.kt:5)
+- [ ] KB-07 코틀린에서 예외를 다루는 방법 (Kotlin 기본 / 섹션 3. 코틀린에서 코드를 제어하는 방법 / 7강) → UserService.registerDisplayName (server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:26)
+- [ ] KA-20 코틀린의 어노테이션 (Kotlin 고급 / 섹션 6. 어노테이션과 리플렉션 / 20강) → UserController.registerDisplayName (server/src/main/kotlin/app/jeongsan/server/user/UserController.kt:14)
+- [ ] KA-21 코틀린의 리플렉션 (Kotlin 고급 / 섹션 6. 어노테이션과 리플렉션 / 21강) → AuthenticationGuardSpec (server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt:26)
+- [ ] JPQL 조건부 UPDATE — IS NULL·동시 최초 등록 → UserRepository.registerDisplayName (server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:14)
+- [ ] Spring Data JPA @Modifying — flushAutomatically·clearAutomatically → UserRepository.registerDisplayName (server/src/main/kotlin/app/jeongsan/server/user/UserRepository.kt:13)
+- [ ] JDK String.codePointCount — UTF-16 코드 단위와 유니코드 코드포인트 → UserService.registerDisplayName (server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:18)
+- [ ] Spring @Transactional — 조건부 갱신·재조회·예외 롤백 경계 → UserService.registerDisplayName (server/src/main/kotlin/app/jeongsan/server/user/UserService.kt:14)
+- [ ] JPA @Column(updatable=false) — 일반 save와 전용 UPDATE 경로 → User.displayName (server/src/main/kotlin/app/jeongsan/server/user/User.kt:30)
+- [ ] @LoginUser와 소유자 조회 — 인증 사용자 id의 목록 필터 → GatheringController.list (server/src/main/kotlin/app/jeongsan/server/gathering/GatheringController.kt:24)
+- [ ] Liquibase addColumn·include — 전역 changeSet id와 실명 컬럼 → Liquibase 023-add-user-display-name (server/src/main/resources/db/changelog/015-user-display-name.yaml:13)
+
+## 메모
+
+- diff에서 확인한 점:
+- 다시 볼 점:
+- 사용자가 기록한 학습 날짜:
