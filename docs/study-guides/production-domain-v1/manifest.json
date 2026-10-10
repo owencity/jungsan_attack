@@ -1,5 +1,5 @@
 {
-  "pr_url": null,
+  "pr_url": "https://github.com/owencity/jungsan_attack/pull/28",
   "base": "ceb2ef335b01b913d7ffdbcd5531f6b153bf8a3c",
   "source_head": "b659f4a47dd0c3fca55c4b083bc29216dd75a18b",
   "catalog_revision": "ceb2ef335b01b913d7ffdbcd5531f6b153bf8a3c",
@@ -37,7 +37,7 @@
     "before/scripts/cloudflare-dns.py": "90d04ccdcb3350c2ba8dd994542a83f6c0e1e0ee15f11eca4d933fcf521026fb",
     "before/scripts/verify-cloudflare-dns.py": "ce4144df5a05cb551c104a2cb9b172ac07896f5e401e1f1ddfdb63553617f2e7",
     "changes.patch": "789d264e3094494cc63bb0c7a7af2a9366f43c18de3d39d7471b86489e7f9536",
-    "guide.md": "d946ba8cb41fc6610738acc233af8aa623cb44278a78cf7b7c69fd555b216fb0",
+    "guide.md": "12b793375ce337b4013e9f213681d05d68cbe035e32e6b249f5a89620d469b54",
     "STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
     "STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
     "topics.json": "f7782c748c82d29278ce1aac3ea3798edb7d34c49c5e0ef48f68a78d2dfe3000"

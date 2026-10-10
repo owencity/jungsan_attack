@@ -3,7 +3,7 @@
 현재 출시 통합 기준은 [PR #27](https://github.com/owencity/jungsan_attack/pull/27)이다.
 아래 전체 조사 표는 2026-10-10 병합 전 스냅샷이며 이후 상태와 구분한다.
 실제 리뷰 댓글과 재검토 결과는 [출시 리뷰 기록](../pr-reviews/2026-10-10-release/README.md)에 보존한다.
-최신 운영 호스트 정정은 [고정 가이드](production-domain-v1/guide.md) · [diff](production-domain-v1/changes.patch) · [진도](progress/production-domain.md) · [리뷰](../pr-reviews/2026-10-10-production-domain/README.md)를 본다.
+최신 운영 호스트 정정 [PR #28](https://github.com/owencity/jungsan_attack/pull/28)은 [고정 가이드](production-domain-v1/guide.md) · [diff](production-domain-v1/changes.patch) · [진도](progress/production-domain.md) · [리뷰](../pr-reviews/2026-10-10-production-domain/README.md)를 본다.
 과거 추가 운영 DNS 구현은 [고정 가이드](release-dns-v1/guide.md) · [진도](progress/release-dns.md)를 본다.
 
 개발 완료 → PR → 자동 리뷰/스터디 생성 → 사람이 나중에 diff를 읽고 학습하는 흐름이다.

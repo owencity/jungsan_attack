@@ -1,7 +1,7 @@
-# 정산어택 운영 호스트 분리 — 고정 스터디 가이드
+# 정산어택 운영 호스트 분리 — PR #28 고정 스터디 가이드
 
 기준 diff `ceb2ef335b01b913d7ffdbcd5531f6b153bf8a3c` → `b659f4a47dd0c3fca55c4b083bc29216dd75a18b`. 목차·정책은 작업 당시 최신 `origin/main`인 `ceb2ef335b01b913d7ffdbcd5531f6b153bf8a3c`의 실제 파일을 읽고 복사했다.
-[고정 diff](changes.patch)에서 각 변경을 먼저 체크하고, [before](before/)와 [after](after/)의 동일 파일을 비교한다.
+[PR diff](https://github.com/owencity/jungsan_attack/pull/28/files) · [고정 diff](changes.patch)에서 각 변경을 먼저 체크하고, [before](before/)와 [after](after/)의 동일 파일을 비교한다.
 이번 변경은 Python·운영 설정이며 Java/Kotlin 구현을 새로 추가하지 않았다. 기존 언어 가이드와 리뷰 기록은 덮어쓰지 않는다.
 
 ## Java 기본기

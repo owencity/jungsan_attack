@@ -3,7 +3,9 @@
   "source_head": "b659f4a47dd0c3fca55c4b083bc29216dd75a18b",
   "review_kind": "implementer_self_review",
   "hashes": {
-    "README.md": "58b18b05908a816392b3eb664de1228cdb7b6588c056b09819019bbc4b624a7f",
+    "github-comments.json": "5be22ccf2e927d39654c9dcefc7d505f263e8f02e0b782314d44094e890ba43f",
+    "README.md": "406f53eab1b66de139f8214a66be019d75c560c9c38f7213165bc2dd9430c05a",
     "self-review.md": "3d48d78315733586caac3683bb9310d1cbb54f122e6843add3cd91521fdb2d14"
-  }
+  },
+  "pr_url": "https://github.com/owencity/jungsan_attack/pull/28"
 }
