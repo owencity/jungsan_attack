@@ -59,5 +59,6 @@ jobs:
             server/build/test-results/test/
             server/build/reports/tests/test/
             server/build/release-http.log
+            server/build/release-prod-http.log
           if-no-files-found: ignore
           retention-days: 14

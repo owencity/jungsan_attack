@@ -8,8 +8,9 @@
 
 spring:
   datasource:
-    # 호스트가 'mysql' 인 이유 — 같은 compose 네트워크 안의 서비스명이다.
-    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+    # 호스트가 'mysql' 인 이유 — 외부 포트 없는 같은 compose 네트워크의 서비스명이다.
+    # MySQL 8.4 최초 인증에서 RSA 공개키 교환이 필요하다. 외부 DB로 옮기면 TLS/서버 신원 검증을 먼저 설정한다.
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?allowPublicKeyRetrieval=true&useSSL=false&characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver

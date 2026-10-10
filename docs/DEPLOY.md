@@ -2,6 +2,15 @@
 
 `ADR-006`(단일 VM + docker compose)을 따른다. K8s·ArgoCD·Jenkins를 쓰지 않는다.
 
+**운영 DB 최초 인증 (2026-10-10):** MySQL 8.4의 인증 캐시가 비어 있을 때도 연결되도록
+`application-prod.yml`의 JDBC URL에 `allowPublicKeyRetrieval=true`를 명시한다. 현재 MySQL은
+외부 포트를 열지 않는 단일 VM compose 내부 서비스다. 이 설정은 서버 신원 검증을 대신하지 않으므로
+DB를 외부·공유 네트워크로 옮기기 전 TLS와 인증서 검증을 갖춘다.
+[Connector/J 보안 설정](https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-security.html)과
+[MySQL 8.4 인증 규칙](https://dev.mysql.com/doc/refman/8.4/en/caching-sha2-pluggable-authentication.html)을 참고했다.
+CI는 `FLUSH PRIVILEGES` 뒤 실제 prod 프로필을 띄워 처음부터 검증한다. 보존하는 prod 로그는 CI의
+가짜 설정으로 기동한 서버 로그이며 OCI 운영 로그·실제 키는 업로드하지 않는다.
+
 ```
 GitHub Actions (ARM 러너)                  OCI Ubuntu
   ┌────────────────────────┐   SSH/SCP    ┌──────────────────────────┐
