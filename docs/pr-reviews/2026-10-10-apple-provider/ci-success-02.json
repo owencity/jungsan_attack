@@ -1,0 +1,20 @@
+{
+  "run_id": 38034678063,
+  "head": "9004ad819656b19e91956f6d8cc159d8997ee529",
+  "url": "https://github.com/owencity/jungsan_attack/actions/runs/38034678063",
+  "conclusion": "success",
+  "verified_steps": [
+    "Core 테스트",
+    "Server 테스트와 jar 빌드",
+    "실제 MySQL·HTTP 동시성 및 배포 복원 검증",
+    "운영 DNS 범위·재시도 검증",
+    "테스트 결과 보존"
+  ],
+  "checks_include": [
+    "인증 캐시를 비운 실제 prod 기동",
+    "Apple WEB/APP 503",
+    "카카오 인가·쿠키",
+    "익명 인증 가드"
+  ],
+  "credentials": "CI 가짜 값만 사용, 실제 제공자 로그인 성공은 검증 범위 밖"
+}
