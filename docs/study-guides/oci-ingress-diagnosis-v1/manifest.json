@@ -1,0 +1,18 @@
+{
+  "source_base": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "source_head": "2d0d8348906cbca1638e65f21c6a47d2e98c160c",
+  "policy_catalog_commit": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "source_files": [
+    "docs/learning-notes/spring-exception-handler-basics.md",
+    "docs/operations/2026-10-11-caddy-readiness.md"
+  ],
+  "hashes": {
+    "changes.patch": "5ec6cbfe74218799ffad3d28601dfd8bbaa5a1014753e222be9620376551aa67",
+    "guide.md": "bb2733b50d906b0bf35fc4bc766424161f2ec4e5d18b4ad92f264f920311f760",
+    "STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+    "STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+    "topics.json": "a562e14b0d8ad3db6aaa666acc2d0911fd9f7f9ee44b3cdc726784a26a86342b",
+    "after/docs/learning-notes/spring-exception-handler-basics.md": "5996350f6443c33f0e8c83c34d400d76a46270b93d0eb88b8b5e5a1cb157c6eb",
+    "after/docs/operations/2026-10-11-caddy-readiness.md": "8bd68b811588070b91667145d42f71c7643f3c562bc490d7a3cbc70ea1705d68"
+  }
+}
