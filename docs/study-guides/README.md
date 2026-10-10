@@ -1,5 +1,10 @@
 # PR 리뷰·스터디 기록
 
+현재 출시 통합 기준은 [PR #27](https://github.com/owencity/jungsan_attack/pull/27)이다.
+아래 전체 조사 표는 2026-10-10 병합 전 스냅샷이며 이후 상태와 구분한다.
+실제 리뷰 댓글과 재검토 결과는 [출시 리뷰 기록](../pr-reviews/2026-10-10-release/README.md)에 보존한다.
+추가 운영 DNS 구현은 [고정 가이드](release-dns-v1/guide.md) · [진도](progress/release-dns.md)를 본다.
+
 개발 완료 → PR → 자동 리뷰/스터디 생성 → 사람이 나중에 diff를 읽고 학습하는 흐름이다.
 구현 완료와 PR 병합·리뷰 완료·학습 완료는 별도로 기록한다. 과거 가이드는 새 main 코드로 덮어쓰지 않는다.
 

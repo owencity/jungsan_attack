@@ -4,6 +4,11 @@
 기존 PR의 리뷰·고정 학습 자료는 삭제하지 않는다. PR #26은 백엔드 전체 학습 이력 인덱스다.
 새 출시 PR의 head를 기준으로 검증하며 과거 CI 성공을 새 커밋 성공으로 대신하지 않는다.
 
+CTO는 실제 `.env`를 OCI의 `~/jeongsan/.env`에 직접 넣는다. 필수 키 목록은 DEPLOY.md에 보존했다.
+DNS 전용 `CLOUDFLARE_API_TOKEN`은 GitHub Secret, 확인한 OCI Tunnel ID는 GitHub Variable로 준비한다.
+DNS 편집은 Tunnel의 원본 service 포트를 바꾸지 않으므로 18080 연결을 별도로 확인한다.
+실제 GitHub 리뷰 댓글 10개와 구현자 재검토는 [리뷰 기록](pr-reviews/2026-10-10-release/README.md)에 있다.
+
 ## 구현 및 로컬 검증
 
 - Core 54, Server 116: 실패·오류·테스트 건너뛰기 0. 서버 빌드와 인증 가드 포함.
@@ -12,6 +17,7 @@
 - 실제 DB 인증 probe 15건: state/티켓 만료·rollback, 한 번 교환, 계정 익명화, Apple 해제 실패 재시도. 외부 제공자는 가짜다.
 - 배포 분기 모의 6건: 다른 서비스 포트·다른 이미지 거절, 성공 SHA 기록, 새 앱 실패 시 이전 앱 이미지 복원, 잠금 실패 중단. 실제 OCI 배포 시험은 아니다.
 - actionlint 1.7.12: 두 workflow 오류 0. 배포·CI 셸 문법 검사 통과.
+- 추가 DNS 가짜 API 7건, actionlint workflow 3개 통과. 실제 DNS 변경은 별도다.
 - `028`은 테스트 DB에 적용됐으며 이전 migration checksum을 수정하지 않았다. JVM Asia/Seoul에서 응답 UTC와 실제 시각을 비교했다.
 
 ## 운영 전 필수 확인
