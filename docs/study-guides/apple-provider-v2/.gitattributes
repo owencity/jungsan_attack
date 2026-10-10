@@ -1,0 +1,3 @@
+before/** -text -whitespace
+after/** -text -whitespace
+changes.patch -text -whitespace

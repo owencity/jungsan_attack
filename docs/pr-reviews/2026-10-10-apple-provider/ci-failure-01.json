@@ -1,0 +1,13 @@
+{
+  "run_id": 38034112570,
+  "head": "08b13a4a9c292499a4e781380af95f6c47aa7df9",
+  "url": "https://github.com/owencity/jungsan_attack/actions/runs/38034112570",
+  "conclusion": "failure",
+  "successful_steps": [
+    "Core 테스트",
+    "Server 테스트와 jar 빌드"
+  ],
+  "failed_step": "실제 MySQL·HTTP 동시성 및 배포 복원 검증",
+  "exception": "java.sql.SQLNonTransientConnectionException: Public Key Retrieval is not allowed",
+  "prod_start_failure": true
+}

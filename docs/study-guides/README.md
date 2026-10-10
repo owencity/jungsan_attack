@@ -1,5 +1,9 @@
 # PR 리뷰·스터디 기록
 
+운영 DB 최초 인증 후속은 [v2 가이드](apple-provider-v2/guide.md) · [고정 diff](apple-provider-v2/changes.patch) · [진도](progress/apple-provider-v2.md)를 본다. 원본 Apple/언어 구현 학습은 v1에 남아 있다.
+
+최신 Apple 설정 발급 대기 변경은 [가이드](apple-provider-v1/guide.md) · [diff](apple-provider-v1/changes.patch) · [리뷰](../pr-reviews/2026-10-10-apple-provider/README.md) · [진도](progress/apple-provider.md)를 본다.
+
 현재 출시 통합 기준은 [PR #27](https://github.com/owencity/jungsan_attack/pull/27)이다.
 아래 전체 조사 표는 2026-10-10 병합 전 스냅샷이며 이후 상태와 구분한다.
 실제 리뷰 댓글과 재검토 결과는 [출시 리뷰 기록](../pr-reviews/2026-10-10-release/README.md)에 보존한다.
