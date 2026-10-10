@@ -50,6 +50,25 @@ ssh ubuntu@<OCI_HOST> uname -m
 ### (c) 서버에 `.env` 만들기
 
 저장소에 두지 않는다(카카오 시크릿·DB 비밀번호). OCI 에서 직접 만든다.
+CTO가 `~/jeongsan/.env`의 실제 값을 입력한다(2026-10-10 결정). 에이전트는 값 대신 필요한 키와 검증 결과를 남긴다.
+
+| 필요한 키 | 용도·입력 기준 |
+|---|---|
+| `DB_PASSWORD` | 정산어택 전용 MySQL 비밀번호 |
+| `JWT_SECRET` | 새로 생성한 32자 이상 JWT 서명 비밀 |
+| `PAYOUT_ENCRYPTION_KEY` | 계좌용 독립 32바이트 키의 Base64 |
+| `AUTH_ENCRYPTION_KEY` | Apple 해제 작업용 독립 32바이트 키의 Base64 |
+| `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` | 카카오 운영 REST API 키·로그인 시크릿 |
+| `KAKAO_REDIRECT_URI` | `https://api.devkdk.com/api/v1/auth/kakao/callback` |
+| `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID` | 웹 Services ID·Developer Team ID·Sign in with Apple Key ID |
+| `APPLE_PRIVATE_KEY_BASE64` | 해당 Apple p8의 PEM 헤더/푸터를 제외한 Base64 본문 |
+| `APPLE_REDIRECT_URI` | `https://api.devkdk.com/api/v1/auth/apple/callback` |
+| `FRONTEND_ORIGIN` | `https://jungsan.devkdk.com` |
+| `LOGIN_SUCCESS_URL` | `https://jungsan.devkdk.com/jungsan` |
+
+`APP_IMAGE`는 배포 스크립트가 해당 main SHA로 지정하므로 CTO가 `.env`에 넣지 않는다.
+`DB_HOST/PORT/NAME/USER`와 `SPRING_PROFILES_ACTIVE`는 운영 compose에서 지정한다.
+Cloudflare·OCI SSH 키는 아래 GitHub 설정이며 앱 `.env`에 넣지 않는다.
 
 ```bash
 ssh ubuntu@<OCI_HOST>
@@ -138,7 +157,7 @@ API 복구·쿠키/CORS 확인 뒤 웹을 서버 모드로 전환한다.
 2. 운영 DB 백업과 적용 changeSet 현황, v1 CONFIRMED 자료 유무, 필수 환경변수·키 준비를 확인한다.
    아래 backend-v4 배포 조건을 함께 확인한다. 값과 키를 로그·PR에 출력하지 않는다.
 3. 위 카카오 Redirect URI, Apple Return URL, OCI 두 redirect 환경변수를 모두 같은 운영 호스트로 맞춘다.
-4. CTO가 필요한 PR을 병합한 뒤 해당 main 커밋의 **Deploy to OCI**를 확인한다.
+4. 최신 CI 전체 통과·리뷰/스터디 보존·미결 CTO 결정 없음 조건으로 승인된 PR을 병합한 뒤 해당 main 커밋의 **Deploy to OCI**를 확인한다.
    `feat/auth-release`의 Backend CI 성공만으로는 운영 서버에 배포되지 않는다.
    병합 전 브랜치의 직접 운영 배포는 현재 절차에 포함되지 않는다.
 5. 외부 `https://api.devkdk.com/actuator/health`에서 200·UP을 확인하고,
@@ -148,6 +167,26 @@ API 복구·쿠키/CORS 확인 뒤 웹을 서버 모드로 전환한다.
 
 FC-021은 문서 수정, 콘솔 저장, 운영 배포, 웹 재배포, 실제 로그인 시험을 각각 기록하고
 모두 확인한 뒤 닫는다. DNS 없는 Apple 콜백 주소를 문서에서 바꾼 것만으로 반영 완료 처리하지 않는다.
+
+### Cloudflare DNS 실행과 Tunnel 연결
+
+운영 API 도메인은 **`api.devkdk.com` 하나**다. Apple·카카오 콜백에도 이 주소를 사용한다.
+CTO는 GitHub Repository Secret `CLOUDFLARE_API_TOKEN`에 **devkdk.com DNS 편집 전용** 토큰을 넣는다.
+GitHub Repository Variable `CLOUDFLARE_TUNNEL_ID`는 확인한 OCI 기존 Tunnel UUID다.
+토큰에 Zone 조회 권한이 없으면 같은 화면의 Variable `CLOUDFLARE_ZONE_ID`에 devkdk.com Zone ID를 넣는다.
+Zone ID를 지정한 경로는 Zone 조회 권한을 요구하지 않는다. API 토큰 값은 저장소나 출력에 기록하지 않는다.
+
+main에 병합된 **Cloudflare API DNS** workflow를 명시적으로 실행한다. 이 작업은 `api.devkdk.com`의
+CNAME을 `<기존 Tunnel UUID>.cfargotunnel.com`으로 맞추고 proxied=true를 확인한다. 같은 값이면 변경하지 않는다.
+중복 레코드·다른 이름·A/AAAA 레코드는 임의 삭제/교체하지 않으며, 쓰기 뒤 레코드를 다시 조회한다.
+PR에서는 이 동작을 가짜 API로만 시험한다. 다른 도메인·n8n·웹 DNS는 수정하지 않는다.
+
+**DNS 편집 권한은 Tunnel 연결 포트를 편집하는 권한이 아니다.** 현재 OCI의 cloudflared는 원격 관리 방식이다.
+Cloudflare의 해당 Tunnel Public Hostname/Published application route에서 `api.devkdk.com`의 service를
+`http://127.0.0.1:18080`으로 지정해야 한다. 기존 n8n의 8080 연결은 유지한다.
+DNS 성공·OCI 앱 health·외부 API health·실제 계정 로그인은 각각 따로 기록한다.
+[Cloudflare DNS API](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/edit/)와
+[Tunnel 관리 방식](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/)을 참고한다.
 
 ## 배포
 

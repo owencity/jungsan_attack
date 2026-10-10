@@ -45,6 +45,9 @@ jobs:
       - name: 실제 MySQL·HTTP 동시성 및 배포 복원 검증
         run: bash scripts/verify-release.sh
 
+      - name: 운영 DNS 범위·재시도 검증
+        run: python3 scripts/verify-cloudflare-dns.py
+
       - name: 테스트 결과 보존
         if: always()
         uses: actions/upload-artifact@v4
