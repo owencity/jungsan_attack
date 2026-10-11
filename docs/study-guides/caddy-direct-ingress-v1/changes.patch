@@ -1,0 +1,969 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 5e8b18f..b4201a1 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -48,6 +48,17 @@ jobs:
+       - name: 운영 DNS 범위·재시도 검증
+         run: python3 scripts/verify-cloudflare-dns.py
+ 
++      - name: Caddy 설치 구문·기존 방화벽 보존 검증
++        run: |
++          bash -n scripts/ingress/install-caddy.sh
++          python3 scripts/verify-caddy-firewall.py
++
++      - name: 실제 Caddy의 경로·인증 응답·로그 검증
++        run: |
++          sudo apt-get update -qq
++          sudo apt-get install --yes caddy
++          python3 scripts/verify-caddy-ingress.py
++
+       - name: 테스트 결과 보존
+         if: always()
+         uses: actions/upload-artifact@v4
+diff --git a/DEVLOG.md b/DEVLOG.md
+index a1a00b2..98007e9 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,11 @@
+ # 개발 결정 로그
+ 
++## [2026-10-12] 정산 API의 Caddy 직접 HTTPS 진입점 준비
++- 문제: 공개 요청은 Cloudflare LAX를 경유하며 약 1초, 같은 시점 Spring 인증 오류 처리 평균은 약 1.20ms였다.
++- 고려한 대안: 기존 Tunnel 유지, Nginx와 별도 인증서 갱신, Caddy 호스트 서비스의 자동 HTTPS.
++- 선택 이유·트레이드오프: CTO가 Caddy 설치를 승인했다. 같은 도메인·loopback 앱·기존 웹훅을 보존하고 TCP 80·443과 DNS only A 연결을 준비한다. 기존 방화벽은 두 규칙만 추가한다.
++- 아쉬운 점: origin IP가 공개되며 DNS 전환 직후 인증서 발급 전 TLS 오류가 가능하다. 설치 성공과 DNS·인증서·성능·실계정 검증 완료를 구분해야 한다.
++
+ ## [2026-10-10] Apple 이름·이메일 요청을 실제 사용 범위에 맞춘다
+ - 문제: Apple 인가 요청은 name email scope를 포함했지만 서버는 이름·이메일을 사용하거나 저장하지 않아 프론트 개인정보 안내와 어긋났다.
+ - 고려한 대안: 이름·이메일을 받도록 방침을 확대하거나, 사용하지 않는 scope를 제거한다.
+diff --git a/docs/ADR/000-index.md b/docs/ADR/000-index.md
+index 6d84658..7ffd853 100644
+--- a/docs/ADR/000-index.md
++++ b/docs/ADR/000-index.md
+@@ -25,6 +25,7 @@
+ | [018](018-activate-k3s.md) | `013`의 k3s 부분을 발동한다 (MSA 전환은 아님) | 🕓 제안 — Kamal 비교·메모리 실측 후 확정 |
+ | [019](019-onetime-gathering-no-group.md) | 술자리는 일회용이다. 모임 계층을 걷어내고 완료 7일 뒤 삭제한다 | 확정 |
+ | [020](020-independent-settlement-units.md) | 같은 술자리의 참여자는 공유하고 총무별 담당 차수·명단·정산을 독립시킨다 | 확정 방향 · 구현 전 |
++| [021](021-caddy-direct-api-ingress.md) | 정산 API에 OCI Caddy를 설치하고 같은 도메인을 직접 HTTPS로 연결한다 | 설치 승인 · DNS/TLS/성능 운영 확인 별도 |
+ 
+ > **`006` → `013` → `014` 이력.** `013`이 한때 `006`을 대체했으나, 그 근거가
+ > "실제 필요"가 아니라 **"학습 목적"** 이었다. `014`가 이를 뒤집어 MVP를 모놀리스로
+diff --git a/docs/ADR/021-caddy-direct-api-ingress.md b/docs/ADR/021-caddy-direct-api-ingress.md
+new file mode 100644
+index 0000000..2cfeedf
+--- /dev/null
++++ b/docs/ADR/021-caddy-direct-api-ingress.md
+@@ -0,0 +1,43 @@
++# ADR-021 — 정산 API는 OCI Caddy로 직접 HTTPS 연결한다
++
++- 상태: CTO가 설치 승인, DNS·공인 인증서·운영 성능 확인은 별도
++- 결정일: 2026-10-12
++
++## 문제
++
++기존 구성에는 Nginx가 없으며 Cloudflare Tunnel이 HTTPS 진입점이었다. 2026-10-11 공개 요청의
++CF-Ray는 LAX였고 `/api/v1/auth/me` 401 응답은 0.98~1.38초였다. 같은 시점 Spring의 신규 측정은
++Micrometer 요청 5건 평균 약 1.20ms였다. 병목 대부분은 앱 바깥이지만 LAX가 유일한 원인이라고
++단정하지 않으며, 개선 폭은 직접 HTTPS 전환 후 같은 환경에서 다시 측정한다.
++
++## 고려한 대안
++
++- Tunnel 유지: origin을 공개하지 않고 기존 인증서 관리를 유지하지만 현재 경유 경로를 직접 제어하기 어렵다.
++- Nginx와 별도 인증서 갱신 도구: 가능하지만 현재 서버에 Nginx가 없고 두 설정을 운영해야 한다.
++- Caddy 호스트 서비스: 같은 도메인의 자동 HTTPS와 loopback reverse proxy를 한 서비스에서 관리한다.
++
++## 선택
++
++CTO가 Caddy 설치를 선택했다. 공식 Ubuntu 패키지를 설치하고 `/etc/caddy/Caddyfile`에서
++`jungsan-api.devkdk.com`의 `/api/*`와 `/actuator/health`만 `127.0.0.1:18080`으로 전달한다.
++MySQL·앱 컨테이너·`.env`·OAuth 콜백 URL은 유지한다. Caddy의 관리 API는 loopback에만 둔다.
++TCP 80·443만 열며 HTTP/3용 UDP는 열지 않는다. 접근 로그를 켜지 않고 오류 로그에서도 요청
++URI·헤더를 제거해 OAuth code·state·쿠키가 새 진입점의 로그에 남지 않도록 한다.
++
++기존 OCI 방화벽은 SSH·Tailscale·Docker를 보존하며 최종 INPUT 거절 앞에 두 허용 규칙만 추가한다.
++`rules.v4`에도 같은 두 규칙만 저장하고 전체 live rules를 restore/save하지 않는다.
++DNS는 해당 호스트만 A·OCI IP·DNS only로 전환한다. 기존 노트북 API와 웹훅 Tunnel은 수정하지 않는다.
++이 작업은 Spring 업무 로직·Gradle 의존성을 바꾸지 않으며 Java/Kotlin 중복 구현 대상이 아니다.
++
++## 아쉬운 점과 복구
++
++origin IP가 공개되고 Cloudflare 프록시의 보호·캐시를 우회한다. 단일 VM 장애 경계는 그대로다.
++DNS가 아직 Tunnel을 가리키면 표준 Caddy의 HTTP-01/TLS-ALPN 인증서 발급은 성공하지 않는다.
++전환 직후 발급이 끝나기 전 일시적인 TLS 실패가 가능하므로 운영 연결 완료로 보고하지 않는다.
++실패 시 보관한 원래 CNAME·Tunnel UUID·proxied=true를 복원한다. 기존 Tunnel 경로는 남겨 둔다.
++직접 연결 중 기존 Cloudflare API DNS workflow를 실행하지 않는다.
++
++공식 근거: [설치](https://caddyserver.com/docs/install),
++[자동 HTTPS의 DNS·포트 조건](https://caddyserver.com/docs/automatic-https),
++[reverse proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy),
++[Cloudflare DNS only](https://developers.cloudflare.com/dns/proxy-status/).
+diff --git a/docs/DEPLOY.md b/docs/DEPLOY.md
+index e75a592..97e84ee 100644
+--- a/docs/DEPLOY.md
++++ b/docs/DEPLOY.md
+@@ -2,6 +2,12 @@
+ 
+ `ADR-006`(단일 VM + docker compose)을 따른다. K8s·ArgoCD·Jenkins를 쓰지 않는다.
+ 
++**Caddy 직접 연결 결정 (2026-10-12):** CTO가 Cloudflare LAX 경유 지연을 줄이기 위해 OCI 호스트에
++Caddy 설치를 승인했다. Spring·MySQL·기존 Tunnel은 유지하고 `jungsan-api.devkdk.com`만
++DNS only A 레코드로 OCI에 직접 연결한다. 설치·OCI 인바운드·DNS·공인 인증서·실측을 구분한다.
++[설치와 전환·복구 절차](operations/caddy-direct-ingress.md), [ADR-021](ADR/021-caddy-direct-api-ingress.md)를 따른다.
++아래 Tunnel 절차는 이전 연결과 복구용 기록이며 직접 연결 중에는 DNS workflow를 실행하지 않는다.
++
+ **운영 DB 최초 인증 (2026-10-10):** MySQL 8.4의 인증 캐시가 비어 있을 때도 연결되도록
+ `application-prod.yml`의 JDBC URL에 `allowPublicKeyRetrieval=true`를 명시한다. 현재 MySQL은
+ 외부 포트를 열지 않는 단일 VM compose 내부 서비스다. 이 설정은 서버 신원 검증을 대신하지 않으므로
+@@ -43,8 +49,8 @@ GitHub Actions (ARM 러너)                  OCI Ubuntu
+ 
+ `OCI_USER`(`ubuntu`)는 숨길 값이 아니라 워크플로에 직접 적었다.
+ 
+-> `OCI_HOST` 를 secret 에 두는 이유 — 저장소가 public 이고 Cloudflare 프록시로
+-> origin IP 를 가리고 있다. 워크플로에 IP 를 적으면 그 보호가 무의미해진다.
++> `OCI_HOST`는 운영 접속 대상을 관리하는 설정이다. Caddy 직접 연결의 DNS only A 레코드에서는
++> 공인 IP가 공개되므로 이 Secret만으로 origin을 숨긴다고 가정하지 않는다.
+ 
+ ### (b) 러너 아키텍처 확인 ⚠️
+ 
+@@ -190,6 +196,11 @@ FC-021은 문서 수정, 콘솔 저장, 운영 배포, 웹 재배포, 실제 로
+ 
+ ### Cloudflare DNS 실행과 Tunnel 연결
+ 
++**Caddy 전환 이후에는 아래 workflow를 실행하지 않는다.** 이 workflow는 CNAME·proxied=true인
++이전 Tunnel 연결 전용이다. 직접 연결 A 레코드를 발견하면 기존 스크립트는 교체를 거절한다.
++DNS 화면에서 직접 바꾸는 경우 Cloudflare API 토큰은 필요 없다. Caddy 설치·HTTP/TLS 인증서 발급에도
++DNS 편집 토큰을 쓰지 않는다. `api.devkdk.com`·`webhook.devkdk.com`은 계속 기존 Tunnel을 쓴다.
++
+ 운영 API 도메인은 **`jungsan-api.devkdk.com` 하나**다. Apple·카카오 콜백에도 이 주소를 사용한다.
+ CTO는 GitHub Repository Secret `CLOUDFLARE_API_TOKEN`에 **devkdk.com DNS 편집 전용** 토큰을 넣는다.
+ GitHub Repository Variable `CLOUDFLARE_TUNNEL_ID`는 확인한 OCI 기존 Tunnel UUID다.
+diff --git a/docs/operations/2026-10-12-caddy-public-verification.json b/docs/operations/2026-10-12-caddy-public-verification.json
+new file mode 100644
+index 0000000..60a0e7f
+--- /dev/null
++++ b/docs/operations/2026-10-12-caddy-public-verification.json
+@@ -0,0 +1,237 @@
++{
++  "observed_at_utc": "2026-10-11T16:15:19.301252+00:00",
++  "hostname": "jungsan-api.devkdk.com",
++  "tls": {
++    "verified": true,
++    "peer_ip": "140.245.109.32",
++    "issuer": [
++      [
++        [
++          "countryName",
++          "US"
++        ]
++      ],
++      [
++        [
++          "organizationName",
++          "Let's Encrypt"
++        ]
++      ],
++      [
++        [
++          "commonName",
++          "YE2"
++        ]
++      ]
++    ],
++    "expires": "Jan  9 15:12:33 2027 GMT",
++    "subject_alt_name": [
++      [
++        "DNS",
++        "jungsan-api.devkdk.com"
++      ]
++    ]
++  },
++  "checks": [
++    {
++      "method": "GET",
++      "path": "/actuator/health",
++      "status": 200,
++      "cf_ray_present": false,
++      "health": "UP"
++    },
++    {
++      "method": "GET",
++      "path": "/api/v1/auth/me",
++      "status": 401,
++      "cf_ray_present": false,
++      "allow_origin": "https://jungsan.devkdk.com",
++      "allow_credentials": "true"
++    },
++    {
++      "method": "OPTIONS",
++      "path": "/api/v1/auth/me",
++      "status": 200,
++      "cf_ray_present": false,
++      "allow_origin": "https://jungsan.devkdk.com",
++      "allow_credentials": "true"
++    },
++    {
++      "method": "GET",
++      "path": "/actuator/prometheus",
++      "status": 404,
++      "cf_ray_present": false
++    },
++    {
++      "method": "GET",
++      "path": "/actuator/metrics",
++      "status": 404,
++      "cf_ray_present": false
++    },
++    {
++      "method": "GET",
++      "path": "/api/v1/auth/kakao/login",
++      "status": 302,
++      "cf_ray_present": false,
++      "redirect_host": "kauth.kakao.com",
++      "callback": [
++        "https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback"
++      ],
++      "scope": [],
++      "has_state": true,
++      "has_nonce": false,
++      "cookie_flags": [
++        {
++          "http_only": true,
++          "secure": true,
++          "same_site_none": false
++        }
++      ]
++    },
++    {
++      "method": "GET",
++      "path": "/api/v1/auth/apple/login",
++      "status": 302,
++      "cf_ray_present": false,
++      "redirect_host": "appleid.apple.com",
++      "callback": [
++        "https://jungsan-api.devkdk.com/api/v1/auth/apple/callback"
++      ],
++      "scope": [],
++      "has_state": true,
++      "has_nonce": true,
++      "cookie_flags": [
++        {
++          "http_only": true,
++          "secure": true,
++          "same_site_none": true
++        }
++      ]
++    }
++  ],
++  "cold_connections": [
++    {
++      "path": "https://jungsan-api.devkdk.com/actuator/health",
++      "status": "200",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.119725",
++      "tcp": "0.276501",
++      "tls": "0.501063",
++      "ttfb": "0.841424",
++      "total": "0.842475",
++      "connections_created": "1"
++    },
++    {
++      "path": "https://jungsan-api.devkdk.com/actuator/health",
++      "status": "200",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.017543",
++      "tcp": "0.362733",
++      "tls": "0.577029",
++      "ttfb": "0.778001",
++      "total": "0.778067",
++      "connections_created": "1"
++    },
++    {
++      "path": "https://jungsan-api.devkdk.com/actuator/health",
++      "status": "200",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.013642",
++      "tcp": "0.210224",
++      "tls": "0.422031",
++      "ttfb": "0.647954",
++      "total": "0.648055",
++      "connections_created": "1"
++    },
++    {
++      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
++      "status": "401",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.016380",
++      "tcp": "0.308089",
++      "tls": "0.534220",
++      "ttfb": "0.749610",
++      "total": "0.749687",
++      "connections_created": "1"
++    },
++    {
++      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
++      "status": "401",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.007019",
++      "tcp": "0.428837",
++      "tls": "0.600174",
++      "ttfb": "1.106240",
++      "total": "1.106337",
++      "connections_created": "1"
++    },
++    {
++      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
++      "status": "401",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.017799",
++      "tcp": "0.692594",
++      "tls": "1.308423",
++      "ttfb": "2.000954",
++      "total": "2.001014",
++      "connections_created": "1"
++    }
++  ],
++  "same_process_connections": [
++    {
++      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
++      "status": "401",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.262041",
++      "tcp": "0.378524",
++      "tls": "0.560678",
++      "ttfb": "0.682401",
++      "total": "0.682472",
++      "connections_created": "1"
++    },
++    {
++      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
++      "status": "401",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.000000",
++      "tcp": "0.000000",
++      "tls": "0.000000",
++      "ttfb": "0.118279",
++      "total": "0.118335",
++      "connections_created": "0"
++    },
++    {
++      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
++      "status": "401",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.000000",
++      "tcp": "0.000000",
++      "tls": "0.000000",
++      "ttfb": "0.133385",
++      "total": "0.133503",
++      "connections_created": "0"
++    },
++    {
++      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
++      "status": "401",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.000000",
++      "tcp": "0.000000",
++      "tls": "0.000000",
++      "ttfb": "0.290801",
++      "total": "0.290869",
++      "connections_created": "0"
++    },
++    {
++      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
++      "status": "401",
++      "remote_ip": "140.245.109.32",
++      "dns": "0.000000",
++      "tcp": "0.000000",
++      "tls": "0.000000",
++      "ttfb": "0.437853",
++      "total": "0.465217",
++      "connections_created": "0"
++    }
++  ]
++}
+diff --git a/docs/operations/caddy-direct-ingress.md b/docs/operations/caddy-direct-ingress.md
+new file mode 100644
+index 0000000..983f5b7
+--- /dev/null
++++ b/docs/operations/caddy-direct-ingress.md
+@@ -0,0 +1,147 @@
++# OCI Caddy 설치·직접 HTTPS 전환·복구
++
++대상은 `jungsan-api.devkdk.com`과 OCI Ubuntu 24.04 ARM VM `140.245.109.32`뿐이다.
++2026-10-12 CTO의 Caddy 설치 승인에 따른다. 다른 프로젝트의 웹훅·Kafka·노트북 API는 변경하지 않는다.
++
++## 운영 적용 확인 (2026-10-12 01:15~01:18 KST)
++
++- 공식 패키지 Caddy `v2.11.7`, 서비스 active·enabled. 기존 cloudflared active를 유지했다.
++- CTO가 OCI 인바운드와 DNS 전환을 진행했고 외부 HTTP 308·직접 HTTPS 200으로 실제 도달을 확인했다.
++  공용 DNS 1.1.1.1·8.8.8.8의 A는 OCI IP, 별도 AAAA는 없었다.
++- 공인 Let's Encrypt 인증서의 도메인·신뢰 검증을 통과했다. 만료는 2027-01-09 15:12:33 UTC다.
++  검증을 생략하는 옵션은 사용하지 않았다. Caddy가 자동 갱신하며 80·443과 DNS 직접 연결을 유지한다.
++- health 200·UP, 미인증 사용자 조회 401, 웹 Origin과 credentials CORS·OPTIONS 200,
++  카카오·Apple 시작 302, 공개 metrics/Prometheus 404를 확인했다. Apple scope는 없고 state·nonce는 유지한다.
++- 앱 이미지 `3eb5254`와 컨테이너의 2026-10-10 시작 시각을 유지했다. `.env`는 600이며 값을 출력하지 않았다.
++- 방화벽 계획 테스트 8건, 실제 Caddy 임시 포트의 경로·POST/401·CORS/쿠키·장애 로그 제거 검증,
++  실제 설치 재실행 시 두 규칙의 중복 방지, `:server:compileKotlin` 18초 성공을 확인했다.
++- 설치 백업: `/var/backups/jeongsan-caddy/20261011T160351Z-1531599`.
++  재실행 백업: `/var/backups/jeongsan-caddy/20261011T161829Z-1565448`.
++
++측정 원문은 [검증 JSON](2026-10-12-caddy-public-verification.json)에 보존했다. 운영 토큰·쿠키·
++인가 code/state 값은 JSON에 넣지 않았다. 아래 모든 요청의 peer는 OCI IP이고 CF-Ray는 없었다.
++
++| 같은 Windows 클라이언트의 요청 | 측정 |
++|---|---|
++| 직접 연결 `/actuator/health` · 새 연결 3회 | 0.65~0.84초 |
++| 직접 연결 `/api/v1/auth/me` · 새 연결 3회 | 0.75~2.00초 |
++| 직접 연결 `/api/v1/auth/me` · 같은 프로세스 첫 연결 | 0.68초 |
++| 같은 연결을 재사용한 다음 4회 | 0.12~0.47초 |
++| 이전 Tunnel `/api/v1/auth/me` · 10/11의 새 연결 3회 | 0.98~1.38초 |
++
++전환은 성공했지만 새 연결의 지연이 항상 개선됐다는 결론은 아니다. 이전 측정과 시각이 다르고
++신규 연결에는 DNS·TCP·TLS 비용과 네트워크 변동이 포함된다. 연결 재사용 결과만 골라 최초 접속
++속도로 보고하지 않는다. 실제 웹·앱 계정 로그인·배포 심사 통과는 이 확인에 포함되지 않는다.
++
++## 1. 무엇이 달라지는가
++
++```text
++기존: 사용자 → Cloudflare LAX → OCI Tunnel → 127.0.0.1:18080 → Spring
++전환: 사용자 → OCI Caddy:443 → 127.0.0.1:18080 → Spring
++```
++
++`docker-compose.prod.yml`의 app·mysql, 앱의 `.env`, 도메인과 OAuth 콜백은 유지한다.
++Caddy는 호스트 서비스다. 일반 컨테이너의 `127.0.0.1`은 호스트 Spring 포트가 아니므로 컨테이너에
++동일 upstream을 그대로 넣지 않는다. Caddy 설치만으로 DNS의 Tunnel 경유가 없어지는 것은 아니다.
++
++## 2. 서버 설치
++
++1. SSH·sudo, 앱 health UP, 80·443을 쓰는 다른 서비스가 없는지 확인한다.
++2. 검토한 이 PR의 `infra/caddy/`와 `scripts/ingress/`를 같은 루트 아래 준비한다.
++   현재 서버 준비 루트는 `/home/ubuntu/jeongsan/ingress-candidate`다. 앱 배포 디렉터리의 파일을 덮지 않는다.
++3. `sudo bash scripts/ingress/install-caddy.sh`를 준비 루트에서 실행한다.
++   공식 서명 apt 저장소를 사용하고 Caddy 설정을 검증한다. 기존 앱 배포와 `.deploy.lock`을 공유한다.
++4. 설치 스크립트는 `/etc/caddy/Caddyfile`을 반영하고 Caddy를 enable·start/reload한다.
++   다른 이름의 Caddy 설정·Nginx·Apache가 있으면 자동 교체하지 않는다.
++5. `scripts/ingress/allow-caddy-ports.py`는 INPUT 최종 REJECT 앞에 TCP 80·443 허용만 추가하고
++   `/etc/iptables/rules.v4`에도 두 규칙만 저장한다. SSH·OCI InstanceServices·Docker·Tailscale 규칙은 유지한다.
++   전체 live rules를 영구 저장하거나 `iptables-restore`로 재적용하지 않는다.
++
++백업은 `/var/backups/jeongsan-caddy/<UTC시각>-<PID>/`다. Caddy 설정·saved rules·live rules 참고 자료를
++보존한다. live rules 파일을 그대로 restore하면 Docker/Tailscale의 현재 상태와 어긋날 수 있다.
++필요하면 `jeongsan-caddy` 표시가 붙은 두 규칙만 제거하고 saved rules에서 두 줄만 제거한다.
++방화벽 변경 중 실패하면 이 실행이 추가한 허용 규칙만 제거한다. SSH 허용을 제거하지 않는다.
++
++```bash
++sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
++systemctl is-active caddy cloudflared
++sudo ss -tlnp
++sudo iptables -S INPUT
++curl --fail http://127.0.0.1:18080/actuator/health
++```
++
++설정은 `/api/*`와 정확히 `/actuator/health`만 전달한다. `/actuator/prometheus`·`/actuator/metrics`·
++기타 경로는 404이며 관리 API는 `127.0.0.1:2019`다. 접근 로그는 켜지 않으며 오류 로그의 URI·헤더도
++제거한다. 로그에 OAuth code·state·토큰·쿠키를 보존하지 않는다. HTTPS는 HTTP/1.1·HTTP/2로 제공한다.
++
++## 3. OCI 콘솔 인바운드
++
++VM → Attached VNIC → 적용되는 Security List/NSG에 아래 stateful ingress를 추가한다.
++기존 SSH·웹훅 규칙을 지우거나 수정하지 않는다. 기본이 Reject인 호스트 방화벽도 2절대로 함께 준비한다.
++
++| 소스 | IP protocol | Destination port |
++|---|---|---|
++| `0.0.0.0/0` | TCP | `80` |
++| `0.0.0.0/0` | TCP | `443` |
++
++80은 자동 HTTPS 리다이렉트와 ACME HTTP-01 검증에 사용한다. UDP 443은 이번 설정에 필요 없다.
++OCI 콘솔 권한은 현재 Codex에 없으므로 CTO가 추가한다. 외부 연결 시험으로 실제 적용을 확인한다.
++
++## 4. DNS 전환 — 토큰 없이 화면에서 가능
++
++Cloudflare → `devkdk.com` → DNS → Records에서 **`jungsan-api` 한 항목만** 수정한다.
++먼저 기존 CNAME 대상 `<기존 OCI Tunnel UUID>.cfargotunnel.com`, TTL, proxy 상태를 메모한다.
++
++| 항목 | 전환 값 |
++|---|---|
++| Type | `A` |
++| Name | `jungsan-api` |
++| IPv4 address | `140.245.109.32` |
++| Proxy status | `DNS only` · 회색 구름 |
++| TTL | Auto 또는 허용되는 짧은 TTL |
++
++Tunnel을 가리키는 CNAME의 구름만 회색으로 바꾸는 것은 OCI 직접 연결이 아니다.
++동일 호스트의 중복 A/AAAA가 있으면 자동 삭제하지 말고 원래 값과 영향을 확인한다.
++`api.devkdk.com`·`webhook.devkdk.com`·웹 주소는 그대로 둔다. OCI Tunnel의 기존 정산 API 경로도
++복구용으로 남겨 둔다. Zero Trust에서 Public Hostname을 삭제하면 DNS까지 지워질 수 있어 삭제하지 않는다.
++
++**토큰은 API로 DNS를 자동 수정할 때만 필요하다.** 이 설치는 Caddy의 표준 HTTP-01/TLS-ALPN을 쓴다.
++현재 저장소 `Cloudflare API DNS` workflow는 이전 Tunnel CNAME 전용이며 직접 연결 중 실행하지 않는다.
++기존 스크립트는 A 레코드를 CNAME으로 덮어쓰지 않고 거절한다.
++
++## 5. 인증서와 운영 검증
++
++DNS가 아직 Tunnel을 가리키면 HTTP/TLS 검증 요청은 OCI Caddy에 도달하지 않아 발급이 실패한다.
++DNS 전환 직후 인증서 발급이 끝나기 전 잠시 TLS 오류가 날 수 있다. DNS 전환 전에 공인 인증서가
++발급됐다고 보고하지 않는다. DNS가 OCI를 가리키는 것을 확인한 뒤 최초 발급 재시도를 확인한다.
++재시도 간격 때문에 지연되면 현재 인증서가 없음을 확인하고 Caddy만 재시작한다. 앱/DB/Tunnel은 재시작하지 않는다.
++
++검증에서는 `curl --insecure`를 사용하지 않는다. `--resolve`는 DNS 캐시 영향을 분리할 뿐 인증서 검증을 유지한다.
++
++```bash
++curl --resolve jungsan-api.devkdk.com:443:140.245.109.32 https://jungsan-api.devkdk.com/actuator/health
++curl -i https://jungsan-api.devkdk.com/api/v1/auth/me
++curl -i https://jungsan-api.devkdk.com/actuator/prometheus
++```
++
++- 공인 인증서의 호스트 일치·인증 경로 검증, health 200·UP, 미인증 `/api/v1/auth/me` 401을 확인한다.
++- 직접 연결 응답에 CF-Ray가 없고 원격 IP가 OCI인지 확인한다. HTTP → 같은 도메인 HTTPS 리다이렉트도 확인한다.
++- 웹 Origin으로 CORS 응답, 카카오/Apple 인가 요청, 웹·앱의 실제 계정 로그인을 별도로 확인한다.
++- 내부 관리·metrics 경로가 외부에 공개되지 않는지 확인한다.
++- 같은 클라이언트·실패하지 않는 같은 경로로 여러 요청을 비교한다. DNS/TCP/TLS/TTFB/전체 시간을
++  따로 기록하고 차가운 최초 연결과 재사용 연결을 구분한다. SSH TCP RTT만으로 HTTPS 성능을 확정하지 않는다.
++
++`/api/v1/me`는 현재 핸들러가 없는 경로이며 500 오매핑 진단은 [PR #31](https://github.com/owencity/jungsan_attack/pull/31)에
++보존했다. 이번 Caddy 설치는 앱의 예외 매핑을 고치지 않는다. 정상 사용자 조회는 `/api/v1/auth/me`다.
++FC-021의 웹/App 실계정 시험을 이 인프라 준비만으로 완료 처리하지 않는다.
++
++## 6. 복구
++
++직접 HTTPS 검증에 실패하면 Cloudflare에서 메모한 기존 CNAME 대상·proxied=true·TTL을 복원하고,
++기존 Tunnel을 통한 health·401을 다시 확인한다. 기존 Tunnel 경로를 남겼으므로 앱을 옮길 필요가 없다.
++DNS 캐시 때문에 이전/새 경로가 잠시 섞일 수 있다. 도메인·`.env`·DB·계정 키는 변경하지 않는다.
++
++근거: [Caddy 설치](https://caddyserver.com/docs/install),
++[자동 HTTPS 조건](https://caddyserver.com/docs/automatic-https),
++[Caddy 서비스](https://caddyserver.com/docs/running),
++[Cloudflare 프록시 상태](https://developers.cloudflare.com/dns/proxy-status/).
+diff --git a/infra/caddy/Caddyfile b/infra/caddy/Caddyfile
+new file mode 100644
+index 0000000..4fee70a
+--- /dev/null
++++ b/infra/caddy/Caddyfile
+@@ -0,0 +1,35 @@
++# jeongsan managed ingress
++{
++	admin 127.0.0.1:2019
++	# upstream 연결 실패 로그에도 OAuth 쿼리·인증 헤더가 남지 않게 한다.
++	log default {
++		format filter {
++			wrap json
++			fields {
++				request>uri delete
++				request>headers delete
++			}
++		}
++	}
++	servers {
++		# OCI에는 TCP만 연다. HTTP/3용 UDP 포트를 별도로 노출하지 않는다.
++		protocols h1 h2
++	}
++}
++
++jungsan-api.devkdk.com {
++	# OAuth code·state와 쿠키가 접근 로그에 남지 않도록 access log를 켜지 않는다.
++	@application path /api/* /actuator/health
++	handle @application {
++		reverse_proxy 127.0.0.1:18080 {
++			transport http {
++				dial_timeout 3s
++				response_header_timeout 30s
++			}
++		}
++	}
++	# 내부 metrics·Caddy 관리 API·다른 프로젝트 경로는 공개하지 않는다.
++	handle {
++		respond "Not Found" 404
++	}
++}
+diff --git a/scripts/ingress/allow-caddy-ports.py b/scripts/ingress/allow-caddy-ports.py
+new file mode 100644
+index 0000000..ead4ac1
+--- /dev/null
++++ b/scripts/ingress/allow-caddy-ports.py
+@@ -0,0 +1,95 @@
++#!/usr/bin/env python3
++"""OCI 기존 iptables를 유지하고 Caddy의 TCP 80·443만 허용한다."""
++
++import os
++from pathlib import Path
++import shlex
++import subprocess
++import sys
++import tempfile
++
++RULES = tuple(
++    f'-A INPUT -p tcp -m tcp --dport {port} -m comment --comment jeongsan-caddy -j ACCEPT'
++    for port in (80, 443)
++)
++
++
++def plan_rules(original):
++    lines = original.splitlines()
++    reject_indices = [
++        index for index, line in enumerate(lines)
++        if line == '-A INPUT -j REJECT --reject-with icmp-host-prohibited'
++    ]
++    if len(reject_indices) != 1:
++        raise ValueError('예상한 OCI INPUT 최종 거절 규칙이 하나여야 한다.')
++    reject_index = reject_indices[0]
++    if not any(
++        line.startswith('-A INPUT ') and '--dport 22 ' in line and line.endswith('-j ACCEPT')
++        for line in lines[:reject_index]
++    ):
++        raise ValueError('기존 SSH 22 허용 규칙을 먼저 확인해야 한다.')
++    for rule in RULES:
++        matches = [index for index, line in enumerate(lines) if line == rule]
++        if len(matches) > 1 or (matches and matches[0] > reject_index):
++            raise ValueError('Caddy 허용 규칙이 중복됐거나 최종 거절 뒤에 있다.')
++    missing = [rule for rule in RULES if rule not in lines]
++    return '\n'.join(lines[:reject_index] + missing + lines[reject_index:]) + '\n', missing
++
++
++def run(command, **kwargs):
++    return subprocess.run(command, check=True, text=True, **kwargs)
++
++
++def main():
++    if os.geteuid() != 0 or len(sys.argv) != 2:
++        raise SystemExit('root 권한과 설치 스크립트가 만든 백업 디렉터리가 필요하다.')
++    backup_directory = Path(sys.argv[1]).resolve()
++    if backup_directory.parent != Path('/var/backups/jeongsan-caddy') or not backup_directory.is_dir():
++        raise SystemExit('정산어택 Caddy 설치 백업 디렉터리만 사용한다.')
++    saved_path = Path('/etc/iptables/rules.v4')
++    saved_rules = saved_path.read_text()
++    active_rules = run(['iptables', '-w', '10', '-S', 'INPUT'], capture_output=True).stdout
++    planned_saved, _ = plan_rules(saved_rules)
++    _, missing_active = plan_rules(active_rules)
++    (backup_directory / 'rules.v4').write_text(saved_rules)
++    os.chmod(backup_directory / 'rules.v4', 0o600)
++    # Docker·Tailscale 동적 체인은 복원하지 않고 현황 참고 자료로만 보존한다.
++    active_snapshot = backup_directory / 'iptables-live.txt'
++    with active_snapshot.open('w') as snapshot:
++        run(['iptables-save'], stdout=snapshot)
++    os.chmod(active_snapshot, 0o600)
++
++    temporary_path = None
++    inserted_rules = []
++    try:
++        with tempfile.NamedTemporaryFile(mode='w', dir=saved_path.parent, delete=False) as candidate:
++            temporary_path = Path(candidate.name)
++            candidate.write(planned_saved)
++        os.chmod(temporary_path, saved_path.stat().st_mode & 0o777)
++        # --test는 문법만 확인한다. 실제 체인을 덮어쓰는 restore/save는 하지 않는다.
++        with temporary_path.open() as candidate:
++            run(['iptables-restore', '--test'], stdin=candidate)
++        for rule in missing_active:
++            current_lines = run(['iptables', '-w', '10', '-S', 'INPUT'], capture_output=True).stdout.splitlines()
++            _, still_missing = plan_rules('\n'.join(current_lines))
++            if rule not in still_missing:
++                continue
++            chain_rules = [line for line in current_lines if line.startswith('-A INPUT ')]
++            reject_position = chain_rules.index('-A INPUT -j REJECT --reject-with icmp-host-prohibited') + 1
++            run(['iptables', '-w', '10', '-I', 'INPUT', str(reject_position), *shlex.split(rule)[2:]])
++            inserted_rules.append(rule)
++        os.replace(temporary_path, saved_path)
++        temporary_path = None
++    except Exception:
++        # 실패 시 이 실행이 추가한 두 규칙만 제거한다. 기존 체인을 전체 복원하지 않는다.
++        for rule in reversed(inserted_rules):
++            subprocess.run(['iptables', '-w', '10', '-D', 'INPUT', *shlex.split(rule)[2:]], check=False)
++        raise
++    finally:
++        if temporary_path is not None:
++            temporary_path.unlink(missing_ok=True)
++    print('TCP 80·443 허용과 재부팅용 rules.v4 저장 완료. 기존 규칙은 유지했다.')
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/scripts/ingress/install-caddy.sh b/scripts/ingress/install-caddy.sh
+new file mode 100644
+index 0000000..9f67138
+--- /dev/null
++++ b/scripts/ingress/install-caddy.sh
+@@ -0,0 +1,70 @@
++#!/usr/bin/env bash
++# Spring·DB·Tunnel은 그대로 두고 Ubuntu 호스트에 정산어택 HTTPS 진입점만 설치한다.
++set -euo pipefail
++
++[[ "${EUID}" == 0 ]] || { echo "sudo 권한이 필요하다." >&2; exit 1; }
++repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
++config_source="${repository_root}/infra/caddy/Caddyfile"
++[[ -f "$config_source" && -d /home/ubuntu/jeongsan ]] || exit 1
++exec 9>/home/ubuntu/jeongsan/.deploy.lock
++flock -n 9 || { echo "다른 정산어택 배포가 진행 중이다." >&2; exit 1; }
++
++source /etc/os-release
++[[ "${ID}" == ubuntu && "${VERSION_ID}" == 24.04 ]] || { echo "Ubuntu 24.04용 절차다." >&2; exit 1; }
++for service_name in nginx apache2; do
++    if systemctl is-active --quiet "$service_name"; then
++        echo "기존 ${service_name}가 실행 중이다. 포트 공유 방식을 먼저 검토한다." >&2
++        exit 1
++    fi
++done
++if [[ -f /etc/caddy/Caddyfile ]] && ! grep -q '^# jeongsan managed ingress$' /etc/caddy/Caddyfile; then
++    echo "기존 Caddy 설정은 자동 교체하지 않는다." >&2
++    exit 1
++fi
++if ss -H -ltnp '( sport = :80 or sport = :443 )' | grep -v '"caddy"' | grep -q .; then
++    echo "80 또는 443을 다른 서비스가 사용한다." >&2
++    exit 1
++fi
++curl --fail --silent --show-error --max-time 10 http://127.0.0.1:18080/actuator/health | grep -q '"UP"'
++
++backup_directory="/var/backups/jeongsan-caddy/$(date -u +%Y%m%dT%H%M%SZ)-$$"
++install -d -m 700 /var/backups/jeongsan-caddy "$backup_directory"
++if [[ -f /etc/caddy/Caddyfile ]]; then
++    cp --preserve=mode /etc/caddy/Caddyfile "${backup_directory}/Caddyfile"
++fi
++
++if ! command -v caddy >/dev/null; then
++    # 공식 서명 저장소만 사용하며 다른 프로젝트 서비스를 자동 재시작하지 않는다.
++    export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l
++    apt-get update
++    apt-get install --yes debian-keyring debian-archive-keyring apt-transport-https curl gnupg
++    curl --fail --silent --show-error --location --max-time 60 \
++        https://dl.cloudsmith.io/public/caddy/stable/gpg.key -o "${backup_directory}/caddy-signing.asc"
++    gpg --batch --yes --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg "${backup_directory}/caddy-signing.asc"
++    curl --fail --silent --show-error --location --max-time 60 \
++        https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt -o /etc/apt/sources.list.d/caddy-stable.list
++    chmod 644 /usr/share/keyrings/caddy-stable-archive-keyring.gpg /etc/apt/sources.list.d/caddy-stable.list
++    apt-get update
++    apt-get install --yes caddy
++    # 패키지의 기본 환영 페이지 대신 검증한 프로젝트 설정을 적용한다.
++    systemctl stop caddy
++fi
++
++caddy validate --config "$config_source" --adapter caddyfile
++install -d -m 755 /etc/caddy
++install -m 644 "$config_source" /etc/caddy/Caddyfile
++if systemctl is-active --quiet caddy; then
++    if ! systemctl reload caddy; then
++        cp --preserve=mode "${backup_directory}/Caddyfile" /etc/caddy/Caddyfile
++        systemctl reload caddy
++        echo "새 설정 적용 실패. 이전 Caddy 설정을 복원했다." >&2
++        exit 1
++    fi
++else
++    systemctl enable --now caddy
++fi
++systemctl is-active --quiet caddy
++python3 "${repository_root}/scripts/ingress/allow-caddy-ports.py" "$backup_directory"
++caddy version
++echo "Caddy 실행·내부 방화벽 준비 완료. DNS·OCI 인바운드·공인 인증서 확인은 별도다."
++echo "백업: ${backup_directory}"
+diff --git a/scripts/verify-caddy-firewall.py b/scripts/verify-caddy-firewall.py
+new file mode 100644
+index 0000000..1317f78
+--- /dev/null
++++ b/scripts/verify-caddy-firewall.py
+@@ -0,0 +1,66 @@
++#!/usr/bin/env python3
++"""공유 OCI VM의 SSH·Docker 규칙을 훼손하지 않는 방화벽 변경인지 검증한다."""
++import importlib.util
++from pathlib import Path
++import unittest
++
++module_spec = importlib.util.spec_from_file_location('caddy_firewall', Path(__file__).parent / 'ingress/allow-caddy-ports.py')
++firewall = importlib.util.module_from_spec(module_spec)
++module_spec.loader.exec_module(firewall)
++
++BASE = '''*filter
++:INPUT ACCEPT [0:0]
++-A INPUT -j ts-input
++-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
++-A INPUT -i lo -j ACCEPT
++-A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT
++-A INPUT -j REJECT --reject-with icmp-host-prohibited
++-A FORWARD -j DOCKER-USER
++-A OUTPUT -d 169.254.0.0/16 -j InstanceServices
++COMMIT
++'''
++
++
++class FirewallPlanSpec(unittest.TestCase):
++    def test_add_only_http_https_before_reject(self):
++        planned, missing = firewall.plan_rules(BASE)
++        self.assertEqual(len(missing), 2)
++        self.assertEqual([line for line in planned.splitlines() if line not in firewall.RULES], BASE.splitlines())
++        for rule in firewall.RULES:
++            self.assertLess(planned.index(rule), planned.index('-A INPUT -j REJECT'))
++
++    def test_repeat_does_not_duplicate(self):
++        planned, _ = firewall.plan_rules(BASE)
++        repeated, missing = firewall.plan_rules(planned)
++        self.assertEqual(repeated, planned)
++        self.assertEqual(missing, [])
++
++    def test_partial_install_adds_only_missing_port(self):
++        partial = BASE.replace('-A INPUT -j REJECT', firewall.RULES[0] + '\n-A INPUT -j REJECT')
++        _, missing = firewall.plan_rules(partial)
++        self.assertEqual(missing, [firewall.RULES[1]])
++
++    def test_unknown_firewall_layout_is_rejected(self):
++        with self.assertRaises(ValueError):
++            firewall.plan_rules(BASE.replace('-j REJECT --reject-with icmp-host-prohibited', '-j DROP'))
++
++    def test_missing_ssh_allow_is_rejected(self):
++        with self.assertRaises(ValueError):
++            firewall.plan_rules(BASE.replace('--dport 22', '--dport 2222'))
++
++    def test_ssh_rule_after_reject_is_rejected(self):
++        ssh_rule = '-A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT\n'
++        with self.assertRaises(ValueError):
++            firewall.plan_rules(BASE.replace(ssh_rule, '').replace('COMMIT', ssh_rule + 'COMMIT'))
++
++    def test_duplicate_rule_is_rejected(self):
++        with self.assertRaises(ValueError):
++            firewall.plan_rules(BASE.replace('-A INPUT -j REJECT', (firewall.RULES[0] + '\n') * 2 + '-A INPUT -j REJECT'))
++
++    def test_rule_after_reject_is_rejected(self):
++        with self.assertRaises(ValueError):
++            firewall.plan_rules(BASE.replace('COMMIT', firewall.RULES[0] + '\nCOMMIT'))
++
++
++if __name__ == '__main__':
++    unittest.main()
+diff --git a/scripts/verify-caddy-ingress.py b/scripts/verify-caddy-ingress.py
+new file mode 100644
+index 0000000..ac342e5
+--- /dev/null
++++ b/scripts/verify-caddy-ingress.py
+@@ -0,0 +1,138 @@
++#!/usr/bin/env python3
++"""실제 Caddy로 경로·401·POST 전달과 오류 로그의 인증 정보 제거를 검증한다."""
++import http.client
++from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
++import json
++from pathlib import Path
++import socket
++import subprocess
++import tempfile
++import threading
++import time
++
++
++class ApplicationHandler(BaseHTTPRequestHandler):
++    requests = []
++
++    def log_message(self, *_):
++        pass
++
++    def do_GET(self):
++        self.respond(200)
++
++    def do_POST(self):
++        self.respond(401)
++
++    def respond(self, status):
++        length = int(self.headers.get('Content-Length', '0'))
++        body = self.rfile.read(length).decode()
++        type(self).requests.append((self.command, self.path, body))
++        response = json.dumps({'method': self.command, 'path': self.path, 'body': body}).encode()
++        self.send_response(status)
++        self.send_header('Content-Type', 'application/json')
++        self.send_header('Access-Control-Allow-Origin', 'https://jungsan.devkdk.com')
++        self.send_header('Set-Cookie', 'dummy=value; HttpOnly; Secure; SameSite=Lax')
++        self.send_header('Content-Length', str(len(response)))
++        self.end_headers()
++        self.wfile.write(response)
++
++
++def main():
++    root = Path(__file__).resolve().parent.parent
++    adapted = subprocess.run(
++        ['caddy', 'adapt', '--config', str(root / 'infra/caddy/Caddyfile'), '--adapter', 'caddyfile'],
++        check=True, text=True, capture_output=True,
++    )
++    config = json.loads(adapted.stdout)
++    application = ThreadingHTTPServer(('127.0.0.1', 0), ApplicationHandler)
++    application_thread = threading.Thread(target=application.serve_forever, daemon=True)
++    application_thread.start()
++    with socket.socket() as listener:
++        listener.bind(('127.0.0.1', 0))
++        ingress_port = listener.getsockname()[1]
++
++    # 운영 인증서·서비스·관리 API와 충돌하지 않는 임시 HTTP 리스너에서 라우팅만 검증한다.
++    # 실제 TLS 신뢰 검증은 운영 도메인으로 별도 실행한다.
++    config['admin'] = {'disabled': True}
++    server = config['apps']['http']['servers']['srv0']
++    server['listen'] = [f'127.0.0.1:{ingress_port}']
++    server['automatic_https'] = {'disable': True}
++    config['apps'].pop('tls', None)
++
++    def replace_upstream(value):
++        if isinstance(value, dict):
++            for key, entry in value.items():
++                if key == 'dial' and entry == '127.0.0.1:18080':
++                    value[key] = f'127.0.0.1:{application.server_port}'
++                else:
++                    replace_upstream(entry)
++        elif isinstance(value, list):
++            for entry in value:
++                replace_upstream(entry)
++    replace_upstream(server)
++
++    def request(method, path, body=None):
++        connection = http.client.HTTPConnection('127.0.0.1', ingress_port, timeout=5)
++        connection.request(method, path, body=body, headers={
++            'Host': 'jungsan-api.devkdk.com',
++            'Authorization': 'Bearer DUMMY_TOKEN',
++            'Cookie': 'session=DUMMY_COOKIE',
++        })
++        response = connection.getresponse()
++        result = response.status, dict(response.getheaders()), response.read().decode()
++        connection.close()
++        return result
++
++    with tempfile.TemporaryFile(mode='w+') as log:
++        process = subprocess.Popen(['caddy', 'run', '--config', '-'], stdin=subprocess.PIPE, stdout=log, stderr=log, text=True)
++        process.stdin.write(json.dumps(config))
++        process.stdin.close()
++        try:
++            for _ in range(50):
++                if process.poll() is not None:
++                    raise RuntimeError('테스트 Caddy가 기동 중 종료됐다.')
++                try:
++                    request('GET', '/not-public')
++                    break
++                except (OSError, http.client.HTTPException):
++                    time.sleep(0.1)
++            else:
++                raise RuntimeError('테스트 Caddy 시작 시간 초과.')
++
++            status, headers, body = request('GET', '/actuator/health')
++            assert status == 200 and json.loads(body)['path'] == '/actuator/health'
++            status, headers, body = request('POST', '/api/v1/auth/apple/callback?state=DUMMY_STATE', 'code=DUMMY_CODE')
++            assert status == 401
++            assert json.loads(body) == {'method': 'POST', 'path': '/api/v1/auth/apple/callback?state=DUMMY_STATE', 'body': 'code=DUMMY_CODE'}
++            assert headers['Access-Control-Allow-Origin'] == 'https://jungsan.devkdk.com'
++            assert 'HttpOnly; Secure; SameSite=Lax' in headers['Set-Cookie']
++            before_denied = len(ApplicationHandler.requests)
++            for path in ('/actuator/prometheus', '/actuator/metrics', '/actuator/health/extra', '/api', '/admin'):
++                assert request('GET', path)[0] == 404
++            assert len(ApplicationHandler.requests) == before_denied
++            # upstream 장애로 오류 로그가 실제 발생해도 쿼리·인증 헤더가 삭제되는지 확인한다.
++            application.shutdown()
++            application.server_close()
++            status, _, _ = request('GET', '/api/v1/failure?code=DUMMY_CODE&state=DUMMY_STATE')
++            assert status == 502
++        finally:
++            process.terminate()
++            try:
++                process.wait(timeout=10)
++            except subprocess.TimeoutExpired:
++                process.kill()
++                process.wait(timeout=5)
++            application.shutdown()
++            application.server_close()
++        log.seek(0)
++        entries = [json.loads(line) for line in log if line.startswith('{')]
++        error_entries = [entry for entry in entries if entry.get('logger') == 'http.log.error']
++        assert error_entries, '오류 로그가 실제로 생성되어야 제거 동작을 검증할 수 있다.'
++        for entry in error_entries:
++            assert 'uri' not in entry['request'] and 'headers' not in entry['request']
++            assert not any(dummy in json.dumps(entry) for dummy in ('DUMMY_CODE', 'DUMMY_STATE', 'DUMMY_TOKEN', 'DUMMY_COOKIE'))
++    print('실제 Caddy 검증 통과: 경로 제한·POST/401·CORS/쿠키 전달·장애 502·오류 로그 인증 정보 제거.')
++
++
++if __name__ == '__main__':
++    main()
