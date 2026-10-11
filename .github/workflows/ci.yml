@@ -48,6 +48,17 @@ jobs:
       - name: 운영 DNS 범위·재시도 검증
         run: python3 scripts/verify-cloudflare-dns.py
 
+      - name: Caddy 설치 구문·기존 방화벽 보존 검증
+        run: |
+          bash -n scripts/ingress/install-caddy.sh
+          python3 scripts/verify-caddy-firewall.py
+
+      - name: 실제 Caddy의 경로·인증 응답·로그 검증
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --yes caddy
+          python3 scripts/verify-caddy-ingress.py
+
       - name: 테스트 결과 보존
         if: always()
         uses: actions/upload-artifact@v4

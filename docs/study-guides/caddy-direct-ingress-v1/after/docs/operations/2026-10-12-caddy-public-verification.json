@@ -1,0 +1,237 @@
+{
+  "observed_at_utc": "2026-10-11T16:15:19.301252+00:00",
+  "hostname": "jungsan-api.devkdk.com",
+  "tls": {
+    "verified": true,
+    "peer_ip": "140.245.109.32",
+    "issuer": [
+      [
+        [
+          "countryName",
+          "US"
+        ]
+      ],
+      [
+        [
+          "organizationName",
+          "Let's Encrypt"
+        ]
+      ],
+      [
+        [
+          "commonName",
+          "YE2"
+        ]
+      ]
+    ],
+    "expires": "Jan  9 15:12:33 2027 GMT",
+    "subject_alt_name": [
+      [
+        "DNS",
+        "jungsan-api.devkdk.com"
+      ]
+    ]
+  },
+  "checks": [
+    {
+      "method": "GET",
+      "path": "/actuator/health",
+      "status": 200,
+      "cf_ray_present": false,
+      "health": "UP"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "status": 401,
+      "cf_ray_present": false,
+      "allow_origin": "https://jungsan.devkdk.com",
+      "allow_credentials": "true"
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/auth/me",
+      "status": 200,
+      "cf_ray_present": false,
+      "allow_origin": "https://jungsan.devkdk.com",
+      "allow_credentials": "true"
+    },
+    {
+      "method": "GET",
+      "path": "/actuator/prometheus",
+      "status": 404,
+      "cf_ray_present": false
+    },
+    {
+      "method": "GET",
+      "path": "/actuator/metrics",
+      "status": 404,
+      "cf_ray_present": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/kakao/login",
+      "status": 302,
+      "cf_ray_present": false,
+      "redirect_host": "kauth.kakao.com",
+      "callback": [
+        "https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback"
+      ],
+      "scope": [],
+      "has_state": true,
+      "has_nonce": false,
+      "cookie_flags": [
+        {
+          "http_only": true,
+          "secure": true,
+          "same_site_none": false
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/apple/login",
+      "status": 302,
+      "cf_ray_present": false,
+      "redirect_host": "appleid.apple.com",
+      "callback": [
+        "https://jungsan-api.devkdk.com/api/v1/auth/apple/callback"
+      ],
+      "scope": [],
+      "has_state": true,
+      "has_nonce": true,
+      "cookie_flags": [
+        {
+          "http_only": true,
+          "secure": true,
+          "same_site_none": true
+        }
+      ]
+    }
+  ],
+  "cold_connections": [
+    {
+      "path": "https://jungsan-api.devkdk.com/actuator/health",
+      "status": "200",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.119725",
+      "tcp": "0.276501",
+      "tls": "0.501063",
+      "ttfb": "0.841424",
+      "total": "0.842475",
+      "connections_created": "1"
+    },
+    {
+      "path": "https://jungsan-api.devkdk.com/actuator/health",
+      "status": "200",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.017543",
+      "tcp": "0.362733",
+      "tls": "0.577029",
+      "ttfb": "0.778001",
+      "total": "0.778067",
+      "connections_created": "1"
+    },
+    {
+      "path": "https://jungsan-api.devkdk.com/actuator/health",
+      "status": "200",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.013642",
+      "tcp": "0.210224",
+      "tls": "0.422031",
+      "ttfb": "0.647954",
+      "total": "0.648055",
+      "connections_created": "1"
+    },
+    {
+      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
+      "status": "401",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.016380",
+      "tcp": "0.308089",
+      "tls": "0.534220",
+      "ttfb": "0.749610",
+      "total": "0.749687",
+      "connections_created": "1"
+    },
+    {
+      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
+      "status": "401",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.007019",
+      "tcp": "0.428837",
+      "tls": "0.600174",
+      "ttfb": "1.106240",
+      "total": "1.106337",
+      "connections_created": "1"
+    },
+    {
+      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
+      "status": "401",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.017799",
+      "tcp": "0.692594",
+      "tls": "1.308423",
+      "ttfb": "2.000954",
+      "total": "2.001014",
+      "connections_created": "1"
+    }
+  ],
+  "same_process_connections": [
+    {
+      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
+      "status": "401",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.262041",
+      "tcp": "0.378524",
+      "tls": "0.560678",
+      "ttfb": "0.682401",
+      "total": "0.682472",
+      "connections_created": "1"
+    },
+    {
+      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
+      "status": "401",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.000000",
+      "tcp": "0.000000",
+      "tls": "0.000000",
+      "ttfb": "0.118279",
+      "total": "0.118335",
+      "connections_created": "0"
+    },
+    {
+      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
+      "status": "401",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.000000",
+      "tcp": "0.000000",
+      "tls": "0.000000",
+      "ttfb": "0.133385",
+      "total": "0.133503",
+      "connections_created": "0"
+    },
+    {
+      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
+      "status": "401",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.000000",
+      "tcp": "0.000000",
+      "tls": "0.000000",
+      "ttfb": "0.290801",
+      "total": "0.290869",
+      "connections_created": "0"
+    },
+    {
+      "path": "https://jungsan-api.devkdk.com/api/v1/auth/me",
+      "status": "401",
+      "remote_ip": "140.245.109.32",
+      "dns": "0.000000",
+      "tcp": "0.000000",
+      "tls": "0.000000",
+      "ttfb": "0.437853",
+      "total": "0.465217",
+      "connections_created": "0"
+    }
+  ]
+}
