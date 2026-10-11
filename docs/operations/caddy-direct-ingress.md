@@ -58,7 +58,7 @@ Caddy는 호스트 서비스다. 일반 컨테이너의 `127.0.0.1`은 호스트
    전체 live rules를 영구 저장하거나 `iptables-restore`로 재적용하지 않는다.
 
 백업은 `/var/backups/jeongsan-caddy/<UTC시각>-<PID>/`다. Caddy 설정·saved rules·live rules 참고 자료를
-보존한다. live rules 파일을 그대로 restore하면 Docker/Tailscale의 현재 상태와 어긋날 수 있다.
+보존한다(기존 Caddy 설정 백업은 설치 전에 파일이 있을 때만). live rules 파일을 그대로 restore하면 Docker/Tailscale의 현재 상태와 어긋날 수 있다.
 필요하면 `jeongsan-caddy` 표시가 붙은 두 규칙만 제거하고 saved rules에서 두 줄만 제거한다.
 방화벽 변경 중 실패하면 이 실행이 추가한 허용 규칙만 제거한다. SSH 허용을 제거하지 않는다.
 
