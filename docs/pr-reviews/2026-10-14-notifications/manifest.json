@@ -5,8 +5,11 @@
   "external_review": "별도 수집 대기",
   "hashes": {
     "ci-failure-01.json": "341795f7aee40de1059cdd9c026e7f15b0498075c1e20925843d18083bcf4a07",
+    "ci-failure-02.json": "3a205662a56c0dee206c888d375b356b6e67bcdf2268819fb886d2f1b89273e2",
     "ci-failure-assessment-01.md": "cf87846f38bf01246543d55680b1c6c6263181dd3b1a7dffc7d291cd12f23087",
+    "ci-failure-assessment-02.md": "f1d151edce9d3aa49c573eec746bef8ec1d3efe384c5e1d17a42ecd5d3d43a32",
     "local-verification.json": "b5f865eb89aaddb6f4acf61c391f6a3591f876ed0d9225fa75cdedfbd2f0ea8f",
+    "production-probe-01.json": "e1fc998aab869a86690e94b7d1c797fecfe9082f57e034536129564ff9cc0c99",
     "self-review.md": "ec60c9eb7b47cbc20335b24e522b7fe8670f047936b363797afb792da5ed9350"
   }
 }

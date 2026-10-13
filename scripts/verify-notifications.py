@@ -66,7 +66,9 @@ for _ in range(2):
     call("POST", root + "/rounds", host, {"total": 30000, "payerParticipantId": payer_id}, 201)
 preview = call("GET", root + "/settlement/preview", host)
 settled = call("POST", root + "/settlement", host, {"inputRevision": preview["inputRevision"], "inputHash": preview["inputHash"]})
-def notifications(user, kind=None, settlement_unit_id=unit_id):
+def notifications(user, kind=None, settlement_unit_id=None):
+    if settlement_unit_id is None:
+        settlement_unit_id = unit_id
     rows = call("GET", "/me/notifications", user)
     return [row for row in rows if row["settlementUnitId"] == settlement_unit_id and (kind is None or row["type"] == kind)]
 check(not notifications(host, "SETTLED") and len(notifications(host, "SETTLED_HOST")) == 1,
