@@ -36,6 +36,7 @@ for attempt in $(seq 1 40); do
 done
 [ "$ready" = true ] || { echo 'CI HTTP 서버 준비 실패' >&2; exit 1; }
 python3 scripts/verify-auto-settlement.py
+python3 scripts/verify-notifications.py
 python3 scripts/verify-auth-release.py
 ./gradlew :server:authDatabaseProbe --no-daemon
 python3 scripts/verify-deploy.py

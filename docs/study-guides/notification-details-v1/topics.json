@@ -1,0 +1,95 @@
+[
+  {
+    "category": "Java 기본기",
+    "catalog_id": "JST-14-02-03",
+    "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationPolicy.java",
+    "line": 10,
+    "symbol": "return userIds.stream().distinct()",
+    "viewpoint": "distinct와 filter가 받는 사람의 중복·행동자 제외를 결정하는 새 파이프라인을 읽는다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/c7dff2f372b327f0a5b8dc69d28b2bae9240435f/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationPolicy.java#L10",
+    "catalog_entry": {
+      "source": "자바의 정석",
+      "chapter": "14장 람다와 스트림",
+      "section": "2. 스트림(stream)",
+      "subsection": "2.3",
+      "title": "스트림의 중간연산",
+      "page": "958"
+    }
+  },
+  {
+    "category": "함수형 Java",
+    "catalog_id": "FJ-06-03",
+    "file": "server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationPolicy.java",
+    "line": 11,
+    "symbol": ".filter(userId ->",
+    "viewpoint": "DB 저장과 분리된 스트림의 중간 연산·최종 toList가 수신자 목록을 만드는 연결을 확인한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/c7dff2f372b327f0a5b8dc69d28b2bae9240435f/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationPolicy.java#L11",
+    "catalog_entry": {
+      "source": "함수형 프로그래밍 with 자바",
+      "chapter": "6",
+      "chapter_title": "스트림을 이용한 데이터 처리",
+      "section": "6.3",
+      "title": "스트림 파이프라인 구축하기"
+    }
+  },
+  {
+    "category": "Kotlin 기본",
+    "catalog_id": "KB-15",
+    "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+    "line": 231,
+    "symbol": "val autoParticipantIds=",
+    "viewpoint": "차수별 자동 응답을 참여자 Set으로 모으는 변경이 사용자별 알림 중복을 제거한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/c7dff2f372b327f0a5b8dc69d28b2bae9240435f/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt#L231",
+    "catalog_entry": {
+      "source": "Kotlin 기본",
+      "lecture": "15강",
+      "section": "섹션 5. 코틀린에서의 FP",
+      "title": "코틀린에서 배열과 컬렉션을 다루는 방법"
+    }
+  },
+  {
+    "category": "Kotlin 기본",
+    "catalog_id": "KB-17",
+    "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+    "line": 220,
+    "symbol": "val transfersBySender=",
+    "viewpoint": "groupBy 람다와 참여자별 조회가 송금자 요약과 수취인만 있는 참여자 안내를 분리한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/c7dff2f372b327f0a5b8dc69d28b2bae9240435f/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt#L220",
+    "catalog_entry": {
+      "source": "Kotlin 기본",
+      "lecture": "17강",
+      "section": "섹션 5. 코틀린에서의 FP",
+      "title": "코틀린에서 람다를 다루는 방법"
+    }
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+    "line": 242,
+    "symbol": "val missingPayoutUsers=",
+    "viewpoint": "IN 조회가 결제자 계좌 상태를 한 번에 모으므로 알림 생성에 N+1을 추가하지 않는다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/c7dff2f372b327f0a5b8dc69d28b2bae9240435f/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt#L242",
+    "technology": "JDBC 배치 조회"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "scripts/verify-notifications.py",
+    "line": 85,
+    "symbol": "with ThreadPoolExecutor(2) as pool:",
+    "viewpoint": "실제 최초 계좌 등록의 동시 두 요청이 사용자별 알림 하나로 남는지 SQL 잠금과 HTTP 결과를 함께 검사한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/c7dff2f372b327f0a5b8dc69d28b2bae9240435f/scripts/verify-notifications.py#L85",
+    "technology": "MySQL 트랜잭션·멱등"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+    "line": 245,
+    "symbol": "val gatheringState=updateSummary(gid)",
+    "viewpoint": "단위 완료와 술자리 전체 완료를 구분한 상태로 삭제 예고를 정하므로 알림 내용과 실제 삭제 시점을 대조한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/c7dff2f372b327f0a5b8dc69d28b2bae9240435f/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt#L245",
+    "technology": "단위 상태·삭제 계약"
+  }
+]
