@@ -3,8 +3,10 @@
     "image": "receipt-001.jpg",
     "total": 50000,
     "drinks": [
-      {"name": "참이슬", "unit": "BOTTLE", "unitPrice": 5000, "quantity": 3},
-      {"name": "테라", "unit": "BOTTLE", "unitPrice": 6000, "quantity": 2}
+      {"name": "참이슬 (세부형 미상)", "category": "SOJU", "unit": "UNKNOWN", "servingType": "UNKNOWN",
+       "unitPrice": 5000, "quantity": 3, "lineAmount": 15000, "volumeMl": null, "bottleCount": null},
+      {"name": "테라", "category": "BEER", "unit": "UNKNOWN", "servingType": "UNKNOWN",
+       "unitPrice": 6000, "quantity": 2, "lineAmount": 12000, "volumeMl": null, "bottleCount": null}
     ]
   }
 ]

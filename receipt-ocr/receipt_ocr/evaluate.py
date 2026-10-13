@@ -12,7 +12,8 @@ from .ocr import PaddleEngine
 
 
 def drink_key(drink):
-    return (drink["name"], drink["unit"], drink["unitPrice"], drink["quantity"])
+    return tuple(drink[field] for field in ("name", "category", "unit", "servingType", "unitPrice",
+                                           "quantity", "lineAmount", "volumeMl", "bottleCount"))
 
 
 def evaluate(manifest: Path, dictionary_path: Path, engine):

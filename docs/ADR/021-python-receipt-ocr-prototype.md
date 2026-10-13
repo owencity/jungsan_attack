@@ -14,6 +14,15 @@ Python 표준 라이브러리 추출 정책과 MD 사전을 분리하고 FastAPI
 PaddlePaddle 3.3.1, FastAPI, Uvicorn, Pillow는 사용자가 승인한 조합의 실행·이미지 처리를 위한 의존성이다.
 Java/Kotlin core·공개 Spring API·DB·운영 compose에는 이번 변경을 연결하지 않는다.
 
+### 사용자 사전 반영 (2026-10-14)
+
+CTO가 제공한 MD 사전을 팩트체크하고 수정·구현을 승인했다. 정책 문서는
+`receipt-ocr/docs/receipt_alcohol_ocr_dictionary.md`, 실행 사전은 `receipt-ocr/data/drinks.md`로 분리한다.
+브랜드의 대표 포장으로 용기를 채우지 않고 명시된 용기·수량·용량만 읽는다. 생맥 제공 방식과
+잔/피처 용기는 분리한다. 소수·음수·잘못된 쉼표의 일부를 양수로 읽지 않도록 전체 숫자를 검증한다.
+내부 schemaVersion 2로 분류·용기 UNKNOWN·제공 방식·용량·병 수를 반환하며 모든 후보는 총무 확인이 필수다.
+원문 영구 보존·자동 확정 제안은 적용하지 않는다. 사전은 실제 상품 존재·표기를 돕고 인식 정확도를 보장하지 않는다.
+
 ## 근거
 
 PaddleOCR 한국어 모델은 한국어·영어·숫자를 지원하고 코드·해당 모델은 Apache-2.0으로 공개됐다.

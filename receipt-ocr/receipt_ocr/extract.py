@@ -1,21 +1,31 @@
 import re
-from .dictionary import Entry, normalize
+from .dictionary import Entry
 from .model import Drink, Receipt, Token
+from .product import INTEGER, MAX_QUANTITY, NUMERIC_TOKEN, UNIT_NAMES, UNIT_PATTERN, match_product, read_integer
 
 
 MAX_AMOUNT = 1_000_000_000
-MAX_QUANTITY = 1000
 MIN_CONFIDENCE = 0.85
-# 정수 원만 지원한다. 5.000·5,00·음수·소수는 5000으로 복구하지 않는다.
-NUMBER = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
-ROW_VALUES = re.compile(
-    rf"^(?P<name>.+?)\s+(?P<values>{NUMBER}(?:\s*(?:원|병|캔|잔))?"
-    rf"(?:\s+{NUMBER}(?:\s*(?:원|병|캔|잔))?){{0,2}})\s*$"
-)
-VALUE = re.compile(rf"(?<![\d,.+-]){NUMBER}(?![\d,.])")
-VALUE_WITH_UNIT = re.compile(rf"({NUMBER})\s*(원|병|캔|잔)?")
-TOTAL = re.compile(rf"^(합계|총액|총금액|결제금액|총결제금액|받을금액)\s*[:：]?\s*({NUMBER})\s*원?$")
+VALUE_WITH_UNIT = re.compile(rf"({NUMERIC_TOKEN})\s*(원|{UNIT_PATTERN})?", re.I)
+VALUES = re.compile(rf"{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?(?:\s+{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?){{0,2}}", re.I)
+TOTAL = re.compile(rf"^(합계|총액|총금액|결제금액|총결제금액|받을금액)\s*[:：]?\s*({INTEGER})\s*원?$")
 HEADER_LABELS = re.compile(r"단가|수량|금액")
+SPECIAL_ROW = re.compile(r"취소|환불|반품|VOID|CANCEL|할인|쿠폰|서비스|세트|[0-9]+\s*\+\s*[0-9]+", re.I)
+
+
+def split_product_values(text: str, dictionary: dict[str, Entry]):
+    # 오른쪽 숫자를 떼더라도 카스 0.0 같은 더 긴 전체 상품명을 우선한다.
+    product = match_product(text, dictionary)
+    if product:
+        return product, []
+    for separator in reversed(list(re.finditer(r"\s+", text))):
+        values_text = text[separator.end():].strip()
+        if not VALUES.fullmatch(values_text):
+            continue
+        product = match_product(text[:separator.start()], dictionary)
+        if product:
+            return product, [(match[1], match[2]) for match in VALUE_WITH_UNIT.finditer(values_text)]
+    return None, []
 
 
 def group_rows(tokens: list[Token]) -> list[list[Token]]:
@@ -44,8 +54,8 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
         normalized_text = re.sub(r"\s+", "", text)
         total_match = TOTAL.fullmatch(normalized_text)
         if total_match:
-            amount = int(total_match[2].replace(",", ""))
-            if amount <= MAX_AMOUNT and confidence >= MIN_CONFIDENCE:
+            amount = read_integer(total_match[2], MAX_AMOUNT, allow_zero=True)
+            if amount is not None and confidence >= MIN_CONFIDENCE:
                 totals.append(amount)
             else:
                 warnings.append("TOTAL_NEEDS_REVIEW")
@@ -54,39 +64,77 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
         if sorted(labels) == ["금액", "단가", "수량"]:
             columns = labels if confidence >= MIN_CONFIDENCE else None
             continue
-        row_match = ROW_VALUES.fullmatch(text)
-        # 숫자가 제품명(500cc·0.0)에 들어갈 수 있으므로 이름 전체로 사전을 조회한다.
-        name = row_match["name"] if row_match else text
-        entry = dictionary.get(normalize(name))
-        if entry is None or entry.category == "NON_ALCOHOL":
+        if labels and re.sub(r"품목|상품명|메뉴명|메뉴|단가|수량|금액|\s", "", text) == "":
+            columns = None
             continue
-        values = VALUE.findall(row_match["values"]) if row_match else []
-        reasons = []
-        unit = entry.unit
-        unit_price = quantity = line_amount = None
+        product, values = split_product_values(text, dictionary)
+        if product is None or product.entry.category in {"NON_ALCOHOL", "NON_BEVERAGE"}:
+            continue
+        reasons = list(product.reasons)
+        unit = product.unit
+        quantity = product.quantity
+        unit_price = line_amount = None
+        if SPECIAL_ROW.search(text):
+            reasons.append("RETURN_OR_CANCEL" if re.search(r"취소|환불|반품|VOID|CANCEL", text, re.I) else "COMBO_OR_PROMOTION")
+            quantity = None
         if columns is None:
             reasons.append("COLUMN_HEADER_MISSING")
+            # 단위가 붙은 하나의 수량은 헤더 없이도 읽는다. 나머지 가격 열은 추측하지 않는다.
+            if len(values) == 1 and values[0][1] and values[0][1].casefold() in UNIT_NAMES:
+                quantity = read_integer(values[0][0], MAX_QUANTITY)
+                receipt_unit = UNIT_NAMES[values[0][1].casefold()]
+                if unit != "UNKNOWN" and unit != receipt_unit:
+                    reasons.append("UNIT_CONFLICT")
+                    unit = "UNKNOWN"
+                else:
+                    unit = receipt_unit
+                if quantity is None:
+                    reasons.append("QUANTITY_INVALID_OR_CONFLICT")
         elif len(values) != 3:
             reasons.append("ITEM_VALUES_MISSING")
         else:
-            mapped = dict(zip(columns, (int(value.replace(",", "")) for value in values)))
-            unit_price, quantity, line_amount = mapped["단가"], mapped["수량"], mapped["금액"]
-            value_units = dict(zip(columns, (match[2] for match in VALUE_WITH_UNIT.finditer(row_match["values"]))))
-            receipt_unit = {"병": "BOTTLE", "캔": "CAN", "잔": "GLASS"}.get(value_units["수량"])
-            if receipt_unit and receipt_unit != entry.unit:
-                unit = receipt_unit
-                reasons.append("UNIT_CONFLICT")
-            if not (0 < unit_price <= MAX_AMOUNT and 0 < quantity <= MAX_QUANTITY and 0 < line_amount <= MAX_AMOUNT):
+            mapped = dict(zip(columns, values))
+            parsed = {label: read_integer(value, MAX_QUANTITY if label == "수량" else MAX_AMOUNT)
+                      for label, (value, unused_unit) in mapped.items()}
+            value_units = {label: value_unit.casefold() if value_unit else None
+                           for label, (unused_value, value_unit) in mapped.items()}
+            valid_units = value_units["단가"] in (None, "원") and value_units["금액"] in (None, "원")
+            valid_units = valid_units and value_units["수량"] in (None, *UNIT_NAMES)
+            if not valid_units or any(value is None for value in parsed.values()):
                 reasons.append("ITEM_OUT_OF_RANGE")
                 unit_price = quantity = line_amount = None
-            elif unit_price * quantity != line_amount:
-                reasons.append("ITEM_AMOUNT_MISMATCH")
+            else:
+                unit_price, column_quantity, line_amount = parsed["단가"], parsed["수량"], parsed["금액"]
+                if quantity is not None and quantity != column_quantity:
+                    reasons.append("QUANTITY_INVALID_OR_CONFLICT")
+                    quantity = None
+                elif "QUANTITY_INVALID_OR_CONFLICT" not in reasons:
+                    quantity = column_quantity
+                receipt_unit = UNIT_NAMES.get(value_units["수량"])
+                if receipt_unit:
+                    if "UNIT_CONFLICT" in reasons or (unit != "UNKNOWN" and unit != receipt_unit):
+                        reasons.append("UNIT_CONFLICT")
+                        unit = "UNKNOWN"
+                    else:
+                        unit = receipt_unit
+                if quantity is not None and unit_price * quantity != line_amount:
+                    reasons.append("ITEM_AMOUNT_MISMATCH")
+        if product.entry.serving_type == "DRAFT" and unit == "BOTTLE":
+            reasons.append("UNIT_CONFLICT")
+            unit = "UNKNOWN"
+        if "RETURN_OR_CANCEL" in reasons or ("COMBO_OR_PROMOTION" in reasons and unit != "PACK"):
+            quantity = None
         if confidence < MIN_CONFIDENCE:
             reasons.append("LOW_CONFIDENCE")
-        if unit != "BOTTLE":
+        if unit == "UNKNOWN":
+            reasons.append("UNKNOWN_CONTAINER")
+        elif unit != "BOTTLE":
             reasons.append("UNIT_REQUIRES_MAPPING")
-        drinks.append(Drink(entry.name, entry.category, unit, unit_price, quantity,
-                            line_amount, round(confidence, 4), reasons))
+        if product.entry.category == "UNKNOWN":
+            reasons.append("UNKNOWN_CATEGORY")
+        drinks.append(Drink(product.entry.name, product.entry.category, unit, unit_price, quantity,
+                            line_amount, round(confidence, 4), list(dict.fromkeys(reasons)),
+                            product.entry.serving_type, product.volume_ml))
     if not tokens:
         warnings.append("OCR_NO_TEXT")
     if len(set(totals)) > 1:

@@ -46,7 +46,9 @@ def main():
         assert response.status_code == 200
         result = response.json()
         assert result["total"] == 50000
-        assert [(drink["name"], drink["unitPrice"], drink["quantity"]) for drink in result["drinks"]] == [("참이슬", 5000, 3), ("테라", 6000, 2)]
+        assert [(drink["name"], drink["unitPrice"], drink["quantity"]) for drink in result["drinks"]] == [("참이슬 (세부형 미상)", 5000, 3), ("테라", 6000, 2)]
+        assert all(drink["unit"] == "UNKNOWN" and drink["bottleCount"] is None for drink in result["drinks"])
+        assert result["schemaVersion"] == 2
         assert result["requiresConfirmation"]
 
 

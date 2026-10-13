@@ -28,7 +28,9 @@ class ExtractionTests(unittest.TestCase):
         self.assertEqual(50000, result.total)
         self.assertEqual([(5000, 3, 15000), (6000, 2, 12000)],
                          [(drink.unit_price, drink.quantity, drink.line_amount) for drink in result.drinks])
-        self.assertEqual([], result.warnings)
+        self.assertEqual(["UNKNOWN", "UNKNOWN"], [drink.unit for drink in result.drinks])
+        self.assertEqual([None, None], [drink.bottle_count for drink in result.drinks])
+        self.assertIn("ITEMS_NEED_REVIEW", result.warnings)
         self.assertTrue(result.to_dict()["requiresConfirmation"])
 
     def test_quantity_before_unit_price_follows_header(self):
@@ -58,7 +60,8 @@ class ExtractionTests(unittest.TestCase):
     def test_explicit_glass_does_not_turn_into_bottle(self):
         drink = self.read("품목 단가 수량 금액", "테라 5,000원 2잔 10,000원").drinks[0]
         self.assertEqual("GLASS", drink.unit)
-        self.assertIn("UNIT_CONFLICT", drink.review_reasons)
+        self.assertEqual(0, drink.bottle_count)
+        self.assertIn("UNIT_REQUIRES_MAPPING", drink.review_reasons)
 
     def test_only_line_amount_remains_incomplete(self):
         drink = self.read("품목 단가 수량 금액", "참이슬 15,000").drinks[0]
@@ -102,8 +105,11 @@ class ExtractionTests(unittest.TestCase):
     def test_volume_in_name_is_not_quantity(self):
         drink = self.read("품목 단가 수량 금액", "생맥주 500cc 5,000 2 10,000").drinks[0]
         self.assertEqual(2, drink.quantity)
-        self.assertEqual("GLASS", drink.unit)
-        self.assertIn("UNIT_REQUIRES_MAPPING", drink.review_reasons)
+        self.assertEqual("UNKNOWN", drink.unit)
+        self.assertEqual("DRAFT", drink.serving_type)
+        self.assertEqual(500, drink.volume_ml)
+        self.assertEqual(0, drink.bottle_count)
+        self.assertIn("UNKNOWN_CONTAINER", drink.review_reasons)
 
     def test_non_alcohol_and_unknown_names_are_not_guessed(self):
         result = self.read("품목 단가 수량 금액", "카스 0.0 5,000 2 10,000", "테라무알콜 5,000 2 10,000")
@@ -132,12 +138,30 @@ class DictionaryTests(unittest.TestCase):
             return load_dictionary(path)
 
     def test_spaces_and_case_are_normalized(self):
-        entries = self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n|---|---|---|---|\n| T E R A | 맥주 | 테라 | 병 |")
+        entries = self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n|---|---|---|---|\n| T E R A | 맥주 | 테라 | 미상 |")
         self.assertEqual("BEER", entries["tera"].category)
 
     def test_conflicting_aliases_fail_fast(self):
         with self.assertRaises(ValueError):
-            self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n| 테라 | 맥주 | 테라 | 병 |\n| 테 라 | 비주류 | 테라 | 병 |")
+            self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n| 테라 | 맥주 | 테라 | 미상 |\n| 테 라 | 비주류 | 테라 | 미상 |")
+
+    def test_brand_container_assumptions_are_rejected_even_in_custom_dictionary(self):
+        with self.assertRaisesRegex(ValueError, "브랜드의 용기"):
+            self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n| 테라 | 맥주 | 테라 | 병 |")
+
+    def test_brand_draft_product_name_is_not_a_tap_serving(self):
+        with self.assertRaisesRegex(ValueError, "일반 생맥"):
+            self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 | 제공 방식 |\n| 클라우드 생드래프트 | 맥주 | 클라우드 생드래프트 | 미상 | 생맥 |")
+
+    def test_extended_table_and_following_document_table_are_separate(self):
+        entries = self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 | 제공 방식 |\n| 생맥주 | 맥주 | 생맥주 | 미상 | 생맥 |\n\n## 설명\n| 필드 | 설명 |\n|---|---|\n| 예시 | 아무 값 |")
+        self.assertEqual("DRAFT", entries["생맥주"].serving_type)
+        self.assertEqual(1, len(entries))
+
+    def test_exact_alias_does_not_hide_its_explicit_quantity(self):
+        entries = self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n| 소주2병 | 소주 | 소주 | 병 |")
+        drink = extract(tokens("소주2병"), entries).drinks[0]
+        self.assertEqual((2, 2), (drink.quantity, drink.bottle_count))
 
     def test_invalid_category_and_empty_dictionary_fail_fast(self):
         for content in ("", "| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n| 테라 | 아무거나 | 테라 | 병 |"):

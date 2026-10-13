@@ -27,6 +27,22 @@ class Drink:
     line_amount: int | None
     confidence: float
     review_reasons: list[str] = field(default_factory=list)
+    serving_type: str = "UNKNOWN"
+    volume_ml: int | None = None
+
+    @property
+    def bottle_count(self):
+        if self.category == "UNKNOWN":
+            return None
+        if any(reason in self.review_reasons for reason in
+               ("UNIT_CONFLICT", "QUANTITY_INVALID_OR_CONFLICT", "ITEM_OUT_OF_RANGE",
+                "ITEM_AMOUNT_MISMATCH", "LOW_CONFIDENCE", "COMBO_OR_PROMOTION", "RETURN_OR_CANCEL")):
+            return None
+        if self.unit == "BOTTLE":
+            return self.quantity
+        if self.unit in {"CAN", "GLASS", "PITCHER"} or self.serving_type == "DRAFT":
+            return 0
+        return None
 
     def to_dict(self):
         return {
@@ -34,6 +50,8 @@ class Drink:
             "unitPrice": self.unit_price, "quantity": self.quantity,
             "lineAmount": self.line_amount, "confidence": self.confidence,
             "reviewReasons": self.review_reasons,
+            "servingType": self.serving_type, "volumeMl": self.volume_ml,
+            "bottleCount": self.bottle_count,
         }
 
 
@@ -45,7 +63,7 @@ class Receipt:
 
     def to_dict(self):
         return {
-            "schemaVersion": 1, "total": self.total,
+            "schemaVersion": 2, "total": self.total,
             "drinks": [drink.to_dict() for drink in self.drinks],
             "warnings": self.warnings, "requiresConfirmation": True,
         }
