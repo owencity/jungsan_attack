@@ -1,0 +1,87 @@
+# 정산어택 영수증 추출 — Python 초기 구현
+
+PaddleOCR CPU 한국어 모델로 총액·주류 후보를 읽고 총무 확인용 JSON을 반환한다.
+별도 저장소로 옮길 수 있도록 이 폴더 안에 실행·사전·테스트를 모았다.
+2026-10-14 사용자 승인으로 개발을 시작했다. 현재 Spring 연결·운영 배포 전이다.
+
+## 실행
+
+Python 3.12. 모델을 받는 첫 실행에는 인터넷이 필요하며, 이후 로컬 모델 캐시를 사용한다.
+아래 명령은 `receipt-ocr` 폴더에서 실행한다.
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements-test.txt
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -m unittest discover -s tests -v
+.venv\Scripts\python -m receipt_ocr --tokens examples/receipt-tokens.json
+.venv\Scripts\python -m receipt_ocr --image .samples/receipt.jpg
+```
+
+Linux는 `.venv/bin/python`을 사용한다. 버전은 requirements에 고정했지만 전이 의존성은
+완전 잠금 전이다. 운영 채택 전 깨끗한 환경·OCI ARM에서 설치, 모델 추론, 지연·메모리를 실측한다.
+모델이 필요 없는 단위/API 테스트는 requirements-test만 설치해도 실행 가능하다.
+
+API 실행은 Spring→Python 내부 통신용 서비스 키가 필요하다.
+사용자 로그인 토큰과 별개이며 앱에 전달하지 않는다. 32자 이상의 임의 ASCII 비밀값을
+`RECEIPT_SERVICE_KEY`에 설정한다. 사진·원문은 파일이나 DB에 저장하지 않는다.
+
+```powershell
+# RECEIPT_SERVICE_KEY를 로컬 환경에 설정한 뒤 실행한다.
+.venv\Scripts\python -m uvicorn receipt_ocr.api:application --factory --host 127.0.0.1 --port 8091 --workers 1 --limit-concurrency 4 --no-access-log
+```
+
+- `POST /api/v1/receipts/extract`: JPEG/PNG **바이너리 본문**, `Content-Type: image/jpeg` 또는 `image/png`, `X-Receipt-Service-Key`.
+- `GET /health`: 기동 완료 확인. 기동 시 모델 초기화가 실패하면 서버가 뜨지 않는다.
+- 원본 8MiB 이하·1,600만 픽셀 이하. EXIF 방향 적용·긴 변 최대 2400px·메타데이터 제거.
+- 프로세스당 한 장만 처리하고 겹친 요청은 503 `OCR_BUSY` + Retry-After 2초.
+- 운영에서는 공인 포트를 열지 않고 Spring만 접근하게 연결한다. Spring이 사용자 인증·총무 권한·단위 상태·업로드 제한을 검사한다.
+- Spring 호출 시간 제한과 사용자별 요청 제한은 연결 작업에서 구현한다. Python CPU 추론 중단은 HTTP 시간 제한만으로 보장되지 않는다.
+
+## MD 사전 만들기
+
+`data/drinks.md`를 수정하거나 같은 형식의 파일을 `--dictionary`로 지정한다.
+API는 `RECEIPT_DICTIONARY_PATH`로 지정하고 재시작한다. 잘못된 분류·빈 사전·상충하는 중복은 기동/실행을 거절한다.
+
+| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |
+|---|---|---|---|
+| 참이슬 | 소주 | 참이슬 | 병 |
+| 참 이 슬 | 소주 | 참이슬 | 병 |
+| TERRA | 맥주 | 테라 | 병 |
+| 생맥주 500cc | 맥주 | 생맥주 500cc | 잔 |
+| 카스 0.0 | 비주류 | 카스 0.0 | 병 |
+
+종류는 **소주·맥주·막걸리·기타주류·비주류**, 단위는 **병·캔·잔**이다.
+제품명·별칭은 한 행씩 쓰고 가격은 넣지 않는다. 별칭 매칭은 공백·대소문자·Unicode 폭을
+정규화한 **전체 이름 일치**다. 부분일치·유사도·LLM으로 모르는 제품을 주류로 추측하지 않는다.
+비주류 행은 OCR에서 읽혀도 주류 결과에서 제외한다. 무알코올 제품의 실제 표기를 따로 적는다.
+
+## 지원 범위와 한계
+
+- 품목 행을 좌표로 묶고 `단가 수량 금액` 헤더의 순서로 세 숫자를 읽는다. 순서는 달라도 된다.
+- 헤더가 없거나 숫자가 빠지면 값을 역산하지 않고 null·확인 사유를 반환한다.
+- 가격·수량·항목 금액 불일치와 낮은 신뢰도는 reviewReasons에 표시한다.
+- 잔·캔은 병 수 계약에 그대로 넣을 수 없어 `UNIT_REQUIRES_MAPPING`을 반환한다.
+- 총액 라벨은 합계·총액·총금액·결제금액·총결제금액·받을금액. 공급가액·부가세·받은 돈·거스름돈은 제외한다.
+- 여러 총액 후보가 다르면 null + TOTAL_CONFLICT. 할인 전 합계/할인 후 결제액 중 하나를 임의 선택하지 않는다.
+- 음식값 때문에 술값 합계와 총액이 같을 필요는 없다. 술값이 총액을 넘으면 모순으로 표시한다.
+- 사진의 90도 회전은 EXIF 정보로만 보정한다. 사진 원근·접힘·희미한 인쇄·여러 줄 품목·무헤더 양식·누락/미등록 주류는 실제 샘플 개선 대상이다.
+- 후보 합계·검증은 영수증 추출용 정수 연산이다. 참여자 부담·송금 정산은 기존 Kotlin/Java core에서만 수행한다.
+- 반환하는 이름은 사전 표시 이름이다. 카드번호·승인번호·상호·OCR 원문은 응답에 포함하지 않는다.
+- `requiresConfirmation`은 **항상 true**다. 경고가 없어도 누락이 없는 영수증이라는 보장은 아니다.
+
+## 실제 영수증 평가
+
+실제 사진과 `examples/manifest.example.json` 형식의 정답 목록을 `.samples/`에 두고 실행한다.
+manifest의 image는 manifest 파일 기준 상대 경로다. 사진과 정답은 커밋하지 않는다.
+
+```powershell
+.venv\Scripts\python -m receipt_ocr.evaluate .samples/manifest.json
+```
+
+보고서는 총액 완전일치율, 모든 주류의 이름·단위·단가·수량 완전일치율(중복 포함), 실패 수,
+경고 수, 모델 초기화를 제외한 평균 처리시간만 반환한다. 실패 표본도 정확도 분모에 포함한다.
+다른 엔진도 같은 `recognize(image) -> list[Token]` 경계로 비교할 수 있다.
+실제 사진 정확도·ARM 운영 성능은 합성 데이터 테스트와 구분해서 기록한다.
+
+API 필드와 오류는 [계약 문서](../docs/RECEIPT_OCR.md)를 따른다.

@@ -1,0 +1,37 @@
+name: Receipt OCR CI
+
+on:
+  pull_request:
+    paths:
+      - 'receipt-ocr/**'
+      - '.github/workflows/receipt-ocr.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'receipt-ocr/**'
+      - '.github/workflows/receipt-ocr.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: receipt-ocr
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: 'receipt-ocr/requirements-*.txt'
+      - name: 테스트 환경 설치
+        run: python -m pip install -r requirements-test.txt
+      - name: 추출 정책·업로드·권한·동시 요청 테스트
+        run: python -m unittest discover -s tests -v
+      - name: OCR 토큰 예제 실행
+        run: python -m receipt_ocr --tokens examples/receipt-tokens.json

@@ -1,0 +1,10 @@
+[
+  {
+    "image": "receipt-001.jpg",
+    "total": 50000,
+    "drinks": [
+      {"name": "참이슬", "unit": "BOTTLE", "unitPrice": 5000, "quantity": 3},
+      {"name": "테라", "unit": "BOTTLE", "unitPrice": 6000, "quantity": 2}
+    ]
+  }
+]
