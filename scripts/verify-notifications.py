@@ -47,7 +47,7 @@ def call(method, path, user=None, body=None, expected=200):
 users = []
 for name in ("알림총무", "알림결제자", "알림송금자"):
     key = str(uuid.uuid4())
-    sql(f"INSERT INTO users(provider,provider_id,nickname,display_name,tier,created_at) VALUES('NOTIFY_TEST','{key}','알림검증','{name}','FREE',UTC_TIMESTAMP())")
+    sql(f"INSERT INTO users(provider,provider_id,nickname,display_name,tier,created_at) VALUES('NOTIF_TEST','{key}','알림검증','{name}','FREE',UTC_TIMESTAMP())")
     users.append(int(sql(f"SELECT id FROM users WHERE provider_id='{key}'")))
 host, payer, sender = users
 room = call("POST", "/gatherings", host, expected=201)
