@@ -7,6 +7,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.servlet.NoHandlerFoundException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 /**
  * 오류 응답을 `API.md` §1.2 한 가지 모양으로 고정한다.
@@ -31,6 +33,11 @@ class GlobalExceptionHandler {
     @ExceptionHandler(ApiException::class)
     fun handleApi(e: ApiException): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(e.status).body(ErrorResponse(e.code, e.message))
+
+    /** Boot의 정적 리소스 매핑에 도달한 없는 API도 서버 장애와 구분한다. */
+    @ExceptionHandler(NoHandlerFoundException::class, NoResourceFoundException::class)
+    fun handleMissingRoute(): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse("NOT_FOUND", "찾을 수 없습니다."))
 
     /** OAuth 콜백의 필수 query/form 누락을 서버 장애로 보고하지 않는다. */
     @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException::class,

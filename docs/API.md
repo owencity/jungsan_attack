@@ -1,4 +1,12 @@
-# 정산어택 — API 계약 · v10
+# 정산어택 — API 계약 · v11
+
+> **v11 변경(2026-10-14)** — 없는 API 경로를 서버 장애와 구분한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | §1.3 HTTP 404 | 핸들러·정적 리소스가 없는 요청도 기존 `NOT_FOUND` 형식으로 반환 |
+> | §1.4 NOT_FOUND | 요청 경로·쿼리·내부 예외 메시지를 오류 본문에 포함하지 않음 |
+>
 
 > **v10 변경(2026-10-10)** — Apple 이름·이메일을 사용하지 않는 서버 동작에 인가 요청을 맞춘다.
 >
@@ -255,13 +263,19 @@ GET /api/v1/gatherings
 | `400` | 계산 엔진 검증 실패 · 요청 형식 오류 | `VALIDATION_FAILED` `MALFORMED_REQUEST` |
 | `401` | 토큰 없음·만료·위조 | `UNAUTHENTICATED` `TOKEN_EXPIRED` |
 | `403` | 인증은 됐지만 권한 없음 | `NOT_HOST` `NOT_SELF` |
-| `404` | 없거나, **있어도 알려주면 안 되는** 것 | `NOT_FOUND` `INVALID_SHARE_TOKEN` |
+| `404` | 요청 경로가 없거나, 자원이 없거나, **있어도 알려주면 안 되는** 것 | `NOT_FOUND` `INVALID_SHARE_TOKEN` |
 | `409` | 상태가 맞지 않음 | `GATHERING_CONFIRMED` `STALE_INPUT_HASH` |
 | `429` | 너무 많이 요청 | `TOO_MANY_REQUESTS` |
 
 **`403` 과 `404` 를 구분하는 기준** — 남의 모임을 열어보려는 요청에 `403` 을 주면
 *"그 모임은 존재한다"* 를 알려주는 것이다. **자기 것이 아니면 `404` 로 답한다.**
 `403` 은 자기 모임인데 역할이 안 맞을 때만 쓴다(참여자가 주최자 기능 호출).
+
+등록되지 않은 API 경로(예: `GET /api/v1/me`)는 `404`와
+`{"code":"NOT_FOUND","message":"찾을 수 없습니다.","errors":null}`을 반환한다.
+정상 사용자 조회는 `GET /api/v1/auth/me`이며 인증이 없으면 기존 `401 UNAUTHENTICATED`다.
+없는 경로의 예외를 서버 장애 `500 INTERNAL_ERROR`로 바꾸지 않으며,
+요청 경로·쿼리·내부 예외 메시지는 오류 본문에 넣지 않는다. 예상하지 못한 서버 예외의 기존 500은 유지한다.
 
 ### 1.4 오류 코드 — 전체 목록
 
@@ -304,7 +318,7 @@ GET /api/v1/gatherings
 | `AUTH_PROVIDER_UNAVAILABLE` | 503 | 제공자 설정 미완료. 운영 Apple 미설정은 해당 제공자만 중단 |
 | `NOT_HOST` | 403 | 주최자 전용 기능 |
 | `NOT_SELF` | 403 | 남의 체크·입금 상태를 바꾸려 함 |
-| `NOT_FOUND` | 404 | 없음 또는 내 것이 아님 |
+| `NOT_FOUND` | 404 | 요청 경로·자원이 없음 또는 내 것이 아님. 경로·쿼리·내부 예외 메시지는 오류 본문에 포함하지 않음 |
 | `INVALID_SHARE_TOKEN` | 404 | 링크가 틀리거나 재발급됨 |
 | `GATHERING_CONFIRMED` | 409 | 확정 후 차단된 동작 |
 | `GATHERING_COLLECTING` | 409 | 확정 전에는 못 하는 동작 |
