@@ -1,0 +1,10 @@
+{
+  "pr_url": "https://github.com/owencity/jungsan_attack/pull/35",
+  "source_head": "c7dff2f372b327f0a5b8dc69d28b2bae9240435f",
+  "kind": "implementer_self_review",
+  "external_review": "별도 수집 대기",
+  "hashes": {
+    "local-verification.json": "b5f865eb89aaddb6f4acf61c391f6a3591f876ed0d9225fa75cdedfbd2f0ea8f",
+    "self-review.md": "ec60c9eb7b47cbc20335b24e522b7fe8670f047936b363797afb792da5ed9350"
+  }
+}
