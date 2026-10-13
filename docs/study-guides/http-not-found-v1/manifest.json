@@ -1,0 +1,24 @@
+{
+  "pr_url": "https://github.com/owencity/jungsan_attack/pull/33",
+  "base": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "source_head": "9e240275abbb18709e10d3156c502801b82bd910",
+  "catalog_revision": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "policy_revision": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "topic_count": 5,
+  "hashes": {
+    ".gitattributes": "8b9c3028d6467ff3be7c793141927841d70f47f52d0590677438f488ca154992",
+    "after/DEVLOG.md": "2a7ebe4247ff35e2e23e564c9ad0146d87304f248c5e25c6eef15b8e61940fcb",
+    "after/docs/API.md": "fab602ba0efc1b961d4244199efe2047566d421a661fcf3aee2f21cb78fea273",
+    "after/docs/RELEASE_2026_10_18.md": "e7aa9607bc829fdf665978f0fa759c5242d4a7046d3a6598f62b81dd27ba04b6",
+    "after/server/src/main/kotlin/app/jeongsan/server/common/GlobalExceptionHandler.kt": "1f5697a2c9654a3b9a1b219687f074085a01f21d5055bf251d0cdcdeeb42383a",
+    "after/server/src/test/kotlin/app/jeongsan/server/common/GlobalExceptionHandlerSpec.kt": "334742aa410b78b31f692e4a72c0a1e7a0f605089f0f33fdec8ce1866f7b63fb",
+    "before/DEVLOG.md": "20da6a2c7666107523029c62a0bd57362df767ba9a8b6122a29f8d7bee4b8980",
+    "before/docs/API.md": "513db9bd570e54bbae7b4f2e28cff6314b645c21909a361923f35867332dcef3",
+    "before/server/src/main/kotlin/app/jeongsan/server/common/GlobalExceptionHandler.kt": "f631c3366bd38131c12b7b102f0379a116dff75573dcaf74aa4bbb010130749d",
+    "changes.patch": "2b77a013e2ba69c271e53d8fb341dcbe3b2cba78eceefddbbd5fb1e3664a7552",
+    "guide.md": "cb91fb1d710d2b297b1237fccf73a10e71f6839782884cfa68208c1289040c64",
+    "STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+    "STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+    "topics.json": "8f6614c09dff09c286d4f0e80c1cc9dc0665c8baf93aad1793a5d12bec3ef5c5"
+  }
+}
