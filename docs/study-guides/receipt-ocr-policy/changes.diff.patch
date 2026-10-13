@@ -1,0 +1,598 @@
+diff --git a/receipt-ocr/receipt_ocr/dictionary.py b/receipt-ocr/receipt_ocr/dictionary.py
+index 542b63b..c10de52 100644
+--- a/receipt-ocr/receipt_ocr/dictionary.py
++++ b/receipt-ocr/receipt_ocr/dictionary.py
+@@ -8,2 +8,4 @@ CATEGORIES = {"소주": "SOJU", "맥주": "BEER", "막걸리": "MAKGEOLLI",
+-              "기타주류": "OTHER", "비주류": "NON_ALCOHOL"}
+-UNITS = {"병": "BOTTLE", "캔": "CAN", "잔": "GLASS"}
++              "청주약주": "CHEONGJU_YAKJU", "와인": "WINE", "위스키증류주": "WHISKY_SPIRIT",
++              "혼합주": "COCKTAIL_MIXED", "기타주류": "OTHER_ALCOHOL",
++              "비주류": "NON_ALCOHOL", "비음료": "NON_BEVERAGE", "미상": "UNKNOWN"}
++UNITS = {"병": "BOTTLE", "캔": "CAN", "잔": "GLASS", "피처": "PITCHER", "팩": "PACK", "미상": "UNKNOWN"}
+@@ -10,0 +13,5 @@ HEADER = ["영수증 표기", "주류 종류", "표시 이름", "단위"]
++EXTENDED_HEADER = HEADER + ["제공 방식"]
++SERVING_TYPES = {"미상": "UNKNOWN", "생맥": "DRAFT"}
++UNIT_MARKERS = {"병": r"병|\bbottles?\b", "캔": r"캔|\bcans?\b",
++                "잔": r"잔|샷|\bglass(?:es)?\b", "피처": r"피처|피쳐|\bpitcher\b",
++                "팩": r"팩|(?:병|캔)입|\bpack\b"}
+@@ -22,0 +30 @@ class Entry:
++    serving_type: str = "UNKNOWN"
+@@ -27 +35 @@ def load_dictionary(path: Path) -> dict[str, Entry]:
+-    in_table = False
++    header = None
+@@ -29,0 +38,2 @@ def load_dictionary(path: Path) -> dict[str, Entry]:
++            if line.strip():
++                header = None
+@@ -32,2 +42,2 @@ def load_dictionary(path: Path) -> dict[str, Entry]:
+-        if cells == HEADER:
+-            in_table = True
++        if cells in (HEADER, EXTENDED_HEADER):
++            header = cells
+@@ -35 +45 @@ def load_dictionary(path: Path) -> dict[str, Entry]:
+-        if not in_table:
++        if header is None:
+@@ -39,3 +49,4 @@ def load_dictionary(path: Path) -> dict[str, Entry]:
+-        if len(cells) != 4 or not all(cells):
+-            raise ValueError(f"사전 {line_number}행: 네 칸을 모두 채워야 합니다")
+-        alias, category, name, unit = cells
++        if len(cells) != len(header) or not all(cells):
++            raise ValueError(f"사전 {line_number}행: 표의 칸을 모두 채워야 합니다")
++        alias, category, name, unit = cells[:4]
++        serving_type = cells[4] if len(cells) == 5 else "미상"
+@@ -43,0 +55,6 @@ def load_dictionary(path: Path) -> dict[str, Entry]:
++        if serving_type not in SERVING_TYPES:
++            raise ValueError(f"사전 {line_number}행: 제공 방식이 잘못됐습니다")
++        if unit != "미상" and not re.search(UNIT_MARKERS[unit], unicodedata.normalize("NFKC", alias), re.I):
++            raise ValueError(f"사전 {line_number}행: 브랜드의 용기를 추측하지 말고 단위를 미상으로 적으세요")
++        if serving_type == "생맥" and normalize(alias) not in {"생맥", "생맥주", "드래프트비어", "draftbeer"}:
++            raise ValueError(f"사전 {line_number}행: 생맥 제공 방식은 일반 생맥 메뉴 표기에만 지정하세요")
+@@ -47 +64 @@ def load_dictionary(path: Path) -> dict[str, Entry]:
+-        entry = Entry(CATEGORIES[category], name, UNITS[unit])
++        entry = Entry(CATEGORIES[category], name, UNITS[unit], SERVING_TYPES[serving_type])
+diff --git a/receipt-ocr/receipt_ocr/evaluate.py b/receipt-ocr/receipt_ocr/evaluate.py
+index cf53cfe..b623a3e 100644
+--- a/receipt-ocr/receipt_ocr/evaluate.py
++++ b/receipt-ocr/receipt_ocr/evaluate.py
+@@ -15 +15,2 @@ def drink_key(drink):
+-    return (drink["name"], drink["unit"], drink["unitPrice"], drink["quantity"])
++    return tuple(drink[field] for field in ("name", "category", "unit", "servingType", "unitPrice",
++                                           "quantity", "lineAmount", "volumeMl", "bottleCount"))
+diff --git a/receipt-ocr/receipt_ocr/extract.py b/receipt-ocr/receipt_ocr/extract.py
+index a6a90f7..9a9b65d 100644
+--- a/receipt-ocr/receipt_ocr/extract.py
++++ b/receipt-ocr/receipt_ocr/extract.py
+@@ -2 +2 @@ import re
+-from .dictionary import Entry, normalize
++from .dictionary import Entry
+@@ -3,0 +4 @@ from .model import Drink, Receipt, Token
++from .product import INTEGER, MAX_QUANTITY, NUMERIC_TOKEN, UNIT_NAMES, UNIT_PATTERN, match_product, read_integer
+@@ -7 +7,0 @@ MAX_AMOUNT = 1_000_000_000
+-MAX_QUANTITY = 1000
+@@ -9,9 +9,3 @@ MIN_CONFIDENCE = 0.85
+-# 정수 원만 지원한다. 5.000·5,00·음수·소수는 5000으로 복구하지 않는다.
+-NUMBER = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
+-ROW_VALUES = re.compile(
+-    rf"^(?P<name>.+?)\s+(?P<values>{NUMBER}(?:\s*(?:원|병|캔|잔))?"
+-    rf"(?:\s+{NUMBER}(?:\s*(?:원|병|캔|잔))?){{0,2}})\s*$"
+-)
+-VALUE = re.compile(rf"(?<![\d,.+-]){NUMBER}(?![\d,.])")
+-VALUE_WITH_UNIT = re.compile(rf"({NUMBER})\s*(원|병|캔|잔)?")
+-TOTAL = re.compile(rf"^(합계|총액|총금액|결제금액|총결제금액|받을금액)\s*[:：]?\s*({NUMBER})\s*원?$")
++VALUE_WITH_UNIT = re.compile(rf"({NUMERIC_TOKEN})\s*(원|{UNIT_PATTERN})?", re.I)
++VALUES = re.compile(rf"{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?(?:\s+{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?){{0,2}}", re.I)
++TOTAL = re.compile(rf"^(합계|총액|총금액|결제금액|총결제금액|받을금액)\s*[:：]?\s*({INTEGER})\s*원?$")
+@@ -18,0 +13,16 @@ HEADER_LABELS = re.compile(r"단가|수량|금액")
++SPECIAL_ROW = re.compile(r"취소|환불|반품|VOID|CANCEL|할인|쿠폰|서비스|세트|[0-9]+\s*\+\s*[0-9]+", re.I)
++
++
++def split_product_values(text: str, dictionary: dict[str, Entry]):
++    # 오른쪽 숫자를 떼더라도 카스 0.0 같은 더 긴 전체 상품명을 우선한다.
++    product = match_product(text, dictionary)
++    if product:
++        return product, []
++    for separator in reversed(list(re.finditer(r"\s+", text))):
++        values_text = text[separator.end():].strip()
++        if not VALUES.fullmatch(values_text):
++            continue
++        product = match_product(text[:separator.start()], dictionary)
++        if product:
++            return product, [(match[1], match[2]) for match in VALUE_WITH_UNIT.finditer(values_text)]
++    return None, []
+@@ -47,2 +57,2 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-            amount = int(total_match[2].replace(",", ""))
+-            if amount <= MAX_AMOUNT and confidence >= MIN_CONFIDENCE:
++            amount = read_integer(total_match[2], MAX_AMOUNT, allow_zero=True)
++            if amount is not None and confidence >= MIN_CONFIDENCE:
+@@ -57,5 +67,2 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-        row_match = ROW_VALUES.fullmatch(text)
+-        # 숫자가 제품명(500cc·0.0)에 들어갈 수 있으므로 이름 전체로 사전을 조회한다.
+-        name = row_match["name"] if row_match else text
+-        entry = dictionary.get(normalize(name))
+-        if entry is None or entry.category == "NON_ALCOHOL":
++        if labels and re.sub(r"품목|상품명|메뉴명|메뉴|단가|수량|금액|\s", "", text) == "":
++            columns = None
+@@ -63,4 +70,10 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-        values = VALUE.findall(row_match["values"]) if row_match else []
+-        reasons = []
+-        unit = entry.unit
+-        unit_price = quantity = line_amount = None
++        product, values = split_product_values(text, dictionary)
++        if product is None or product.entry.category in {"NON_ALCOHOL", "NON_BEVERAGE"}:
++            continue
++        reasons = list(product.reasons)
++        unit = product.unit
++        quantity = product.quantity
++        unit_price = line_amount = None
++        if SPECIAL_ROW.search(text):
++            reasons.append("RETURN_OR_CANCEL" if re.search(r"취소|환불|반품|VOID|CANCEL", text, re.I) else "COMBO_OR_PROMOTION")
++            quantity = None
+@@ -68,0 +82,11 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
++            # 단위가 붙은 하나의 수량은 헤더 없이도 읽는다. 나머지 가격 열은 추측하지 않는다.
++            if len(values) == 1 and values[0][1] and values[0][1].casefold() in UNIT_NAMES:
++                quantity = read_integer(values[0][0], MAX_QUANTITY)
++                receipt_unit = UNIT_NAMES[values[0][1].casefold()]
++                if unit != "UNKNOWN" and unit != receipt_unit:
++                    reasons.append("UNIT_CONFLICT")
++                    unit = "UNKNOWN"
++                else:
++                    unit = receipt_unit
++                if quantity is None:
++                    reasons.append("QUANTITY_INVALID_OR_CONFLICT")
+@@ -72,8 +96,8 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-            mapped = dict(zip(columns, (int(value.replace(",", "")) for value in values)))
+-            unit_price, quantity, line_amount = mapped["단가"], mapped["수량"], mapped["금액"]
+-            value_units = dict(zip(columns, (match[2] for match in VALUE_WITH_UNIT.finditer(row_match["values"]))))
+-            receipt_unit = {"병": "BOTTLE", "캔": "CAN", "잔": "GLASS"}.get(value_units["수량"])
+-            if receipt_unit and receipt_unit != entry.unit:
+-                unit = receipt_unit
+-                reasons.append("UNIT_CONFLICT")
+-            if not (0 < unit_price <= MAX_AMOUNT and 0 < quantity <= MAX_QUANTITY and 0 < line_amount <= MAX_AMOUNT):
++            mapped = dict(zip(columns, values))
++            parsed = {label: read_integer(value, MAX_QUANTITY if label == "수량" else MAX_AMOUNT)
++                      for label, (value, unused_unit) in mapped.items()}
++            value_units = {label: value_unit.casefold() if value_unit else None
++                           for label, (unused_value, value_unit) in mapped.items()}
++            valid_units = value_units["단가"] in (None, "원") and value_units["금액"] in (None, "원")
++            valid_units = valid_units and value_units["수량"] in (None, *UNIT_NAMES)
++            if not valid_units or any(value is None for value in parsed.values()):
+@@ -82,2 +106,21 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-            elif unit_price * quantity != line_amount:
+-                reasons.append("ITEM_AMOUNT_MISMATCH")
++            else:
++                unit_price, column_quantity, line_amount = parsed["단가"], parsed["수량"], parsed["금액"]
++                if quantity is not None and quantity != column_quantity:
++                    reasons.append("QUANTITY_INVALID_OR_CONFLICT")
++                    quantity = None
++                elif "QUANTITY_INVALID_OR_CONFLICT" not in reasons:
++                    quantity = column_quantity
++                receipt_unit = UNIT_NAMES.get(value_units["수량"])
++                if receipt_unit:
++                    if "UNIT_CONFLICT" in reasons or (unit != "UNKNOWN" and unit != receipt_unit):
++                        reasons.append("UNIT_CONFLICT")
++                        unit = "UNKNOWN"
++                    else:
++                        unit = receipt_unit
++                if quantity is not None and unit_price * quantity != line_amount:
++                    reasons.append("ITEM_AMOUNT_MISMATCH")
++        if product.entry.serving_type == "DRAFT" and unit == "BOTTLE":
++            reasons.append("UNIT_CONFLICT")
++            unit = "UNKNOWN"
++        if "RETURN_OR_CANCEL" in reasons or ("COMBO_OR_PROMOTION" in reasons and unit != "PACK"):
++            quantity = None
+@@ -86 +129,3 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-        if unit != "BOTTLE":
++        if unit == "UNKNOWN":
++            reasons.append("UNKNOWN_CONTAINER")
++        elif unit != "BOTTLE":
+@@ -88,2 +133,5 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-        drinks.append(Drink(entry.name, entry.category, unit, unit_price, quantity,
+-                            line_amount, round(confidence, 4), reasons))
++        if product.entry.category == "UNKNOWN":
++            reasons.append("UNKNOWN_CATEGORY")
++        drinks.append(Drink(product.entry.name, product.entry.category, unit, unit_price, quantity,
++                            line_amount, round(confidence, 4), list(dict.fromkeys(reasons)),
++                            product.entry.serving_type, product.volume_ml))
+diff --git a/receipt-ocr/receipt_ocr/model.py b/receipt-ocr/receipt_ocr/model.py
+index ad8854d..c32d862 100644
+--- a/receipt-ocr/receipt_ocr/model.py
++++ b/receipt-ocr/receipt_ocr/model.py
+@@ -29,0 +30,16 @@ class Drink:
++    serving_type: str = "UNKNOWN"
++    volume_ml: int | None = None
++
++    @property
++    def bottle_count(self):
++        if self.category == "UNKNOWN":
++            return None
++        if any(reason in self.review_reasons for reason in
++               ("UNIT_CONFLICT", "QUANTITY_INVALID_OR_CONFLICT", "ITEM_OUT_OF_RANGE",
++                "ITEM_AMOUNT_MISMATCH", "LOW_CONFIDENCE", "COMBO_OR_PROMOTION", "RETURN_OR_CANCEL")):
++            return None
++        if self.unit == "BOTTLE":
++            return self.quantity
++        if self.unit in {"CAN", "GLASS", "PITCHER"} or self.serving_type == "DRAFT":
++            return 0
++        return None
+@@ -36,0 +53,2 @@ class Drink:
++            "servingType": self.serving_type, "volumeMl": self.volume_ml,
++            "bottleCount": self.bottle_count,
+@@ -48 +66 @@ class Receipt:
+-            "schemaVersion": 1, "total": self.total,
++            "schemaVersion": 2, "total": self.total,
+diff --git a/receipt-ocr/receipt_ocr/product.py b/receipt-ocr/receipt_ocr/product.py
+new file mode 100644
+index 0000000..d43b0f1
+--- /dev/null
++++ b/receipt-ocr/receipt_ocr/product.py
+@@ -0,0 +1,120 @@
++"""상품명에 명시된 용량·단위만 읽는다. 가격·용량으로 판매 수량을 복원하지 않는다."""
++from dataclasses import dataclass
++from fractions import Fraction
++import re
++import unicodedata
++
++from .dictionary import Entry, normalize
++
++
++MAX_QUANTITY = 1000
++MAX_VOLUME_ML = 100_000
++INTEGER = r"(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)"
++# 잘못된 소수·부호·쉼표도 통째로 읽어 거절한다. 숫자 일부를 정수로 구제하지 않는다.
++NUMERIC_TOKEN = r"[+\-−]?[0-9]+(?:[.,][0-9]+)*"
++LEFT_BOUNDARY = r"(?<![0-9.,+\-−])"
++RIGHT_BOUNDARY = r"(?![A-Za-z가-힣0-9])"
++UNIT_NAMES = {"병": "BOTTLE", "bottle": "BOTTLE", "bottles": "BOTTLE",
++              "캔": "CAN", "can": "CAN", "cans": "CAN",
++              "잔": "GLASS", "glass": "GLASS", "glasses": "GLASS",
++              "피처": "PITCHER", "피쳐": "PITCHER", "pitcher": "PITCHER"}
++UNIT_PATTERN = r"(?:bottles?|cans?|glass(?:es)?|pitcher|병|캔|잔|피처|피쳐)"
++COUNT = re.compile(rf"{LEFT_BOUNDARY}({NUMERIC_TOKEN})\s*({UNIT_PATTERN}){RIGHT_BOUNDARY}", re.I)
++LABELLED_COUNT = re.compile(rf"(?:수량\s*[:：]?\s*|[x×]\s*)({NUMERIC_TOKEN})(?![0-9.,A-Za-z가-힣])", re.I)
++VOLUME = re.compile(rf"{LEFT_BOUNDARY}({NUMERIC_TOKEN})\s*(ml|mℓ|㎖|cc|㏄|밀리|L|ℓ|리터){RIGHT_BOUNDARY}", re.I)
++PACK = re.compile(rf"{LEFT_BOUNDARY}({NUMERIC_TOKEN})\s*(?:캔|병)\s*입{RIGHT_BOUNDARY}")
++CONTAINER = re.compile(r"\s*(병|캔|잔|피처|피쳐|BOTTLE|CAN|GLASS|PITCHER)\s*$", re.I)
++
++
++def read_integer(text: str, maximum: int, *, allow_zero: bool = False) -> int | None:
++    if not re.fullmatch(INTEGER, text):
++        return None
++    # 비정상적으로 긴 OCR 숫자가 Python 정수 변환 제한/불필요한 자원을 건드리지 않게 한다.
++    digits = text.replace(",", "")
++    if len(digits) > len(str(maximum)):
++        return None
++    value = int(digits)
++    return value if (0 if allow_zero else 1) <= value <= maximum else None
++
++
++def read_volume(text: str, unit: str) -> int | None:
++    if len(text) > 16 or not re.fullmatch(rf"{INTEGER}(?:\.[0-9]+)?", text):
++        return None
++    volume = Fraction(text.replace(",", ""))
++    if unit.casefold() in {"l", "ℓ", "리터"}:
++        volume *= 1000
++    if volume.denominator != 1 or not 0 < volume <= MAX_VOLUME_ML:
++        return None
++    return int(volume)
++
++
++@dataclass
++class Product:
++    entry: Entry
++    unit: str
++    quantity: int | None
++    volume_ml: int | None
++    reasons: list[str]
++
++
++def _agree(values: list, reason: str, reasons: list[str]):
++    if not values:
++        return None
++    if None in values or len(set(values)) != 1:
++        reasons.append(reason)
++        return None
++    return values[0]
++
++
++def match_product(text: str, dictionary: dict[str, Entry]) -> Product | None:
++    text = unicodedata.normalize("NFKC", text).strip()
++    # 테라 제로·소주잔처럼 단위나 숫자가 제품명인 정확한 전체 표기를 먼저 보호한다.
++    direct_entry = dictionary.get(normalize(text))
++    if direct_entry and direct_entry.category in {"NON_ALCOHOL", "NON_BEVERAGE"}:
++        return Product(direct_entry, direct_entry.unit, None, None, [])
++    reasons = []
++    quantities, volumes, units = [], [], []
++
++    def remove_pack(match):
++        units.append("PACK")
++        reasons.append("COMBO_OR_PROMOTION")
++        return " "
++
++    def remove_volume(match):
++        volumes.append(read_volume(match[1], match[2]))
++        return " "
++
++    def remove_count(match):
++        quantities.append(read_integer(match[1], MAX_QUANTITY))
++        units.append(UNIT_NAMES[match[2].casefold()])
++        return " "
++
++    def remove_labelled_count(match):
++        quantities.append(read_integer(match[1], MAX_QUANTITY))
++        return " "
++
++    remainder = PACK.sub(remove_pack, text)
++    remainder = VOLUME.sub(remove_volume, remainder)
++    remainder = COUNT.sub(remove_count, remainder)
++    remainder = LABELLED_COUNT.sub(remove_labelled_count, remainder)
++    remainder = remainder.strip(" /")
++    entry = dictionary.get(normalize(remainder))
++    if entry is None:
++        container_match = CONTAINER.search(remainder)
++        if container_match:
++            units.append(UNIT_NAMES[container_match[1].casefold()])
++            remainder = remainder[:container_match.start()]
++        entry = dictionary.get(normalize(remainder))
++    if entry is None:
++        entry = direct_entry
++    if entry is None:
++        return None
++    quantity = _agree(quantities, "QUANTITY_INVALID_OR_CONFLICT", reasons)
++    volume = _agree(volumes, "VOLUME_INVALID_OR_CONFLICT", reasons)
++    if entry.unit != "UNKNOWN" and "PACK" not in units:
++        units.append(entry.unit)
++    unit = _agree(units, "UNIT_CONFLICT", reasons) or "UNKNOWN"
++    if entry.serving_type == "DRAFT" and unit == "BOTTLE":
++        reasons.append("UNIT_CONFLICT")
++        unit = "UNKNOWN"
++    return Product(entry, unit, quantity, volume, list(dict.fromkeys(reasons)))
+diff --git a/receipt-ocr/tests/test_evaluate.py b/receipt-ocr/tests/test_evaluate.py
+index d330edf..b346d84 100644
+--- a/receipt-ocr/tests/test_evaluate.py
++++ b/receipt-ocr/tests/test_evaluate.py
+@@ -22 +22,3 @@ class EvaluationTests(unittest.TestCase):
+-            expected = {"total": 50000, "drinks": [{"name": "참이슬", "unit": "BOTTLE", "unitPrice": 5000, "quantity": 3}]}
++            expected = {"total": 50000, "drinks": [{"name": "참이슬 (세부형 미상)", "category": "SOJU", "unit": "UNKNOWN",
++                         "servingType": "UNKNOWN", "unitPrice": 5000, "quantity": 3, "lineAmount": 15000,
++                         "volumeMl": None, "bottleCount": None}]}
+@@ -31,0 +34,18 @@ class EvaluationTests(unittest.TestCase):
++
++    def test_bottle_count_and_volume_are_part_of_exact_accuracy(self):
++        class Engine:
++            def recognize(self, image):
++                return tokens("품목 단가 수량 금액", "테라 500ml 5,000 2 10,000", "합계 10,000")
++        expected = {"name": "테라", "category": "BEER", "unit": "UNKNOWN", "servingType": "UNKNOWN",
++                    "unitPrice": 5000, "quantity": 2, "lineAmount": 10000, "volumeMl": 500, "bottleCount": None}
++        with tempfile.TemporaryDirectory() as folder:
++            root = Path(folder)
++            with Image.new("RGB", (32, 32)) as image:
++                image.save(root / "good.png")
++            manifest = root / "manifest.json"
++            for altered_field in ({}, {"bottleCount": 2}, {"volumeMl": 50}):
++                with self.subTest(altered_field=altered_field):
++                    manifest.write_text(json.dumps([{"image": "good.png", "total": 10000,
++                                         "drinks": [{**expected, **altered_field}]}]), encoding="utf-8")
++                    result = evaluate(manifest, Path(__file__).resolve().parents[1] / "data/drinks.md", Engine())
++                    self.assertEqual(0 if altered_field else 1, result["allDrinkFieldsExactRate"])
+diff --git a/receipt-ocr/tests/test_extract.py b/receipt-ocr/tests/test_extract.py
+index bbce199..da79f57 100644
+--- a/receipt-ocr/tests/test_extract.py
++++ b/receipt-ocr/tests/test_extract.py
+@@ -31 +31,3 @@ class ExtractionTests(unittest.TestCase):
+-        self.assertEqual([], result.warnings)
++        self.assertEqual(["UNKNOWN", "UNKNOWN"], [drink.unit for drink in result.drinks])
++        self.assertEqual([None, None], [drink.bottle_count for drink in result.drinks])
++        self.assertIn("ITEMS_NEED_REVIEW", result.warnings)
+@@ -61 +63,2 @@ class ExtractionTests(unittest.TestCase):
+-        self.assertIn("UNIT_CONFLICT", drink.review_reasons)
++        self.assertEqual(0, drink.bottle_count)
++        self.assertIn("UNIT_REQUIRES_MAPPING", drink.review_reasons)
+@@ -105,2 +108,5 @@ class ExtractionTests(unittest.TestCase):
+-        self.assertEqual("GLASS", drink.unit)
+-        self.assertIn("UNIT_REQUIRES_MAPPING", drink.review_reasons)
++        self.assertEqual("UNKNOWN", drink.unit)
++        self.assertEqual("DRAFT", drink.serving_type)
++        self.assertEqual(500, drink.volume_ml)
++        self.assertEqual(0, drink.bottle_count)
++        self.assertIn("UNKNOWN_CONTAINER", drink.review_reasons)
+@@ -135 +141 @@ class DictionaryTests(unittest.TestCase):
+-        entries = self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n|---|---|---|---|\n| T E R A | 맥주 | 테라 | 병 |")
++        entries = self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n|---|---|---|---|\n| T E R A | 맥주 | 테라 | 미상 |")
+@@ -140 +146,19 @@ class DictionaryTests(unittest.TestCase):
+-            self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n| 테라 | 맥주 | 테라 | 병 |\n| 테 라 | 비주류 | 테라 | 병 |")
++            self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n| 테라 | 맥주 | 테라 | 미상 |\n| 테 라 | 비주류 | 테라 | 미상 |")
++
++    def test_brand_container_assumptions_are_rejected_even_in_custom_dictionary(self):
++        with self.assertRaisesRegex(ValueError, "브랜드의 용기"):
++            self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n| 테라 | 맥주 | 테라 | 병 |")
++
++    def test_brand_draft_product_name_is_not_a_tap_serving(self):
++        with self.assertRaisesRegex(ValueError, "일반 생맥"):
++            self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 | 제공 방식 |\n| 클라우드 생드래프트 | 맥주 | 클라우드 생드래프트 | 미상 | 생맥 |")
++
++    def test_extended_table_and_following_document_table_are_separate(self):
++        entries = self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 | 제공 방식 |\n| 생맥주 | 맥주 | 생맥주 | 미상 | 생맥 |\n\n## 설명\n| 필드 | 설명 |\n|---|---|\n| 예시 | 아무 값 |")
++        self.assertEqual("DRAFT", entries["생맥주"].serving_type)
++        self.assertEqual(1, len(entries))
++
++    def test_exact_alias_does_not_hide_its_explicit_quantity(self):
++        entries = self.read("| 영수증 표기 | 주류 종류 | 표시 이름 | 단위 |\n| 소주2병 | 소주 | 소주 | 병 |")
++        drink = extract(tokens("소주2병"), entries).drinks[0]
++        self.assertEqual((2, 2), (drink.quantity, drink.bottle_count))
+diff --git a/receipt-ocr/tests/test_policy.py b/receipt-ocr/tests/test_policy.py
+new file mode 100644
+index 0000000..7074e96
+--- /dev/null
++++ b/receipt-ocr/tests/test_policy.py
+@@ -0,0 +1,172 @@
++from pathlib import Path
++import unittest
++
++from receipt_ocr.dictionary import load_dictionary
++from receipt_ocr.extract import extract
++from receipt_ocr.product import read_integer, read_volume
++from test_extract import tokens
++
++DICTIONARY = Path(__file__).resolve().parents[1] / "data/drinks.md"
++
++
++class ReceiptPolicyTests(unittest.TestCase):
++    def setUp(self):
++        self.dictionary = load_dictionary(DICTIONARY)
++
++    def read(self, *lines):
++        return extract(tokens(*lines), self.dictionary)
++
++    def column_row(self, line):
++        return self.read("품목 단가 수량 금액", line).drinks[0]
++
++    def test_brands_do_not_imply_containers(self):
++        for name in ("참이슬", "테라", "새로", "스카치블루", "국순당 생막걸리"):
++            with self.subTest(name=name):
++                drink = self.column_row(f"{name} 5,000 2 10,000")
++                self.assertEqual("UNKNOWN", drink.unit)
++                self.assertEqual(2, drink.quantity)
++                self.assertIsNone(drink.bottle_count)
++
++    def test_explicit_quantity_without_header_is_not_default_one(self):
++        for line, quantity, bottle_count in (("소주", None, None), ("소주 2병", 2, 2),
++                                              ("소주 / 수량 2", 2, None), ("소주 x2", 2, None)):
++            with self.subTest(line=line):
++                drink = self.read(line).drinks[0]
++                self.assertEqual(quantity, drink.quantity)
++                self.assertEqual(bottle_count, drink.bottle_count)
++
++    def test_decimal_negative_and_bad_separator_quantity_never_partially_matches(self):
++        for quantity in ("1.5", "-2", "+2", "−2", "1,00", "0", "1001"):
++            with self.subTest(quantity=quantity):
++                drink = self.read(f"소주 {quantity}병").drinks[0]
++                self.assertIsNone(drink.quantity)
++                self.assertIsNone(drink.bottle_count)
++                self.assertIn("QUANTITY_INVALID_OR_CONFLICT", drink.review_reasons)
++        self.assertEqual(1000, self.read("소주 1,000병").drinks[0].quantity)
++
++    def test_bad_numeric_column_never_becomes_positive_bottle_count(self):
++        for quantity in ("1.5병", "-2병", "1,00병"):
++            with self.subTest(quantity=quantity):
++                drink = self.column_row(f"테라 5,000 {quantity} 10,000")
++                self.assertIsNone(drink.quantity)
++                self.assertIsNone(drink.bottle_count)
++                self.assertIn("ITEM_OUT_OF_RANGE", drink.review_reasons)
++
++    def test_volume_conversion_preserves_whole_number(self):
++        for volume, expected in (("500cc", 500), ("500㎖", 500), ("0.5L", 500),
++                                 ("1.5리터", 1500), ("12,500ml", 12500), ("1.50ml", None),
++                                 ("-500ml", None), ("500,00ml", None)):
++            with self.subTest(volume=volume):
++                drink = self.read(f"맥주 {volume}").drinks[0]
++                self.assertEqual(expected, drink.volume_ml)
++                self.assertIsNone(drink.quantity)
++                self.assertIsNone(drink.bottle_count)
++
++    def test_product_numbers_and_volume_are_not_quantities(self):
++        drink = self.read("화요25 375ml / 수량 2").drinks[0]
++        self.assertEqual("화요25", drink.name)
++        self.assertEqual((375, 2, None), (drink.volume_ml, drink.quantity, drink.bottle_count))
++        drink = self.read("국순당 1000억 막걸리 / 수량 1").drinks[0]
++        self.assertEqual(1, drink.quantity)
++        self.assertIsNone(drink.bottle_count)
++
++    def test_draft_and_pitcher_are_independent(self):
++        drink = self.read("생맥주 피처 1700cc / 수량 1").drinks[0]
++        self.assertEqual(("BEER", "DRAFT", "PITCHER", 1700, 1, 0),
++                         (drink.category, drink.serving_type, drink.unit, drink.volume_ml, drink.quantity, drink.bottle_count))
++        pitcher = self.read("피처 / 수량 1").drinks[0]
++        self.assertEqual(("UNKNOWN", "PITCHER"), (pitcher.category, pitcher.unit))
++        self.assertIsNone(pitcher.bottle_count)
++
++    def test_raw_makgeolli_is_not_tap_draft(self):
++        drink = self.read("국순당 생막걸리 750ml / 수량 1").drinks[0]
++        self.assertEqual(("MAKGEOLLI", "UNKNOWN", "UNKNOWN"), (drink.category, drink.serving_type, drink.unit))
++        self.assertEqual(750, drink.volume_ml)
++
++    def test_literal_container_is_read_but_glassware_excluded(self):
++        for line, unit, quantity, bottles in (("테라 병 500ml / 수량 3", "BOTTLE", 3, 3),
++                                               ("테라 캔 500ml / 수량 3", "CAN", 3, 0),
++                                               ("병맥주 / 수량 4", "BOTTLE", 4, 4),
++                                               ("위스키 2 glass", "GLASS", 2, 0),
++                                               ("위스키 2 glasses", "GLASS", 2, 0)):
++            with self.subTest(line=line):
++                drink = self.read(line).drinks[0]
++                self.assertEqual((unit, quantity, bottles), (drink.unit, drink.quantity, drink.bottle_count))
++        self.assertEqual([], self.read("소주잔 2병", "와인잔 세트 2").drinks)
++
++    def test_count_and_container_conflicts_are_left_unresolved(self):
++        drink = self.column_row("테라 2병 5,000 3 15,000")
++        self.assertIsNone(drink.quantity)
++        self.assertIn("QUANTITY_INVALID_OR_CONFLICT", drink.review_reasons)
++        drink = self.column_row("병맥주 5,000 2캔 10,000")
++        self.assertEqual("UNKNOWN", drink.unit)
++        self.assertIsNone(drink.bottle_count)
++        self.assertIn("UNIT_CONFLICT", drink.review_reasons)
++
++    def test_longer_non_alcohol_names_are_never_truncated_to_alcohol(self):
++        names = ("카스 0.0", "카스제로0.0", "테라 제로", "하이트제로0.00", "클라우드 논알콜릭",
++                 "클라우드 클리어", "진로 토닉워터", "버진 모히토", "무알콜 하이볼", "콜라", "사이다", "생수")
++        for name in names:
++            with self.subTest(name=name):
++                self.assertEqual([], self.read(name, f"{name} 5,000 2 10,000",
++                                                "품목 단가 수량 금액", f"{name} 5,000 10,000").drinks)
++
++    def test_zero_sugar_and_product_variants_stay_distinct(self):
++        cases = (("새로 제로슈거", "SOJU", "새로"), ("테라 라이트", "BEER", "테라 라이트"),
++                 ("진로골드", "SOJU", "진로골드"), ("별빛청하", "OTHER_ALCOHOL", "별빛청하"),
++                 ("카스", "BEER", "카스 (세부형 미상)"), ("카스 프레시", "BEER", "카스 프레시"))
++        for name, category, canonical in cases:
++            with self.subTest(name=name):
++                drink = self.read(f"{name} / 수량 2").drinks[0]
++                self.assertEqual((category, canonical), (drink.category, drink.name))
++
++    def test_non_alcohol_and_non_beverage_are_different_dictionary_categories(self):
++        self.assertEqual("NON_ALCOHOL", self.dictionary["콜라"].category)
++        self.assertEqual("NON_BEVERAGE", self.dictionary["병따개"].category)
++
++    def test_packs_sets_and_mixed_drinks_do_not_generate_component_bottles(self):
++        drink = self.read("캔맥주 6캔입 / 수량 2").drinks[0]
++        self.assertEqual("PACK", drink.unit)
++        self.assertEqual(2, drink.quantity)
++        self.assertIsNone(drink.bottle_count)
++        self.assertIn("COMBO_OR_PROMOTION", drink.review_reasons)
++        for line in ("하이볼 / 수량 2", "소맥 / 수량 2", "술세트 / 수량 1"):
++            with self.subTest(line=line):
++                self.assertIsNone(self.read(line).drinks[0].bottle_count)
++
++    def test_returns_and_promotions_never_appear_as_positive_purchases(self):
++        for line in ("맥주 환불 -2", "소주서비스 / 수량 1", "소주 1+1", "맥주 취소 2병"):
++            with self.subTest(line=line):
++                self.assertFalse(any(drink.bottle_count for drink in self.read(line).drinks))
++
++    def test_payment_only_and_unknown_partial_names_are_not_drink_rows(self):
++        for line in ("카드결제 42,000원 승인번호 123456", "테라스 2병", "테라무알콜 2병",
++                     "테라 맥주 소주 2병", "생맥주 500"):
++            with self.subTest(line=line):
++                self.assertFalse(any(drink.bottle_count for drink in self.read(line).drinks))
++
++    def test_new_header_missing_quantity_resets_previous_columns(self):
++        drink = self.read("품목 단가 수량 금액", "품목 단가 금액", "참이슬 5,000 3 15,000").drinks[0]
++        self.assertIsNone(drink.quantity)
++
++    def test_all_candidates_require_confirmation_without_original_text(self):
++        result = self.read("품목 단가 수량 금액", "테라 병 5,000 2 10,000", "합계 10,000").to_dict()
++        self.assertEqual(2, result["schemaVersion"])
++        self.assertEqual([], result["warnings"])
++        self.assertTrue(result["requiresConfirmation"])
++        self.assertEqual(2, result["drinks"][0]["bottleCount"])
++        self.assertFalse({"raw_text", "raw_line", "image_reference"} & result["drinks"][0].keys())
++
++    def test_low_confidence_cannot_produce_positive_bottle_count(self):
++        result = extract(tokens("품목 단가 수량 금액", "소주 2병", confidence=.5), self.dictionary)
++        self.assertIsNone(result.drinks[0].bottle_count)
++
++    def test_whole_number_parser_handles_limits_without_massive_integer_conversion(self):
++        self.assertIsNone(read_integer("9" * 5000, 1000))
++        self.assertIsNone(read_integer("1,00", 1000))
++        self.assertEqual(1000, read_integer("1,000", 1000))
++        self.assertEqual(500, read_volume("0.5", "L"))
++
++
++if __name__ == "__main__":
++    unittest.main()

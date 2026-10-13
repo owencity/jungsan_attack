@@ -1,5 +1,9 @@
 # PR 리뷰·스터디 기록
 
+영수증 Python [PR #34](https://github.com/owencity/jungsan_attack/pull/34)의 사용자 사전 후속은
+[고정 가이드](receipt-ocr-policy/guide.md) · [구현 diff](receipt-ocr-policy/changes.diff.patch) ·
+[기준 SHA](receipt-ocr-policy/manifest.json)를 본다. Java/Kotlin 교재 목차와는 별도 기술 학습이다.
+
 운영 DB 최초 인증 후속은 [v2 가이드](apple-provider-v2/guide.md) · [고정 diff](apple-provider-v2/changes.patch) · [진도](progress/apple-provider-v2.md)를 본다. 원본 Apple/언어 구현 학습은 v1에 남아 있다.
 
 최신 Apple 설정 발급 대기 변경은 [가이드](apple-provider-v1/guide.md) · [diff](apple-provider-v1/changes.patch) · [리뷰](../pr-reviews/2026-10-10-apple-provider/README.md) · [진도](progress/apple-provider.md)를 본다.
