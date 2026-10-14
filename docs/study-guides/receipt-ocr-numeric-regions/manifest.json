@@ -1,0 +1,28 @@
+{
+  "pullRequest": "https://github.com/owencity/jungsan_attack/pull/34",
+  "base": "335cd93c4acaa9be3c22d5818ec6ed63b620a00d",
+  "sourceHead": "c9cb316da4af5254d790b5b7db6860d1c57f830e",
+  "policyAndCatalogCommit": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "files": [
+    "receipt-ocr/receipt_ocr/numeric_regions.py",
+    "receipt-ocr/receipt_ocr/ocr.py",
+    "receipt-ocr/receipt_ocr/model.py",
+    "receipt-ocr/receipt_ocr/extract.py",
+    "receipt-ocr/tests/test_numeric_regions.py"
+  ],
+  "diffSha256": "95d9f2e3696e982d0d2950e703369f6d76b1903ae3dc412c92201fd481951bed",
+  "validation": {
+    "unitTests": 92,
+    "unitResult": "OK",
+    "unitSeconds": 0.428,
+    "serverCompile": "BUILD SUCCESSFUL in 3s",
+    "originalPublicImages": 3,
+    "derivedControlImages": 3,
+    "fullyLabelledOriginalSamples": 1,
+    "allDrinkFieldsExactBefore": 0.0,
+    "allDrinkFieldsExactAfter": 1.0,
+    "independentAccuracyBenchmark": false
+  },
+  "review": "self-review only; independent review not performed",
+  "imagesOrRawTokensCommitted": false
+}
