@@ -1,5 +1,9 @@
 # PR 리뷰·스터디 기록
 
+영수증 공개 웹 사례 후속은 [가이드](receipt-ocr-public-samples/guide.md) ·
+[고정 diff](receipt-ocr-public-samples/changes.diff.patch) · [검증 기준](receipt-ocr-public-samples/manifest.json)을 본다.
+실제 수량 누락과 전체 필드 평가 실패도 보존한다. 이전 사용자 사전 가이드는 아래에 유지한다.
+
 영수증 Python [PR #34](https://github.com/owencity/jungsan_attack/pull/34)의 사용자 사전 후속은
 [고정 가이드](receipt-ocr-policy/guide.md) · [구현 diff](receipt-ocr-policy/changes.diff.patch) ·
 [기준 SHA](receipt-ocr-policy/manifest.json)를 본다. Java/Kotlin 교재 목차와는 별도 기술 학습이다.
