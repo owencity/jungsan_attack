@@ -1,0 +1,460 @@
+diff --git a/receipt-ocr/receipt_ocr/extract.py b/receipt-ocr/receipt_ocr/extract.py
+index 229668c..3652639 100644
+--- a/receipt-ocr/receipt_ocr/extract.py
++++ b/receipt-ocr/receipt_ocr/extract.py
+@@ -80,0 +81,2 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
++        if any(token.recovered_numeric for token in row):
++            reasons.append("NUMERIC_REGION_RECOGNIZED")
+@@ -82,0 +85,3 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
++        if sum(token.recovered_numeric and token.numeric_column == "수량" for token in row) > 1:
++            quantity = None
++            reasons.append("QUANTITY_INVALID_OR_CONFLICT")
+@@ -101,0 +107,17 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
++            # 재인식이 확인한 열만 사용한다. 남은 숫자의 개수나 가격으로 빈 할인·단가를 추측하지 않는다.
++            recovered_quantities = [token for token in row if token.recovered_numeric and token.numeric_column == "수량"]
++            aligned_amounts = [token for token in row if token.numeric_column == "금액"]
++            if len(aligned_amounts) == 1:
++                line_amount = read_integer(re.sub(r"\s+|원$", "", aligned_amounts[0].text), MAX_AMOUNT)
++            if len(recovered_quantities) == 1:
++                aligned_quantity = read_integer(recovered_quantities[0].text.strip(), MAX_QUANTITY)
++                if quantity is not None and quantity != aligned_quantity:
++                    reasons.append("QUANTITY_INVALID_OR_CONFLICT")
++                    quantity = None
++                elif "QUANTITY_INVALID_OR_CONFLICT" not in reasons:
++                    quantity = aligned_quantity
++            if aligned_amounts and line_amount is None:
++                quantity = None
++                reasons.append("ITEM_OUT_OF_RANGE")
++            if (aligned_amounts or recovered_quantities) and "단가" not in columns:
++                reasons.append("ITEM_UNIT_PRICE_MISSING")
+diff --git a/receipt-ocr/receipt_ocr/model.py b/receipt-ocr/receipt_ocr/model.py
+index c32d862..3c533e5 100644
+--- a/receipt-ocr/receipt_ocr/model.py
++++ b/receipt-ocr/receipt_ocr/model.py
+@@ -9,0 +10,2 @@ class Token:
++    recovered_numeric: bool = False
++    numeric_column: str | None = None
+diff --git a/receipt-ocr/receipt_ocr/numeric_regions.py b/receipt-ocr/receipt_ocr/numeric_regions.py
+new file mode 100644
+index 0000000..fb91da7
+--- /dev/null
++++ b/receipt-ocr/receipt_ocr/numeric_regions.py
+@@ -0,0 +1,155 @@
++"""명시된 표의 비어 있는 작은 숫자 칸만 재인식한다. 누락 값을 계산하거나 기본값으로 채우지 않는다."""
++from dataclasses import dataclass, replace
++import math
++import re
++
++from PIL import Image, ImageOps, ImageStat
++
++from .extract import HEADER_LABELS, HEADER_TEXT, MIN_CONFIDENCE, SUPPORTED_COLUMNS, group_rows
++from .model import Token
++from .product import INTEGER, MAX_QUANTITY, read_integer
++
++
++MAX_RECOVERY_CELLS = 8
++PATCH_VIEWS = ((4, 16), (4, 32))
++MIN_RECOVERY_CONFIDENCE = .90
++LABEL_PART = re.compile(r"단\s*가|수\s*량|할\s*인|금\s*액")
++FOOTER = re.compile(r"^(?:합계|총액|총금액|총매출|결제|공급가액|과세|부가|면세|할인금액|카드|승인|가맹|거스름|받은)")
++
++
++@dataclass(frozen=True)
++class NumericRegion:
++    label: str
++    box: tuple[int, int, int, int]
++    confidence: float
++    amount_token: Token
++
++
++def _header_cells(row: list[Token]) -> dict[str, Token] | None:
++    normalized = re.sub(r"\s+", "", "".join(token.text for token in row))
++    labels = HEADER_LABELS.findall(normalized)
++    if (not HEADER_TEXT.fullmatch(normalized) or len(labels) != len(set(labels))
++            or set(labels) not in SUPPORTED_COLUMNS or min(token.confidence for token in row) < MIN_CONFIDENCE):
++        return None
++    cells = {}
++    for token in row:
++        text = token.text.strip()
++        matches = list(LABEL_PART.finditer(text))
++        # 한 상자에 붙은 두 숫자 라벨까지만 위치를 나눈다. 상품명까지 합친 넓은 헤더는 추측하지 않는다.
++        if not matches or len(matches) > 2 or LABEL_PART.sub("", text).strip():
++            continue
++        left, top, right, bottom = token.box
++        for match in matches:
++            label = re.sub(r"\s+", "", match[0])
++            cells[label] = Token(label, token.confidence,
++                                 (left + (right-left) * match.start()/len(text), top,
++                                  left + (right-left) * match.end()/len(text), bottom))
++    return cells if set(cells) == set(labels) else None
++
++
++def _column_bounds(cell: Token, cells: dict[str, Token]) -> tuple[float, float]:
++    left, top, right, bottom = cell.box
++    padding = .18 * (bottom-top)
++    center = (left+right)/2
++    before = [(other.box[0]+other.box[2])/2 for other in cells.values()
++              if (other.box[0]+other.box[2])/2 < center]
++    after = [(other.box[0]+other.box[2])/2 for other in cells.values()
++             if (other.box[0]+other.box[2])/2 > center]
++    return (max(left-padding, (max(before)+center)/2 if before else left-padding),
++            min(right+padding, (min(after)+center)/2 if after else right+padding))
++
++
++def _regions(image: Image.Image, tokens: list[Token]):
++    cells = None
++    for row in group_rows(tokens):
++        text = re.sub(r"\s+", "", "".join(token.text for token in row))
++        if HEADER_TEXT.fullmatch(text) and HEADER_LABELS.search(text):
++            cells = _header_cells(row)
++            continue
++        if FOOTER.search(text):
++            cells = None
++        if not cells:
++            continue
++        money_left, money_right = _column_bounds(cells["금액"], cells)
++        money = [token for token in row if money_left <= (token.box[0]+token.box[2])/2 <= money_right
++                 and re.fullmatch(rf"{INTEGER}원?", re.sub(r"\s+", "", token.text))
++                 and token.confidence >= MIN_CONFIDENCE]
++        if len(money) != 1:
++            continue
++        anchor = money[0]
++        height = anchor.box[3]-anchor.box[1]
++        first_column = min(cell.box[0] for cell in cells.values())
++        if not any(token.box[2] < first_column and re.search(r"[A-Za-z가-힣]", token.text) for token in row):
++            continue
++        if anchor.box[1] <= max(cell.box[3] for cell in cells.values()) or height > 80:
++            continue
++        for label in ("수량", "할인"):
++            if label not in cells:
++                continue
++            left, right = _column_bounds(cells[label], cells)
++            # 이미 읽은 숫자·부호·인접 상품명이 있으면 덮어쓰거나 일부만 다시 읽지 않는다.
++            if any(token.box[0] < right and token.box[2] > left for token in row):
++                continue
++            box = (max(0, math.floor(left)), max(0, math.floor(anchor.box[1]-.1*height)),
++                   min(image.width, math.ceil(right)), min(image.height, math.ceil(anchor.box[3]+.1*height)))
++            if 4 <= box[2]-box[0] <= 160 and 8 <= box[3]-box[1] <= 96:
++                yield NumericRegion(label, box, min(cell.confidence for cell in cells.values()), anchor)
++
++
++def _prepare_cell(image: Image.Image, region: NumericRegion) -> Image.Image | None:
++    with image.crop(region.box) as patch, patch.convert("L") as gray:
++        background = int(ImageStat.Stat(gray).median[0])
++        with gray.point(lambda value: 255 if value < background-40 else 0) as ink:
++            bounds = ink.getbbox()
++            ink_count = ink.histogram()[255]
++        if bounds is None or ink_count < 8 or ink_count > gray.width * gray.height * .35:
++            return None
++        left, top, right, bottom = bounds
++        if left < 2 or right > gray.width-2 or top < 2 or bottom > gray.height-2 or bottom-top < 6:
++            return None
++        # 좌우는 자르지 않아 음수 부호·소수점을 보존한다. 금액 행 높이로 표의 가로 구분선도 피한다.
++        margin = max(2, math.ceil((bottom-top)*.2))
++        with gray.crop((0, max(0, top-margin), gray.width, min(gray.height, bottom+margin))) as trimmed:
++            with ImageOps.autocontrast(trimmed) as contrast:
++                result = contrast.convert("RGB")
++                result.info.clear()
++                return result
++
++
++def recover_numeric_regions(image: Image.Image, tokens: list[Token], recognize_patch) -> list[Token]:
++    result = list(tokens)
++    for attempted, region in enumerate(_regions(image, tokens)):
++        if attempted >= MAX_RECOVERY_CELLS:
++            break
++        prepared = _prepare_cell(image, region)
++        if prepared is None:
++            continue
++        readings = []
++        conflicting = False
++        with prepared:
++            for scale, border in PATCH_VIEWS:
++                with prepared.resize((prepared.width*scale, prepared.height*scale), Image.Resampling.LANCZOS) as enlarged:
++                    with ImageOps.expand(enlarged, border=border, fill="white") as padded:
++                        candidates = recognize_patch(padded)
++                if not candidates or max(token.confidence for token in candidates) < MIN_RECOVERY_CONFIDENCE:
++                    continue
++                if len(candidates) != 1:
++                    conflicting = True
++                    break
++                token = candidates[0]
++                text = token.text.strip()
++                if read_integer(text, MAX_QUANTITY if region.label == "수량" else 1_000_000_000,
++                                allow_zero=region.label == "할인") is None:
++                    conflicting = True
++                    break
++                readings.append(token)
++        # 다른 여백에서 검출 자체가 실패한 것은 상충하는 숫자가 아니다. 고신뢰도 이견은 모두 거절한다.
++        if readings and not conflicting and len({token.text.strip() for token in readings}) == 1:
++            result.append(Token(readings[0].text.strip(), min(region.confidence, *(token.confidence for token in readings)),
++                                region.box, recovered_numeric=True, numeric_column=region.label))
++            # 할인 칸이 끝내 누락돼도 좌표로 확인한 수량·금액까지 버리지 않는다. 숫자 값은 바꾸지 않는다.
++            for index, token in enumerate(tokens):
++                if token is region.amount_token:
++                    result[index] = replace(result[index], numeric_column="금액")
++                    break
++    return result
+diff --git a/receipt-ocr/receipt_ocr/ocr.py b/receipt-ocr/receipt_ocr/ocr.py
+index 06ae148..347f581 100644
+--- a/receipt-ocr/receipt_ocr/ocr.py
++++ b/receipt-ocr/receipt_ocr/ocr.py
+@@ -23,0 +24,5 @@ class PaddleEngine:
++        from .numeric_regions import recover_numeric_regions
++        tokens = self._recognize_once(image)
++        return recover_numeric_regions(image, tokens, self._recognize_once)
++
++    def _recognize_once(self, image: Image.Image) -> list[Token]:
+diff --git a/receipt-ocr/tests/test_numeric_regions.py b/receipt-ocr/tests/test_numeric_regions.py
+new file mode 100644
+index 0000000..1dc1872
+--- /dev/null
++++ b/receipt-ocr/tests/test_numeric_regions.py
+@@ -0,0 +1,247 @@
++from pathlib import Path
++import unittest
++
++from PIL import Image, ImageDraw
++
++from receipt_ocr.dictionary import load_dictionary
++from receipt_ocr.extract import extract
++from receipt_ocr.model import Token
++from receipt_ocr.numeric_regions import MAX_RECOVERY_CELLS, recover_numeric_regions
++from receipt_ocr.ocr import PaddleEngine
++
++
++def fixture(*, discount=True, row_count=1, ink=True):
++    image = Image.new("RGB", (500, 100+row_count*32), "white")
++    header = [Token("품명", .99, (10, 10, 80, 30)),
++              Token("수량 할인" if discount else "수량", .99, (210, 10, 310 if discount else 250, 30)),
++              Token("금액", .99, (380, 10, 430, 30))]
++    tokens = list(header)
++    draw = ImageDraw.Draw(image)
++    for index in range(row_count):
++        top = 50+index*32
++        tokens.extend([Token("소주", .99, (10, top, 80, top+20)), Token("10,000", .99, (380, top, 440, top+20))])
++        if ink:
++            draw.rectangle((230, top+4, 233, top+15), fill="black")
++            if discount:
++                draw.rectangle((284, top+4, 292, top+15), fill="black")
++    return image, tokens
++
++
++class PatchReader:
++    def __init__(self, texts, confidence=.99):
++        self.texts = iter(texts)
++        self.confidence = confidence
++        self.calls = []
++
++    def __call__(self, image):
++        self.calls.append(image.size)
++        return [Token(next(self.texts), self.confidence, (1, 1, image.width-1, image.height-1))]
++
++
++class NumericRegionTests(unittest.TestCase):
++    def extract(self, tokens):
++        return extract(tokens, load_dictionary(Path(__file__).resolve().parents[1] / "data/drinks.md"))
++
++    def test_missing_quantity_and_discount_are_read_from_pixels(self):
++        image, tokens = fixture()
++        original = image.tobytes()
++        original_tokens = list(tokens)
++        reader = PatchReader(["1", "1", "0", "0"])
++        with image:
++            result = recover_numeric_regions(image, tokens, reader)
++            self.assertEqual(original, image.tobytes())
++        self.assertEqual(original_tokens, tokens)
++        self.assertEqual(["1", "0"], [token.text for token in result if token.recovered_numeric])
++        self.assertEqual(4, len(reader.calls))
++        self.assertNotEqual(reader.calls[0], reader.calls[1])
++        dictionary = load_dictionary(Path(__file__).resolve().parents[1] / "data/drinks.md")
++        receipt = extract(result, dictionary)
++        self.assertEqual((1, None, 10000), (receipt.drinks[0].quantity, receipt.drinks[0].unit_price, receipt.drinks[0].line_amount))
++        self.assertIn("NUMERIC_REGION_RECOGNIZED", receipt.drinks[0].review_reasons)
++        self.assertTrue(receipt.to_dict()["requiresConfirmation"])
++
++    def test_blank_or_uniform_dark_cells_are_not_sent_to_ocr(self):
++        for color in ("white", "gray", "black"):
++            image, tokens = fixture(ink=False)
++            image.paste(color, (0, 0, image.width, image.height))
++            reader = PatchReader([])
++            with image:
++                self.assertEqual(tokens, recover_numeric_regions(image, tokens, reader))
++            self.assertEqual([], reader.calls)
++
++    def test_disagreeing_views_are_not_accepted(self):
++        image, tokens = fixture(discount=False)
++        with image:
++            self.assertEqual(tokens, recover_numeric_regions(image, tokens, PatchReader(["1", "2"])))
++
++    def test_unreadable_discount_does_not_erase_aligned_quantity_and_amount(self):
++        image, tokens = fixture()
++        with image:
++            result = recover_numeric_regions(image, tokens, PatchReader(["1", "1", "bad"]))
++        drink = self.extract(result).drinks[0]
++        self.assertEqual((1, None, 10000), (drink.quantity, drink.unit_price, drink.line_amount))
++        self.assertIn("ITEM_VALUES_MISSING", drink.review_reasons)
++        self.assertIn("NUMERIC_REGION_RECOGNIZED", drink.review_reasons)
++
++    def test_zero_quantity_is_not_created_when_only_discount_is_recovered(self):
++        image, tokens = fixture()
++        with image:
++            result = recover_numeric_regions(image, tokens, PatchReader(["0", "0", "0"]))
++        drink = self.extract(result).drinks[0]
++        self.assertIsNone(drink.quantity)
++        self.assertEqual(10000, drink.line_amount)
++
++    def test_partial_zero_amount_and_conflicting_explicit_quantity_are_rejected(self):
++        for condition in ("amount", "quantity"):
++            image, tokens = fixture()
++            if condition == "amount":
++                tokens[-1] = Token("0", .99, (380, 50, 440, 70))
++            else:
++                tokens[-2] = Token("소주 2병", .99, (10, 50, 80, 70))
++            with image:
++                result = recover_numeric_regions(image, tokens, PatchReader(["1", "1", "bad"]))
++            drink = self.extract(result).drinks[0]
++            self.assertIsNone(drink.quantity)
++            self.assertIsNone(drink.bottle_count)
++
++    def test_duplicate_partial_quantity_annotations_are_not_combined(self):
++        image, tokens = fixture()
++        image.close()
++        tokens[-1] = Token("10,000", .99, (380, 50, 440, 70), numeric_column="금액")
++        tokens.extend([Token("1", .99, (220, 50, 230, 70), True, "수량"),
++                       Token("2", .99, (235, 50, 245, 70), True, "수량")])
++        # 숫자 개수가 우연히 헤더와 같아도 같은 수량 칸에 두 근거가 생기면 거절한다.
++        drink = self.extract(tokens).drinks[0]
++        self.assertIsNone(drink.quantity)
++        self.assertIn("QUANTITY_INVALID_OR_CONFLICT", drink.review_reasons)
++
++    def test_missing_detection_in_second_view_does_not_erase_confident_pixel_reading(self):
++        image, tokens = fixture(discount=False)
++        calls = []
++        def reader(patch):
++            calls.append(1)
++            return [Token("1", .99, (1, 1, 20, 20))] if len(calls) == 1 else []
++        with image:
++            result = recover_numeric_regions(image, tokens, reader)
++            self.assertEqual("1", result[-1].text)
++            self.assertTrue(result[-1].recovered_numeric)
++
++    def test_bad_numbers_are_not_repaired_or_coerced(self):
++        for text in ("1.5", "-2", "+2", "1,00", "1001", "0", "O", "I", "1 2"):
++            with self.subTest(text=text):
++                image, tokens = fixture(discount=False)
++                reader = PatchReader([text, text])
++                with image:
++                    self.assertEqual(tokens, recover_numeric_regions(image, tokens, reader))
++
++    def test_confident_invalid_second_view_vetoes_valid_first_view(self):
++        for text in ("-2", "1.5", "0", "1001"):
++            image, tokens = fixture(discount=False)
++            with image:
++                self.assertEqual(tokens, recover_numeric_regions(image, tokens, PatchReader(["1", text])))
++
++    def test_later_incomplete_header_resets_recovery_and_large_rows_are_skipped(self):
++        for condition in ("header", "height"):
++            image, tokens = fixture(discount=False)
++            if condition == "header":
++                tokens.insert(3, Token("품명 금액", .99, (10, 34, 430, 44)))
++            else:
++                tokens[-1] = Token("10,000", .99, (380, 50, 440, 140))
++            reader = PatchReader([])
++            with image:
++                self.assertEqual(tokens, recover_numeric_regions(image, tokens, reader))
++
++    def test_low_confidence_and_multiple_results_are_rejected(self):
++        for reader in (PatchReader(["1", "1"], confidence=.89),
++                       lambda image: [Token("1", .99, (1, 1, 10, 20)), Token("2", .99, (12, 1, 22, 20))]):
++            image, tokens = fixture(discount=False)
++            with image:
++                self.assertEqual(tokens, recover_numeric_regions(image, tokens, reader))
++
++    def test_existing_negative_or_uncertain_quantity_is_never_overwritten(self):
++        for text, confidence in (("-2", .99), ("1.5", .99), ("2", .5)):
++            image, tokens = fixture(discount=False)
++            tokens.append(Token(text, confidence, (220, 50, 245, 70)))
++            reader = PatchReader([])
++            with image:
++                self.assertEqual(tokens, recover_numeric_regions(image, tokens, reader))
++            self.assertEqual([], reader.calls)
++
++    def test_no_header_or_low_confidence_header_does_not_recover(self):
++        for header_kind in ("missing", "low", "whole", "incomplete", "parallel"):
++            image, tokens = fixture(discount=False)
++            rows = tokens[3:]
++            if header_kind == "missing":
++                tokens = rows
++            elif header_kind == "low":
++                tokens[1] = Token("수량", .5, (210, 10, 250, 30))
++            elif header_kind == "whole":
++                tokens = [Token("품명 수량 금액", .99, (10, 10, 430, 30))] + rows
++            elif header_kind == "incomplete":
++                tokens = [tokens[0], tokens[2]] + rows
++            else:
++                tokens = [Token("품명 수량 금액 품명 수량 금액", .99, (10, 10, 490, 30))] + rows
++            reader = PatchReader([])
++            with image:
++                self.assertEqual(tokens, recover_numeric_regions(image, tokens, reader))
++            self.assertEqual([], reader.calls)
++
++    def test_footer_ends_table_before_more_name_and_amount_rows(self):
++        image, tokens = fixture(discount=False)
++        tokens.insert(3, Token("합계 10,000", .99, (10, 35, 440, 45)))
++        reader = PatchReader([])
++        with image:
++            self.assertEqual(tokens, recover_numeric_regions(image, tokens, reader))
++
++    def test_name_overlapping_cell_and_missing_amount_do_not_recover(self):
++        for condition in ("name", "money"):
++            image, tokens = fixture(discount=False)
++            if condition == "name":
++                tokens[3] = Token("매우긴상품명", .99, (10, 50, 240, 70))
++            else:
++                tokens.pop()
++            reader = PatchReader([])
++            with image:
++                self.assertEqual(tokens, recover_numeric_regions(image, tokens, reader))
++
++    def test_ink_touching_crop_edge_or_horizontal_rule_is_rejected(self):
++        for shape in ((206, 54, 215, 65), (215, 58, 245, 59)):
++            image, tokens = fixture(discount=False, ink=False)
++            ImageDraw.Draw(image).rectangle(shape, fill="black")
++            reader = PatchReader([])
++            with image:
++                self.assertEqual(tokens, recover_numeric_regions(image, tokens, reader))
++
++    def test_recovery_has_a_fixed_inference_budget(self):
++        image, tokens = fixture(discount=False, row_count=20)
++        reader = PatchReader(["2"] * (MAX_RECOVERY_CELLS*2))
++        with image:
++            result = recover_numeric_regions(image, tokens, reader)
++        self.assertEqual(MAX_RECOVERY_CELLS, len([token for token in result if token.recovered_numeric]))
++        self.assertEqual(MAX_RECOVERY_CELLS*2, len(reader.calls))
++
++    def test_engine_uses_one_base_pass_and_does_not_recurse(self):
++        image, tokens = fixture(discount=False)
++        class Engine(PaddleEngine):
++            def __init__(self):
++                self.calls = 0
++            def _recognize_once(self, patch):
++                self.calls += 1
++                return tokens if self.calls == 1 else [Token("1", .99, (1, 1, 20, 20))]
++        engine = Engine()
++        with image:
++            result = engine.recognize(image)
++        self.assertEqual(3, engine.calls)
++        self.assertEqual("1", result[-1].text)
++
++    def test_patch_failure_propagates_without_mutating_image_or_tokens(self):
++        image, tokens = fixture(discount=False)
++        before = list(tokens)
++        def failing(patch):
++            raise RuntimeError("local OCR failure")
++        with image:
++            with self.assertRaises(RuntimeError):
++                recover_numeric_regions(image, tokens, failing)
++            self.assertEqual(image.size, (500, 132))
++            self.assertEqual(before, tokens)
++            self.assertEqual("1", recover_numeric_regions(image, tokens, PatchReader(["1", "1"]))[-1].text)

@@ -1,5 +1,9 @@
 # PR 리뷰·스터디 기록
 
+영수증 작은 숫자 재인식 후속은 [가이드](receipt-ocr-numeric-regions/guide.md) ·
+[고정 diff](receipt-ocr-numeric-regions/changes.diff.patch) · [검증 기준](receipt-ocr-numeric-regions/manifest.json)을 본다.
+기존 실패 사례의 개선과 빈 칸·음수·재압축 대조를 보존하며 독립 사진 정확도와 구분한다.
+
 영수증 공개 웹 사례 후속은 [가이드](receipt-ocr-public-samples/guide.md) ·
 [고정 diff](receipt-ocr-public-samples/changes.diff.patch) · [검증 기준](receipt-ocr-public-samples/manifest.json)을 본다.
 실제 수량 누락과 전체 필드 평가 실패도 보존한다. 이전 사용자 사전 가이드는 아래에 유지한다.
