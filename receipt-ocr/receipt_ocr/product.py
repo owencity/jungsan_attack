@@ -24,6 +24,7 @@ LABELLED_COUNT = re.compile(rf"(?:수량\s*[:：]?\s*|[x×]\s*)({NUMERIC_TOKEN})
 VOLUME = re.compile(rf"{LEFT_BOUNDARY}({NUMERIC_TOKEN})\s*(ml|mℓ|㎖|cc|㏄|밀리|L|ℓ|리터){RIGHT_BOUNDARY}", re.I)
 PACK = re.compile(rf"{LEFT_BOUNDARY}({NUMERIC_TOKEN})\s*(?:캔|병)\s*입{RIGHT_BOUNDARY}")
 CONTAINER = re.compile(r"\s*(병|캔|잔|피처|피쳐|BOTTLE|CAN|GLASS|PITCHER)\s*$", re.I)
+QUALIFIED_DRAFT = re.compile(r"^(생맥주|생맥|드래프트비어|draft\s*beer)\s*\(([^()]+)\)$", re.I)
 
 
 def read_integer(text: str, maximum: int, *, allow_zero: bool = False) -> int | None:
@@ -66,6 +67,20 @@ def _agree(values: list, reason: str, reasons: list[str]):
     return values[0]
 
 
+def _qualified_draft_entry(text: str, dictionary: dict[str, Entry]) -> Entry | None:
+    # 실제 메뉴의 '생맥주(브랜드 용량)'만 조합한다. 임의 괄호나 비알코올 접미어를 버리지 않는다.
+    match = QUALIFIED_DRAFT.fullmatch(text.strip())
+    if not match:
+        return None
+    generic = dictionary.get(normalize(match[1]))
+    brand = dictionary.get(normalize(match[2]))
+    if (generic is None or generic.category != "BEER" or generic.serving_type != "DRAFT"
+            or brand is None or brand.category != "BEER" or brand.unit != "UNKNOWN"
+            or brand.serving_type != "UNKNOWN"):
+        return None
+    return Entry("BEER", brand.name, "UNKNOWN", "DRAFT")
+
+
 def match_product(text: str, dictionary: dict[str, Entry]) -> Product | None:
     text = unicodedata.normalize("NFKC", text).strip()
     # 테라 제로·소주잔처럼 단위나 숫자가 제품명인 정확한 전체 표기를 먼저 보호한다.
@@ -105,6 +120,8 @@ def match_product(text: str, dictionary: dict[str, Entry]) -> Product | None:
             units.append(UNIT_NAMES[container_match[1].casefold()])
             remainder = remainder[:container_match.start()]
         entry = dictionary.get(normalize(remainder))
+    if entry is None:
+        entry = _qualified_draft_entry(remainder, dictionary)
     if entry is None:
         entry = direct_entry
     if entry is None:

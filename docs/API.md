@@ -1,4 +1,13 @@
-# 정산어택 — API 계약 · v12
+# 정산어택 — API 계약 · v13
+
+> **v13 변경(2026-10-15)** — 공개 영수증 사례에서 확인한 Python 추출 양식을 보완한다. 내부 JSON 필드와 schemaVersion 2는 유지한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | 영수증 추출 | [RECEIPT_OCR](RECEIPT_OCR.md): 합계금액·공백 분리 헤더·단가 없는 수량/금액/할인 열·괄호 생맥 브랜드 |
+> | 확인 사유 | ITEM_UNIT_PRICE_MISSING, ITEM_DISCOUNT_PRESENT, MULTIPLE_RECEIPTS_SUSPECTED 추가. 누락 단가 역산 없음 |
+> | 검증 범위 | 공개 웹 사례의 전후 비교, 사진·원문은 저장소에 포함하지 않음. Spring·운영·대표 표본 정확도는 후속 |
+>
 
 > **v12 변경(2026-10-14)** — 사용자 제공 주류 사전 팩트체크를 Python 내부 계약 v2에 반영한다.
 >

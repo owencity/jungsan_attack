@@ -8,8 +8,10 @@ MAX_AMOUNT = 1_000_000_000
 MIN_CONFIDENCE = 0.85
 VALUE_WITH_UNIT = re.compile(rf"({NUMERIC_TOKEN})\s*(원|{UNIT_PATTERN})?", re.I)
 VALUES = re.compile(rf"{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?(?:\s+{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?){{0,2}}", re.I)
-TOTAL = re.compile(rf"^(합계|총액|총금액|결제금액|총결제금액|받을금액)\s*[:：]?\s*({INTEGER})\s*원?$")
-HEADER_LABELS = re.compile(r"단가|수량|금액")
+TOTAL = re.compile(rf"^(합계금액|합계|총액|총금액|결제금액|총결제금액|받을금액)\s*[:：]?\s*({INTEGER})\s*원?$")
+HEADER_LABELS = re.compile(r"단가|수량|할인|금액")
+HEADER_TEXT = re.compile(r"^(?:품명|품목|상품명|메뉴명|메뉴|단가|수량|할인|금액)+$")
+SUPPORTED_COLUMNS = ({"단가", "수량", "금액"}, {"수량", "금액"}, {"수량", "할인", "금액"})
 SPECIAL_ROW = re.compile(r"취소|환불|반품|VOID|CANCEL|할인|쿠폰|서비스|세트|[0-9]+\s*\+\s*[0-9]+", re.I)
 
 
@@ -48,7 +50,14 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
     drinks = []
     totals = []
     columns = None
-    for row in group_rows(tokens):
+    rows = group_rows(tokens)
+    # 가로로 붙은 두 표를 한 주문으로 섞지 않는다. 문서 분할이나 누락된 총액을 추측하지 않는다.
+    for row in rows:
+        normalized = re.sub(r"\s+", "", "".join(token.text for token in row))
+        labels = HEADER_LABELS.findall(normalized)
+        if HEADER_TEXT.fullmatch(normalized) and labels.count("수량") > 1 and labels.count("금액") > 1:
+            return Receipt(None, [], ["MULTIPLE_RECEIPTS_SUSPECTED"])
+    for row in rows:
         text = " ".join(token.text.strip() for token in row).strip()
         confidence = min(token.confidence for token in row)
         normalized_text = re.sub(r"\s+", "", text)
@@ -60,12 +69,10 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
             else:
                 warnings.append("TOTAL_NEEDS_REVIEW")
             continue
-        labels = HEADER_LABELS.findall(text)
-        if sorted(labels) == ["금액", "단가", "수량"]:
-            columns = labels if confidence >= MIN_CONFIDENCE else None
-            continue
-        if labels and re.sub(r"품목|상품명|메뉴명|메뉴|단가|수량|금액|\s", "", text) == "":
-            columns = None
+        labels = HEADER_LABELS.findall(normalized_text)
+        if labels and HEADER_TEXT.fullmatch(normalized_text):
+            columns = labels if (len(labels) == len(set(labels)) and set(labels) in SUPPORTED_COLUMNS
+                                 and confidence >= MIN_CONFIDENCE) else None
             continue
         product, values = split_product_values(text, dictionary)
         if product is None or product.entry.category in {"NON_ALCOHOL", "NON_BEVERAGE"}:
@@ -90,21 +97,26 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
                     unit = receipt_unit
                 if quantity is None:
                     reasons.append("QUANTITY_INVALID_OR_CONFLICT")
-        elif len(values) != 3:
+        elif len(values) != len(columns):
             reasons.append("ITEM_VALUES_MISSING")
         else:
             mapped = dict(zip(columns, values))
-            parsed = {label: read_integer(value, MAX_QUANTITY if label == "수량" else MAX_AMOUNT)
+            parsed = {label: read_integer(value, MAX_QUANTITY if label == "수량" else MAX_AMOUNT,
+                                          allow_zero=label == "할인")
                       for label, (value, unused_unit) in mapped.items()}
             value_units = {label: value_unit.casefold() if value_unit else None
                            for label, (unused_value, value_unit) in mapped.items()}
-            valid_units = value_units["단가"] in (None, "원") and value_units["금액"] in (None, "원")
+            valid_units = all(value_unit in (None, "원") for label, value_unit in value_units.items() if label != "수량")
             valid_units = valid_units and value_units["수량"] in (None, *UNIT_NAMES)
             if not valid_units or any(value is None for value in parsed.values()):
                 reasons.append("ITEM_OUT_OF_RANGE")
                 unit_price = quantity = line_amount = None
             else:
-                unit_price, column_quantity, line_amount = parsed["단가"], parsed["수량"], parsed["금액"]
+                unit_price, column_quantity, line_amount = parsed.get("단가"), parsed["수량"], parsed["금액"]
+                if unit_price is None:
+                    reasons.append("ITEM_UNIT_PRICE_MISSING")
+                if parsed.get("할인", 0) > 0:
+                    reasons.append("ITEM_DISCOUNT_PRESENT")
                 if quantity is not None and quantity != column_quantity:
                     reasons.append("QUANTITY_INVALID_OR_CONFLICT")
                     quantity = None
@@ -117,7 +129,7 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
                         unit = "UNKNOWN"
                     else:
                         unit = receipt_unit
-                if quantity is not None and unit_price * quantity != line_amount:
+                if quantity is not None and unit_price is not None and unit_price * quantity != line_amount:
                     reasons.append("ITEM_AMOUNT_MISMATCH")
         if product.entry.serving_type == "DRAFT" and unit == "BOTTLE":
             reasons.append("UNIT_CONFLICT")

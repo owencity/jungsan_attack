@@ -1,7 +1,7 @@
 # 영수증 추출 — Python 내부 API v2
 
 > 2026-10-14 · 초기 구현. 사용자 승인: PaddleOCR 한국어 CPU + Python 추출 + FastAPI.
-> Spring 공개 API·앱 연결·운영 배포·실제 영수증 정확도 검증은 후속이다.
+> Spring 공개 API·앱 연결·운영 배포·대표 표본 정확도 검증은 후속이다. 공개 웹 사례 점검은 별도 기록한다.
 > v2는 사용자 사전 팩트체크를 반영한다. v1의 브랜드별 기본 용기를 제거하고 명시된 용기만 읽는다.
 
 ## 경계
@@ -56,8 +56,8 @@ Content-Type image/jpeg 또는 image/png의 바이너리 본문. multipart·URL�
 
 | 필드 | 값 |
 |---|---|
-| drinks[].reviewReasons | COLUMN_HEADER_MISSING, ITEM_VALUES_MISSING, ITEM_OUT_OF_RANGE, ITEM_AMOUNT_MISMATCH, LOW_CONFIDENCE, UNIT_CONFLICT, UNIT_REQUIRES_MAPPING, UNKNOWN_CONTAINER, UNKNOWN_CATEGORY, QUANTITY_INVALID_OR_CONFLICT, VOLUME_INVALID_OR_CONFLICT, COMBO_OR_PROMOTION, RETURN_OR_CANCEL |
-| warnings | OCR_NO_TEXT, TOTAL_NEEDS_REVIEW, TOTAL_NOT_FOUND, TOTAL_CONFLICT, NO_DRINK_ITEMS, ITEMS_NEED_REVIEW, DRINK_AMOUNT_EXCEEDS_TOTAL |
+| drinks[].reviewReasons | COLUMN_HEADER_MISSING, ITEM_VALUES_MISSING, ITEM_UNIT_PRICE_MISSING, ITEM_DISCOUNT_PRESENT, ITEM_OUT_OF_RANGE, ITEM_AMOUNT_MISMATCH, LOW_CONFIDENCE, UNIT_CONFLICT, UNIT_REQUIRES_MAPPING, UNKNOWN_CONTAINER, UNKNOWN_CATEGORY, QUANTITY_INVALID_OR_CONFLICT, VOLUME_INVALID_OR_CONFLICT, COMBO_OR_PROMOTION, RETURN_OR_CANCEL |
+| warnings | OCR_NO_TEXT, TOTAL_NEEDS_REVIEW, TOTAL_NOT_FOUND, TOTAL_CONFLICT, NO_DRINK_ITEMS, ITEMS_NEED_REVIEW, DRINK_AMOUNT_EXCEEDS_TOTAL, MULTIPLE_RECEIPTS_SUSPECTED |
 
 총액 후보가 충돌하면 null이다. 품목 금액 불일치는 읽은 후보와 사유를 함께 반환한다.
 음식값이 포함된 총액과 술값은 같을 필요가 없다. 술값 초과만 모순으로 표시한다.
@@ -70,7 +70,15 @@ Content-Type image/jpeg 또는 image/png의 바이너리 본문. multipart·URL�
 - 단위는 표기 자체에 근거가 있어야 한다. `테라 | 병`처럼 브랜드의 대표 포장을 지정한 사전은 실행을 거절한다.
 - 완전 일치 상품명에서 명시 단위·용량·수량 표현만 분리한다. 알 수 없는 접미어를 버려 짧은 브랜드에 매칭하지 않는다.
   카스 0.0·진로 토닉워터·테라 제로는 긴 전체 상품명을 보호하고 일반 주류로 반환하지 않는다.
-- 단가·수량·금액은 신뢰 가능한 3열 헤더와 세 숫자가 있어야 읽는다. 헤더 없이도 `2병`·`수량 2`·`x2`는 읽되 가격은 채우지 않는다.
+- 일반 생맥 표기와 사전의 정확한 BEER 브랜드가 괄호로 연결된 `생맥주(카스300cc)`는 브랜드 표시명·DRAFT·300mL로 읽는다.
+  괄호 안이 비주류·비음료·미등록 이름이거나 용기가 지정된 제품이면 조합하지 않는다. 잔 수·병 용기를 추측하지 않는다.
+- 신뢰 가능한 `단가 수량 금액`, `수량 금액`, `수량 할인 금액` 헤더 순서를 따른다. `단 가`처럼 분리된 글자는 공백만 제거한다.
+  단가가 없는 표는 quantity·lineAmount만 읽고 unitPrice=null + ITEM_UNIT_PRICE_MISSING이다. 가격으로 수량·단가를 역산하지 않는다.
+  할인 열의 0은 허용하고 양수 할인은 ITEM_DISCOUNT_PRESENT로 표시한다. 할인 전후 가격의 의미를 추측하지 않는다.
+  헤더 없이도 `2병`·`수량 2`·`x2`는 읽되 가격은 채우지 않는다.
+- 총액 라벨에 합계금액을 포함한다. 총매출액·할인금액·세금·승인번호를 총액 후보로 바꾸지 않는다.
+- 같은 가로 행에서 완전한 표 헤더의 수량·금액 열이 각각 반복되면 MULTIPLE_RECEIPTS_SUSPECTED와 total=null·drinks=[]를 반환한다.
+  두 영수증의 행을 한 주문으로 결합하지 않기 위한 보수적 확인 정책이다. 세로로 떨어진 반복 헤더는 계속 지원한다.
 - 음수·부호·소수 수량·잘못된 쉼표는 전체 숫자로 거절한다. `1.5병`을 5병, `-2병`을 2병으로 부분 매칭하지 않는다.
 - 팩 구성 수와 판매 수량을 구분한다. 명시된 팩 판매 수량은 보존하지만 낱병/캔 수로 환산하지 않는다.
 - 다중 줄 품목·좌표에 따른 완전한 표 인식·상호/광고 영역의 문서 분류는 아직 실제 샘플 개선 대상이다.
@@ -95,7 +103,7 @@ Content-Type image/jpeg 또는 image/png의 바이너리 본문. multipart·URL�
 ## 가정·후속
 
 - 별도 저장소 경로가 지정되지 않아 브랜치의 receipt-ocr 폴더에 모았다. 독립 저장소로 이동할 때 이 폴더를 그대로 옮긴다.
-- 실제 샘플 평가 전이므로 최종 엔진 채택·ARM 배포는 확정하지 않는다. Redis/Kafka/k3s를 발동하지 않는다.
+- 공개 웹 이미지 점검은 [검증 기록](../receipt-ocr/docs/public-sample-validation.md)에 남긴다. 사용자의 직접 촬영·대표 표본 평가 전이므로 최종 엔진 채택·ARM 배포는 확정하지 않는다. Redis/Kafka/k3s를 발동하지 않는다.
 - 공개 Spring 업로드 API, 권한·시간 제한·요청 제한·통합 테스트, 앱 촬영 화면 연결은 후속이다.
 - 8MiB·픽셀·한 장 동시 처리·신뢰도 0.85는 초기 자원/확인 정책이며 샘플 실측으로 조정한다.
 - 기준 main 3eb5254. 읽은 열림 FC: 005·009·010·011·014·015·020·021. 이번 Python 추출은 해당 FC를 완료하지 않으므로 상태를 유지한다.
