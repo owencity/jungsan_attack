@@ -78,8 +78,13 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
         if product is None or product.entry.category in {"NON_ALCOHOL", "NON_BEVERAGE"}:
             continue
         reasons = list(product.reasons)
+        if any(token.recovered_numeric for token in row):
+            reasons.append("NUMERIC_REGION_RECOGNIZED")
         unit = product.unit
         quantity = product.quantity
+        if sum(token.recovered_numeric and token.numeric_column == "수량" for token in row) > 1:
+            quantity = None
+            reasons.append("QUANTITY_INVALID_OR_CONFLICT")
         unit_price = line_amount = None
         if SPECIAL_ROW.search(text):
             reasons.append("RETURN_OR_CANCEL" if re.search(r"취소|환불|반품|VOID|CANCEL", text, re.I) else "COMBO_OR_PROMOTION")
@@ -99,6 +104,23 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
                     reasons.append("QUANTITY_INVALID_OR_CONFLICT")
         elif len(values) != len(columns):
             reasons.append("ITEM_VALUES_MISSING")
+            # 재인식이 확인한 열만 사용한다. 남은 숫자의 개수나 가격으로 빈 할인·단가를 추측하지 않는다.
+            recovered_quantities = [token for token in row if token.recovered_numeric and token.numeric_column == "수량"]
+            aligned_amounts = [token for token in row if token.numeric_column == "금액"]
+            if len(aligned_amounts) == 1:
+                line_amount = read_integer(re.sub(r"\s+|원$", "", aligned_amounts[0].text), MAX_AMOUNT)
+            if len(recovered_quantities) == 1:
+                aligned_quantity = read_integer(recovered_quantities[0].text.strip(), MAX_QUANTITY)
+                if quantity is not None and quantity != aligned_quantity:
+                    reasons.append("QUANTITY_INVALID_OR_CONFLICT")
+                    quantity = None
+                elif "QUANTITY_INVALID_OR_CONFLICT" not in reasons:
+                    quantity = aligned_quantity
+            if aligned_amounts and line_amount is None:
+                quantity = None
+                reasons.append("ITEM_OUT_OF_RANGE")
+            if (aligned_amounts or recovered_quantities) and "단가" not in columns:
+                reasons.append("ITEM_UNIT_PRICE_MISSING")
         else:
             mapped = dict(zip(columns, values))
             parsed = {label: read_integer(value, MAX_QUANTITY if label == "수량" else MAX_AMOUNT,

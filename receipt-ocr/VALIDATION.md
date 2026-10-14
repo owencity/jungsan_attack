@@ -1,5 +1,15 @@
 # 영수증 OCR 검증 — 2026-10-14
 
+## 2026-10-15 작은 숫자 영역 재인식 후속
+
+- 기존 72개 + 회귀 20개: **92 tests / OK (0.428초)**. 테스트 삭제·비활성화 없음.
+- 문제였던 원본에서 수량 1·금액 2,000·총액 18,500을 실제 모델로 읽었다. 동일 원본 evaluator 9필드 일치는 0/1 → 1/1.
+- 수량 칸 지움·음수 변경은 양수 수량을 만들지 않았다. JPEG 품질 50 파생본도 수량 1·금액 2,000·총액 18,500을 읽었다.
+- evaluator 1장: failedSamples=0, totalExactRate=1.0, allDrinkFieldsExactRate=1.0, warningSampleCount=1, 평균 13.826초(초기화 제외).
+- 같은 사진의 개발·파생 대조 점검이며 독립 사진 정확도나 병 수 전체 정확도 100%가 아니다. [검증 방법·한계](docs/numeric-region-validation.md).
+- 기존 모델·의존성을 재사용하고 최대 8칸·16회 추가 호출. 기존 숫자 덮어쓰기·기본값·가격 역산·원문 저장 없음.
+- `:server:compileKotlin`: BUILD SUCCESSFUL in 3s, 6 tasks up-to-date. Java/Kotlin/Core/DB/운영은 변경 없음.
+
 ## 2026-10-15 공개 웹 사례 후속
 
 - 공개 이미지 3개를 원본으로 확인하고 실제 PaddleOCR로 수정 전후 비교했다. [출처·정답·한계](docs/public-sample-validation.md).

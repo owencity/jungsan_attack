@@ -56,7 +56,7 @@ Content-Type image/jpeg 또는 image/png의 바이너리 본문. multipart·URL�
 
 | 필드 | 값 |
 |---|---|
-| drinks[].reviewReasons | COLUMN_HEADER_MISSING, ITEM_VALUES_MISSING, ITEM_UNIT_PRICE_MISSING, ITEM_DISCOUNT_PRESENT, ITEM_OUT_OF_RANGE, ITEM_AMOUNT_MISMATCH, LOW_CONFIDENCE, UNIT_CONFLICT, UNIT_REQUIRES_MAPPING, UNKNOWN_CONTAINER, UNKNOWN_CATEGORY, QUANTITY_INVALID_OR_CONFLICT, VOLUME_INVALID_OR_CONFLICT, COMBO_OR_PROMOTION, RETURN_OR_CANCEL |
+| drinks[].reviewReasons | COLUMN_HEADER_MISSING, ITEM_VALUES_MISSING, ITEM_UNIT_PRICE_MISSING, ITEM_DISCOUNT_PRESENT, NUMERIC_REGION_RECOGNIZED, ITEM_OUT_OF_RANGE, ITEM_AMOUNT_MISMATCH, LOW_CONFIDENCE, UNIT_CONFLICT, UNIT_REQUIRES_MAPPING, UNKNOWN_CONTAINER, UNKNOWN_CATEGORY, QUANTITY_INVALID_OR_CONFLICT, VOLUME_INVALID_OR_CONFLICT, COMBO_OR_PROMOTION, RETURN_OR_CANCEL |
 | warnings | OCR_NO_TEXT, TOTAL_NEEDS_REVIEW, TOTAL_NOT_FOUND, TOTAL_CONFLICT, NO_DRINK_ITEMS, ITEMS_NEED_REVIEW, DRINK_AMOUNT_EXCEEDS_TOTAL, MULTIPLE_RECEIPTS_SUSPECTED |
 
 총액 후보가 충돌하면 null이다. 품목 금액 불일치는 읽은 후보와 사유를 함께 반환한다.
@@ -79,6 +79,16 @@ Content-Type image/jpeg 또는 image/png의 바이너리 본문. multipart·URL�
 - 총액 라벨에 합계금액을 포함한다. 총매출액·할인금액·세금·승인번호를 총액 후보로 바꾸지 않는다.
 - 같은 가로 행에서 완전한 표 헤더의 수량·금액 열이 각각 반복되면 MULTIPLE_RECEIPTS_SUSPECTED와 total=null·drinks=[]를 반환한다.
   두 영수증의 행을 한 주문으로 결합하지 않기 위한 보수적 확인 정책이다. 세로로 떨어진 반복 헤더는 계속 지원한다.
+- 최초 OCR의 명시된 표 헤더와 금액 행 좌표로 빈 수량·할인 칸만 재인식한다. 이미 읽힌 숫자/부호/상품명은 덮어쓰지 않는다.
+  분리된 숫자 헤더 또는 숫자 라벨 두 개가 합쳐진 상자만 지원하며 상품명까지 합쳐진 넓은 헤더는 추측하지 않는다.
+  숫자 라벨이 합쳐진 상자는 글자 위치 비율로 영역을 나누므로 비례 글꼴·기울기 등의 오차가 있을 수 있다.
+  사진의 실제 픽셀을 회색조·대비 보정·4배 확대하고 여백 16/32px로 같은 모델을 호출한다. 새로운 모델/의존성은 없다.
+  0.90 이상인 전체 정수 판독이 있어야 채택하고, 고신뢰도 숫자가 서로 다르거나 부호/소수/복수 텍스트이면 거절한다.
+  한 여백에서 미검출한 것은 다른 여백의 고신뢰도 판독을 지우지 않는다. 이는 독립 모델 합의나 정확도 보증이 아니다.
+  빈/균일한 칸·가로 구분선·잘린 잉크·겹친 글자는 재인식하지 않는다. 최대 8칸·16회 추가 호출이며 실패·한도 초과는 누락 값으로 남긴다.
+  채택한 숫자가 있는 품목은 NUMERIC_REGION_RECOGNIZED 확인 사유를 붙인다. 없는 숫자·할인 0·기본 수량 1을 만들지 않는다.
+  일부 열이 끝내 누락되면 재인식 수량·같은 행의 좌표 확인 금액만 보존하고 ITEM_VALUES_MISSING을 유지한다.
+  숫자 개수로 열을 밀어 채우거나 빠진 할인/단가를 역산하지 않는다. 같은 수량 칸의 근거가 중복되면 거절한다.
 - 음수·부호·소수 수량·잘못된 쉼표는 전체 숫자로 거절한다. `1.5병`을 5병, `-2병`을 2병으로 부분 매칭하지 않는다.
 - 팩 구성 수와 판매 수량을 구분한다. 명시된 팩 판매 수량은 보존하지만 낱병/캔 수로 환산하지 않는다.
 - 다중 줄 품목·좌표에 따른 완전한 표 인식·상호/광고 영역의 문서 분류는 아직 실제 샘플 개선 대상이다.

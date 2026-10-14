@@ -7,6 +7,8 @@ class Token:
     text: str
     confidence: float
     box: tuple[float, float, float, float]
+    recovered_numeric: bool = False
+    numeric_column: str | None = None
 
     def __post_init__(self):
         if not math.isfinite(self.confidence) or not 0 <= self.confidence <= 1:

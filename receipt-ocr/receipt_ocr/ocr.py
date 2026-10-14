@@ -21,6 +21,11 @@ class PaddleEngine:
         )
 
     def recognize(self, image: Image.Image) -> list[Token]:
+        from .numeric_regions import recover_numeric_regions
+        tokens = self._recognize_once(image)
+        return recover_numeric_regions(image, tokens, self._recognize_once)
+
+    def _recognize_once(self, image: Image.Image) -> list[Token]:
         import numpy as np
         tokens = []
         for result in self.pipeline.predict(np.asarray(image)):
