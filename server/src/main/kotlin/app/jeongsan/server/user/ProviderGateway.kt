@@ -24,14 +24,14 @@ interface ProviderGateway {
 /** 네트워크는 얇은 어댑터 하나로 제한해 자격 검증과 정책을 실제 키 없이 시험한다. */
 @Component
 class RestProviderGateway(
-    @Value("\${kakao.client-id}") private val kakaoId: String,
-    @Value("\${kakao.client-secret}") private val kakaoSecret: String,
-    @Value("\${kakao.redirect-uri}") private val kakaoRedirect: String,
-    @Value("\${apple.client-id}") private val appleId: String,
-    @Value("\${apple.team-id}") private val appleTeam: String,
-    @Value("\${apple.key-id}") private val appleKeyId: String,
-    @Value("\${apple.private-key-base64}") private val appleKey: String,
-    @Value("\${apple.redirect-uri}") private val appleRedirect: String,
+    @param:Value("\${kakao.client-id}") private val kakaoId: String,
+    @param:Value("\${kakao.client-secret}") private val kakaoSecret: String,
+    @param:Value("\${kakao.redirect-uri}") private val kakaoRedirect: String,
+    @param:Value("\${apple.client-id}") private val appleId: String,
+    @param:Value("\${apple.team-id}") private val appleTeam: String,
+    @param:Value("\${apple.key-id}") private val appleKeyId: String,
+    @param:Value("\${apple.private-key-base64}") private val appleKey: String,
+    @param:Value("\${apple.redirect-uri}") private val appleRedirect: String,
     env: Environment,
 ) : ProviderGateway {
     private val kakaoSettings = listOf(kakaoId, kakaoSecret, kakaoRedirect)

@@ -4,14 +4,14 @@ import app.jeongsan.server.common.GlobalExceptionHandler
 import app.jeongsan.server.common.LoginUserArgumentResolver
 import app.jeongsan.server.user.JwtService
 import app.jeongsan.server.user.AuthController
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonMapperBuilder
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import jakarta.servlet.http.Cookie
 import org.mockito.Mockito
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -20,11 +20,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 class GatheringApiSpec : StringSpec({
     val service=Mockito.mock(GatheringService::class.java)
     val jwt=JwtService("01234567890123456789012345678901",30)
-    val mapper=jacksonObjectMapper().findAndRegisterModules()
+    val mapper=jacksonMapperBuilder().build()
     val mvc=MockMvcBuilders.standaloneSetup(GatheringController(service),SettlementUnitController(service),JoinController(service),
         MyGatheringsController(service),PayoutController(service),TransferController(service))
         .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt)).setControllerAdvice(GlobalExceptionHandler())
-        .setMessageConverters(MappingJackson2HttpMessageConverter(mapper)).build()
+        .setMessageConverters(JacksonJsonHttpMessageConverter(mapper)).build()
     val cookie=Cookie(AuthController.COOKIE_NAME,jwt.issue(12))
     val root="/api/v1/gatherings/1/settlement-units/10"
     data class Case(val verb: String,val url: String,val body: String?=null,val code: Int=200)

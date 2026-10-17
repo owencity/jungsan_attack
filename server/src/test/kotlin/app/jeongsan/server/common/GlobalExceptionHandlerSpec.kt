@@ -5,14 +5,14 @@ import app.jeongsan.server.user.JwtService
 import app.jeongsan.server.user.UserController
 import app.jeongsan.server.user.UserRepository
 import app.jeongsan.server.user.UserService
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonMapperBuilder
 import io.kotest.core.spec.style.StringSpec
 import jakarta.servlet.http.Cookie
 import org.mockito.Mockito
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.MediaType
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.mock.web.MockServletContext
 import org.springframework.test.json.JsonCompareMode
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -59,7 +59,7 @@ class GlobalExceptionHandlerSpec : StringSpec({
     val mvc = MockMvcBuilders.standaloneSetup(UserController(UserService(repository)))
         .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt))
         .setControllerAdvice(GlobalExceptionHandler())
-        .setMessageConverters(MappingJackson2HttpMessageConverter(jacksonObjectMapper()))
+        .setMessageConverters(JacksonJsonHttpMessageConverter(jacksonMapperBuilder().build()))
         .build()
 
     beforeTest { Mockito.reset(repository) }
