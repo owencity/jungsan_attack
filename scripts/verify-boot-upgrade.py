@@ -181,11 +181,32 @@ def verify():
     call("GET", "/auth/me", state["app"], "APP", status=401)
     call("GET", "/auth/me", state["host"])
     check(True, "구버전 APP 토큰 로그아웃은 재사용을 막고 WEB 로그인은 유지")
+    upgrade_checks = checks
+    print(f"BOOT-UPGRADE: {upgrade_checks} checks passed", flush=True)
+
+    # 앱의 '나 혼자 시작하기'가 목 모드와 API 모드에서 다른 인원을 보내던 계약 차이다.
+    guest_id = call("GET", "/auth/me", state["guest"])["id"]
+    guest_pid = next(p["id"] for p in detail["participants"] if p["userId"] == guest_id)
+    path = f"/gatherings/{state['settled_id']}/settlement-units"
+    payload = {"requestId": str(uuid.uuid4()), "participantIds": [guest_pid], "headcount": 1}
+    count_before = sql(f"SELECT COUNT(*) FROM settlement_units WHERE gathering_id={state['settled_id']}")
+    rejected = call("POST", path, state["guest"], body=payload, status=400)
+    check(rejected["code"] == "VALIDATION_FAILED" and
+          sql(f"SELECT COUNT(*) FROM settlement_units WHERE gathering_id={state['settled_id']}") == count_before,
+          "앱의 본인 단독 headcount=1 요청은 400이며 단위를 저장하지 않음")
+    payload["headcount"] = 2
+    created = call("POST", path, state["guest"], body=payload, status=201)
+    refreshed = call("GET", f"/gatherings/{state['settled_id']}", state["guest"])
+    unit = next(u for u in refreshed["settlementUnits"] if u["id"] == created["id"])
+    check(unit["participantIds"] == [guest_pid] and unit["headcount"] == 2 and unit["status"] == "OPEN",
+          "본인만 명단에 두고 목표 인원 2로 보내면 201로 새 단위를 만듦")
+    app_checks = checks - upgrade_checks
+    print(f"APP-CONNECTION: {app_checks} checks passed", flush=True)
     result = dict(baseline_ref=BASELINE_REF, baseline_version=state["baseline_version"],
-                  target_version=state["target_version"], checks=checks, status="passed",
+                  target_version=state["target_version"], upgrade_checks=upgrade_checks,
+                  app_connection_checks=app_checks, checks=checks, status="passed",
                   scope="isolated CI MySQL; historical Boot 3 HTTP data; not production database backup")
     RESULT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"BOOT-UPGRADE: {checks} checks passed", flush=True)
 
 
 if __name__ == "__main__":
