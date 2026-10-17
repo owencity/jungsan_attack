@@ -1,0 +1,21 @@
+{
+  "source_head": "ad0b154effea3aa72e004d367f9f15150d66e122",
+  "counts": {
+    "core": {
+      "tests": 54,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "server": {
+      "tests": 144,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "build": "BUILD SUCCESSFUL in 1m 5s",
+  "final_compile": "BUILD SUCCESSFUL in 26s",
+  "docker": "local engine unavailable",
+  "actual_database": "CI run 39042279879: fresh MySQL schema + HTTP + prod restart success"
+}

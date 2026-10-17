@@ -14,7 +14,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
  */
 @Configuration
 class WebConfig(
-    @Value("\${app.frontend-origin}") private val frontendOrigin: String,
+    @param:Value("\${app.frontend-origin}") private val frontendOrigin: String,
     private val loginUserArgumentResolver: LoginUserArgumentResolver,
 ) : WebMvcConfigurer {
 

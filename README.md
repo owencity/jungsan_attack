@@ -5,8 +5,8 @@
 
   **1차, 2차로 끝나지 않는 술자리를 위한 정산 서비스**
 
-  ![Kotlin](https://img.shields.io/badge/Kotlin-2.1-7F52FF?style=flat-square&logo=kotlin&logoColor=white)
-  ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?style=flat-square&logo=springboot&logoColor=white)
+  ![Kotlin](https://img.shields.io/badge/Kotlin-2.3.21-7F52FF?style=flat-square&logo=kotlin&logoColor=white)
+  ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1.1-6DB33F?style=flat-square&logo=springboot&logoColor=white)
   ![MySQL](https://img.shields.io/badge/MySQL-8.4-4479A1?style=flat-square&logo=mysql&logoColor=white)
   ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)
   ![Kubernetes](https://img.shields.io/badge/k3s-MSA-326CE5?style=flat-square&logo=kubernetes&logoColor=white)
@@ -225,9 +225,13 @@ erDiagram
 
 ## 기술 스택
 
+현재 실행 백엔드는 Kotlin 2.3.21·Spring Boot 4.1.1·Jackson 3 기반 모놀리스다. Spring Cloud와 QueryDSL은 사용하지 않는다.
+[전환 절차](docs/BOOT_4_MIGRATION.md)와 [ADR-022](docs/ADR/022-spring-boot-4.md)를 참고한다.
+아래 표의 k3s·메시징·실시간 분리 등은 초기 설계를 포함하며, 실제 도입 상태는 최신 ADR을 따른다.
+
 | 계층 | 기술 | 왜 |
 |---|---|---|
-| 언어·프레임워크 | Kotlin · Spring Boot · Spring Cloud | 계산 엔진을 순수 함수로 격리하기 좋고 서버·앱이 코드를 공유 |
+| 언어·프레임워크 | Kotlin 2.3.21 · Spring Boot 4.1.1 | 계산 엔진을 순수 함수로 격리하기 좋고 서버·앱이 코드를 공유 |
 | 오케스트레이션 | k3s (단일 노드) | Eureka·Config Server 대신 k8s 네이티브 기능을 쓴다 — 중복 기술 배제 |
 | DB(트랜잭션) | MySQL 8.4 | 참여자 수십 명 규모라 복잡 조인·분석 우위가 체감되지 않는 도메인 |
 | DB(채팅) | MongoDB Atlas | 메시지 타입 확장에 스키마리스가 맞고, 관리형 오프로드로 무료 인프라 예산을 지킨다 |

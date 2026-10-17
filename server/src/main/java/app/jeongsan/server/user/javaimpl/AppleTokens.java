@@ -1,7 +1,7 @@
 package app.jeongsan.server.user.javaimpl;
 
 import app.jeongsan.server.common.UnauthenticatedException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.jsonwebtoken.Jwts;
 import java.math.BigInteger;
 import java.security.KeyFactory;
@@ -20,9 +20,9 @@ public final class AppleTokens {
     public static String verify(String token, List<Key> keys, String audience, String nonce) {
         try {
             if (token.length() > 16000) throw new IllegalArgumentException();
-            var header = new ObjectMapper().readTree(Base64.getUrlDecoder().decode(token.split("\\.")[0]));
-            if (!"RS256".equals(header.path("alg").asText())) throw new IllegalArgumentException();
-            var matching = keys.stream().filter(k -> k.kid().equals(header.path("kid").asText()) && "RS256".equals(k.alg()) && "RSA".equals(k.kty())).toList();
+            var header = JsonMapper.builder().build().readTree(Base64.getUrlDecoder().decode(token.split("\\.")[0]));
+            if (!"RS256".equals(header.path("alg").asString())) throw new IllegalArgumentException();
+            var matching = keys.stream().filter(k -> k.kid().equals(header.path("kid").asString()) && "RS256".equals(k.alg()) && "RSA".equals(k.kty())).toList();
             if (matching.size() != 1) throw new IllegalArgumentException();
             var k = matching.getFirst();
             var rsa = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new RSAPublicKeySpec(

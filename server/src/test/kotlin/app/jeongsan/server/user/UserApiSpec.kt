@@ -2,11 +2,11 @@ package app.jeongsan.server.user
 
 import app.jeongsan.server.common.GlobalExceptionHandler
 import app.jeongsan.server.common.LoginUserArgumentResolver
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonMapperBuilder
 import io.kotest.core.spec.style.StringSpec
 import org.mockito.Mockito
 import org.springframework.http.MediaType
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -24,14 +24,14 @@ class UserApiSpec : StringSpec({
     val mvc = MockMvcBuilders.standaloneSetup(UserController(service), auth)
         .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt))
         .setControllerAdvice(GlobalExceptionHandler())
-        .setMessageConverters(MappingJackson2HttpMessageConverter(jacksonObjectMapper()))
+        .setMessageConverters(JacksonJsonHttpMessageConverter(jacksonMapperBuilder().build()))
         .build()
 
     beforeTest { Mockito.reset(repository) }
 
     fun request(value: String) = put("/api/v1/users/me/display-name")
         .cookie(cookie).contentType(MediaType.APPLICATION_JSON)
-        .content(jacksonObjectMapper().writeValueAsString(DisplayNameRequest(value)))
+        .content(jacksonMapperBuilder().build().writeValueAsString(DisplayNameRequest(value)))
 
     "미등록 사용자 조회는 실명 null과 needsName true를 반환한다" {
         Mockito.`when`(repository.findById(12)).thenReturn(Optional.of(User(id = 12, nickname = "봄이")))

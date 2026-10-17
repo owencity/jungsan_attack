@@ -1,7 +1,7 @@
 package app.jeongsan.server.user
 
 import app.jeongsan.server.common.UnauthenticatedException
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonMapperBuilder
 import io.jsonwebtoken.Jwts
 import java.math.BigInteger
 import java.security.KeyFactory
@@ -17,9 +17,9 @@ data class AppleKey(val kid: String, val kty: String, val alg: String, val n: St
 object AppleTokens {
     fun verify(token: String, keys: List<AppleKey>, audience: String, nonce: String): String = try {
         require(token.length <= 16000)
-        val header = jacksonObjectMapper().readTree(Base64.getUrlDecoder().decode(token.split('.')[0]))
-        require(header.path("alg").asText() == "RS256")
-        val key = keys.single { it.kid == header.path("kid").asText() && it.alg == "RS256" && it.kty == "RSA" }
+        val header = jacksonMapperBuilder().build().readTree(Base64.getUrlDecoder().decode(token.split('.')[0]))
+        require(header.path("alg").asString() == "RS256")
+        val key = keys.single { it.kid == header.path("kid").asString() && it.alg == "RS256" && it.kty == "RSA" }
         val rsa = KeyFactory.getInstance("RSA").generatePublic(RSAPublicKeySpec(
             BigInteger(1, Base64.getUrlDecoder().decode(key.n)), BigInteger(1, Base64.getUrlDecoder().decode(key.e)))) as java.security.interfaces.RSAPublicKey
         val claims = Jwts.parser().verifyWith(rsa).requireIssuer("https://appleid.apple.com")

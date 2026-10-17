@@ -3,7 +3,7 @@ package app.jeongsan.server.gathering
 import app.jeongsan.server.gathering.javaimpl.SettlementWorkflow as JWorkflow
 import app.jeongsan.server.gathering.javaimpl.PayoutCipher as JCipher
 import app.jeongsan.server.common.ApiException
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonMapperBuilder
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -19,11 +19,11 @@ class WorkflowParitySpec : StringSpec({
     fun List<PersonInput>.jp()=map{JWorkflow.PersonInput(it.id,it.userId,it.name)}
     fun List<RoundInput>.jr()=map{JWorkflow.RoundInput(it.id,it.unitId,it.seq,it.total,it.payerId,it.drinks.map{d->JWorkflow.DrinkInput(d.name,d.unitPrice,d.quantity)})}
     fun List<ResponseInput>.ja()=map{JWorkflow.ResponseInput(it.participantId,it.roundId,it.type,it.source)}
-    val mapper=jacksonObjectMapper()
+    val mapper=jacksonMapperBuilder().build()
     fun parity(unit: UnitInput=u,rs: List<RoundInput> = rounds,answers: List<ResponseInput> = emptyList()): Preview {
         val k=SettlementWorkflow.preview(unit,people,rs,answers)
         val j=JWorkflow.preview(unit.j(),people.jp(),rs.jr(),answers.ja())
-        mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(k) shouldBe mapper.valueToTree(j)
+        mapper.valueToTree<tools.jackson.databind.JsonNode>(k) shouldBe mapper.valueToTree<tools.jackson.databind.JsonNode>(j)
         k.transfers.forEach{it.basis.sumOf{b->b.amount} shouldBe it.amount}
         return k
     }

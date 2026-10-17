@@ -4,7 +4,7 @@ import app.jeongsan.core.Validator
 import app.jeongsan.core.ValidationPhase
 import app.jeongsan.server.common.ShareToken
 import app.jeongsan.server.gathering.SettlementWorkflow.fail
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation

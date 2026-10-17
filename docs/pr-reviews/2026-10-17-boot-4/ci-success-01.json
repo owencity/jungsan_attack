@@ -1,0 +1,100 @@
+{
+  "source_head": "ad0b154effea3aa72e004d367f9f15150d66e122",
+  "run_url": "https://github.com/owencity/jungsan_attack/actions/runs/39042279879",
+  "jobs": [
+    {
+      "id": 117424013210,
+      "name": "Core · Server 테스트와 빌드",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 39042279879,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "체크아웃",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "JDK 21 준비",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Gradle 캐시",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Gradle Wrapper 실행 권한 확인",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Core 테스트",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Server 테스트와 jar 빌드",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "실제 MySQL·HTTP 동시성 및 배포 복원 검증",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "운영 DNS 범위·재시도 검증",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "테스트 결과 보존",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10
+        },
+        {
+          "name": "Post Gradle 캐시",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18
+        },
+        {
+          "name": "Post JDK 21 준비",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19
+        },
+        {
+          "name": "Post 체크아웃",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 20
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21
+        }
+      ]
+    }
+  ]
+}
