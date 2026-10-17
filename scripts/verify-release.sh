@@ -24,6 +24,28 @@ for attempt in $(seq 1 40); do
 done
 [ "$ready" = true ] || { echo 'CI MySQL 준비 실패' >&2; exit 1; }
 mkdir -p server/build
+
+# 선택한 과거 소스의 Boot 3가 만든 DB를 같은 포트·키로 Boot 4가 이어 쓴다.
+# 이 옵션이 없는 기존 수동 실행은 새 DB 검증을 유지한다.
+if [ -n "${BOOT3_BASELINE_JAR:-}" ]; then
+  [ -f "$BOOT3_BASELINE_JAR" ] || { echo 'Boot 3 기준 jar가 없다.' >&2; exit 1; }
+  java -Duser.timezone=Asia/Seoul -jar "$BOOT3_BASELINE_JAR" --server.port=18081 \
+    '--spring.datasource.url=jdbc:mysql://127.0.0.1:13306/jeongsan_auth_test?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true' \
+    --spring.datasource.password=local-v4-test > server/build/release-boot3-http.log 2>&1 &
+  server_pid=$!
+  ready=false
+  for attempt in $(seq 1 40); do
+    if curl -fsS http://127.0.0.1:18081/actuator/health | grep -q '"status":"UP"'; then ready=true; break; fi
+    kill -0 "$server_pid" 2>/dev/null || break
+    sleep 2
+  done
+  [ "$ready" = true ] || { echo 'Boot 3 기준 서버 준비 실패' >&2; exit 1; }
+  python3 scripts/verify-boot-upgrade.py seed
+  kill "$server_pid"
+  wait "$server_pid" 2>/dev/null || true
+  server_pid=''
+fi
+
 java -Duser.timezone=Asia/Seoul -jar server/build/libs/server.jar --server.port=18081 \
   '--spring.datasource.url=jdbc:mysql://127.0.0.1:13306/jeongsan_auth_test?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true' \
   --spring.datasource.password=local-v4-test > server/build/release-http.log 2>&1 &
@@ -35,6 +57,7 @@ for attempt in $(seq 1 40); do
   sleep 2
 done
 [ "$ready" = true ] || { echo 'CI HTTP 서버 준비 실패' >&2; exit 1; }
+if [ -n "${BOOT3_BASELINE_JAR:-}" ]; then python3 scripts/verify-boot-upgrade.py verify; fi
 python3 scripts/verify-auto-settlement.py
 python3 scripts/verify-notifications.py
 python3 scripts/verify-auth-release.py

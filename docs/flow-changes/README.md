@@ -82,3 +82,4 @@
 | FC-020 | 총무 인원 입력 · 전원 응답 시 자동 정산 · 입금 요청 | 열림 (API v8·028·Java/Kotlin 구현, 인원 밖 결제자 보류 승인 2026-10-10·운영 연결 후속) | PR #27 · API v8·실제 MySQL/HTTP CI·운영 준비 문서, 운영·프론트 연결 후속 | [2026-10-09-auto-settle.md](2026-10-09-auto-settle.md) |
 | FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (jungsan-api.devkdk.com 확정, 운영/콘솔/연결 시험 후속) | PR #27/#28 병합 · CTO Tunnel 추가 완료 · .env 생성, Apple 미설정 503 분리(API v9), 운영/실제 로그인 검증 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
 | FC-022 | Apple 이름·이메일 동의 요청 제거 | 반영됨 (API v10·양쪽 언어·서버 130건, 병합·운영·실계정 후속) | AuthPolicy.kt/java·ProviderGateway·ApplePrivacySpec·AppleTokensSpec · 기존 FC-021 전체 로그인 시험은 후속 | [2026-10-10-apple-privacy.md](2026-10-10-apple-privacy.md) |
+| FC-023 | 다음 차의 나 혼자 시작하기가 headcount 1을 보냄 | 프론트만 (웹/앱 소스 불일치·수정 제안, 실제 빌드 후속) | 서버 최소 2 계약 유지 · GatheringApiSpec·기존 DB HTTP 대조 추가, 실행 결과는 PR 검증 기록 | [2026-10-18-app-connection.md](2026-10-18-app-connection.md) |

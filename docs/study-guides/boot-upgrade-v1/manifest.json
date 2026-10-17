@@ -1,0 +1,33 @@
+{
+  "pr_url": "https://github.com/owencity/jungsan_attack/pull/37",
+  "base": "b8b91bb348b828a6ec0ff98a3749fc8d66c5a15b",
+  "source_head": "e9a3d50b0d11f87507ef80ceb772f04850f2442e",
+  "catalog_revision": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "policy_revision": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "topic_count": 8,
+  "hashes": {
+    ".gitattributes": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da",
+    "after/.github/workflows/ci.yml": "73bb55cf283707c1c3744d69f70de0731f63b0f87bfeb4b5b0bfac496fa1bd77",
+    "after/DEVLOG.md": "1ee7b5dd8405d0212d3249d8542ac51cca8cab8831802f4b38ec0b0fed92814e",
+    "after/docs/BOOT_4_MIGRATION.md": "6c79b89d064d6a095ae56b071d6783ae35b4dd63af0a6322e941013c5804a5c1",
+    "after/docs/flow-changes/2026-10-18-app-connection.md": "90b0b1f85c921a328d5c27b6a9370d71c422d4821d0f30f73f7d7039a7fd04cc",
+    "after/docs/flow-changes/README.md": "2ca27fe4feee4af0e189f0538f215f6e29922f3d244ad462ace1bae2f7cf4484",
+    "after/docs/RELEASE_2026_10_18.md": "4508731f29467cc3144ef537b8fbb38b2235f2da8d90c5a058cd74e6de1b00dc",
+    "after/scripts/verify-boot-upgrade.py": "4cb333881d0ef93b9d338e708f4c4f4e1099717ce284e8cfd86ac588d04e845d",
+    "after/scripts/verify-release.sh": "f49860ae2c157cb61b6fbbabdba13fe0c4afcfefc7c3498c7acd0c1476fc3a3f",
+    "after/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringApiSpec.kt": "830ead68a9ce8bf474e9f1a2cfe676d809939eec1aac205dca5031a7d738133f",
+    "before/.github/workflows/ci.yml": "6a4da8fcf16f2f79fff375cf262c0fd26cbca8beb739b68feab038bbcac56c7b",
+    "before/DEVLOG.md": "3950fa2d39d454b4b4dbdc8b50261243bab01d7aa1d71b6767024c0be05cc6ff",
+    "before/docs/BOOT_4_MIGRATION.md": "d5bc343f4c3c9430ac940343d36387a9d65cd3e12cf6f994aef4f7ebba30a703",
+    "before/docs/flow-changes/README.md": "a75b0c4d88f22824c418e5a5899825076ec853c8be2101f22e1c76e25148b697",
+    "before/docs/RELEASE_2026_10_18.md": "9d2618ecd0b4d44b6968a5c226c69f890bf01feea7a9b6cdc6fc49e0eae74849",
+    "before/scripts/verify-release.sh": "047e863751b140184d4947eb871e99f2bea032ad59d08fd4611f9000e65700b0",
+    "before/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringApiSpec.kt": "de374be11a0225783b43a60d00204ad9f793545abff2b8d8e65a6f784470019a",
+    "changes.patch": "967480b658a5ee25aaf90a112548dcb515a43cfe810bf2b7657dda60811e6b74",
+    "guide.md": "0589ea8c069119b7afd49eb531332c89a65455be16a49e61656dd1f33ce77626",
+    "progress.md": "73c36944e734d9690f8a1fc08733aae7f890e863245d5d19bed4b59692a704f3",
+    "STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+    "STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+    "topics.json": "7c5a195b70de40af93a8dce3cdb47d77c999ec33209e385a09672e674b848914"
+  }
+}

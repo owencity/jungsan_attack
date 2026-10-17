@@ -1,0 +1,21 @@
+{
+  "counts": {
+    "core": {
+      "tests": 54,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "server": {
+      "tests": 146,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "build": "BUILD SUCCESSFUL in 31s",
+  "syntax": "Python AST and Git Bash -n passed",
+  "ci_guard": "seed/verify reject outside CI",
+  "filtered_execution": "61 selected spec tests passed; excluded spec listener emitted No TestIdentifier warnings; not treated as full suite result",
+  "source_head": "e9a3d50b0d11f87507ef80ceb772f04850f2442e"
+}

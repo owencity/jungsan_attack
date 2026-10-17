@@ -82,4 +82,20 @@ class GatheringApiSpec : StringSpec({
         mvc.perform(request(HttpMethod.POST,"/api/v1/gatherings").cookie(cookie)).andExpect(status().isCreated)
         Mockito.verify(service).create(12,null)
     }
+    "본인만 선택해도 목표 인원 1의 단위 생성은 400이며 저장하지 않는다" {
+        mvc.perform(request(HttpMethod.POST,"/api/v1/gatherings/1/settlement-units").cookie(cookie)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"requestId":"00000000-0000-0000-0000-000000000001","participantIds":[1],"headcount":1}"""))
+            .andExpect(status().isBadRequest).andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+            .andExpect(jsonPath("$.errors[0].field").value("headcount"))
+        Mockito.verifyNoInteractions(service)
+    }
+    "본인만 선택하고 목표 인원을 2로 둔 단위 생성은 서비스에 전달한다" {
+        val requestId=java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")
+        mvc.perform(request(HttpMethod.POST,"/api/v1/gatherings/1/settlement-units").cookie(cookie)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"requestId":"$requestId","participantIds":[1],"headcount":2}"""))
+            .andExpect(status().isCreated)
+        Mockito.verify(service).createUnit(1,12,UnitCreateRequest(requestId,listOf(1),2))
+    }
 })

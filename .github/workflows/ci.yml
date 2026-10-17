@@ -42,7 +42,20 @@ jobs:
       - name: Server 테스트와 jar 빌드
         run: ./gradlew :server:test :server:bootJar --no-daemon
 
+      # 현재 운영 계열의 확정 소스를 사용해야 업그레이드 전후를 같은 코드로 흉내 내지 않는다.
+      - name: Boot 3 기준 소스 체크아웃
+        uses: actions/checkout@v5
+        with:
+          ref: 3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420
+          path: .ci/boot3-baseline
+          persist-credentials: false
+
+      - name: Boot 3 기준 jar 빌드
+        run: ./.ci/boot3-baseline/gradlew -p .ci/boot3-baseline :server:bootJar --no-daemon
+
       - name: 실제 MySQL·HTTP 동시성 및 배포 복원 검증
+        env:
+          BOOT3_BASELINE_JAR: ${{ github.workspace }}/.ci/boot3-baseline/server/build/libs/server.jar
         run: bash scripts/verify-release.sh
 
       - name: 운영 DNS 범위·재시도 검증
@@ -60,5 +73,7 @@ jobs:
             server/build/reports/tests/test/
             server/build/release-http.log
             server/build/release-prod-http.log
+            server/build/release-boot3-http.log
+            server/build/boot-upgrade-result.json
           if-no-files-found: ignore
           retention-days: 14
