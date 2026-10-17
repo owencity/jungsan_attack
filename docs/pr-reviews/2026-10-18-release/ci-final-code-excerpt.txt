@@ -1,0 +1,298 @@
+2026-10-17T17:46:02.2401612Z app.jeongsan.core.InvariantSpec > 합계는 언제나 원금과 정확히 일치한다 PASSED
+2026-10-17T17:46:03.1416572Z app.jeongsan.core.InvariantSpec > 모든 최종 금액이 0 이상이다 — 잔액 조정자 포함 PASSED
+2026-10-17T17:46:03.6401959Z app.jeongsan.core.InvariantSpec > 같은 입력은 항상 같은 출력을 낸다 — 금액·수취인·송금 순서 전부 PASSED
+2026-10-17T17:46:04.2401666Z app.jeongsan.core.InvariantSpec > 수취인별 자기 부담과 들어오는 송금의 합은 결제 원금과 일치한다 PASSED
+2026-10-17T17:46:04.6400454Z app.jeongsan.core.InvariantSpec > 참여자 최종 부담액은 모든 수취인의 참여자별 금액 합과 일치한다 PASSED
+2026-10-17T17:46:05.1400013Z app.jeongsan.core.InvariantSpec > 불참과 면제 차수의 부담은 언제나 0이다 PASSED
+2026-10-17T17:46:05.5433141Z app.jeongsan.core.InvariantSpec > 송금에는 자기 송금과 중복 송금자·수취인 조합이 없다 PASSED
+2026-10-17T17:46:05.6466075Z app.jeongsan.core.JavaParitySpec > 유리수의 정규화·음수 올림·표시·비교와 계약 위반이 두 언어에서 같다 PASSED
+2026-10-17T17:46:05.7425054Z app.jeongsan.core.JavaParitySpec > 동일 결제자의 차수 몫을 합친 뒤 올림하고 반대 방향 송금을 상계하지 않는다 PASSED
+2026-10-17T17:46:05.7426963Z app.jeongsan.core.JavaParitySpec > 결제자가 불참·면제이면 최대 원부담자의 숫자 id 동률 규칙을 적용하고 음수 조정은 실패한다 PASSED
+2026-10-17T17:46:05.7429393Z app.jeongsan.core.JavaParitySpec > 검증 단계별 오류 코드·메시지·식별자·발생 순서와 술병 오버플로가 같다 PASSED
+2026-10-17T17:46:07.7416422Z app.jeongsan.core.JavaParitySpec > 고정 seed 2000건의 정상·미소 금액 입력에서 전체 결과와 저장·확정 검증이 같다 PASSED
+2026-10-17T17:46:07.8511117Z app.jeongsan.core.JavaParitySpec > Java 입력과 결과의 컬렉션은 외부 변경으로 다음 계산을 바꾸지 않는다 PASSED
+2026-10-17T17:46:07.8569476Z app.jeongsan.core.RationalSpec > ADR-001 · BigDecimal이 틀리는 케이스를 유리수는 맞춘다 PASSED
+2026-10-17T17:46:07.8570889Z app.jeongsan.core.RationalSpec > 약분되어 정규화된다 PASSED
+2026-10-17T17:46:07.8592202Z app.jeongsan.core.RationalSpec > ceilTo는 올림이다 — 반올림이 아니다 PASSED
+2026-10-17T17:46:07.8593866Z app.jeongsan.core.RationalSpec > 음수도 올림 방향이 일관된다 PASSED
+2026-10-17T17:46:07.8595097Z app.jeongsan.core.RationalSpec > 비교는 통분해서 이뤄진다 PASSED
+2026-10-17T17:46:07.8596388Z app.jeongsan.core.RationalSpec > 표시용 문자열은 계산에 쓰지 않는다 PASSED
+2026-10-17T17:46:07.8597831Z app.jeongsan.core.SettlementSpec > T1 · 기본 N빵 — 차수 총무가 1원 올림 잔액을 조정한다 PASSED
+2026-10-17T17:46:07.8599269Z app.jeongsan.core.SettlementSpec > T2 · 2차 불참 — 나누어떨어지면 총무 잔액 조정도 없다 PASSED
+2026-10-17T17:46:07.9425219Z app.jeongsan.core.SettlementSpec > T3 · 논알콜 분리 PASSED
+2026-10-17T17:46:07.9484804Z app.jeongsan.core.SettlementSpec > T4 · 결제자가 두 명 — 금액은 T2와 같지만 송금 목록이 다르다 PASSED
+2026-10-17T17:46:07.9515007Z app.jeongsan.core.SettlementSpec > T5 · 복합 — E가 두 사람에게 나눠 보내는 것이 정상이다 PASSED
+2026-10-17T17:46:07.9574860Z app.jeongsan.core.SettlementSpec > T6 · 동일 총무의 차수는 원부담을 합친 뒤 한 번만 1원 올림한다 PASSED
+2026-10-17T17:46:07.9604906Z app.jeongsan.core.SettlementSpec > T7 · 1원 단위에서도 잔액 조정자가 음수면 거부한다 PASSED
+2026-10-17T17:46:07.9664720Z app.jeongsan.core.SettlementSpec > T7-b · 면제 총무면 비면제 부담자 중 한 명이 잔액을 조정한다 PASSED
+2026-10-17T17:46:07.9694509Z app.jeongsan.core.SettlementSpec > T8 · 면제자 — 면제자의 몫을 나머지가 나눠 낸다 PASSED
+2026-10-17T17:46:07.9754470Z app.jeongsan.core.SettlementSpec > T9 · 수취인별 원금은 자기 부담과 들어오는 송금의 합과 같다 PASSED
+2026-10-17T17:46:07.9784733Z app.jeongsan.core.SettlementSpec > T10 · 술병 계산 — DrinkItem이 alcoholAmount를 덮어쓴다 PASSED
+2026-10-17T17:46:07.9844705Z app.jeongsan.core.SettlementSpec > T11 · 전체 통합 — 차수별 면제 + 다중 총무 PASSED
+2026-10-17T17:46:07.9874441Z app.jeongsan.core.SettlementSpec > 면제 총무가 결제하면 전액 돌려받는다 — CALC_RULES_V2 §3.4 PASSED
+2026-10-17T17:46:07.9934982Z app.jeongsan.core.SettlementSpec > breakdown은 불참 차수도 0원으로 채워진다 — W2가 '2차 불참 → 0원'을 보여줘야 한다 PASSED
+2026-10-17T17:46:07.9965017Z app.jeongsan.core.ValidationSpec > 총액이 0 이하면 거부한다 PASSED
+2026-10-17T17:46:08.0400248Z app.jeongsan.core.ValidationSpec > 술값이 음수면 거부한다 PASSED
+2026-10-17T17:46:08.0401692Z app.jeongsan.core.ValidationSpec > 술값이 총액보다 크면 거부한다 — 어느 차수인지 알려준다 PASSED
+2026-10-17T17:46:08.0404056Z app.jeongsan.core.ValidationSpec > 총액 상한을 넘으면 거부한다 — 오타 방어 (코드 리뷰 F2) PASSED
+2026-10-17T17:46:08.0406337Z app.jeongsan.core.ValidationSpec > 전체 총액 합산이 Long 범위를 넘어도 예외 대신 검증 오류를 반환한다 PASSED
+2026-10-17T17:46:08.0408168Z app.jeongsan.core.ValidationSpec > 결제자가 참여자 목록에 없으면 거부한다 PASSED
+2026-10-17T17:46:08.0409642Z app.jeongsan.core.ValidationSpec > 술 항목이 존재하지 않는 차수를 참조하면 거부한다 PASSED
+2026-10-17T17:46:08.0411152Z app.jeongsan.core.ValidationSpec > 술병의 병 수나 단가가 0 이하면 거부한다 PASSED
+2026-10-17T17:46:08.0412837Z app.jeongsan.core.ValidationSpec > 술병 금액이 Long 범위를 넘어도 예외 대신 검증 오류를 반환한다 PASSED
+2026-10-17T17:46:08.0414615Z app.jeongsan.core.ValidationSpec > 참여 응답이 존재하지 않는 사용자를 참조하면 거부한다 PASSED
+2026-10-17T17:46:08.0415983Z app.jeongsan.core.ValidationSpec > 참여자 id 중복을 거부하고 어느 id인지 알려준다 PASSED
+2026-10-17T17:46:08.0417439Z app.jeongsan.core.ValidationSpec > 차수 id 중복을 거부한다 — 합계가 맞아도 잡아야 한다 PASSED
+2026-10-17T17:46:08.0418943Z app.jeongsan.core.ValidationSpec > 차수 순번(seq) 중복을 거부한다 — 근거 화면의 차수 순서가 흔들린다 PASSED
+2026-10-17T17:46:08.0420348Z app.jeongsan.core.ValidationSpec > 참여자가 2명 미만이면 거부한다 PASSED
+2026-10-17T17:46:08.0421660Z app.jeongsan.core.ValidationSpec > 차수 참석자가 0명이면 거부한다 PASSED
+2026-10-17T17:46:08.0442599Z app.jeongsan.core.ValidationSpec > 참석자가 차수에서 전원 면제면 거부한다 PASSED
+2026-10-17T17:46:08.0444138Z app.jeongsan.core.ValidationSpec > 술값이 있는데 음주자가 0명이면 거부한다 — 안내 문구를 담는다 PASSED
+2026-10-17T17:46:08.0445253Z app.jeongsan.core.ValidationSpec > 확정 시 모든 참여자의 명시적 응답이 필요하다 PASSED
+2026-10-17T17:46:08.0446339Z app.jeongsan.core.ValidationSpec > 저장 시점에는 참석자가 0명이어도 통과한다 — 아직 아무도 체크하지 않았기 때문이다 PASSED
+2026-10-17T17:46:08.0451211Z app.jeongsan.core.ValidationSpec > 저장 시점에도 형식 오류는 잡는다 PASSED
+2026-10-17T17:46:08.0454679Z app.jeongsan.core.ValidationSpec > 술값 검증은 DrinkItem으로 덮어쓴 뒤의 값으로 한다 PASSED
+2026-10-17T17:46:08.2484205Z BUILD SUCCESSFUL in 1m 7s
+2026-10-17T17:47:15.0942811Z app.jeongsan.server.common.AuthenticationGuardSpec > 로그인 공개 진입점 외 모든 컨트롤러 핸들러가 LoginUser를 받는다 PASSED
+2026-10-17T17:47:17.5118365Z app.jeongsan.server.common.GlobalExceptionHandlerSpec > 핸들러가 없는 실제 MVC 요청은 404 NOT_FOUND를 반환한다 PASSED
+2026-10-17T17:47:17.5970315Z app.jeongsan.server.common.GlobalExceptionHandlerSpec > 정적 리소스 핸들러에 도달한 없는 API도 404 NOT_FOUND를 반환한다 PASSED
+2026-10-17T17:47:17.5972377Z app.jeongsan.server.common.GlobalExceptionHandlerSpec > 존재하는 보호 API의 미인증 요청은 기존 401을 유지한다 PASSED
+2026-10-17T17:47:17.7044859Z app.jeongsan.server.common.GlobalExceptionHandlerSpec > 깨진 JSON은 기존 400 MALFORMED_REQUEST를 유지한다 PASSED
+2026-10-17T17:47:17.8667956Z app.jeongsan.server.common.GlobalExceptionHandlerSpec > 실제 서버 예외는 내부 메시지 없이 기존 500을 유지한다 PASSED
+2026-10-17T17:47:18.0949861Z app.jeongsan.server.common.JsonCompatibilitySpec > Boot 매퍼는 기존 날짜 문자열과 null 오류 필드를 유지한다 PASSED
+2026-10-17T17:47:18.0952250Z app.jeongsan.server.common.JsonCompatibilitySpec > 이전 버전의 저장 계좌 JSON은 선행 0과 한글 예금주를 보존한다 PASSED
+2026-10-17T17:47:18.1995409Z app.jeongsan.server.common.JsonCompatibilitySpec > RestClient 기본 JSON 변환기는 카카오 응답의 별칭·큰 ID·추가 필드를 읽는다 PASSED
+2026-10-17T17:47:18.2029218Z app.jeongsan.server.gathering.AutoSettlementPolicySpec > 총무는 먼저, 나머지는 가입 시각과 id로 선택하며 인원 밖 무응답은 막지 않는다 PASSED
+2026-10-17T17:47:18.2035612Z app.jeongsan.server.gathering.AutoSettlementPolicySpec > NULL 인원·미달·빈 차수·이미 정산된 단위는 자동 정산하지 않는다 PASSED
+2026-10-17T17:47:18.2046035Z app.jeongsan.server.gathering.AutoSettlementPolicySpec > 인원 안 모든 차수의 실제 응답이 필요하며 AUTO와 다른 단위 응답을 재사용하지 않는다 PASSED
+2026-10-17T17:47:18.2048523Z app.jeongsan.server.gathering.AutoSettlementPolicySpec > 인원 밖 결제자는 보류하고 명단을 임의로 늘리지 않는다 PASSED
+2026-10-17T17:47:18.2050519Z app.jeongsan.server.gathering.AutoSettlementPolicySpec > 제외된 공유 신원은 다시 계산에 끼워 넣지 않는다 PASSED
+2026-10-17T17:47:18.2052189Z app.jeongsan.server.gathering.AutoSettlementPolicySpec > 인원 경계는 양쪽 구현이 각각 검증한다 PASSED
+2026-10-17T17:47:18.2053546Z app.jeongsan.server.gathering.AutoSettlementPolicySpec > 금액 구분과 사람이 읽는 알림 제목은 코드 enum과 구분한다 PASSED
+2026-10-17T17:47:18.4985317Z app.jeongsan.server.gathering.GatheringApiSpec > GET /api/v1/gatherings는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.5026910Z app.jeongsan.server.gathering.GatheringApiSpec > GET /api/v1/gatherings는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.5987011Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.6017789Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.6029011Z app.jeongsan.server.gathering.GatheringApiSpec > GET /api/v1/gatherings/1는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.6030067Z app.jeongsan.server.gathering.GatheringApiSpec > GET /api/v1/gatherings/1는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.7026097Z app.jeongsan.server.gathering.GatheringApiSpec > PATCH /api/v1/gatherings/1는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.7068005Z app.jeongsan.server.gathering.GatheringApiSpec > PATCH /api/v1/gatherings/1는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.7070280Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/messages는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.7072731Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/messages는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.7074888Z app.jeongsan.server.gathering.GatheringApiSpec > GET /api/v1/me/gatherings는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.7085092Z app.jeongsan.server.gathering.GatheringApiSpec > GET /api/v1/me/gatherings는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.7087237Z app.jeongsan.server.gathering.GatheringApiSpec > GET /api/v1/me/notifications는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.7089407Z app.jeongsan.server.gathering.GatheringApiSpec > GET /api/v1/me/notifications는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.7091357Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/me/notifications/1/read는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.7093602Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/me/notifications/1/read는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.7095595Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/me/notifications/read-all는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.7097604Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/me/notifications/read-all는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.7099488Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/users/me/payout는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.7972056Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/users/me/payout는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.8014679Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/transfers/1/sent는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.8074790Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/transfers/1/sent는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.8118491Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/transfers/1/confirm는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.8164615Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/transfers/1/confirm는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.8166528Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/transfers/1/not-received는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.8168433Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/transfers/1/not-received는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.8170352Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/settlement-units는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.8944189Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/settlement-units는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.8946512Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/gatherings/1/settlement-units/10/participants/2는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.8948791Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/gatherings/1/settlement-units/10/participants/2는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.8951563Z app.jeongsan.server.gathering.GatheringApiSpec > DELETE /api/v1/gatherings/1/settlement-units/10/participants/2는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.8966666Z app.jeongsan.server.gathering.GatheringApiSpec > DELETE /api/v1/gatherings/1/settlement-units/10/participants/2는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:18.8969987Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/gatherings/1/settlement-units/10/headcount는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:18.8972129Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/gatherings/1/settlement-units/10/headcount는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.0005900Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/settlement-units/10/rounds는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.0018683Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/settlement-units/10/rounds는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.0021469Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/gatherings/1/settlement-units/10/rounds/1는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.0024233Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/gatherings/1/settlement-units/10/rounds/1는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.0038864Z app.jeongsan.server.gathering.GatheringApiSpec > DELETE /api/v1/gatherings/1/settlement-units/10/rounds/1는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.0041584Z app.jeongsan.server.gathering.GatheringApiSpec > DELETE /api/v1/gatherings/1/settlement-units/10/rounds/1는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.0978799Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/gatherings/1/settlement-units/10/responses/me는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.1015423Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/gatherings/1/settlement-units/10/responses/me는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.1045459Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/gatherings/1/settlement-units/10/participants/2/responses는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.1105060Z app.jeongsan.server.gathering.GatheringApiSpec > PUT /api/v1/gatherings/1/settlement-units/10/participants/2/responses는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.1140813Z app.jeongsan.server.gathering.GatheringApiSpec > GET /api/v1/gatherings/1/settlement-units/10/settlement/preview는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.1144964Z app.jeongsan.server.gathering.GatheringApiSpec > GET /api/v1/gatherings/1/settlement-units/10/settlement/preview는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.1147296Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/settlement-units/10/settlement는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.1149506Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/settlement-units/10/settlement는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.1151869Z app.jeongsan.server.gathering.GatheringApiSpec > DELETE /api/v1/gatherings/1/settlement-units/10/settlement는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.1154071Z app.jeongsan.server.gathering.GatheringApiSpec > DELETE /api/v1/gatherings/1/settlement-units/10/settlement는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.1174896Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/settlement-units/10/settlement/viewed는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.1214869Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/settlement-units/10/settlement/viewed는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.1966043Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/settlement-units/10/complete는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.1968581Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/gatherings/1/settlement-units/10/complete는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.1970792Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/join/abcdefghijkl는 로그인 후 계약 HTTP 상태로 서비스를 호출한다 PASSED
+2026-10-17T17:47:19.1980554Z app.jeongsan.server.gathering.GatheringApiSpec > POST /api/v1/join/abcdefghijkl는 로그인 없으면 서비스를 호출하지 않는다 PASSED
+2026-10-17T17:47:19.1984304Z app.jeongsan.server.gathering.GatheringApiSpec > 공개 링크 미리보기는 인증 없이 호출한다 PASSED
+2026-10-17T17:47:19.3064409Z app.jeongsan.server.gathering.GatheringApiSpec > 금액 0과 깨진 JSON은 400이며 서비스에 진입하지 않는다 PASSED
+2026-10-17T17:47:19.3072229Z app.jeongsan.server.gathering.GatheringApiSpec > 인원은 2~50이며 본문 없는 술자리 생성도 유지한다 PASSED
+2026-10-17T17:47:19.3074422Z app.jeongsan.server.gathering.GatheringApiSpec > 본인만 선택해도 목표 인원 1의 단위 생성은 400이며 저장하지 않는다 PASSED
+2026-10-17T17:47:19.3076781Z app.jeongsan.server.gathering.GatheringApiSpec > 본인만 선택하고 목표 인원을 2로 둔 단위 생성은 서비스에 전달한다 PASSED
+2026-10-17T17:47:19.3087337Z app.jeongsan.server.gathering.GatheringAuthenticationSpec > 술자리 목록은 로그인 없이 조회할 수 없다 PASSED
+2026-10-17T17:47:19.3089246Z app.jeongsan.server.gathering.GatheringAuthenticationSpec > 로그인한 총무 본인의 목록 조회만 호출한다 PASSED
+2026-10-17T17:47:19.3091288Z app.jeongsan.server.gathering.NotificationPolicySpec > 행동자·탈퇴 사용자·중복 대상을 제외하고 최초 순서를 유지한다 PASSED
+2026-10-17T17:47:19.3093600Z app.jeongsan.server.gathering.NotificationPolicySpec > 서버가 자동 처리한 소식은 유효 사용자 전원에게 한 번씩 보낸다 PASSED
+2026-10-17T17:47:19.3995461Z app.jeongsan.server.gathering.NotificationPolicySpec > 송금 상태 알림은 행동자의 이름과 각 상태의 의미를 전달한다 PASSED
+2026-10-17T17:47:19.4019277Z app.jeongsan.server.gathering.NotificationPolicySpec > 계좌 등록 알림은 예금주 대신 사용자 실명을 보여준다 PASSED
+2026-10-17T17:47:19.4064931Z app.jeongsan.server.gathering.NotificationPolicySpec > 다른 단위가 남으면 7일 삭제를 예고하지 않고 술자리 전체 완료에만 예고한다 PASSED
+2026-10-17T17:47:19.4114729Z app.jeongsan.server.gathering.NotificationPolicySpec > 단위에서 내보내진 사람에게 전체 술자리에서 제거됐다고 안내하지 않는다 PASSED
+2026-10-17T17:47:19.4985706Z app.jeongsan.server.gathering.WorkflowParitySpec > 같은 결제자 3차를 합친 뒤 올림하며 B의 잘못된 입력은 A를 막지 않는다 PASSED
+2026-10-17T17:47:19.5034660Z app.jeongsan.server.gathering.WorkflowParitySpec > 미응답만 DRANK로 투영하고 본인 불참과 논알코올 응답은 보존한다 PASSED
+2026-10-17T17:47:19.5060472Z app.jeongsan.server.gathering.WorkflowParitySpec > 이름·목록 순서·B 입력은 hash를 바꾸지 않고 A의 금액은 바꾼다 PASSED
+2026-10-17T17:47:19.5941558Z app.jeongsan.server.gathering.WorkflowParitySpec > 총무와 결제자는 자신의 단위에서 제외할 수 없고 다른 차수 응답도 거절한다 PASSED
+2026-10-17T17:47:19.5954628Z app.jeongsan.server.gathering.WorkflowParitySpec > A가 정산된 상태여도 B의 OPEN 작업은 별도 단위 상태로 허용한다 PASSED
+2026-10-17T17:47:19.5956690Z app.jeongsan.server.gathering.WorkflowParitySpec > 송금은 역할·계좌·단위 상태를 검사하고 반복 확인은 멱등이다 PASSED
+2026-10-17T17:47:19.5957993Z app.jeongsan.server.gathering.WorkflowParitySpec > 너무 작은 금액은 두 엔진 모두 음수 조정 오류를 반환한다 PASSED
+2026-10-17T17:47:19.5959778Z app.jeongsan.server.gathering.WorkflowParitySpec > AES-GCM 양방향 호환·매번 새로운 nonce·변조 검출과 키 길이를 확인한다 PASSED
+2026-10-17T17:47:19.5961131Z app.jeongsan.server.gathering.WorkflowParitySpec > 명단·계좌 검증과 7일 완료 및 30일 미활동 삭제의 경계가 같다 PASSED
+2026-10-17T17:47:19.5962668Z app.jeongsan.server.user.ApplePrivacySpec > Apple 전용 인가 인자는 양쪽 언어에서 이름·이메일 scope 없이 nonce와 POST 응답 방식만 포함한다 PASSED
+2026-10-17T17:47:19.5964884Z app.jeongsan.server.user.ApplePrivacySpec > 실제 Apple 인가 URL은 scope 없이 client·callback·state·nonce·code·form_post를 보존한다 PASSED
+2026-10-17T17:47:19.6940626Z app.jeongsan.server.user.ApplePrivacySpec > 카카오 인가 URL에는 Apple 전용 인자나 추가 scope가 섞이지 않는다 PASSED
+2026-10-17T17:47:19.7095392Z app.jeongsan.server.user.ApplePrivacySpec > Apple web 로그인은 scope 없이 리다이렉트하며 안전한 상관 쿠키를 유지한다 PASSED
+2026-10-17T17:47:19.7955078Z app.jeongsan.server.user.ApplePrivacySpec > Apple app 로그인은 scope 없이 리다이렉트하며 안전한 상관 쿠키를 유지한다 PASSED
+2026-10-17T17:47:19.9965174Z app.jeongsan.server.user.AppleTokensSpec > Apple RS256 서명을 양쪽 언어에서 검증한다 PASSED
+2026-10-17T17:47:20.0941987Z app.jeongsan.server.user.AppleTokensSpec > 이전에 동의한 이메일이 ID 토큰에 있어도 양쪽 언어는 사용자 식별자만 반환한다 PASSED
+2026-10-17T17:47:20.0944207Z app.jeongsan.server.user.AppleTokensSpec > 다른 앱 audience와 다른 nonce와 issuer를 거절한다 PASSED
+2026-10-17T17:47:20.0946104Z app.jeongsan.server.user.AppleTokensSpec > 만료 토큰과 모르는 kid와 깨진 서명을 거절한다 PASSED
+2026-10-17T17:47:20.0947997Z app.jeongsan.server.user.AppleTokensSpec > HMAC 알고리즘으로 바꾼 Apple 토큰은 서명 검증 전에 거절한다 PASSED
+2026-10-17T17:47:20.1941087Z app.jeongsan.server.user.AppleTokensSpec > ES256 client secret의 팀·대상·5분 만료는 양쪽 언어가 동일하다 PASSED
+2026-10-17T17:47:20.2951331Z app.jeongsan.server.user.AuthApiSpec > Apple 인가의 상관 쿠키는 HTTPS form_post에 맞춰 Secure HttpOnly SameSite None이다 PASSED
+2026-10-17T17:47:20.3947154Z app.jeongsan.server.user.AuthApiSpec > Apple POST 콜백은 웹 쿠키를 발급하고 원래 링크로 GET 복귀한다 PASSED
+2026-10-17T17:47:20.3974017Z app.jeongsan.server.user.AuthApiSpec > 앱 콜백에는 JWT 대신 티켓만 딥링크에 담는다 PASSED
+2026-10-17T17:47:20.3976329Z app.jeongsan.server.user.AuthApiSpec > 콜백의 잘못된 state는 서비스·제공자를 호출하지 않는다 PASSED
+2026-10-17T17:47:20.3978292Z app.jeongsan.server.user.AuthApiSpec > 공개 앱 교환은 티켓과 verifier를 전달하며 만료 시각을 반환한다 PASSED
+2026-10-17T17:47:20.3980839Z app.jeongsan.server.user.AuthApiSpec > 앱 *** 204와 쿠키 만료를 반환한다 PASSED
+2026-10-17T17:47:20.3982636Z app.jeongsan.server.user.AuthApiSpec > 웹 토큰을 Bearer로 쓰거나 앱 토큰을 쿠키로 쓰면 거절한다 PASSED
+2026-10-17T17:47:20.3984785Z app.jeongsan.server.user.AuthApiSpec > 탈퇴 성공과 진행 중 정산 거절이 계약대로 응답한다 PASSED
+2026-10-17T17:47:20.3986276Z app.jeongsan.server.user.AuthApiSpec > 로그인 없는 로그아웃과 탈퇴는 401이다 PASSED
+2026-10-17T17:47:20.3994992Z app.jeongsan.server.user.AuthApiSpec > 깨진 앱 교환 JSON은 400이다 PASSED
+2026-10-17T17:47:20.4978170Z app.jeongsan.server.user.AuthApiSpec > 필수 콜백 query와 form 파라미터 누락은 400이다 PASSED
+2026-10-17T17:47:20.5041019Z app.jeongsan.server.user.AuthPolicySpec > 웹 복귀 경로와 인코딩 우회가 양쪽 언어에서 같은 결과를 낸다 PASSED
+2026-10-17T17:47:20.5085022Z app.jeongsan.server.user.AuthPolicySpec > 잘못된 Bearer는 유효한 쿠키로 우회하지 않는다 PASSED
+2026-10-17T17:47:20.5086848Z app.jeongsan.server.user.AuthPolicySpec > 앱 verifier는 RFC 7636 S256 예제와 일치하고 다른 앱 값은 거절한다 PASSED
+2026-10-17T17:47:20.5089116Z app.jeongsan.server.user.AuthPolicySpec > 티켓 만료 경계는 정확한 만료 시각부터 거절한다 PASSED
+2026-10-17T17:47:20.5090985Z app.jeongsan.server.user.AuthPolicySpec > 짧은 verifier는 해시가 일치해도 RFC 최소 길이에 미달하면 거절한다 PASSED
+2026-10-17T17:47:20.5092713Z app.jeongsan.server.user.AuthPolicySpec > 진행 중 술자리 하나라도 있으면 탈퇴를 거절하고 완료만 있으면 허용한다 PASSED
+2026-10-17T17:47:20.5094550Z app.jeongsan.server.user.AuthPolicySpec > 잠금 도중 참여·단위 목록이 바뀌면 계정을 삭제하지 않는다 PASSED
+2026-10-17T17:47:20.5096428Z app.jeongsan.server.user.AuthPolicySpec > 알 수 없는 상태를 완료로 간주해 계정을 지우지 않는다 PASSED
+2026-10-17T17:47:20.5097961Z app.jeongsan.server.user.JwtParitySpec > WEB APP 토큰은 두 구현에서 상호 검증되고 클라이언트 구분을 유지한다 PASSED
+2026-10-17T17:47:20.5099421Z app.jeongsan.server.user.JwtParitySpec > 각 로그인은 같은 사용자여도 다른 JWT를 발급한다 PASSED
+2026-10-17T17:47:20.5100906Z app.jeongsan.server.user.JwtParitySpec > 만료된 토큰과 다른 키와 깨진 JWT는 양쪽이 거절한다 PASSED
+2026-10-17T17:47:20.5102741Z app.jeongsan.server.user.ProviderAvailabilitySpec > Apple 필수 설정 하나라도 비면 양쪽 언어에서 Apple만 닫는다 PASSED
+2026-10-17T17:47:20.5965603Z app.jeongsan.server.user.ProviderAvailabilitySpec > 빈 설정 목록이나 알 수 없는 제공자를 사용 가능으로 보지 않는다 PASSED
+2026-10-17T17:47:20.5994700Z app.jeongsan.server.user.ProviderAvailabilitySpec > 운영에서 Apple 키가 비어도 카카오 인가 주소를 만들고 Apple 진입·교환·해제는 503이다 PASSED
+2026-10-17T17:47:20.6054636Z app.jeongsan.server.user.ProviderAvailabilitySpec > 운영 카카오 설정 누락은 Apple 보류와 관계없이 기동을 막는다 PASSED
+2026-10-17T17:47:20.6084589Z app.jeongsan.server.user.ProviderAvailabilitySpec > 모든 Apple 설정을 채웠지만 개인키가 잘못됐으면 운영 기동 시 거절한다 PASSED
+2026-10-17T17:47:20.6134609Z app.jeongsan.server.user.ProviderAvailabilitySpec > 유효한 로그인용 P256 키를 모두 채우면 운영 Apple 인가를 다시 연다 PASSED
+2026-10-17T17:47:20.6224776Z app.jeongsan.server.user.ProviderAvailabilitySpec > 실제 인증 흐름의 Apple 진입은 503 JSON이며 DB에 로그인 시도를 만들지 않는다 PASSED
+2026-10-17T17:47:20.6347485Z app.jeongsan.server.user.ProviderAvailabilitySpec > 실제 인증 흐름은 Apple 미설정과 무관하게 카카오 state와 상관 쿠키를 발급한다 PASSED
+2026-10-17T17:47:20.6978333Z app.jeongsan.server.user.UserApiSpec > 미등록 사용자 조회는 실명 null과 needsName true를 반환한다 PASSED
+2026-10-17T17:47:20.6979882Z app.jeongsan.server.user.UserApiSpec > 실명을 공백 제거해 최초 등록하고 갱신된 내 정보를 반환한다 PASSED
+2026-10-17T17:47:20.6981234Z app.jeongsan.server.user.UserApiSpec > 같은 실명 재요청은 성공한다 PASSED
+2026-10-17T17:47:20.6982450Z app.jeongsan.server.user.UserApiSpec > 이미 등록한 실명과 다르면 409를 반환한다 PASSED
+2026-10-17T17:47:20.6984115Z app.jeongsan.server.user.UserApiSpec > 빈 이름과 한 글자와 11자는 안내 문구와 400을 반환한다 PASSED
+2026-10-17T17:47:20.6985491Z app.jeongsan.server.user.UserApiSpec > 이모지 10개는 코드포인트 10자로 허용한다 PASSED
+2026-10-17T17:47:20.6986694Z app.jeongsan.server.user.UserApiSpec > 이모지 하나는 한 글자로 거절한다 PASSED
+2026-10-17T17:47:20.6987889Z app.jeongsan.server.user.UserApiSpec > 로그인 없는 등록과 내 정보 조회는 401이다 PASSED
+2026-10-17T17:47:20.6989091Z app.jeongsan.server.user.UserApiSpec > 위조된 쿠키로 등록할 수 없다 PASSED
+2026-10-17T17:47:20.6990201Z app.jeongsan.server.user.UserApiSpec > 삭제된 사용자 토큰은 401이다 PASSED
+2026-10-17T17:47:20.7984385Z app.jeongsan.server.user.UserApiSpec > 누락 null 깨진 JSON은 400이다 PASSED
+2026-10-17T17:47:20.9595654Z BUILD SUCCESSFUL in 1m 12s
+2026-10-17T17:48:23.8948024Z BUILD SUCCESSFUL in 1m 1s
+2026-10-17T17:48:55.2853573Z PASS 1: 확정 Boot 3.5.16 산출물과 Boot 4 산출물을 구분
+2026-10-17T17:48:55.8366288Z PASS 2: 구버전 HTTP 티켓 교환이 실제 APP 토큰을 발급하고 검증
+2026-10-17T17:48:56.2831716Z PASS 3: 구버전 HTTP로 정산 명세·미입금 송금을 저장
+2026-10-17T17:48:56.4364267Z PASS 4: 구버전 Liquibase 적용 이력·체크섬을 저장
+2026-10-17T17:48:56.5071035Z BOOT-UPGRADE: Boot 3 seed ready
+2026-10-17T17:49:06.9507872Z PASS 1: 다른 소스·산출물의 검증 상태를 재사용하지 않음
+2026-10-17T17:49:07.0082822Z PASS 2: Boot 4 기동 뒤 기존 changeSet·체크섬·실행 시각 불변
+2026-10-17T17:49:07.0619986Z PASS 3: 구버전 계좌 암호문을 변경·재암호화하지 않음
+2026-10-17T17:49:07.3021320Z PASS 4: 구버전 WEB 쿠키로 같은 계정·계좌·알림 수를 조회
+2026-10-17T17:49:07.3021897Z PASS 5: 저장 계좌의 선행 0·한글 예금주 유지
+2026-10-17T17:49:07.3184857Z PASS 6: 구버전 APP Bearer를 새 서버가 검증
+2026-10-17T17:49:07.3583954Z PASS 7: 업그레이드 뒤에도 APP/WEB 토큰 교차 사용은 401
+2026-10-17T17:49:07.4045009Z PASS 8: 기존 정산 단위·송금 근거·명단·날짜·타임라인 JSON 보존
+2026-10-17T17:49:07.5050267Z PASS 9: 정산 전 입력의 revision·hash·금액이 양쪽 버전에서 같음
+2026-10-17T17:49:07.6515948Z PASS 10: 구버전에서 받은 미리보기로 새 서버에서 수동 정산 가능
+2026-10-17T17:49:07.7919179Z PASS 11: 업그레이드 전 송금을 새 서버에서 보냄·입금 확인·완료
+2026-10-17T17:49:07.8522150Z PASS 12: 구버전 APP 토큰 로그아웃은 재사용을 막고 WEB 로그인은 유지
+2026-10-17T17:49:07.8522885Z BOOT-UPGRADE: 12 checks passed
+2026-10-17T17:49:08.0561830Z PASS 13: 앱의 본인 단독 headcount=1 요청은 400이며 단위를 저장하지 않음
+2026-10-17T17:49:08.1042105Z PASS 14: 본인만 명단에 두고 목표 인원 2로 보내면 201로 새 단위를 만듦
+2026-10-17T17:49:08.1042586Z APP-CONNECTION: 2 checks passed
+2026-10-17T17:49:09.0271481Z PASS 1: 인원 초과 알림은 같은 초과 구간에서 1건
+2026-10-17T17:49:09.0944725Z PASS 2: 마지막 응답 동시 2건은 한 번 확정 후 다른 요청을 거절
+2026-10-17T17:49:09.1111598Z PASS 3: 가입 순서 인원 안 3명만 확정
+2026-10-17T17:49:09.1697880Z PASS 4: 스냅샷 UNIQUE와 단위 잠금으로 정확히 1건
+2026-10-17T17:49:09.2264318Z PASS 5: 인원 밖 응답은 자동 확정 때 삭제
+2026-10-17T17:49:09.2265052Z PASS 6: 공유 신원과 다른 단위 명단은 보존
+2026-10-17T17:49:09.2265674Z PASS 7: 인원 밖 사람의 송금은 생성하지 않음
+2026-10-17T17:49:09.2266234Z PASS 8: 새 타임라인 금액은 천 단위 쉼표
+2026-10-17T17:49:09.2266902Z PASS 9: Asia/Seoul JVM에서도 DATETIME 저장·조회·JSON은 실제 UTC
+2026-10-17T17:49:09.2366601Z PASS 10: 마지막 응답자인 총무도 서버 계산 완료 알림 수신
+2026-10-17T17:49:09.2452487Z PASS 11: 제외된 사람에게 내부 알림 기록
+2026-10-17T17:49:09.3856277Z PASS 12: 되돌리기 직후 자동 재정산하지 않음
+2026-10-17T17:49:09.4554954Z PASS 13: 같은 응답 재전송은 되돌린 단위를 다시 정산하지 않음
+2026-10-17T17:49:09.5439442Z PASS 14: 되돌린 뒤 실제 응답 변경은 다시 자동 확정
+2026-10-17T17:49:09.7338105Z PASS 15: Core 실패는 응답을 보존하고 자동 확정을 보류
+2026-10-17T17:49:09.8390418Z PASS 16: 차수 수정 후 같은 경로로 재평가하고 오류를 지움
+2026-10-17T17:49:10.0321951Z PASS 17: 인원 밖 결제자는 자동으로 제거하지 않고 오류 공개
+2026-10-17T17:49:10.1795333Z PASS 18: 총무가 인원을 늘려 결제자를 포함하면 자동 확정
+2026-10-17T17:49:10.3748414Z PASS 19: 수동 예비 정산은 현재 명단 전원과 미응답 AUTO 유지
+2026-10-17T17:49:10.5846048Z PASS 20: 빈 응답 차수 삭제 뒤 자동 판정
+2026-10-17T17:49:10.5847264Z AUTO/UTC/NOTIFICATION: 20 checks passed
+2026-10-17T17:49:11.2515168Z PASS 1: 행동한 총무에게 참여자 금액 알림 대신 서버 계산 완료 1건
+2026-10-17T17:49:11.2650947Z PASS 2: 송금할 금액이 없는 수취인도 정산 공개 알림 수신
+2026-10-17T17:49:11.2795493Z PASS 3: 송금자는 수취인 실명·천 단위 금액으로 정산 공개 알림 수신
+2026-10-17T17:49:11.2933546Z PASS 4: 두 차수 자동 응답이어도 사용자별 알림 1건
+2026-10-17T17:49:11.3052054Z PASS 5: 계좌 없는 실제 수취인만 등록 요청 1건, 정산은 SETTLING 유지
+2026-10-17T17:49:11.3052876Z PASS 6: 계좌 미등록 때문에 정산을 중단하지 않음
+2026-10-17T17:49:11.3475430Z PASS 7: 계좌 최초 등록 동시 재시도는 미확인 송금자별 1건
+2026-10-17T17:49:11.3534420Z PASS 8: 계좌 등록 알림은 예금주·계좌번호 대신 사용자 실명
+2026-10-17T17:49:11.3790397Z PASS 9: 계좌 변경은 최초 등록 알림을 재생성하지 않고 행동자 제외
+2026-10-17T17:49:11.4109466Z PASS 10: 동시 보냈어요는 수취인에게 이름 포함 알림 1건
+2026-10-17T17:49:11.4465425Z PASS 11: 아직 안 들어왔어요 재시도는 송금자에게 이름 포함 알림 1건
+2026-10-17T17:49:11.4830966Z PASS 12: 확인 재시도는 송금자에게 이름 포함 알림 1건
+2026-10-17T17:49:11.5287571Z PASS 13: 다른 단위가 OPEN이면 7일 삭제를 예고하지 않고 마지막 확인자 제외
+2026-10-17T17:49:11.6074572Z PASS 14: 모든 단위가 끝나면 7일 삭제 예고
+2026-10-17T17:49:11.6256983Z PASS 15: 알림 읽음과 미읽은 수 일치
+2026-10-17T17:49:11.7145037Z PASS 16: 내보내짐 알림은 제외된 단위 범위를 명시
+2026-10-17T17:49:11.7307861Z PASS 17: 내보내져도 다른 단위의 참여·접근 유지
+2026-10-17T17:49:11.7424835Z PASS 18: 내보낸 총무 본인에게는 알림 없음
+2026-10-17T17:49:11.7425669Z NOTIFICATION/RETRY: 18 checks passed
+2026-10-17T17:49:12.0448241Z PASS 1: 실제 리졸버가 웹 쿠키·앱 *** 조회
+2026-10-17T17:49:12.0521594Z PASS 2: APP/WEB 교차 사용은 실제 HTTP 401
+2026-10-17T17:49:12.0653614Z PASS 3: 로그아웃 후 동일 *** 401
+2026-10-17T17:49:12.1970789Z PASS 4: 다른 verifier 거절은 정당한 교환 티켓을 소비하지 않음
+2026-10-17T17:49:12.2444034Z PASS 5: HTTP 동시 티켓 교환 4건 중 1건 성공
+2026-10-17T17:49:12.2445196Z PASS 6: 실제 Boot 응답 만료는 ISO UTC 문자열
+2026-10-17T17:49:12.3455603Z PASS 7: OPEN 술자리 탈퇴는 거절하고 개인정보 보존
+2026-10-17T17:49:12.4255002Z PASS 8: 탈퇴 응답은 웹 쿠키를 만료
+2026-10-17T17:49:12.5495682Z PASS 9: 완료 좌석 익명화·계정 삭제·모든 기존 토큰 차단
+2026-10-17T17:49:12.5592013Z PASS 10: 총무 탈퇴 후에도 공개 미리보기의 단위가 사라지지 않음
+2026-10-17T17:49:12.6153974Z PASS 11: 실제 FK 열 nullable 마이그레이션 확인
+2026-10-17T17:49:12.6221503Z PASS 12: 교환 verifier 누락 JSON은 400
+2026-10-17T17:49:12.6285149Z PASS 13: 필수 callback state 누락은 실제 HTTP 400
+2026-10-17T17:49:13.0967167Z PASS 14: 탈퇴↔추가 단위 생성 경합 1: 사용자 삭제와 활성 정산이 함께 성공하지 않음
+2026-10-17T17:49:13.5544024Z PASS 15: 탈퇴↔추가 단위 생성 경합 2: 사용자 삭제와 활성 정산이 함께 성공하지 않음
+2026-10-17T17:49:14.0066962Z PASS 16: 탈퇴↔추가 단위 생성 경합 3: 사용자 삭제와 활성 정산이 함께 성공하지 않음
+2026-10-17T17:49:14.4572653Z PASS 17: 탈퇴↔추가 단위 생성 경합 4: 사용자 삭제와 활성 정산이 함께 성공하지 않음
+2026-10-17T17:49:26.8428801Z PASS 1: 상관 쿠키·provider 불일치는 외부 교환 전 거절
+2026-10-17T17:49:26.8429929Z PASS 2: 외부 인가 실패 시 상태 소비·가입을 rollback
+2026-10-17T17:49:26.8431873Z PASS 3: 완료된 OAuth state 재사용 거절
+2026-10-17T17:49:26.8434432Z PASS 4: 탈취 티켓은 verifier 불일치로 거절
+2026-10-17T17:49:26.8435690Z PASS 5: 동시 앱 티켓 교환 4건 중 정확히 1건 성공
+2026-10-17T17:49:26.8436910Z PASS 6: DB 검증도 APP/WEB 경계를 유지
+2026-10-17T17:49:26.8437794Z PASS 7: 로그아웃 JWT 복사본 재사용 차단
+2026-10-17T17:49:26.8438566Z PASS 8: DB 만료 state 거절
+2026-10-17T17:49:26.8439296Z PASS 9: DB 만료 티켓 거절
+2026-10-17T17:49:26.8440088Z PASS 10: 진행 중 탈퇴 거절은 계정과 FK를 보존
+2026-10-17T17:49:26.9428848Z PASS 11: 완료 좌석·총무 FK 익명화, 계정·본인 글 삭제
+2026-10-17T17:49:26.9433570Z PASS 12: 탈퇴 전 유효 JWT도 즉시 거절
+2026-10-17T17:49:27.0404656Z PASS 13: Apple refresh token은 암호문으로 저장
+2026-10-17T17:49:27.0407071Z PASS 14: Apple 연결 해제 실패는 계정 복구 없이 재시도 보존
+2026-10-17T17:49:27.0407787Z PASS 15: Apple 연결 해제 성공 시 암호화 작업도 삭제
+2026-10-17T17:49:27.1278047Z BUILD SUCCESSFUL in 12s
+2026-10-17T17:49:27.5016278Z DEPLOY: 6 checks passed

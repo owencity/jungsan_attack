@@ -82,3 +82,7 @@ PR 생성·병합·운영 배포·학습 완료는 다른 상태다. 현재 코�
 ## Boot 4 전환
 
 - [PR #36](https://github.com/owencity/jungsan_attack/pull/36): [학습 방향표](boot-4-v1/guide.md) · [고정 diff/해시](boot-4-v1/manifest.json) · [자체 점검](../pr-reviews/2026-10-17-boot-4/self-review.md) · [학습 진도](boot-4-v1/progress.md).
+
+## 기존 데이터 전환·연결 계약
+
+- [PR #37](https://github.com/owencity/jungsan_attack/pull/37): [방향표](boot-upgrade-v1/guide.md) · [고정 diff/해시](boot-upgrade-v1/manifest.json) · [자체 점검](../pr-reviews/2026-10-18-release/self-review.md) · [진도](boot-upgrade-v1/progress.md).
