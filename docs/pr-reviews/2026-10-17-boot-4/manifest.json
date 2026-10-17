@@ -1,0 +1,10 @@
+{
+  "source_head": "ad0b154effea3aa72e004d367f9f15150d66e122",
+  "run_url": "https://github.com/owencity/jungsan_attack/actions/runs/39042279879",
+  "hashes": {
+    "ci-log-excerpt-01.txt": "f483555a272ac2e1b34995a15e6a21c14850180123862852c3a6373888322163",
+    "ci-success-01.json": "937d8160ec14a17ac9af8163185b62eac04de517022d0940f2b0597f28a65b21",
+    "local-results.json": "dae9ef8ec4137f5c7b907206b88739cc58a43f8bfdd13ea8a78cd0e99b4c8314",
+    "self-review.md": "1996b411844f54393e064ed1bd340341e30b72cd781060ebd2b29be6e7e974dc"
+  }
+}
