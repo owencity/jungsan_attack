@@ -33,12 +33,12 @@ def split_product_values(text: str, dictionary: dict[str, Entry]):
 def group_rows(tokens: list[Token]) -> list[list[Token]]:
     rows: list[list[Token]] = []
     for token in sorted(tokens, key=lambda value: ((value.box[1] + value.box[3]) / 2, value.box[0])):
-        center = (token.box[1] + token.box[3]) / 2
         height = token.box[3] - token.box[1]
         if rows:
             anchor = rows[-1][0]
-            anchor_center = (anchor.box[1] + anchor.box[3]) / 2
-            if abs(center - anchor_center) <= 0.5 * min(height, anchor.box[3] - anchor.box[1]):
+            overlap = min(token.box[3], anchor.box[3]) - max(token.box[1], anchor.box[1])
+            # 원근으로 글자 높이가 달라도 실제 세로 영역이 절반 이상 겹치면 같은 줄 후보다.
+            if overlap >= 0.5 * min(height, anchor.box[3] - anchor.box[1]):
                 rows[-1].append(token)
                 continue
         rows.append([token])

@@ -1,5 +1,16 @@
 # 영수증 OCR 검증 — 2026-10-14
 
+## 2026-10-19 추가 원본·API 검증
+
+- 기존 92개 + 회귀 6개: **98 tests / OK (0.579초)**. 삭제·비활성화 없음.
+- 영수증 원본 3개·음식 대조 2개 추가. 기존 포함 영수증 이미지 6개 + 음식 대조 2개이며 전체 정답 평가 대상은 단일 영수증 2장이다.
+- 원근 사진의 세로 겹침으로 총액 81,800원 누락을 보완하고 실제 청도맥주 표기 추가(사전 148개). 작은 수량 1은 여전히 누락이다.
+- 실제 모델 evaluator: samples=2, failedSamples=0, totalExactRate=1.0 (2/2), allDrinkFieldsExactRate=0.5 (1/2), warningSampleCount=2, 평균 39.237초(초기화 제외). 일반 정확도 아님.
+- 실제 PaddleEngine + ASGI 업로드: R/T/F1/F2 모두 HTTP 200, 누락 필드·확인 사유·음식 대조의 빈 후보 유지. health 200, 키 없음 401. TCP/Spring/운영 연결은 미검증.
+- 기존 R/J/N의 인식/보수적 처리 유지. 전표 글자 방향·복수 문서의 주류 누락은 실패로 기록했다.
+- `:server:compileKotlin`: BUILD SUCCESSFUL in 16s, 6 tasks up-to-date. 새 의존성·Java/Kotlin·DB·운영 변경 없음.
+- [표본 출처·해시·전체 결과](docs/expanded-public-validation.md), [Spring 인계](docs/spring-handoff.md). ARM·대표 표본·Spring/앱 연결은 후속이다.
+
 ## 2026-10-15 작은 숫자 영역 재인식 후속
 
 - 기존 72개 + 회귀 20개: **92 tests / OK (0.428초)**. 테스트 삭제·비활성화 없음.
