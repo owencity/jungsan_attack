@@ -20,5 +20,6 @@
     "Python AST",
     "Bash -n"
   ],
-  "database": "Not executed locally; GitHub Actions dedicated MySQL and mock OCR verification pending."
+  "database": "Not executed locally; GitHub Actions dedicated MySQL and mock OCR verification pending.",
+  "source_head": "d3a91a27f0008bd0a9726738f8c701bd3dc66015"
 }

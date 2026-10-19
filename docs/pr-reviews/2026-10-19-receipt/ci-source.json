@@ -1,0 +1,155 @@
+{
+  "source_head": "d3a91a27f0008bd0a9726738f8c701bd3dc66015",
+  "base": "28ab9dd47f0ad6f8564b770176c7e6963f8bf67b",
+  "run_url": "https://github.com/owencity/jungsan_attack/actions/runs/39237766000",
+  "run_id": 39237766000,
+  "run_number": 46,
+  "jobs": [
+    {
+      "id": 118010916075,
+      "name": "Core · Server 테스트와 빌드",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 39237766000,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "체크아웃",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "JDK 21 준비",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Gradle 캐시",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Gradle Wrapper 실행 권한 확인",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Core 테스트",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Server 테스트와 jar 빌드",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Boot 3 기준 소스 체크아웃",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Boot 3 기준 jar 빌드",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "실제 MySQL·HTTP 동시성 및 배포 복원 검증",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10
+        },
+        {
+          "name": "운영 DNS 범위·재시도 검증",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11
+        },
+        {
+          "name": "테스트 결과 보존",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12
+        },
+        {
+          "name": "Post Boot 3 기준 소스 체크아웃",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21
+        },
+        {
+          "name": "Post Gradle 캐시",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22
+        },
+        {
+          "name": "Post JDK 21 준비",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23
+        },
+        {
+          "name": "Post 체크아웃",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25
+        }
+      ]
+    }
+  ],
+  "tests": {
+    "core": 54,
+    "server": 194
+  },
+  "excerpt": [
+    "2026-10-19T10:30:11.6914221Z BUILD SUCCESSFUL in 1m 1s",
+    "2026-10-19T10:31:25.9359913Z BUILD SUCCESSFUL in 1m 13s",
+    "2026-10-19T10:32:27.5563953Z BUILD SUCCESSFUL in 1m",
+    "2026-10-19T10:33:17.4058017Z BOOT-UPGRADE: 12 checks passed",
+    "2026-10-19T10:33:17.6567241Z APP-CONNECTION: 2 checks passed",
+    "2026-10-19T10:33:18.3380398Z PASS OCR 1: WEB 총무가 schema v2 후보를 받음",
+    "2026-10-19T10:33:18.3381241Z PASS OCR 2: 미인식 병 수·단위를 보정하지 않음",
+    "2026-10-19T10:33:18.3900567Z PASS OCR 3: 추출로 revision·차수·정산·타임라인을 변경하지 않음",
+    "2026-10-19T10:33:18.3907816Z PASS OCR 4: 내부 경로·서비스 키·이미지 매체로 모의 OCR 1회 호출",
+    "2026-10-19T10:33:18.3942887Z PASS OCR 5: 권한 범위 UNAUTHENTICATED",
+    "2026-10-19T10:33:18.4028494Z PASS OCR 6: 권한 범위 NOT_SETTLEMENT_UNIT_HOST",
+    "2026-10-19T10:33:18.4100900Z PASS OCR 7: 권한 범위 NOT_PARTICIPANT",
+    "2026-10-19T10:33:18.4178258Z PASS OCR 8: 권한 범위 SETTLEMENT_UNIT_NOT_FOUND",
+    "2026-10-19T10:33:18.4284667Z PASS OCR 9: 권한 범위 NOT_SETTLEMENT_UNIT_HOST",
+    "2026-10-19T10:33:18.4563203Z PASS OCR 10: 깨진 multipart도 선행 파싱 없이 401/415로 거절",
+    "2026-10-19T10:33:18.4567124Z PASS OCR 11: 권한·매체 거절은 모델을 호출하지 않음",
+    "2026-10-19T10:33:18.4650040Z PASS OCR 12: 8MiB 초과 업로드는 모델 호출 전 거절",
+    "2026-10-19T10:33:18.5291725Z PASS OCR 13: 정산 중 단위는 후보 추출 거절",
+    "2026-10-19T10:33:18.6036874Z PASS OCR 14: APP *** 동일 후보 계약 사용",
+    "2026-10-19T10:33:18.6126265Z PASS OCR 15: 실패 포함 세 번 후 429와 남은 대기 초",
+    "2026-10-19T10:33:18.6701842Z PASS OCR 16: 거절·잘못된 사진·재시도로 저장 부작용이 없음",
+    "2026-10-19T10:33:18.6702541Z Receipt bridge verification: 16 checks passed",
+    "2026-10-19T10:33:20.8532278Z AUTO/UTC/NOTIFICATION: 20 checks passed",
+    "2026-10-19T10:33:21.9605060Z NOTIFICATION/RETRY: 18 checks passed",
+    "2026-10-19T10:33:36.3683852Z PASS 6: DB 검증도 APP/WEB 경계를 유지",
+    "2026-10-19T10:33:36.6122660Z BUILD SUCCESSFUL in 12s",
+    "2026-10-19T10:33:36.9719538Z DEPLOY: 6 checks passed",
+    "2026-10-19T10:33:47.8264952Z PASS OCR 1: prod에서 OCR 설정 없이 기동하고 OCR만 503"
+  ]
+}
