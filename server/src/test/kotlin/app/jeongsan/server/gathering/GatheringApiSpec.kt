@@ -4,14 +4,14 @@ import app.jeongsan.server.common.GlobalExceptionHandler
 import app.jeongsan.server.common.LoginUserArgumentResolver
 import app.jeongsan.server.user.JwtService
 import app.jeongsan.server.user.AuthController
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonMapperBuilder
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import jakarta.servlet.http.Cookie
 import org.mockito.Mockito
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -20,11 +20,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 class GatheringApiSpec : StringSpec({
     val service=Mockito.mock(GatheringService::class.java)
     val jwt=JwtService("01234567890123456789012345678901",30)
-    val mapper=jacksonObjectMapper().findAndRegisterModules()
+    val mapper=jacksonMapperBuilder().build()
     val mvc=MockMvcBuilders.standaloneSetup(GatheringController(service),SettlementUnitController(service),JoinController(service),
         MyGatheringsController(service),PayoutController(service),TransferController(service))
         .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt)).setControllerAdvice(GlobalExceptionHandler())
-        .setMessageConverters(MappingJackson2HttpMessageConverter(mapper)).build()
+        .setMessageConverters(JacksonJsonHttpMessageConverter(mapper)).build()
     val cookie=Cookie(AuthController.COOKIE_NAME,jwt.issue(12))
     val root="/api/v1/gatherings/1/settlement-units/10"
     data class Case(val verb: String,val url: String,val body: String?=null,val code: Int=200)
@@ -81,5 +81,21 @@ class GatheringApiSpec : StringSpec({
         Mockito.verifyNoInteractions(service)
         mvc.perform(request(HttpMethod.POST,"/api/v1/gatherings").cookie(cookie)).andExpect(status().isCreated)
         Mockito.verify(service).create(12,null)
+    }
+    "본인만 선택해도 목표 인원 1의 단위 생성은 400이며 저장하지 않는다" {
+        mvc.perform(request(HttpMethod.POST,"/api/v1/gatherings/1/settlement-units").cookie(cookie)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"requestId":"00000000-0000-0000-0000-000000000001","participantIds":[1],"headcount":1}"""))
+            .andExpect(status().isBadRequest).andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+            .andExpect(jsonPath("$.errors[0].field").value("headcount"))
+        Mockito.verifyNoInteractions(service)
+    }
+    "본인만 선택하고 목표 인원을 2로 둔 단위 생성은 서비스에 전달한다" {
+        val requestId=java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")
+        mvc.perform(request(HttpMethod.POST,"/api/v1/gatherings/1/settlement-units").cookie(cookie)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"requestId":"$requestId","participantIds":[1],"headcount":2}"""))
+            .andExpect(status().isCreated)
+        Mockito.verify(service).createUnit(1,12,UnitCreateRequest(requestId,listOf(1),2))
     }
 })

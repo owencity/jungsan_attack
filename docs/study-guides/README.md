@@ -78,3 +78,15 @@ PR 생성·병합·운영 배포·학습 완료는 다른 상태다. 현재 코�
 
 [고정 가이드](apple-minimal-scope-v1/guide.md) · [기준/해시](apple-minimal-scope-v1/manifest.json) · [개인 진도](progress/apple-minimal-scope.md) · [구현자 점검과 실제 자동 리뷰](../pr-reviews/2026-10-10-apple-minimal-scope/self-review.md).
 정책·목차는 origin/main a2586e9, 업무 diff는 a2586e9 → 250b984로 고정했다. 코드 클래스·함수·줄과 자바의 정석 페이지·Kotlin 강의를 연결했으며 기존 아카이브는 변경하지 않는다. 병합·운영 적용은 PR 기록에서 별도로 확인한다.
+
+## Boot 4 전환
+
+- [PR #36](https://github.com/owencity/jungsan_attack/pull/36): [학습 방향표](boot-4-v1/guide.md) · [고정 diff/해시](boot-4-v1/manifest.json) · [자체 점검](../pr-reviews/2026-10-17-boot-4/self-review.md) · [학습 진도](boot-4-v1/progress.md).
+
+## 기존 데이터 전환·연결 계약
+
+- [PR #37](https://github.com/owencity/jungsan_attack/pull/37): [방향표](boot-upgrade-v1/guide.md) · [고정 diff/해시](boot-upgrade-v1/manifest.json) · [자체 점검](../pr-reviews/2026-10-18-release/self-review.md) · [진도](boot-upgrade-v1/progress.md).
+
+## OCR 제외 통합 출시 후보
+
+- [PR #39](https://github.com/owencity/jungsan_attack/pull/39): [방향표](release-candidate-v1/guide.md) · [고정 diff/해시](release-candidate-v1/manifest.json) · [자체 점검](../pr-reviews/2026-10-19-release-candidate/self-review.md) · [진도](release-candidate-v1/progress.md).

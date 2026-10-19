@@ -1,0 +1,35 @@
+# jeongsan managed ingress
+{
+	admin 127.0.0.1:2019
+	# upstream 연결 실패 로그에도 OAuth 쿼리·인증 헤더가 남지 않게 한다.
+	log default {
+		format filter {
+			wrap json
+			fields {
+				request>uri delete
+				request>headers delete
+			}
+		}
+	}
+	servers {
+		# OCI에는 TCP만 연다. HTTP/3용 UDP 포트를 별도로 노출하지 않는다.
+		protocols h1 h2
+	}
+}
+
+jungsan-api.devkdk.com {
+	# OAuth code·state와 쿠키가 접근 로그에 남지 않도록 access log를 켜지 않는다.
+	@application path /api/* /actuator/health
+	handle @application {
+		reverse_proxy 127.0.0.1:18080 {
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+	# 내부 metrics·Caddy 관리 API·다른 프로젝트 경로는 공개하지 않는다.
+	handle {
+		respond "Not Found" 404
+	}
+}

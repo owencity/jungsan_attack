@@ -1,0 +1,87 @@
+{
+  "repository": "owencity/profile",
+  "ref": "default main at retrieval",
+  "retrieved_client_date": "2026-10-18",
+  "built_or_deployed": false,
+  "files": [
+    {
+      "path": "src/jeongsan/v3/api.ts",
+      "blob_sha": "1b4ea909e8403100ef344e3ad40a1d76e1dec2cf",
+      "source_url": "https://github.com/owencity/profile/blob/main/src/jeongsan/v3/api.ts",
+      "excerpts": [
+        {
+          "line": 7,
+          "text": " *\n * 인증은 httpOnly 쿠키(API.md §2.3)라 이 파일은 토큰을 다루지 않는다. 모든 요청에 `credentials: 'include'`.\n */\nimport type { ResponseType, User } from './model'"
+        },
+        {
+          "line": 91,
+          "text": "  /** 로그인 여부 + 내 정보. 401이면 로그아웃 상태 */\n  me: () => request<MeResponse>('GET', '/api/v1/auth/me'),\n  /** 실명 최초 등록(FC-013). 400 형식 오류 · 409 `DISPLAY_NAME_ALREADY_SET` */\n  putDisplayName: (displayName: string) => request<MeResponse>('PUT', '/api/v1/users/me/display-name', { displayName }),"
+        },
+        {
+          "line": 95,
+          "text": "  /** 카카오 로그인 시작 주소. 로그인 뒤 돌아올 경로(FC-014 1-2) — `/jungsan/`으로 시작하는 것만 서버가 받는다 */\n  kakaoLoginUrl: (returnTo?: string) =>\n    `${BASE}/api/v1/auth/kakao/login${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`,\n  /** 로그아웃 — 서버 세션을 끊고 쿠키를 지운다 */"
+        },
+        {
+          "line": 104,
+          "text": "  // 술자리 — 응답은 모두 술자리 전체(ServerGathering). 화면은 serverModel.toRooms 로 정산방들로 바꾼다\n  myGatherings: () => request<ServerGathering[]>('GET', '/api/v1/me/gatherings'),\n  gathering: (gid: number) => request<ServerGathering>('GET', `/api/v1/gatherings/${gid}`),\n  createGathering: (title?: string) => request<ServerGathering>('POST', '/api/v1/gatherings', title ? { title } : {}),"
+        },
+        {
+          "line": 113,
+          "text": "  // 정산 단위 — 다음 차 총무(FC-015)\n  createUnit: (gid: number, requestId: string, participantIds: number[], headcount?: number) =>\n    request<{ id: number }>('POST', `/api/v1/gatherings/${gid}/settlement-units`, { requestId, participantIds, headcount }),\n  /** 인원(FC-020) — 총무·정산 전. 바꾼 뒤 서버가 자동 정산 판정을 한 번 돈다 */"
+        }
+      ]
+    },
+    {
+      "path": "src/jeongsan/v3/serverModel.ts",
+      "blob_sha": "5cbf1ad17d972d3978a361cc177cb10fd7a6ca9f",
+      "source_url": "https://github.com/owencity/profile/blob/main/src/jeongsan/v3/serverModel.ts",
+      "excerpts": [
+        {
+          "line": 15,
+          "text": "}\nexport type ServerUnit = {\n  id: number; hostParticipantId: number; status: Gathering['status']; inputRevision: number\n  /** 총무가 넣은 인원(FC-020). 서버가 아직 안 주면 undefined */"
+        },
+        {
+          "line": 24,
+          "text": "}\nexport type ServerGathering = {\n  id: number; title: string; date: string; createdByUserId: number; shareToken: string\n  status: Gathering['status']; completedAt: string | null; deleteScheduledAt: string | null"
+        },
+        {
+          "line": 73,
+          "text": "/** 서버 술자리 하나 → 내가 들어 있는 정산 단위마다 정산방 하나 */\nexport function toRooms(g: ServerGathering): Gathering[] {\n  return g.settlementUnits\n    .filter((u) => u.me.included || u.hostParticipantId === g.me.participantId)"
+        }
+      ]
+    },
+    {
+      "path": "src/jeongsan/v3/gateway.ts",
+      "blob_sha": "12841a7a8f4b0ef934c561fbfa61adcb7d04502b",
+      "source_url": "https://github.com/owencity/profile/blob/main/src/jeongsan/v3/gateway.ts",
+      "excerpts": [
+        {
+          "line": 191,
+          "text": "      // 다음 차 인원의 시작값은 고른 사람 + 나(FC-020) — R2에서 바꿀 수 있다\n      const u = await api.createUnit(gid, uuid(), ids, ids.length)\n      await refresh(gid)\n      return { id: u.id }"
+        }
+      ]
+    },
+    {
+      "path": "src/jeongsan/v3/store.ts",
+      "blob_sha": "6d03fa92b344df778f16eb47c8cd762e7b25b077",
+      "source_url": "https://github.com/owencity/profile/blob/main/src/jeongsan/v3/store.ts",
+      "excerpts": [
+        {
+          "line": 215,
+          "text": "        // 다음 차 인원의 시작값은 고른 사람 + 나(FC-020) — R2에서 바꿀 수 있다\n        headcount: Math.max(HEADCOUNT_MIN, picked.size),\n      }\n      set((s) => ({ rooms: { ...s.rooms, [id]: g, [src.id]: src.gatheringId ? src : { ...src, gatheringId } } }))"
+        }
+      ]
+    },
+    {
+      "path": "src/jeongsan/v3/RoomPage.tsx",
+      "blob_sha": "1932671aae6fbb48fa86f311a83153d695312084",
+      "source_url": "https://github.com/owencity/profile/blob/main/src/jeongsan/v3/RoomPage.tsx",
+      "excerpts": [
+        {
+          "line": 186,
+          "text": "        <button type=\"button\" className=\"js-mini ok\" onClick={() => onStart([...picked])}>\n          {picked.size === 0 ? '나 혼자 시작하기' : `${picked.size + 1}명으로 시작하기`}\n        </button>\n      </div>"
+        }
+      ]
+    }
+  ]
+}

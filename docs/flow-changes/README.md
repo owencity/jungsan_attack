@@ -64,13 +64,13 @@
 | FC-002 | 정산 미리보기 응답 모양 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-002-정산-미리보기-응답-모양) |
 | FC-003 | 송금 근거(차수별 금액) — P3 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-003-송금-근거차수별-금액--p3) |
 | FC-004 | 총무 대리 응답 — `source = HOST`의 뜻이 넓어짐 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-004-총무-대리-응답--source--host의-뜻이-넓어짐) |
-| FC-005 | 알림 — 이벤트별 대상·문구·링크, 읽음 API | 열림 | 일부 반영 · [PR #18](https://github.com/owencity/jungsan_attack/pull/18) 알림함 API, 이벤트별 대상·문구 규칙 후속 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-005-알림--이벤트별-대상문구링크-읽음-api) |
+| FC-005 | 알림 — 이벤트별 대상·문구·링크, 읽음 API | 열림 | 일부 반영 · [PR #35](https://github.com/owencity/jungsan_attack/pull/35) 서버141/실제 알림18, API v12 대상·실명·중복·완료 안내(`verify-notifications.py`), FCM·스푼·실기기 후속 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-005-알림--이벤트별-대상문구링크-읽음-api) |
 | FC-006 | "정산금액 봤음" 기록 — [정산금액 확인] 뱃지 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-006-정산금액-봤음-기록--정산금액-확인-뱃지) |
 | FC-007 | 응답 단순화·참여자 진입 순서·H1 탭 | 프론트만 | 서버 변경 없음 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-007-응답-단순화참여자-진입-순서h1-탭) |
 | FC-008 | 차수 이름(1차·2차) 누가 붙이나 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-008-차수-이름1차2차-누가-붙이나) |
 | FC-009 | 링크로 참여 — 참여와 응답을 한 요청으로, 로그인 전 미리보기 | 열림 | 일부 반영 · PR #18 참여/미리보기, [PR #20](https://github.com/owencity/jungsan_attack/pull/20) returnTo 구현/검증 · 프론트 연결 후속 | [2026-10-03-p1-entry.md](2026-10-03-p1-entry.md) |
-| FC-010 | 면제 해제는 빈칸으로 · 결제자는 내보낼 수 없음 · 관련 알림 | 열림 | 일부 반영 · PR #18 내보내기 구현/검증 · 면제 보류, 관련 알림 후속 | [2026-10-03-r4-manage.md](2026-10-03-r4-manage.md) |
-| FC-011 | 계좌 등록 — 검증 규칙·등록 알림·목록 요약에 "계좌 필요" | 열림 | 일부 반영 · PR #18 계좌 API 구현/검증 · 알림 대상 규칙 후속 | [2026-10-03-a1-account.md](2026-10-03-a1-account.md) |
+| FC-010 | 면제 해제는 빈칸으로 · 결제자는 내보낼 수 없음 · 관련 알림 | 열림 | 일부 반영 · PR #35 실제 알림18/단위 유지, API v12 알림·단위 범위(`verify-notifications.py`), 면제 보류·실기기 후속 | [2026-10-03-r4-manage.md](2026-10-03-r4-manage.md) |
+| FC-011 | 계좌 등록 — 검증 규칙·등록 알림·목록 요약에 "계좌 필요" | 열림 | 일부 반영 · PR #35 실제 계좌 등록 경합, API v12 실명·최초 등록 경합 검증(`verify-notifications.py`), 실제 연결 후속 | [2026-10-03-a1-account.md](2026-10-03-a1-account.md) |
 | FC-012 | 링크 공유 — 공유 주소 고정, 딥링크·카카오 키는 인프라 작업 | 결정 필요 | CTO 결정 필요 · 임의 구현하지 않음 | [2026-10-03-share.md](2026-10-03-share.md) |
 | FC-013 | 첫 로그인 실명 입력 — `needsName`, 실명 저장 API, 닉네임은 따로 | 반영됨 (실명 API, 참여·타임라인 후속) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-04-l2-name.md](2026-10-04-l2-name.md) |
 | FC-014 | v3 API 계약 한 장 — 화면별 엔드포인트·응답 모양·우선순위·앱 로그인·탈퇴 | 열림 (D1~D5 API v6, D6·D7 API v7 서버 반영 · 운영/앱 연결 후속) | 일부 반영 · PR #18 D1~D5, PR #20 D6/D7 서버 검증 · 운영 제공자/앱 연결 후속 | [2026-10-04-v3-api-contract.md](2026-10-04-v3-api-contract.md) |
@@ -80,5 +80,6 @@
 | FC-018 | 알림 `title`에 종류 코드가 그대로 | 반영됨 (API v8 · NotificationText 양쪽 구현) | PR #27 · API v8·실제 MySQL/HTTP CI·운영 준비 문서, 운영·프론트 연결 후속 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-018-알림-title에-종류-코드가-그대로-들어-있다) |
 | FC-019 | 총무 본인의 차수 응답 — R2에서 같이 받기(A안) | 프론트만 (결정 2026-10-09) | 서버 변경 없음 · 기존 차수/응답 API 사용 | [2026-10-09-b-integration.md](2026-10-09-b-integration.md#fc-019-총무-본인의-차수-응답--차수-입력-화면에서-같이-받는다) |
 | FC-020 | 총무 인원 입력 · 전원 응답 시 자동 정산 · 입금 요청 | 열림 (API v8·028·Java/Kotlin 구현, 인원 밖 결제자 보류 승인 2026-10-10·운영 연결 후속) | PR #27 · API v8·실제 MySQL/HTTP CI·운영 준비 문서, 운영·프론트 연결 후속 | [2026-10-09-auto-settle.md](2026-10-09-auto-settle.md) |
-| FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (jungsan-api.devkdk.com 확정, 운영/콘솔/연결 시험 후속) | PR #27/#28 병합 · CTO Tunnel 추가 완료 · .env 생성, Apple 미설정 503 분리(API v9), 운영/실제 로그인 검증 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
+| FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (Caddy 직접 HTTPS·운영 200/401·로그인 시작 302 확인, 실계정/앱 E2E 후속) | PR #27~#30 병합 · [PR #32](https://github.com/owencity/jungsan_attack/pull/32) Caddy 운영 적용·DNS only·공인 TLS/CORS 검증, 웹/앱 최종 로그인 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
 | FC-022 | Apple 이름·이메일 동의 요청 제거 | 반영됨 (API v10·양쪽 언어·서버 130건, 병합·운영·실계정 후속) | AuthPolicy.kt/java·ProviderGateway·ApplePrivacySpec·AppleTokensSpec · 기존 FC-021 전체 로그인 시험은 후속 | [2026-10-10-apple-privacy.md](2026-10-10-apple-privacy.md) |
+| FC-023 | 다음 차의 나 혼자 시작하기가 headcount 1을 보냄 | 프론트만 (웹/앱 소스 불일치·수정 제안, 실제 빌드 후속) | 서버 최소 2 계약 유지 · GatheringApiSpec·기존 DB HTTP 대조 추가, 실행 결과는 PR 검증 기록 | [2026-10-18-app-connection.md](2026-10-18-app-connection.md) |

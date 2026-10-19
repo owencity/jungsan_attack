@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value
 @RestController
 @RequestMapping("/api/v1/users/me")
 class UserController(private val userService: UserService, private val deletion: AccountDeletionService? = null,
-    @Value("\${app.cookie-secure}") private val secure: Boolean = false) {
+    @param:Value("\${app.cookie-secure}") private val secure: Boolean = false) {
     @DeleteMapping
     fun delete(@LoginUser userId: Long): ResponseEntity<Unit> {
         checkNotNull(deletion).delete(userId)

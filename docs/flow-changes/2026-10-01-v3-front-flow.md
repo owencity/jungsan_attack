@@ -84,6 +84,7 @@
 ## FC-005 알림 — 이벤트별 대상·문구·링크, 읽음 API
 
 - **상태:** 열림
+- **백엔드 반영·근거 (2026-10-14 후속):** [PR #35](https://github.com/owencity/jungsan_attack/pull/35) · 서버 141건/실제 DB·HTTP 알림 18건 통과(원문 docs/pr-reviews/2026-10-14-notifications/ci-success-01.json). API v12·NotificationPolicy/NotificationText Java·Kotlin 독립 구현, 송금 이름·행동자 제외·정산 공개 대상·자동응답 중복 제거·실제 전체 완료 후 삭제 안내를 보완한다. 기존 단위 잠금·상태 멱등 및 최초 계좌 등록 경합은 `verify-notifications.py`로 검증한다. 실행 결과·PR은 리뷰 기록에 별도 보존한다. FCM 전달·스푼과 실제 프론트 연결은 남으므로 열림을 유지한다.
 - **바뀐 흐름:** H1 머리에 🔔(안 읽은 수), N1 알림함 화면이 생겼다. 알림을 누르면 정해진 화면으로
   간다. (`notify.ts`, `NotificationsPage.tsx`)
 - **백엔드 영향:**

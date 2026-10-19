@@ -1,0 +1,64 @@
+[
+  {
+    "category": "Java 기본기",
+    "catalog_id": "JST-08-01-02",
+    "file": "server/src/main/kotlin/app/jeongsan/server/common/GlobalExceptionHandler.kt",
+    "line": 38,
+    "symbol": "@ExceptionHandler(NoHandlerFoundException",
+    "viewpoint": "경로 부재의 구체 예외 두 타입과 기존 Exception 처리의 선택 관계를 확인한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/9e240275abbb18709e10d3156c502801b82bd910/server/src/main/kotlin/app/jeongsan/server/common/GlobalExceptionHandler.kt#L38",
+    "catalog_entry": {
+      "source": "자바의 정석",
+      "chapter": "8장 예외 처리(exception handling)",
+      "section": "1. 예외 처리(exception handling)",
+      "subsection": "1.2",
+      "title": "예외 클래스의 계층구조",
+      "page": "445"
+    }
+  },
+  {
+    "category": "Kotlin 기본",
+    "catalog_id": "KB-07",
+    "file": "server/src/test/kotlin/app/jeongsan/server/common/GlobalExceptionHandlerSpec.kt",
+    "line": 38,
+    "symbol": "missingRouteContext(NoRoutesConfiguration::class.java).use",
+    "viewpoint": "테스트 실패 시에도 use가 MVC 컨텍스트를 닫는 자원 수명주기를 확인한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/9e240275abbb18709e10d3156c502801b82bd910/server/src/test/kotlin/app/jeongsan/server/common/GlobalExceptionHandlerSpec.kt#L38",
+    "catalog_entry": {
+      "source": "Kotlin 기본",
+      "lecture": "7강",
+      "section": "섹션 3. 코틀린에서 코드를 제어하는 방법",
+      "title": "코틀린에서 예외를 다루는 방법"
+    }
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/src/main/kotlin/app/jeongsan/server/common/GlobalExceptionHandler.kt",
+    "line": 39,
+    "symbol": "fun handleMissingRoute",
+    "viewpoint": "구체 예외 핸들러의 선택과 기존 catch-all 500 처리의 관계가 HTTP 상태를 결정한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/9e240275abbb18709e10d3156c502801b82bd910/server/src/main/kotlin/app/jeongsan/server/common/GlobalExceptionHandler.kt#L39",
+    "technology": "Spring MVC"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/src/test/kotlin/app/jeongsan/server/common/GlobalExceptionHandlerSpec.kt",
+    "line": 104,
+    "symbol": "registry.addResourceHandler(\"/**\")",
+    "viewpoint": "등록된 리소스 핸들러 안의 경로 부재와 매핑 자체 부재가 다른 예외를 생성한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/9e240275abbb18709e10d3156c502801b82bd910/server/src/test/kotlin/app/jeongsan/server/common/GlobalExceptionHandlerSpec.kt#L104",
+    "technology": "Spring MVC"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/src/test/kotlin/app/jeongsan/server/common/GlobalExceptionHandlerSpec.kt",
+    "line": 40,
+    "symbol": "DUMMY_SECRET",
+    "viewpoint": "실제 DispatcherServlet 요청과 엄격 JSON 비교가 404 상태뿐 아니라 오류 본문의 정보 노출 회귀를 검증한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/9e240275abbb18709e10d3156c502801b82bd910/server/src/test/kotlin/app/jeongsan/server/common/GlobalExceptionHandlerSpec.kt#L40",
+    "technology": "MockMvc"
+  }
+]

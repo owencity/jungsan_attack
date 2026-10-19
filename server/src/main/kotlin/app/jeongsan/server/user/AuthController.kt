@@ -18,10 +18,10 @@ import java.time.Duration
 
 @RestController
 class AuthController(private val flow: AuthFlowService, private val userService: UserService,
-    @Value("\${app.login-success-url}") private val loginSuccessUrl: String,
-    @Value("\${app.frontend-origin}") private val frontendOrigin: String,
-    @Value("\${app.cookie-secure}") private val secure: Boolean,
-    @Value("\${jwt.expiration-days}") private val expiryDays: Long) {
+    @param:Value("\${app.login-success-url}") private val loginSuccessUrl: String,
+    @param:Value("\${app.frontend-origin}") private val frontendOrigin: String,
+    @param:Value("\${app.cookie-secure}") private val secure: Boolean,
+    @param:Value("\${jwt.expiration-days}") private val expiryDays: Long) {
     @GetMapping("/api/v1/auth/kakao/login")
     fun login(@RequestParam(defaultValue="web") client: String, @RequestParam(required=false) returnTo: String?,
         @RequestParam(required=false) codeChallenge: String?) = start("KAKAO",client,returnTo,codeChallenge)

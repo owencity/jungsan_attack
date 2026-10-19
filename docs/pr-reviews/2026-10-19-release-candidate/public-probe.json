@@ -1,0 +1,83 @@
+{
+  "checked_at": "2026-10-19T20:25:46.202862+09:00",
+  "base": "https://jungsan-api.devkdk.com",
+  "authenticated": false,
+  "observations": [
+    {
+      "method": "GET",
+      "path": "/actuator/health",
+      "status": 200,
+      "body": {
+        "status": "UP"
+      },
+      "seconds": 1.172,
+      "headers": {}
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "status": 401,
+      "body": {
+        "code": "UNAUTHENTICATED"
+      },
+      "seconds": 0.64,
+      "headers": {}
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 500,
+      "body": {
+        "code": "INTERNAL_ERROR"
+      },
+      "seconds": 0.657,
+      "headers": {}
+    },
+    {
+      "method": "GET",
+      "path": "/actuator/metrics",
+      "status": 404,
+      "body": null,
+      "seconds": 0.625,
+      "headers": {
+        "server": "Caddy"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/actuator/prometheus",
+      "status": 404,
+      "body": null,
+      "seconds": 0.953,
+      "headers": {
+        "server": "Caddy"
+      }
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/users/me/display-name",
+      "status": 200,
+      "body": null,
+      "seconds": 0.687,
+      "headers": {
+        "access-control-allow-origin": "https://jungsan.devkdk.com",
+        "access-control-allow-credentials": "true",
+        "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "access-control-allow-headers": "content-type"
+      }
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/me/gatherings",
+      "status": 200,
+      "body": null,
+      "seconds": 0.391,
+      "headers": {
+        "access-control-allow-origin": "https://jungsan.devkdk.com",
+        "access-control-allow-credentials": "true",
+        "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "access-control-allow-headers": "authorization"
+      }
+    }
+  ]
+}

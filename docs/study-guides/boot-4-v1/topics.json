@@ -1,0 +1,95 @@
+[
+  {
+    "category": "Kotlin 고급",
+    "catalog_id": "KA-20",
+    "file": "server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt",
+    "line": 27,
+    "symbol": "@param:Value",
+    "title": "코틀린의 어노테이션",
+    "viewpoint": "생성자 프로퍼티의 파라미터 적용 대상을 고정한 변경이 Kotlin 버전별 Spring 설정 주입 위치와 연결된다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/ad0b154effea3aa72e004d367f9f15150d66e122/server/src/main/kotlin/app/jeongsan/server/user/ProviderGateway.kt#L27",
+    "catalog_entry": {
+      "source": "Kotlin 고급",
+      "lecture": "20강",
+      "section": "섹션 6. 어노테이션과 리플렉션",
+      "title": "코틀린의 어노테이션"
+    }
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "gradle/libs.versions.toml",
+    "line": 2,
+    "symbol": "kotlin = \"2.3.21\"",
+    "title": "컴파일러·BOM·도구 모음의 버전 경계",
+    "viewpoint": "Kotlin 플러그인·Boot BOM 버전을 함께 맞추면서 Java 도구 모음과 프레임워크 기준을 구분한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/ad0b154effea3aa72e004d367f9f15150d66e122/gradle/libs.versions.toml#L2",
+    "technology": "Gradle 의존성 관리"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/build.gradle.kts",
+    "line": 23,
+    "symbol": "spring-boot-starter-liquibase",
+    "title": "기능별 starter와 자동 설정 발견",
+    "viewpoint": "Liquibase 라이브러리만 있는 것과 Boot가 기동 시 실행하는 자동 설정 모듈의 차이가 DB 준비를 결정한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/ad0b154effea3aa72e004d367f9f15150d66e122/server/build.gradle.kts#L23",
+    "technology": "Spring Boot 4"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/build.gradle.kts",
+    "line": 32,
+    "symbol": "implementation(libs.jjwt.api)",
+    "title": "JSON 메이저 버전 공존과 런타임 의존성",
+    "viewpoint": "애플리케이션 Jackson 3와 JJWT 내부 Jackson 2가 다른 패키지로 공존하므로 전역 제외의 영향을 확인한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/ad0b154effea3aa72e004d367f9f15150d66e122/server/build.gradle.kts#L32",
+    "technology": "Jackson·JJWT"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java",
+    "line": 23,
+    "symbol": "JsonMapper.builder().build()",
+    "title": "매퍼 빌더와 JSON 노드 문자열 접근",
+    "viewpoint": "구성 완료 뒤 생성한 매퍼와 문자열 전용 헤더 접근이 Apple JWT의 기존 거절 경로를 유지하는지 읽는다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/ad0b154effea3aa72e004d367f9f15150d66e122/server/src/main/java/app/jeongsan/server/user/javaimpl/AppleTokens.java#L23",
+    "technology": "Jackson 3"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/src/test/kotlin/app/jeongsan/server/common/JsonCompatibilitySpec.kt",
+    "line": 25,
+    "symbol": ".withConfiguration(AutoConfigurations.of",
+    "title": "자동 설정 JSON 계약 회귀 검증",
+    "viewpoint": "운영 자동 설정 매퍼로 ISO 날짜·null·큰 정수를 검증해 수동 테스트 매퍼와의 차이를 확인한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/ad0b154effea3aa72e004d367f9f15150d66e122/server/src/test/kotlin/app/jeongsan/server/common/JsonCompatibilitySpec.kt#L25",
+    "technology": "Spring Boot·JSON"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/src/test/kotlin/app/jeongsan/server/common/JsonCompatibilitySpec.kt",
+    "line": 48,
+    "symbol": "val previous =",
+    "title": "저장 JSON의 후방 호환성과 독립 기대값",
+    "viewpoint": "이전 저장 문자열을 고정해야 새 직렬화 결과끼리 비교하며 계좌번호 선행 0 손실을 놓치지 않는다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/ad0b154effea3aa72e004d367f9f15150d66e122/server/src/test/kotlin/app/jeongsan/server/common/JsonCompatibilitySpec.kt#L48",
+    "technology": "데이터 호환성"
+  },
+  {
+    "category": "기술별 학습 포인트",
+    "catalog_id": null,
+    "file": "server/src/test/kotlin/app/jeongsan/server/common/JsonCompatibilitySpec.kt",
+    "line": 61,
+    "symbol": "MockRestServiceServer.bindTo",
+    "title": "HTTP 클라이언트 변환기와 외부 응답 바인딩",
+    "viewpoint": "RestClient 기본 변환기의 별칭·추가 필드·큰 ID 처리를 실제 제공자 로그인과 구분해 검증한다.",
+    "source_url": "https://github.com/owencity/jungsan_attack/blob/ad0b154effea3aa72e004d367f9f15150d66e122/server/src/test/kotlin/app/jeongsan/server/common/JsonCompatibilitySpec.kt#L61",
+    "technology": "Spring RestClient"
+  }
+]

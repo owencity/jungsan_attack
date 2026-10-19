@@ -1,0 +1,58 @@
+{
+  "checked_at": "2026-10-13T16:03:41.274508+00:00",
+  "host": "https://jungsan-api.devkdk.com",
+  "tls": "urllib hostname/CA verification enabled",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/actuator/health",
+      "status": 200,
+      "seconds": 0.797,
+      "body_summary": {
+        "status": "UP"
+      },
+      "cors": {}
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "status": 401,
+      "seconds": 0.438,
+      "body_summary": {
+        "code": "UNAUTHENTICATED"
+      },
+      "cors": {}
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 500,
+      "seconds": 0.797,
+      "body_summary": {
+        "code": "INTERNAL_ERROR"
+      },
+      "cors": {}
+    },
+    {
+      "method": "GET",
+      "path": "/actuator/metrics",
+      "status": 404,
+      "seconds": 0.797,
+      "body_summary": null,
+      "cors": {}
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/v1/users/me/display-name",
+      "status": 200,
+      "seconds": 0.625,
+      "body_summary": null,
+      "cors": {
+        "Access-Control-Allow-Origin": "https://jungsan.devkdk.com",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      }
+    }
+  ],
+  "real_account_device": "not tested"
+}

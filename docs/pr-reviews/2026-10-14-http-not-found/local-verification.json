@@ -1,0 +1,18 @@
+{
+  "source_head": "9e240275abbb18709e10d3156c502801b82bd910",
+  "command": ".\\gradlew.bat :server:test :server:compileKotlin :server:compileJava :server:bootJar --no-daemon",
+  "test_counts": {
+    "tests": 135,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "summary": "BUILD SUCCESSFUL in 56s; 15 actionable tasks: 10 executed, 5 up-to-date",
+  "baseline": {
+    "new_tests": 5,
+    "failed": 2,
+    "observed": "경로 부재 두 요청이 수정 전 500 반환"
+  },
+  "remote_ci": "별도 확인",
+  "production_and_real_device": "미확인"
+}

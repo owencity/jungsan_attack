@@ -1,0 +1,44 @@
+{
+  "source": "local read-only jungsan_app snapshot",
+  "git_dirty_state": "unknown; not treated as a built or deployed commit",
+  "files": [
+    {
+      "file": "ui/RoomScreen.kt",
+      "sha256": "7f591ee91d03e990cd34702a65b16faa17f2840fb3237fb8658235fd9fa3bd55",
+      "excerpts": [
+        {
+          "start": 243,
+          "text": "    val picked = remember(others.map { it.id }) { mutableStateListOf<Id>().apply { addAll(others.map { it.id }) } }\n    if (!open) return OfferChip(\"🍻 다음 차는 내가 계산했어요\") { open = true }"
+        },
+        {
+          "start": 268,
+          "text": "            MiniButton(if (picked.isEmpty()) \"나 혼자 시작하기\" else \"${picked.size + 1}명으로 시작하기\", filled = JsColor.ok) { onStart(picked.toList()) }\n        }"
+        }
+      ]
+    },
+    {
+      "file": "api/V3Gateway.kt",
+      "sha256": "c1453991f901a4a10acb998ff6b62949103eb59b4cba1dcebcccd5dbd7d06e55",
+      "excerpts": [
+        {
+          "start": 190,
+          "text": "            // requestId 는 멱등 키 — 같은 요청을 다시 보내도 단위가 둘 생기지 않는다(SETTLEMENT_UNITS §4.2)\n            val ids = (listOfNotNull(me?.id) + participantIds).distinct()\n            // 다음 차 인원의 시작값은 고른 사람 + 나(FC-020) — R2에서 바꿀 수 있다\n            val u = c.createUnit(gid, Uuid.random().toString(), ids, ids.size)\n            refresh(c, gid)"
+        }
+      ]
+    },
+    {
+      "file": "V3Store.kt",
+      "sha256": "f1b9fa344597759f411ed138d35f41f05b0e1077adcd8c0ef67b03d286b80d27",
+      "excerpts": [
+        {
+          "start": 432,
+          "text": "        val lastSeq = all.filter { (it.gatheringId ?: it.id) == gatheringId }.flatMap { g -> g.rounds.map { it.seq } }.maxOrNull() ?: 0\n        val picked = (participantIds + mine.id).toSet()\n        val g = src.copy("
+        },
+        {
+          "start": 440,
+          "text": "            headcount = maxOf(HEADCOUNT_MIN, picked.size),\n        ).push(TimelineType.SYSTEM, \"${s.me.displayName}님이 추가 차수의 총무가 되었어요\")\n        state = s.copy(rooms = s.rooms + (id to g) + (src.id to src.copy(gatheringId = gatheringId)))"
+        }
+      ]
+    }
+  ]
+}

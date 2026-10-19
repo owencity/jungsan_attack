@@ -1,0 +1,542 @@
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 53e342a..ccadf36 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,11 @@
+ # 개발 결정 로그
+ 
++## [2026-10-14] 내부 알림을 사용자·단위 상태와 맞춘다
++- 문제: 송금·계좌 알림에 행동자 이름이 없고, 계좌 등록 요청 누락·차수별 자동응답 중복·전체 완료 전 삭제 예고가 있었다.
++- 고려한 대안: 프론트가 문구를 추측하거나, 서버의 기존 알림함·잠금·상태 전이와 순수 문구/대상 정책을 보완한다.
++- 선택 이유·트레이드오프: FC-005·010·011과 v4 단위 모델을 기존 DTO로 반영한다. Java/Kotlin 정책을 독립 구현하고 계좌 상태는 배치 조회한다. 서버 계산 완료 총무 알림은 FC-020의 기존 예외를 유지한다.
++- 아쉬운 점: FCM 전달·면제·스푼·실계정 연결은 별도다. 기존 저장 알림 문구는 바꾸지 않으며 신규 이벤트부터 적용한다.
++
+ ## [2026-10-14] 없는 HTTP 경로를 서버 장애에서 분리한다
+ - 문제: 운영의 없는 `/api/v1/me` 요청이 광범위한 Exception 처리로 500이 되어 장애와 잘못된 호출을 구분하지 못했다.
+ - 고려한 대안: 일반 Exception 처리에서 모든 상태를 추측, Spring 기본 오류 본문 사용, 두 종류의 경로 부재만 명시 처리.
+diff --git a/docs/API.md b/docs/API.md
+index 729382d..08af1f1 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1,4 +1,12 @@
+-# 정산어택 — API 계약 · v11
++# 정산어택 — API 계약 · v12
++
++> **v12 변경(2026-10-14)** — 내부 알림의 대상·문구를 FC-005·010·011과 단위별 정산에 맞춘다.
++>
++> | 절 | 변경 |
++> |---|---|
++> | §13.4 내부 알림 | 송금·계좌 등록 실명, 계좌 미등록 결제자 안내, 중복 자동응답 제외 |
++> | §13.4 완료·내보내기 | 단위 완료와 전체 완료의 삭제 안내, 단위 제외 범위 구분 |
++>
+ 
+ > **v11 변경(2026-10-14)** — 없는 API 경로를 서버 장애와 구분한다.
+ >
+@@ -1385,7 +1393,30 @@ SPEC 갱신 때 §4 를 함께 고친다. (`SPEC.md` v4 상단의 "누적된 미
+ 본인과 실제 송금 대상 수취인의 payout만 공개하고 다른 참여자는 null + hasPayout만 반환한다.
+ 계좌는 사용자 단위이며 암호문은 서버 밖으로 응답하지 않는다. 운영에는 독립된 32바이트 Base64 `PAYOUT_ENCRYPTION_KEY`가 필요하다.
+ 
+-**아직 구현하지 않은 출시 기능:** Apple/앱 인증·링크 로그인 복귀·탈퇴, 복수 총무 스푼 정책, 실시간 타임라인 전달과 알림 전체 문구/대상 정합성.
++**위 v6 구현 당시 남은 범위:** Apple/앱 인증·링크 로그인 복귀·탈퇴, 복수 총무 스푼 정책, 실시간 타임라인 전달과 알림 전체 문구/대상 정합성. 인증의 이후 구현은 v7~v10, 내부 알림 보완은 아래 §13.4를 따른다. 실계정·실기기 연결 완료와 구분한다.
++
++### 13.4 내부 알림 대상·문구 (v12)
++
++기존 알림 DTO와 읽음 API를 유지한다. `gatheringId`·`settlementUnitId`·`type`으로 프론트가 이동 대상을 정한다.
++일반 알림은 행동한 본인·탈퇴 사용자(`userId <= 0`)를 제외하고 동일 이벤트의 수신자는 중복 제거한다.
++FC-020의 서버 계산 완료 `SETTLED_HOST`는 행동한 총무여도 받는 기존 예외다.
++
++| type | 대상·본문 |
++|---|---|
++| SETTLED | 해당 단위의 총무를 뺀 참여자. 송금자는 `민지님께 41,000원 외 1건` 또는 `민지님께 41,000원 보내주세요`, 송금할 금액이 없으면 `담당 차수의 정산금액을 확인해주세요` |
++| AUTO_RESPONDED | 자동 응답한 본인과 해당 총무. 여러 차수여도 각 사용자에게 1건. 본인 `응답이 없어 참석·알코올로 계산됐어요`, 총무 `자동응답으로 계산된 사람이 있어요` |
++| PAYOUT_MISSING | 실제 송금을 받을 결제자 중 계좌 없는 사용자. `입금을 받을 계좌를 등록해주세요`. 계좌가 없어도 정산을 막지 않음 |
++| PAYOUT_REGISTERED | 최초 계좌 등록 시 해당 사용자에게 미확인 송금이 있는 송금자. `민지님이 계좌를 등록했어요. 이제 보낼 수 있어요`. 예금주·계좌번호는 포함하지 않음. 계좌 변경·동시 최초 등록 재시도는 같은 알림을 추가하지 않음 |
++| SENT | 수취인에게 `재훈님이 보냈대요. 입금을 확인해주세요` |
++| CONFIRMED | 송금자에게 `민지님이 입금을 확인했어요` |
++| NOT_RECEIVED | 송금자에게 `민지님이 아직 입금을 확인 못 했대요` |
++| COMPLETED | 해당 단위 참여자. 다른 단위가 남으면 `담당 차수의 정산이 완료됐어요`. 술자리의 모든 단위가 완료됐을 때만 `정산 완료! 7일 뒤 사라져요` |
++| REMOVED | 해당 단위에서 내보내진 사람에게 `9/28 술자리의 담당 정산에서 빠졌어요`. 다른 단위의 신원·명단·접근 권한은 유지 |
++
++송금의 동일 상태 재시도는 기존 단위 잠금·상태 전이의 멱등 처리로 알림을 추가하지 않는다.
++미수취 뒤 다시 보냄처럼 실제 상태가 바뀌는 요청은 새로운 소식이며 같은 상태 재시도와 구분한다.
++내부 알림함은 업무 트랜잭션과 함께 저장한다. FCM/outbox 전달·푸시 권한과 실기기 연결은 이번 내부 알림 보완의 완료 근거가 아니다.
++면제·복수 총무 스푼 정책은 보류를 유지한다.
+ 앱 Bearer 제안은 쿠키 전용 규칙과 충돌하므로 이 PR에서 자동 확정하지 않는다. 면제 API는 사용자 보류 그대로다.
+ 역사적 `/groups` 핸들러는 제거했다. 기존 DB의 모임 테이블은 적용된 changelog 보존 때문에 물리적으로 남는다.
+ 
+diff --git a/docs/RELEASE_2026_10_18.md b/docs/RELEASE_2026_10_18.md
+index 0298287..a4bd9e4 100644
+--- a/docs/RELEASE_2026_10_18.md
++++ b/docs/RELEASE_2026_10_18.md
+@@ -29,6 +29,10 @@
+ 
+ ## 연결 검증 기록
+ 
++10/14 알림 보완: 전체 서버 141건, 실패·오류·건너뛰기 0, Kotlin/Java 컴파일·bootJar 성공(1분 53초).
++실제 DB의 알림 경합·재시도·명단 범위는 CI의 `verify-notifications.py`로 별도 확인한다.
++로컬 Docker 엔진이 실행 중이 아니므로 여기서 실제 MySQL 검증 성공으로 표시하지 않는다.
++
+ | 플랫폼 | 로그인·복귀 | 정산 전체 흐름 | 로그아웃·탈퇴 | 확인 시각 |
+ |---|---|---|---|---|
+ | 웹 | 미확인 | 미확인 | 미확인 | — |
+diff --git a/docs/REQUIREMENTS.md b/docs/REQUIREMENTS.md
+index c7eb42f..0ba3f2d 100644
+--- a/docs/REQUIREMENTS.md
++++ b/docs/REQUIREMENTS.md
+@@ -402,6 +402,8 @@ stateDiagram-v2
+ | 정산하기 (금액 공개) | 참여자 전원 |
+ | 자동응답 처리됨 | 해당 참여자 본인 + 총무 |
+ | 계좌 등록 필요 | 계좌 없는 결제자 |
++| 계좌 최초 등록 | 해당 결제자에게 아직 확인되지 않은 송금이 있는 송금자 |
++| 담당 정산에서 내보내짐 | 해당 단위에서 제외된 참여자 (다른 단위 참여 유지) |
+ | [보냈어요] | 수취인 |
+ | [확인] | 송금자 |
+ | [아직 안 들어왔어요] | 송금자 |
+diff --git a/docs/flow-changes/2026-10-01-v3-front-flow.md b/docs/flow-changes/2026-10-01-v3-front-flow.md
+index 80dc3dd..482abec 100644
+--- a/docs/flow-changes/2026-10-01-v3-front-flow.md
++++ b/docs/flow-changes/2026-10-01-v3-front-flow.md
+@@ -84,6 +84,7 @@
+ ## FC-005 알림 — 이벤트별 대상·문구·링크, 읽음 API
+ 
+ - **상태:** 열림
++- **백엔드 반영·근거 (2026-10-14 후속):** API v12·NotificationPolicy/NotificationText Java·Kotlin 독립 구현, 송금 이름·행동자 제외·정산 공개 대상·자동응답 중복 제거·실제 전체 완료 후 삭제 안내를 보완한다. 기존 단위 잠금·상태 멱등 및 최초 계좌 등록 경합은 `verify-notifications.py`로 검증한다. 실행 결과·PR은 리뷰 기록에 별도 보존한다. FCM 전달·스푼과 실제 프론트 연결은 남으므로 열림을 유지한다.
+ - **바뀐 흐름:** H1 머리에 🔔(안 읽은 수), N1 알림함 화면이 생겼다. 알림을 누르면 정해진 화면으로
+   간다. (`notify.ts`, `NotificationsPage.tsx`)
+ - **백엔드 영향:**
+diff --git a/docs/flow-changes/2026-10-03-a1-account.md b/docs/flow-changes/2026-10-03-a1-account.md
+index 8d58e77..9018b5a 100644
+--- a/docs/flow-changes/2026-10-03-a1-account.md
++++ b/docs/flow-changes/2026-10-03-a1-account.md
+@@ -6,6 +6,7 @@
+ ## FC-011 계좌 등록 — 검증 규칙·등록 알림·목록 요약에 "계좌 필요"
+ 
+ - **상태:** 열림
++- **백엔드 반영·근거 (2026-10-14 후속):** 기존 최초 등록 대상 SELECT DISTINCT와 Gathering→users 잠금을 유지하고 API v12·NotificationText 양쪽 구현으로 사용자 실명 포함 문구를 제공한다. 예금주·계좌번호는 알림에 넣지 않는다. `verify-notifications.py`가 동시 최초 등록·변경 재시도·미확인 송금자 대상·행동자 제외를 검사한다. 실제 프론트/운영 연결 결과는 미확인이라 열림을 유지하며 실행 결과·PR은 리뷰 기록에 별도 보존한다.
+ - **바뀐 흐름:** 결제자인데 계좌가 없으면 R1 배너 [계좌 등록] → A1. H1 목록에서도 그 술자리 줄에 **[계좌 등록]
+   뱃지가 다른 뱃지보다 먼저** 붙고, 누르면 A1로 바로 간다. 저장하면 R1로 돌아간다.
+ - **백엔드 영향:**
+diff --git a/docs/flow-changes/2026-10-03-r4-manage.md b/docs/flow-changes/2026-10-03-r4-manage.md
+index a65f612..174a0f6 100644
+--- a/docs/flow-changes/2026-10-03-r4-manage.md
++++ b/docs/flow-changes/2026-10-03-r4-manage.md
+@@ -6,6 +6,7 @@
+ ## FC-010 면제 해제는 빈칸으로 · 결제자는 내보낼 수 없음 · 관련 알림
+ 
+ - **상태:** 열림 — 프론트가 정한 규칙이다. 다르게 가려면 CTO가 바꾸고 이 항목을 고친다
++- **백엔드 반영·근거 (2026-10-14 후속):** API v12의 REMOVED 알림에 술자리 이름과 담당 정산 제외 범위를 명시한다. FC-015/v4를 따라 다른 단위의 참여·접근은 유지한다. `verify-notifications.py`가 알림 대상·다른 단위 보존을 검사하며 실행 결과·PR은 리뷰 기록에 별도 보존한다. 면제 화면·API 보류와 실기기 연결 때문에 열림을 유지한다.
+ - **⏸ 면제 화면은 보류(2026-10-03):** 프론트가 [면제] 버튼을 숨겼다. **면제 API(1·4번의 면제 알림)는 지금 급하지
+   않다** — 내보내기(2·3번)와 내보내짐 알림만 먼저 필요하다. 다만 `EXEMPT` 응답 값 자체는 계산 규칙에 이미 있으니
+   스키마에서 빼지는 않는다
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index 647b376..3ee0992 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -64,13 +64,13 @@
+ | FC-002 | 정산 미리보기 응답 모양 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-002-정산-미리보기-응답-모양) |
+ | FC-003 | 송금 근거(차수별 금액) — P3 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-003-송금-근거차수별-금액--p3) |
+ | FC-004 | 총무 대리 응답 — `source = HOST`의 뜻이 넓어짐 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-004-총무-대리-응답--source--host의-뜻이-넓어짐) |
+-| FC-005 | 알림 — 이벤트별 대상·문구·링크, 읽음 API | 열림 | 일부 반영 · [PR #18](https://github.com/owencity/jungsan_attack/pull/18) 알림함 API, 이벤트별 대상·문구 규칙 후속 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-005-알림--이벤트별-대상문구링크-읽음-api) |
++| FC-005 | 알림 — 이벤트별 대상·문구·링크, 읽음 API | 열림 | 일부 반영 · PR #18 알림함, API v12 대상·실명·중복·완료 안내(`verify-notifications.py`), FCM·스푼·실기기 후속 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-005-알림--이벤트별-대상문구링크-읽음-api) |
+ | FC-006 | "정산금액 봤음" 기록 — [정산금액 확인] 뱃지 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-006-정산금액-봤음-기록--정산금액-확인-뱃지) |
+ | FC-007 | 응답 단순화·참여자 진입 순서·H1 탭 | 프론트만 | 서버 변경 없음 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-007-응답-단순화참여자-진입-순서h1-탭) |
+ | FC-008 | 차수 이름(1차·2차) 누가 붙이나 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-008-차수-이름1차2차-누가-붙이나) |
+ | FC-009 | 링크로 참여 — 참여와 응답을 한 요청으로, 로그인 전 미리보기 | 열림 | 일부 반영 · PR #18 참여/미리보기, [PR #20](https://github.com/owencity/jungsan_attack/pull/20) returnTo 구현/검증 · 프론트 연결 후속 | [2026-10-03-p1-entry.md](2026-10-03-p1-entry.md) |
+-| FC-010 | 면제 해제는 빈칸으로 · 결제자는 내보낼 수 없음 · 관련 알림 | 열림 | 일부 반영 · PR #18 내보내기 구현/검증 · 면제 보류, 관련 알림 후속 | [2026-10-03-r4-manage.md](2026-10-03-r4-manage.md) |
+-| FC-011 | 계좌 등록 — 검증 규칙·등록 알림·목록 요약에 "계좌 필요" | 열림 | 일부 반영 · PR #18 계좌 API 구현/검증 · 알림 대상 규칙 후속 | [2026-10-03-a1-account.md](2026-10-03-a1-account.md) |
++| FC-010 | 면제 해제는 빈칸으로 · 결제자는 내보낼 수 없음 · 관련 알림 | 열림 | 일부 반영 · PR #18 내보내기, API v12 알림·단위 범위(`verify-notifications.py`), 면제 보류·실기기 후속 | [2026-10-03-r4-manage.md](2026-10-03-r4-manage.md) |
++| FC-011 | 계좌 등록 — 검증 규칙·등록 알림·목록 요약에 "계좌 필요" | 열림 | 일부 반영 · PR #18 계좌 API, API v12 실명·최초 등록 경합 검증(`verify-notifications.py`), 실제 연결 후속 | [2026-10-03-a1-account.md](2026-10-03-a1-account.md) |
+ | FC-012 | 링크 공유 — 공유 주소 고정, 딥링크·카카오 키는 인프라 작업 | 결정 필요 | CTO 결정 필요 · 임의 구현하지 않음 | [2026-10-03-share.md](2026-10-03-share.md) |
+ | FC-013 | 첫 로그인 실명 입력 — `needsName`, 실명 저장 API, 닉네임은 따로 | 반영됨 (실명 API, 참여·타임라인 후속) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-04-l2-name.md](2026-10-04-l2-name.md) |
+ | FC-014 | v3 API 계약 한 장 — 화면별 엔드포인트·응답 모양·우선순위·앱 로그인·탈퇴 | 열림 (D1~D5 API v6, D6·D7 API v7 서버 반영 · 운영/앱 연결 후속) | 일부 반영 · PR #18 D1~D5, PR #20 D6/D7 서버 검증 · 운영 제공자/앱 연결 후속 | [2026-10-04-v3-api-contract.md](2026-10-04-v3-api-contract.md) |
+diff --git a/scripts/verify-notifications.py b/scripts/verify-notifications.py
+new file mode 100644
+index 0000000..29fccaf
+--- /dev/null
++++ b/scripts/verify-notifications.py
+@@ -0,0 +1,137 @@
++"""CI 전용 MySQL/18081에서 내부 알림 대상·문구·동시 재시도를 검증한다. 운영 주소를 받지 않는다."""
++import base64
++import hashlib
++import hmac
++import json
++import subprocess
++import sys
++import time
++import uuid
++from concurrent.futures import ThreadPoolExecutor
++from urllib.error import HTTPError
++from urllib.request import Request, urlopen
++
++sys.stdout.reconfigure(encoding="utf-8")
++BASE = "http://127.0.0.1:18081/api/v1"
++DATABASE = "jeongsan_auth_test"
++checks = 0
++
++def sql(query):
++    result = subprocess.run(["docker", "exec", "jeongsan-v4-verification", "mysql", "--default-character-set=utf8mb4",
++        "-uroot", "-plocal-v4-test", "-N", "-s", DATABASE, "-e", query], capture_output=True, text=True, encoding="utf-8")
++    assert result.returncode == 0, result.stderr
++    return result.stdout.strip()
++
++assert sql("SELECT DATABASE()") == DATABASE
++
++def check(value, label):
++    global checks
++    assert value, label
++    checks += 1
++    print(f"PASS {checks}: {label}", flush=True)
++
++def call(method, path, user=None, body=None, expected=200):
++    def encode(value): return base64.urlsafe_b64encode(value).rstrip(b"=").decode()
++    headers = {"Content-Type": "application/json"}
++    if user is not None:
++        token = encode(b'{"alg":"HS256"}') + "." + encode(json.dumps({"sub": str(user), "client": "WEB", "jti": str(uuid.uuid4()), "exp": int(time.time()) + 3600}).encode())
++        headers["Cookie"] = "jeongsan_token=" + token + "." + encode(hmac.new(b"local-only-dev-secret-please-change-32b", token.encode(), hashlib.sha256).digest())
++    request = Request(BASE + path, headers=headers, method=method, data=json.dumps(body).encode() if body is not None else None)
++    try:
++        with urlopen(request, timeout=20) as response: status, raw = response.status, response.read()
++    except HTTPError as error: status, raw = error.code, error.read()
++    value = json.loads(raw) if raw else None
++    assert status == expected, (method, path, status, value)
++    return value
++
++users = []
++for name in ("알림총무", "알림결제자", "알림송금자"):
++    key = str(uuid.uuid4())
++    sql(f"INSERT INTO users(provider,provider_id,nickname,display_name,tier,created_at) VALUES('NOTIFY_TEST','{key}','알림검증','{name}','FREE',UTC_TIMESTAMP())")
++    users.append(int(sql(f"SELECT id FROM users WHERE provider_id='{key}'")))
++host, payer, sender = users
++room = call("POST", "/gatherings", host, expected=201)
++gathering_id = room["id"]
++unit_id = room["settlementUnits"][0]["id"]
++host_id = room["me"]["participantId"]
++root = f"/gatherings/{gathering_id}/settlement-units/{unit_id}"
++share = room["shareToken"]
++def join(user):
++    return call("POST", "/join/" + share, user, {"settlementUnitId": unit_id})["participantId"]
++payer_id, sender_id = join(payer), join(sender)
++other_unit = call("POST", f"/gatherings/{gathering_id}/settlement-units", host,
++    {"requestId": str(uuid.uuid4()), "participantIds": [host_id, sender_id]}, 201)
++other_root = f"/gatherings/{gathering_id}/settlement-units/{other_unit['id']}"
++for _ in range(2):
++    call("POST", root + "/rounds", host, {"total": 30000, "payerParticipantId": payer_id}, 201)
++preview = call("GET", root + "/settlement/preview", host)
++settled = call("POST", root + "/settlement", host, {"inputRevision": preview["inputRevision"], "inputHash": preview["inputHash"]})
++def notifications(user, kind=None, settlement_unit_id=unit_id):
++    rows = call("GET", "/me/notifications", user)
++    return [row for row in rows if row["settlementUnitId"] == settlement_unit_id and (kind is None or row["type"] == kind)]
++check(not notifications(host, "SETTLED") and len(notifications(host, "SETTLED_HOST")) == 1,
++    "행동한 총무에게 참여자 금액 알림 대신 서버 계산 완료 1건")
++check(len(notifications(payer, "SETTLED")) == 1 and notifications(payer, "SETTLED")[0]["body"] == "담당 차수의 정산금액을 확인해주세요",
++    "송금할 금액이 없는 수취인도 정산 공개 알림 수신")
++check(len(notifications(sender, "SETTLED")) == 1 and notifications(sender, "SETTLED")[0]["body"] == "알림결제자님께 20,000원 보내주세요",
++    "송금자는 수취인 실명·천 단위 금액으로 정산 공개 알림 수신")
++check(len(notifications(payer, "AUTO_RESPONDED")) == 1 and len(notifications(sender, "AUTO_RESPONDED")) == 1,
++    "두 차수 자동 응답이어도 사용자별 알림 1건")
++check(len(notifications(payer, "PAYOUT_MISSING")) == 1 and not notifications(sender, "PAYOUT_MISSING"),
++    "계좌 없는 실제 수취인만 등록 요청 1건, 정산은 SETTLING 유지")
++check(next(unit for unit in settled["settlementUnits"] if unit["id"] == unit_id)["status"] == "SETTLING",
++    "계좌 미등록 때문에 정산을 중단하지 않음")
++account = {"bank": "카카오뱅크", "accountNo": "1234-567890", "holder": "다른예금주"}
++with ThreadPoolExecutor(2) as pool:
++    list(pool.map(lambda _: call("PUT", "/users/me/payout", payer, account), range(2)))
++check(len(notifications(sender, "PAYOUT_REGISTERED")) == 1 and len(notifications(host, "PAYOUT_REGISTERED")) == 1,
++    "계좌 최초 등록 동시 재시도는 미확인 송금자별 1건")
++check(notifications(sender, "PAYOUT_REGISTERED")[0]["body"] == "알림결제자님이 계좌를 등록했어요. 이제 보낼 수 있어요",
++    "계좌 등록 알림은 예금주·계좌번호 대신 사용자 실명")
++call("PUT", "/users/me/payout", payer, {**account, "accountNo": "9999-567890"})
++check(len(notifications(sender, "PAYOUT_REGISTERED")) == 1 and not notifications(payer, "PAYOUT_REGISTERED"),
++    "계좌 변경은 최초 등록 알림을 재생성하지 않고 행동자 제외")
++transfer = next(row for row in settled["transfers"] if row["settlementUnitId"] == unit_id and row["fromParticipantId"] == sender_id)
++transfer_path = f"/transfers/{transfer['id']}"
++with ThreadPoolExecutor(2) as pool:
++    list(pool.map(lambda _: call("POST", transfer_path + "/sent", sender, expected=204), range(2)))
++check(len(notifications(payer, "SENT")) == 1 and notifications(payer, "SENT")[0]["body"] == "알림송금자님이 보냈대요. 입금을 확인해주세요",
++    "동시 보냈어요는 수취인에게 이름 포함 알림 1건")
++call("POST", transfer_path + "/not-received", payer, expected=204)
++call("POST", transfer_path + "/not-received", payer, expected=204)
++check(len(notifications(sender, "NOT_RECEIVED")) == 1 and notifications(sender, "NOT_RECEIVED")[0]["body"] == "알림결제자님이 아직 입금을 확인 못 했대요",
++    "아직 안 들어왔어요 재시도는 송금자에게 이름 포함 알림 1건")
++call("POST", transfer_path + "/confirm", payer, expected=204)
++call("POST", transfer_path + "/confirm", payer, expected=204)
++check(len(notifications(sender, "CONFIRMED")) == 1 and notifications(sender, "CONFIRMED")[0]["body"] == "알림결제자님이 입금을 확인했어요",
++    "확인 재시도는 송금자에게 이름 포함 알림 1건")
++remaining = next(row for row in settled["transfers"] if row["settlementUnitId"] == unit_id and row["fromParticipantId"] == host_id)
++call("POST", f"/transfers/{remaining['id']}/confirm", payer, expected=204)
++check(notifications(sender, "COMPLETED")[0]["body"] == "담당 차수의 정산이 완료됐어요" and not notifications(payer, "COMPLETED"),
++    "다른 단위가 OPEN이면 7일 삭제를 예고하지 않고 마지막 확인자 제외")
++call("POST", other_root + "/rounds", host, {"total": 10000, "payerParticipantId": host_id}, 201)
++preview = call("GET", other_root + "/settlement/preview", host)
++other_settled = call("POST", other_root + "/settlement", host, {"inputRevision": preview["inputRevision"], "inputHash": preview["inputHash"]})
++other_transfer = next(row for row in other_settled["transfers"] if row["settlementUnitId"] == other_unit["id"])
++call("POST", f"/transfers/{other_transfer['id']}/confirm", host, expected=204)
++check(notifications(sender, "COMPLETED", other_unit["id"])[0]["body"] == "정산 완료! 7일 뒤 사라져요",
++    "모든 단위가 끝나면 7일 삭제 예고")
++call("POST", "/me/notifications/read-all", sender, expected=204)
++check(call("GET", "/auth/me", sender)["unreadNotificationCount"] == 0, "알림 읽음과 미읽은 수 일치")
++
++# 회원 신원을 공유한 다른 단위의 접근까지 제거하지 않는다.
++room = call("POST", "/gatherings", host, expected=201)
++gathering_id, share = room["id"], room["shareToken"]
++unit_id = room["settlementUnits"][0]["id"]
++root = f"/gatherings/{gathering_id}/settlement-units/{unit_id}"
++payer_id = join(payer)
++other_unit = call("POST", f"/gatherings/{gathering_id}/settlement-units", payer,
++    {"requestId": str(uuid.uuid4()), "participantIds": [payer_id, room["me"]["participantId"]]}, 201)
++call("DELETE", root + f"/participants/{payer_id}", host, expected=204)
++check(len(notifications(payer, "REMOVED")) == 1 and notifications(payer, "REMOVED")[0]["body"] == room["title"] + "의 담당 정산에서 빠졌어요",
++    "내보내짐 알림은 제외된 단위 범위를 명시")
++remaining_room = call("GET", f"/gatherings/{gathering_id}", payer)
++check(payer_id in next(unit for unit in remaining_room["settlementUnits"] if unit["id"] == other_unit["id"])["participantIds"],
++    "내보내져도 다른 단위의 참여·접근 유지")
++check(not notifications(host, "REMOVED"), "내보낸 총무 본인에게는 알림 없음")
++print(f"NOTIFICATION/RETRY: {checks} checks passed")
+diff --git a/scripts/verify-release.sh b/scripts/verify-release.sh
+index 4939cdc..874f4e6 100644
+--- a/scripts/verify-release.sh
++++ b/scripts/verify-release.sh
+@@ -36,6 +36,7 @@ for attempt in $(seq 1 40); do
+ done
+ [ "$ready" = true ] || { echo 'CI HTTP 서버 준비 실패' >&2; exit 1; }
+ python3 scripts/verify-auto-settlement.py
++python3 scripts/verify-notifications.py
+ python3 scripts/verify-auth-release.py
+ ./gradlew :server:authDatabaseProbe --no-daemon
+ python3 scripts/verify-deploy.py
+diff --git a/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationPolicy.java b/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationPolicy.java
+new file mode 100644
+index 0000000..4feb5dd
+--- /dev/null
++++ b/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationPolicy.java
+@@ -0,0 +1,14 @@
++package app.jeongsan.server.gathering.javaimpl;
++
++import java.util.List;
++
++/** Kotlin 정책을 호출하지 않는 내부 알림 수신자 학습 구현이다. */
++public final class NotificationPolicy {
++    private NotificationPolicy() {}
++
++    public static List<Long> recipients(List<Long> userIds, long actorUserId) {
++        return userIds.stream().distinct()
++                .filter(userId -> userId > 0 && userId != actorUserId)
++                .toList();
++    }
++}
+diff --git a/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationText.java b/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationText.java
+index 6822d4f..a3830d4 100644
+--- a/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationText.java
++++ b/server/src/main/java/app/jeongsan/server/gathering/javaimpl/NotificationText.java
+@@ -5,6 +5,23 @@ import java.util.Locale;
+ public final class NotificationText {
+     private NotificationText() {}
+     public static String money(long amount) { return String.format(Locale.US, "%,d", amount); }
++    public static String transfer(String type, String actorName) {
++        return switch (type) {
++            case "SENT" -> actorName + "님이 보냈대요. 입금을 확인해주세요";
++            case "CONFIRMED" -> actorName + "님이 입금을 확인했어요";
++            case "NOT_RECEIVED" -> actorName + "님이 아직 입금을 확인 못 했대요";
++            default -> throw new IllegalArgumentException("송금 알림 종류가 아닙니다.");
++        };
++    }
++    public static String payoutRegistered(String payerName) {
++        return payerName + "님이 계좌를 등록했어요. 이제 보낼 수 있어요";
++    }
++    public static String completed(boolean gatheringCompleted) {
++        return gatheringCompleted ? "정산 완료! 7일 뒤 사라져요" : "담당 차수의 정산이 완료됐어요";
++    }
++    public static String removed(String gatheringTitle) {
++        return gatheringTitle + "의 담당 정산에서 빠졌어요";
++    }
+     public static String title(String type) {
+         return switch (type) {
+             case "JOINED", "RESPONDED" -> "참여 응답이 도착했어요";
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
+index 606aa17..999ec78 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
+@@ -53,14 +53,15 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+         db.insert("INSERT INTO timeline_entries(gathering_id,settlement_unit_id,type,system_code,body,created_at) VALUES(:g,:s,'SYSTEM',:c,:b,:n)","g" to gid,"s" to unitId,"c" to code,"b" to body,"n" to Instant.now())
+     }
+     private fun notify(gid: Long, unitId: Long?, type: String, body: String, userIds: List<Long>, actor: Long) {
+-        userIds.distinct().filter{it > 0 && it != actor}.forEach { db.insert("INSERT INTO notifications(user_id,gathering_id,settlement_unit_id,type,title,body,created_at) VALUES(:u,:g,:s,:t,:title,:b,:n)","u" to it,"g" to gid,"s" to unitId,"t" to type,"title" to NotificationText.title(type),"b" to body,"n" to Instant.now()) }
++        NotificationPolicy.recipients(userIds,actor).forEach { db.insert("INSERT INTO notifications(user_id,gathering_id,settlement_unit_id,type,title,body,created_at) VALUES(:u,:g,:s,:t,:title,:b,:n)","u" to it,"g" to gid,"s" to unitId,"t" to type,"title" to NotificationText.title(type),"b" to body,"n" to Instant.now()) }
+     }
+-    private fun updateSummary(gid: Long) {
++    private fun updateSummary(gid: Long): String {
+         room(gid,true)
+         val all=db.rows("SELECT status,completed_at FROM settlement_units WHERE gathering_id=:g","g" to gid)
+         val state=SettlementWorkflow.summary(all.map{it.text("status")})
+         val completed=if(state=="COMPLETED") all.mapNotNull{it.instant("completed_at")}.maxOrNull() else null
+         db.update("UPDATE gatherings SET status=:s,completed_at=:c,delete_scheduled_at=:d,last_activity_at=:n WHERE id=:g","s" to state,"c" to completed,"d" to completed?.plusSeconds(7*86400L),"n" to Instant.now(),"g" to gid)
++        return state
+     }
+     fun create(uid: Long, headcount: Int? = null): Map<String,Any?> {
+         AutoSettlementPolicy.validateHeadcount(headcount)
+@@ -216,15 +217,33 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+         db.update("UPDATE settlement_units SET status=:state,completed_at=:n,auto_settlement_error=NULL WHERE id=:id","state" to state,"n" to if(state=="COMPLETED") Instant.now() else null,"id" to id)
+         val host=d.first.first{it.id==u.hostId}
+         event(gid,id,"SETTLED",if(automatic) "모두 응답해서 자동으로 계산했어요" else "${host.name}님이 담당 차수를 정산했어요")
+-        preview.transfers.groupBy{it.from}.forEach{(sender,transfers)->
+-            val first=transfers.first();val recipient=d.first.first{it.id==first.to}
+-            val body="${recipient.name}님께 ${NotificationText.money(first.amount)}원" + if(transfers.size>1) " 외 ${transfers.size-1}건" else " 보내주세요"
+-            notify(gid,id,"SETTLED",body,d.first.filter{it.id==sender}.map{it.userId},if(automatic) 0 else actor)
++        val transfersBySender=preview.transfers.groupBy{transfer->transfer.from}
++        d.first.filter{participant->participant.id in u.participantIds && participant.id!=u.hostId}.forEach{participant->
++            val transfers=transfersBySender[participant.id].orEmpty()
++            val first=transfers.firstOrNull()
++            val body=if(first==null) "담당 차수의 정산금액을 확인해주세요" else {
++                val recipient=d.first.first{person->person.id==first.to}
++                "${recipient.name}님께 ${NotificationText.money(first.amount)}원" + if(transfers.size>1) " 외 ${transfers.size-1}건" else " 보내주세요"
++            }
++            notify(gid,id,"SETTLED",body,listOf(participant.userId),if(automatic) 0 else actor)
+         }
+         notify(gid,id,"SETTLED_HOST","계산이 끝났어요. 단톡방에 입금 요청을 보내주세요",listOf(host.userId),0)
+-        preview.lines.filter{it.auto}.forEach{line->notify(gid,id,"AUTO_RESPONDED","응답이 없어 참석·알코올로 계산됐어요",d.first.filter{it.id==line.participantId||it.id==u.hostId}.map{it.userId},actor)}
+-        if(state=="COMPLETED") notify(gid,id,"COMPLETED","정산 완료! 7일 뒤 사라져요",d.first.filter{it.id in u.participantIds}.map{it.userId},actor)
+-        updateSummary(gid)
++        val autoParticipantIds=preview.lines.filter{line->line.auto}.map{line->line.participantId}.toSet()
++        if(autoParticipantIds.isNotEmpty()) {
++            d.first.filter{participant->participant.id in autoParticipantIds && participant.id!=u.hostId}.forEach{participant->
++                notify(gid,id,"AUTO_RESPONDED","응답이 없어 참석·알코올로 계산됐어요",listOf(participant.userId),actor)
++            }
++            notify(gid,id,"AUTO_RESPONDED","자동응답으로 계산된 사람이 있어요",listOf(host.userId),actor)
++        }
++        // 계좌 상태는 결제자별 조회 대신 한 번에 모은다. 알림 생성 때문에 전체 정산을 막지 않는다.
++        val recipientUserIds=d.first.filter{participant->preview.transfers.any{transfer->transfer.to==participant.id}}
++            .map{participant->participant.userId}.filter{userId->userId>0}.distinct()
++        if(recipientUserIds.isNotEmpty()) {
++            val missingPayoutUsers=db.rows("SELECT id FROM users WHERE id IN (:ids) AND payout_encrypted IS NULL","ids" to recipientUserIds).map{row->row.long("id")}
++            notify(gid,id,"PAYOUT_MISSING","입금을 받을 계좌를 등록해주세요",missingPayoutUsers,actor)
++        }
++        val gatheringState=updateSummary(gid)
++        if(state=="COMPLETED") notify(gid,id,"COMPLETED",NotificationText.completed(gatheringState=="COMPLETED"),d.first.filter{it.id in u.participantIds}.map{it.userId},actor)
+     }
+     fun headcount(gid: Long,id: Long,uid: Long,headcount: Int) {
+         AutoSettlementPolicy.validateHeadcount(headcount)
+@@ -254,7 +273,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+         db.update("UPDATE settlement_unit_members SET status='REMOVED' WHERE settlement_unit_id=:s AND participant_id=:p","s" to id,"p" to pid)
+         db.update("DELETE a FROM round_responses a JOIN rounds r ON r.id=a.round_id WHERE r.settlement_unit_id=:s AND a.participant_id=:p","s" to id,"p" to pid)
+         event(gid,id,"REMOVED","${participant.name}님은 $reason")
+-        notify(gid,id,notificationType,"$title 술자리: $reason",listOf(participant.userId),actor)
++        notify(gid,id,notificationType,if(notificationType=="REMOVED") NotificationText.removed(title) else "$title: $reason",listOf(participant.userId),actor)
+     }
+     private fun autoSettle(gid: Long,id: Long) {
+         val original=unit(gid,id)
+@@ -307,9 +326,9 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+     private fun markComplete(gid: Long,id: Long,uid: Long) {
+         room(gid,true)
+         db.update("UPDATE settlement_units SET status='COMPLETED',completed_at=:n WHERE id=:s","n" to Instant.now(),"s" to id)
+-        event(gid,id,"COMPLETED","담당 차수의 정산이 완료됐어요");updateSummary(gid)
++        event(gid,id,"COMPLETED","담당 차수의 정산이 완료됐어요");val gatheringState=updateSummary(gid)
+         val d=data(gid);val u=unit(gid,id,false)
+-        notify(gid,id,"COMPLETED","정산 완료!",d.first.filter{it.id in u.participantIds}.map{it.userId},uid)
++        notify(gid,id,"COMPLETED",NotificationText.completed(gatheringState=="COMPLETED"),d.first.filter{it.id in u.participantIds}.map{it.userId},uid)
+     }
+     fun transfer(tid: Long,uid: Long,action: String) {
+         user(uid)
+@@ -326,7 +345,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+         val code=when(action){"sent"->"SENT";"confirm"->"CONFIRMED";else->"NOT_RECEIVED"}
+         event(gid,u.id,code,"${p.name}님이 ${when(action){"sent"->"보냈어요";"confirm"->"입금을 확인했어요";else->"아직 입금을 확인하지 못했어요"}}")
+         val target=if(action=="sent") fresh.long("recipient_participant_id") else fresh.long("sender_participant_id")
+-        notify(gid,u.id,code,"송금 상태가 바뀌었어요",data(gid).first.filter{it.id==target}.map{it.userId},uid)
++        notify(gid,u.id,code,NotificationText.transfer(code,p.name),data(gid).first.filter{it.id==target}.map{it.userId},uid)
+         if(action=="confirm"&&db.rows("SELECT id FROM settlement_transfers WHERE settlement_id=:s AND status<>'CONFIRMED'","s" to fresh.long("settlement_id")).isEmpty()) markComplete(gid,u.id,uid) else touch(gid)
+     }
+     private fun roundView(r: RoundInput)=mapOf("id" to r.id,"settlementUnitId" to r.unitId,"seq" to r.seq,"total" to r.total,"payerParticipantId" to r.payerId,"drinks" to r.drinks)
+@@ -399,11 +418,11 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+         val targets=db.rows("SELECT DISTINCT s.gathering_id,s.settlement_unit_id,p.user_id FROM settlement_transfers t JOIN settlements s ON s.id=t.settlement_id JOIN participants r ON r.id=t.recipient_participant_id JOIN participants p ON p.id=t.sender_participant_id WHERE r.user_id=:u AND t.status<>'CONFIRMED' AND p.user_id IS NOT NULL","u" to uid)
+         targets.map{it.long("gathering_id")}.distinct().sorted().forEach{room(it,true)}
+         val old=db.rows("SELECT payout_encrypted FROM users WHERE id=:u FOR UPDATE","u" to uid).singleOrNull()?.get("payout_encrypted")
+-        user(uid)
++        val accountOwner=user(uid)
+         db.update("UPDATE users SET payout_encrypted=:p WHERE id=:u","p" to cipher.encrypt(mapper.writeValueAsString(value)),"u" to uid)
+         // 탈퇴와 같은 Gathering→users 순서로 FK 소식의 잠금 승격도 예방한다.
+         if(old==null) targets.forEach{
+-            notify(it.long("gathering_id"),it.long("settlement_unit_id"),"PAYOUT_REGISTERED","계좌가 등록됐어요. 이제 보낼 수 있어요",listOf(it.long("user_id")),uid) }
++            notify(it.long("gathering_id"),it.long("settlement_unit_id"),"PAYOUT_REGISTERED",NotificationText.payoutRegistered((accountOwner["display_name"] ?: accountOwner["nickname"] ?: "결제자").toString()),listOf(it.long("user_id")),uid) }
+         return mapOf("payout" to value)
+     }
+     fun message(gid: Long,uid: Long,request: MessageRequest): Map<String,Any?> {
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/NotificationPolicy.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/NotificationPolicy.kt
+new file mode 100644
+index 0000000..863df60
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/NotificationPolicy.kt
+@@ -0,0 +1,7 @@
++package app.jeongsan.server.gathering
++
++/** 탈퇴 사용자·행동자·중복 수신자를 제외하는 내부 알림 정책이다. */
++object NotificationPolicy {
++    fun recipients(userIds: List<Long>, actorUserId: Long): List<Long> =
++        userIds.distinct().filter { userId -> userId > 0 && userId != actorUserId }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/NotificationText.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/NotificationText.kt
+index 73809cf..421901e 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/NotificationText.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/NotificationText.kt
+@@ -3,6 +3,16 @@ package app.jeongsan.server.gathering
+ /** 로케일에 따라 금액 구분 기호가 달라지지 않게 고정한다. Java는 javaimpl에 독립 구현한다. */
+ object NotificationText {
+     fun money(amount: Long): String = String.format(java.util.Locale.US, "%,d", amount)
++    fun transfer(type: String, actorName: String): String = when (type) {
++        "SENT" -> "${actorName}님이 보냈대요. 입금을 확인해주세요"
++        "CONFIRMED" -> "${actorName}님이 입금을 확인했어요"
++        "NOT_RECEIVED" -> "${actorName}님이 아직 입금을 확인 못 했대요"
++        else -> throw IllegalArgumentException("송금 알림 종류가 아닙니다.")
++    }
++    fun payoutRegistered(payerName: String): String = "${payerName}님이 계좌를 등록했어요. 이제 보낼 수 있어요"
++    fun completed(gatheringCompleted: Boolean): String =
++        if (gatheringCompleted) "정산 완료! 7일 뒤 사라져요" else "담당 차수의 정산이 완료됐어요"
++    fun removed(gatheringTitle: String): String = "${gatheringTitle}의 담당 정산에서 빠졌어요"
+     fun title(type: String): String = when (type) {
+         "JOINED", "RESPONDED" -> "참여 응답이 도착했어요"
+         "SETTLED" -> "정산이 나왔어요! 입금액을 확인해주세요"
+diff --git a/server/src/test/kotlin/app/jeongsan/server/gathering/NotificationPolicySpec.kt b/server/src/test/kotlin/app/jeongsan/server/gathering/NotificationPolicySpec.kt
+new file mode 100644
+index 0000000..95321c1
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/gathering/NotificationPolicySpec.kt
+@@ -0,0 +1,41 @@
++package app.jeongsan.server.gathering
++
++import app.jeongsan.server.gathering.javaimpl.NotificationPolicy as JavaNotificationPolicy
++import app.jeongsan.server.gathering.javaimpl.NotificationText as JavaNotificationText
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++
++class NotificationPolicySpec : StringSpec({
++    "행동자·탈퇴 사용자·중복 대상을 제외하고 최초 순서를 유지한다" {
++        val userIds=listOf(12L,0L,14L,12L,-1L,15L,14L)
++        NotificationPolicy.recipients(userIds,14) shouldBe listOf(12L,15L)
++        JavaNotificationPolicy.recipients(userIds,14) shouldBe listOf(12L,15L)
++        userIds shouldBe listOf(12L,0L,14L,12L,-1L,15L,14L)
++    }
++    "서버가 자동 처리한 소식은 유효 사용자 전원에게 한 번씩 보낸다" {
++        NotificationPolicy.recipients(listOf(12,12,13,0),0) shouldBe listOf(12,13)
++        JavaNotificationPolicy.recipients(listOf(12,12,13,0),0) shouldBe listOf(12,13)
++    }
++    "송금 상태 알림은 행동자의 이름과 각 상태의 의미를 전달한다" {
++        val expected=mapOf("SENT" to "김하나님이 보냈대요. 입금을 확인해주세요",
++            "CONFIRMED" to "김하나님이 입금을 확인했어요", "NOT_RECEIVED" to "김하나님이 아직 입금을 확인 못 했대요")
++        expected.forEach { (type,body) ->
++            NotificationText.transfer(type,"김하나") shouldBe body
++            JavaNotificationText.transfer(type,"김하나") shouldBe body
++        }
++    }
++    "계좌 등록 알림은 예금주 대신 사용자 실명을 보여준다" {
++        NotificationText.payoutRegistered("김하나") shouldBe "김하나님이 계좌를 등록했어요. 이제 보낼 수 있어요"
++        JavaNotificationText.payoutRegistered("김하나") shouldBe NotificationText.payoutRegistered("김하나")
++    }
++    "다른 단위가 남으면 7일 삭제를 예고하지 않고 술자리 전체 완료에만 예고한다" {
++        NotificationText.completed(false) shouldBe "담당 차수의 정산이 완료됐어요"
++        JavaNotificationText.completed(false) shouldBe "담당 차수의 정산이 완료됐어요"
++        NotificationText.completed(true) shouldBe "정산 완료! 7일 뒤 사라져요"
++        JavaNotificationText.completed(true) shouldBe "정산 완료! 7일 뒤 사라져요"
++    }
++    "단위에서 내보내진 사람에게 전체 술자리에서 제거됐다고 안내하지 않는다" {
++        NotificationText.removed("9/28 술자리") shouldBe "9/28 술자리의 담당 정산에서 빠졌어요"
++        JavaNotificationText.removed("9/28 술자리") shouldBe NotificationText.removed("9/28 술자리")
++    }
++})

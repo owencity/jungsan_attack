@@ -1,0 +1,12 @@
+{
+  "pr_url": "https://github.com/owencity/jungsan_attack/pull/33",
+  "source_head": "9e240275abbb18709e10d3156c502801b82bd910",
+  "kind": "implementer_self_review",
+  "external_review": "AI PR Review 댓글 1건 대조, GitHub 사람 승인 0건",
+  "hashes": {
+    "github-review-01.json": "f0ec4d2879e48b0b84b1844d6776805b86be4e85a5837f2eeb6d52c5f48f51e5",
+    "local-verification.json": "68edc0fd42753a3f827f05d59d240aa4187aeaf1c6146d82a1bc21fd60ebfff8",
+    "review-assessment-01.md": "ad9ea24cb48ec252d6995a3419f44f48b5a871f9f05862f8bb206a5b62148ed6",
+    "self-review.md": "ffb6dbf8a0d8ef85fb1b89c505f54b946ab612d79f4609fd9a8003980363d1e1"
+  }
+}

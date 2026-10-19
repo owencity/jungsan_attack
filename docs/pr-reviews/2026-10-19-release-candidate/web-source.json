@@ -1,0 +1,11 @@
+{
+  "retrieved_client_date": "2026-10-19",
+  "repository": "owencity/profile",
+  "ref": "main at retrieval",
+  "built_or_deployed": false,
+  "content": "    }\n  },\n\n  /** 다음 차는 내가 계산했어요 — 같은 술자리 안에 내가 총무인 정산 단위(FC-015). 계산 대상은 고른 사람 + 나 */\n  async createUnit(roomId: Id, participantIds: Id[]): Promise<{ id: Id } | { error: string }> {\n    if (!isApiMode()) {\n      const id = s().createUnit(roomId, participantIds)\n      return id === null ? { error: '이 술자리에 참여 중이 아니에요' } : { id }\n    }\n    const { gid } = ctx(roomId)\n    const me = s().rooms[roomId]?.participants.find((p) => p.userId === s().me.id)\n    try {\n      const ids = [...new Set([...(me ? [me.id] : []), ...participantIds])]\n      // 다음 차 인원의 시작값은 고른 사람 + 나(FC-020) — R2에서 바꿀 수 있다\n      const u = await api.createUnit(gid, uuid(), ids, ids.length)\n      await refresh(gid)\n      return { id: u.id }\n    } catch (e) {\n      return { error: messageOf(e) }\n    }\n  },\n\n  /**\n   * 차수 저장(R2) + 총무 본인 응답(FC-019 A). 새 차수면 만든 차수 id.",
+  "encoding": "utf-8",
+  "sha": "12841a7a8f4b0ef934c561fbfa61adcb7d04502b",
+  "display_url": "https://github.com/owencity/profile/blob/main/src/jeongsan/v3/gateway.ts",
+  "display_title": "gateway.ts"
+}

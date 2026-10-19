@@ -4,7 +4,7 @@ import app.jeongsan.core.Validator
 import app.jeongsan.core.ValidationPhase
 import app.jeongsan.server.common.ShareToken
 import app.jeongsan.server.gathering.SettlementWorkflow.fail
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
@@ -53,14 +53,15 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         db.insert("INSERT INTO timeline_entries(gathering_id,settlement_unit_id,type,system_code,body,created_at) VALUES(:g,:s,'SYSTEM',:c,:b,:n)","g" to gid,"s" to unitId,"c" to code,"b" to body,"n" to Instant.now())
     }
     private fun notify(gid: Long, unitId: Long?, type: String, body: String, userIds: List<Long>, actor: Long) {
-        userIds.distinct().filter{it > 0 && it != actor}.forEach { db.insert("INSERT INTO notifications(user_id,gathering_id,settlement_unit_id,type,title,body,created_at) VALUES(:u,:g,:s,:t,:title,:b,:n)","u" to it,"g" to gid,"s" to unitId,"t" to type,"title" to NotificationText.title(type),"b" to body,"n" to Instant.now()) }
+        NotificationPolicy.recipients(userIds,actor).forEach { db.insert("INSERT INTO notifications(user_id,gathering_id,settlement_unit_id,type,title,body,created_at) VALUES(:u,:g,:s,:t,:title,:b,:n)","u" to it,"g" to gid,"s" to unitId,"t" to type,"title" to NotificationText.title(type),"b" to body,"n" to Instant.now()) }
     }
-    private fun updateSummary(gid: Long) {
+    private fun updateSummary(gid: Long): String {
         room(gid,true)
         val all=db.rows("SELECT status,completed_at FROM settlement_units WHERE gathering_id=:g","g" to gid)
         val state=SettlementWorkflow.summary(all.map{it.text("status")})
         val completed=if(state=="COMPLETED") all.mapNotNull{it.instant("completed_at")}.maxOrNull() else null
         db.update("UPDATE gatherings SET status=:s,completed_at=:c,delete_scheduled_at=:d,last_activity_at=:n WHERE id=:g","s" to state,"c" to completed,"d" to completed?.plusSeconds(7*86400L),"n" to Instant.now(),"g" to gid)
+        return state
     }
     fun create(uid: Long, headcount: Int? = null): Map<String,Any?> {
         AutoSettlementPolicy.validateHeadcount(headcount)
@@ -216,15 +217,33 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         db.update("UPDATE settlement_units SET status=:state,completed_at=:n,auto_settlement_error=NULL WHERE id=:id","state" to state,"n" to if(state=="COMPLETED") Instant.now() else null,"id" to id)
         val host=d.first.first{it.id==u.hostId}
         event(gid,id,"SETTLED",if(automatic) "모두 응답해서 자동으로 계산했어요" else "${host.name}님이 담당 차수를 정산했어요")
-        preview.transfers.groupBy{it.from}.forEach{(sender,transfers)->
-            val first=transfers.first();val recipient=d.first.first{it.id==first.to}
-            val body="${recipient.name}님께 ${NotificationText.money(first.amount)}원" + if(transfers.size>1) " 외 ${transfers.size-1}건" else " 보내주세요"
-            notify(gid,id,"SETTLED",body,d.first.filter{it.id==sender}.map{it.userId},if(automatic) 0 else actor)
+        val transfersBySender=preview.transfers.groupBy{transfer->transfer.from}
+        d.first.filter{participant->participant.id in u.participantIds && participant.id!=u.hostId}.forEach{participant->
+            val transfers=transfersBySender[participant.id].orEmpty()
+            val first=transfers.firstOrNull()
+            val body=if(first==null) "담당 차수의 정산금액을 확인해주세요" else {
+                val recipient=d.first.first{person->person.id==first.to}
+                "${recipient.name}님께 ${NotificationText.money(first.amount)}원" + if(transfers.size>1) " 외 ${transfers.size-1}건" else " 보내주세요"
+            }
+            notify(gid,id,"SETTLED",body,listOf(participant.userId),if(automatic) 0 else actor)
         }
         notify(gid,id,"SETTLED_HOST","계산이 끝났어요. 단톡방에 입금 요청을 보내주세요",listOf(host.userId),0)
-        preview.lines.filter{it.auto}.forEach{line->notify(gid,id,"AUTO_RESPONDED","응답이 없어 참석·알코올로 계산됐어요",d.first.filter{it.id==line.participantId||it.id==u.hostId}.map{it.userId},actor)}
-        if(state=="COMPLETED") notify(gid,id,"COMPLETED","정산 완료! 7일 뒤 사라져요",d.first.filter{it.id in u.participantIds}.map{it.userId},actor)
-        updateSummary(gid)
+        val autoParticipantIds=preview.lines.filter{line->line.auto}.map{line->line.participantId}.toSet()
+        if(autoParticipantIds.isNotEmpty()) {
+            d.first.filter{participant->participant.id in autoParticipantIds && participant.id!=u.hostId}.forEach{participant->
+                notify(gid,id,"AUTO_RESPONDED","응답이 없어 참석·알코올로 계산됐어요",listOf(participant.userId),actor)
+            }
+            notify(gid,id,"AUTO_RESPONDED","자동응답으로 계산된 사람이 있어요",listOf(host.userId),actor)
+        }
+        // 계좌 상태는 결제자별 조회 대신 한 번에 모은다. 알림 생성 때문에 전체 정산을 막지 않는다.
+        val recipientUserIds=d.first.filter{participant->preview.transfers.any{transfer->transfer.to==participant.id}}
+            .map{participant->participant.userId}.filter{userId->userId>0}.distinct()
+        if(recipientUserIds.isNotEmpty()) {
+            val missingPayoutUsers=db.rows("SELECT id FROM users WHERE id IN (:ids) AND payout_encrypted IS NULL","ids" to recipientUserIds).map{row->row.long("id")}
+            notify(gid,id,"PAYOUT_MISSING","입금을 받을 계좌를 등록해주세요",missingPayoutUsers,actor)
+        }
+        val gatheringState=updateSummary(gid)
+        if(state=="COMPLETED") notify(gid,id,"COMPLETED",NotificationText.completed(gatheringState=="COMPLETED"),d.first.filter{it.id in u.participantIds}.map{it.userId},actor)
     }
     fun headcount(gid: Long,id: Long,uid: Long,headcount: Int) {
         AutoSettlementPolicy.validateHeadcount(headcount)
@@ -254,7 +273,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         db.update("UPDATE settlement_unit_members SET status='REMOVED' WHERE settlement_unit_id=:s AND participant_id=:p","s" to id,"p" to pid)
         db.update("DELETE a FROM round_responses a JOIN rounds r ON r.id=a.round_id WHERE r.settlement_unit_id=:s AND a.participant_id=:p","s" to id,"p" to pid)
         event(gid,id,"REMOVED","${participant.name}님은 $reason")
-        notify(gid,id,notificationType,"$title 술자리: $reason",listOf(participant.userId),actor)
+        notify(gid,id,notificationType,if(notificationType=="REMOVED") NotificationText.removed(title) else "$title: $reason",listOf(participant.userId),actor)
     }
     private fun autoSettle(gid: Long,id: Long) {
         val original=unit(gid,id)
@@ -307,9 +326,9 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
     private fun markComplete(gid: Long,id: Long,uid: Long) {
         room(gid,true)
         db.update("UPDATE settlement_units SET status='COMPLETED',completed_at=:n WHERE id=:s","n" to Instant.now(),"s" to id)
-        event(gid,id,"COMPLETED","담당 차수의 정산이 완료됐어요");updateSummary(gid)
+        event(gid,id,"COMPLETED","담당 차수의 정산이 완료됐어요");val gatheringState=updateSummary(gid)
         val d=data(gid);val u=unit(gid,id,false)
-        notify(gid,id,"COMPLETED","정산 완료!",d.first.filter{it.id in u.participantIds}.map{it.userId},uid)
+        notify(gid,id,"COMPLETED",NotificationText.completed(gatheringState=="COMPLETED"),d.first.filter{it.id in u.participantIds}.map{it.userId},uid)
     }
     fun transfer(tid: Long,uid: Long,action: String) {
         user(uid)
@@ -326,7 +345,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         val code=when(action){"sent"->"SENT";"confirm"->"CONFIRMED";else->"NOT_RECEIVED"}
         event(gid,u.id,code,"${p.name}님이 ${when(action){"sent"->"보냈어요";"confirm"->"입금을 확인했어요";else->"아직 입금을 확인하지 못했어요"}}")
         val target=if(action=="sent") fresh.long("recipient_participant_id") else fresh.long("sender_participant_id")
-        notify(gid,u.id,code,"송금 상태가 바뀌었어요",data(gid).first.filter{it.id==target}.map{it.userId},uid)
+        notify(gid,u.id,code,NotificationText.transfer(code,p.name),data(gid).first.filter{it.id==target}.map{it.userId},uid)
         if(action=="confirm"&&db.rows("SELECT id FROM settlement_transfers WHERE settlement_id=:s AND status<>'CONFIRMED'","s" to fresh.long("settlement_id")).isEmpty()) markComplete(gid,u.id,uid) else touch(gid)
     }
     private fun roundView(r: RoundInput)=mapOf("id" to r.id,"settlementUnitId" to r.unitId,"seq" to r.seq,"total" to r.total,"payerParticipantId" to r.payerId,"drinks" to r.drinks)
@@ -399,11 +418,11 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         val targets=db.rows("SELECT DISTINCT s.gathering_id,s.settlement_unit_id,p.user_id FROM settlement_transfers t JOIN settlements s ON s.id=t.settlement_id JOIN participants r ON r.id=t.recipient_participant_id JOIN participants p ON p.id=t.sender_participant_id WHERE r.user_id=:u AND t.status<>'CONFIRMED' AND p.user_id IS NOT NULL","u" to uid)
         targets.map{it.long("gathering_id")}.distinct().sorted().forEach{room(it,true)}
         val old=db.rows("SELECT payout_encrypted FROM users WHERE id=:u FOR UPDATE","u" to uid).singleOrNull()?.get("payout_encrypted")
-        user(uid)
+        val accountOwner=user(uid)
         db.update("UPDATE users SET payout_encrypted=:p WHERE id=:u","p" to cipher.encrypt(mapper.writeValueAsString(value)),"u" to uid)
         // 탈퇴와 같은 Gathering→users 순서로 FK 소식의 잠금 승격도 예방한다.
         if(old==null) targets.forEach{
-            notify(it.long("gathering_id"),it.long("settlement_unit_id"),"PAYOUT_REGISTERED","계좌가 등록됐어요. 이제 보낼 수 있어요",listOf(it.long("user_id")),uid) }
+            notify(it.long("gathering_id"),it.long("settlement_unit_id"),"PAYOUT_REGISTERED",NotificationText.payoutRegistered((accountOwner["display_name"] ?: accountOwner["nickname"] ?: "결제자").toString()),listOf(it.long("user_id")),uid) }
         return mapOf("payout" to value)
     }
     fun message(gid: Long,uid: Long,request: MessageRequest): Map<String,Any?> {

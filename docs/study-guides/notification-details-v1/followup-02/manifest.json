@@ -1,0 +1,13 @@
+{
+  "pr_url": "https://github.com/owencity/jungsan_attack/pull/35",
+  "base": "0c7b772310d18c6d1730428d1e63d49c0bfca025",
+  "source_head": "edbb9914d6e132ea85196ba65b7c96378cbb06f5",
+  "hashes": {
+    "after/docs/API.md": "ca580ebed580fd7465d7138ab7703494eac2207fe9981be5c12b94f929ffba3f",
+    "after/scripts/verify-notifications.py": "1013e434a659e7143c08ad431942291e8a35e411d0fe60b3e28f239119603c3e",
+    "before/docs/API.md": "6179106d62b88be53c4b37f0fe728df62a8205924a9786106a6fd3726a439818",
+    "before/scripts/verify-notifications.py": "7b87190e7bc4e77577a7eb38658a6a5558c0c406dcca9be4fe689104540d007e",
+    "changes.patch": "71bbf9a58e35b95992b3c0efc0ad5ad73bb9f890c9aff322815ef299ebf8980a",
+    "guide.md": "95740708520327628fce831ebe54aac6f234e9c11702678831b256dcbe31dc08"
+  }
+}

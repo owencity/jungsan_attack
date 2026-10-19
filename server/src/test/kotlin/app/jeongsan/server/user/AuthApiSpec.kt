@@ -4,14 +4,14 @@ import app.jeongsan.server.common.GlobalExceptionHandler
 import app.jeongsan.server.common.LoginUserArgumentResolver
 import app.jeongsan.server.common.UnauthenticatedException
 import app.jeongsan.server.common.ApiException
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonMapperBuilder
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import jakarta.servlet.http.Cookie
 import org.mockito.Mockito
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -23,8 +23,7 @@ class AuthApiSpec : StringSpec({
     val jwt=JwtService("01234567890123456789012345678901",30)
     val mvc=MockMvcBuilders.standaloneSetup(AuthController(flow,service,"https://web.test/jungsan","https://web.test",true,30),UserController(service,deletion,true))
         .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt)).setControllerAdvice(GlobalExceptionHandler())
-        .setMessageConverters(MappingJackson2HttpMessageConverter(jacksonObjectMapper().findAndRegisterModules()
-            .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS))).build()
+        .setMessageConverters(JacksonJsonHttpMessageConverter(jacksonMapperBuilder().build())).build()
     val web=Cookie(AuthController.COOKIE_NAME,jwt.issue(12)); val app=jwt.issue(12,"APP")
     val state="s".repeat(43)
     beforeTest { Mockito.reset(flow,service,deletion) }
