@@ -1,0 +1,1454 @@
+diff --git a/DEVLOG.md b/DEVLOG.md
+index e78973f..6f64474 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,11 @@
+ # 개발 결정 로그
+ 
++## [2026-10-19] Python 개발과 독립해 Spring 영수증 연결을 먼저 만든다
++- 문제: Python OCR 내부 API가 있어도 앱은 사용자 인증·총무 권한·업로드 제한·오류 변환을 갖춘 Spring 경로가 없어 사용할 수 없었다.
++- 고려한 대안: Python 완성까지 대기, Python을 앱에 공개, 현재 v2 계약에 맞춰 Spring 어댑터와 가짜 내부 서버 검증을 먼저 만든다.
++- 선택 이유·트레이드오프: CTO가 선행 개발을 요청했다. 마지막 방법으로 후보 반환만 연결하고 기존 확인/차수 저장을 유지한다. 단일 프로세스의 메모리 제한을 사용하며 새 의존성·큐·DB 스키마를 추가하지 않는다.
++- 아쉬운 점: 미설정 OCR은 503으로 닫는 가정이며 부분 설정은 기동 실패다. 실제 Python·ARM·촬영 화면·업로드 지연/부하는 후속이고 HTTP 시간 초과가 Python CPU 작업을 중단하지는 않는다.
++
+ ## [2026-10-18] 저장 데이터가 있는 Boot 3에서 업그레이드를 검증한다
+ - 문제: Boot 4의 새 DB 기동은 통과했지만 이전 Liquibase 체크섬·암호화 계좌·정산·인증 토큰이 남은 상태의 전환은 검증하지 못했다.
+ - 고려한 대안: 새 DB 검증만 유지, 운영 DB를 복제, 확정된 Boot 3 소스로 CI 전용 DB에 가상 데이터를 만들고 Boot 4가 이어 사용한다.
+diff --git a/docs/ADR/000-index.md b/docs/ADR/000-index.md
+index 326adbc..8ad0cde 100644
+--- a/docs/ADR/000-index.md
++++ b/docs/ADR/000-index.md
+@@ -26,6 +26,7 @@
+ | [019](019-onetime-gathering-no-group.md) | 술자리는 일회용이다. 모임 계층을 걷어내고 완료 7일 뒤 삭제한다 | 확정 |
+ | [020](020-independent-settlement-units.md) | 같은 술자리의 참여자는 공유하고 총무별 담당 차수·명단·정산을 독립시킨다 | 확정 방향 · 구현 전 |
+ | [022](022-spring-boot-4.md) | Boot 4.1.1·Jackson 3로 올리고 사용하지 않는 Cloud·QueryDSL 빌드 설정을 제거한다 | CTO 선택 · 이 PR에서 검증 |
++| [023](023-receipt-spring-bridge.md) | 단위별 총무만 Python OCR을 호출하고 저장 없는 확인 후보를 받는다 | Spring 선행 구현 · 실제 모델/운영 연결 후속 |
+ 
+ > **`006` → `013` → `014` 이력.** `013`이 한때 `006`을 대체했으나, 그 근거가
+ > "실제 필요"가 아니라 **"학습 목적"** 이었다. `014`가 이를 뒤집어 MVP를 모놀리스로
+diff --git a/docs/ADR/023-receipt-spring-bridge.md b/docs/ADR/023-receipt-spring-bridge.md
+new file mode 100644
+index 0000000..a255fb3
+--- /dev/null
++++ b/docs/ADR/023-receipt-spring-bridge.md
+@@ -0,0 +1,53 @@
++# ADR-023 — Python OCR 개발과 독립된 Spring 후보 추출 연결
++
++- 상태: 최소 연결 구현 · Python 실서비스/ARM 실측과 배포는 후속
++- 날짜: 2026-10-19
++
++## 맥락
++
++CTO가 Python 개발과 병행해 Spring 연결을 먼저 구현하도록 요청했다. Python PR #34의
++57d1ee9는 바이너리 업로드와 schema v2 후보 응답을 제공한다. Python 브랜치의 ADR-021은
++Caddy 결정 번호와 충돌하므로 이 연결 결정은 023으로 분리하고 병합 시 번호를 다시 확인한다.
++
++## 결정
++
++단위별 총무·OPEN 권한을 확인한 Spring API가 내부 RestClient로 사진을 전달하고 검증한 후보만
++돌려준다. 사진·OCR 원문·후보는 저장하지 않으며 기존 차수 저장·정산과 분리한다. 사용자 입력으로
++내부 주소나 키를 받지 않는다. HTTP/JDBC/JSON DTO는 공유 어댑터, 업무 권한·업로드 한도·횟수
++정책은 Java/Kotlin 독립 구현 및 기대값 비교 대상이다. 계산 엔진·스키마·새 의존성은 변경하지 않는다.
++
++설정 두 개가 모두 없으면 OCR만 닫고 부분·오류 설정은 기동 시 거절한다. 기동 중 설정 변경은
++지원하지 않는다. JVM 안에서 요청 한 개·사용자당 60초 3회·최대 만 개 창으로 제한한다.
++최대 8MiB 본문·256KiB 응답·연결 2초/읽기 45초를 사용하며 리다이렉트·자동 재시도·대기열은 없다.
++외부 호출 동안 DB 트랜잭션을 유지하지 않고 반환 직전 권한을 다시 확인한다.
++공통 multipart 해석은 resolve-lazily로 지연한다. 기존 multipart 공개 계약은 없으며 OCR 핸들러는
++parts/parameter에 접근하지 않아 잘못된 multipart도 인증·매체 검사 전에 임시 파일을 만들지 않는다.
++근거: [Boot 속성](https://docs.spring.io/spring-boot/appendix/application-properties/index.html).
++
++## 근거
++
++모델 완료까지 Spring 작업을 기다리는 방식과 독립 모의 서버 검증을 비교했다. 이미 존재하는
++내부 계약에 맞춰 먼저 만들면 Python의 추론 시간·모델 설치와 독립적으로 인증·자원 한도·JSON
++경계를 검증할 수 있다. 비동기 큐·Redis/Kafka 도입은 측정 근거가 없으므로 이번 작업에 넣지 않는다.
++기존 ADR-016~018의 제안·재검토 상태를 이 연결만으로 확정하지 않는다.
++
++## 대가
++
++동기 호출 동안 요청 스레드가 점유되고 모델 CPU 작업은 클라이언트 시간 초과로 중단되지 않는다.
++업로드의 바이트 수는 제한하지만 느린 전송의 전체 경과 시간은 여기서 보장하지 않는다.
++프로세스 재시작 시 횟수는 초기화되고 다중 인스턴스는 한도를 공유하지 않는다. 추론 뒤 권한
++재검사는 변경을 발견하는 읽기이며, 응답 직후 상태 변경까지 막는 잠금 보장은 아니다.
++사진 속 이름은 후보 상품명에 포함될 수 있다. 명시 필드 제한이 사진 내용 익명화를 뜻하지 않는다.
++
++## 재검토 조건
++
++실제 OCR CPU/메모리·ARM 지연·동시 사용·시간 초과 비율과 실제 사진 정확도를 측정한 뒤 동기
++시간 제한·인스턴스 수·큐 필요성을 결정한다. 외부 서비스명/다른 런타임을 쓰면 주소 허용 목록과
++격리를 함께 검토한다. Python을 먼저 배포하고 내부 health/키/응답 계약을 확인한 뒤 Spring 환경
++설정을 연결한다. 기본 compose와 운영 환경은 이번 구현으로 활성화하지 않는다.
++
++## 확인한 프론트 변경
++
++origin/main 3eb5254에서 열린 FC-005/009/010/011/014/015/020/021을 확인했다. FC-015의 단위별
++권한을 적용하고 FC-020의 정산 상태를 OCR로 바꾸지 않는다. 나머지는 이 추출의 신규 요구가 아니며
++기존 출시 후속을 유지한다. FC-012는 결정 필요, FC-023은 프론트 목표 인원 수정 후속으로 둔다.
+diff --git a/docs/API.md b/docs/API.md
+index e9c3d9c..03568aa 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1,4 +1,13 @@
+-# 정산어택 — API 계약 · v12
++# 정산어택 — API 계약 · v13
++
++> **v13 변경(2026-10-19)** — 정산 단위 총무의 영수증 추출 후보 API를 추가한다.
++>
++> | 절 | 변경 |
++> |---|---|
++> | 영수증 추출 | POST U/receipts/extract, JPEG/PNG 8MiB, 인증·총무·OPEN 검증 |
++> | 오류·제한 | OCR/IMAGE 코드, 사용자 3회/분·단일 추출, Retry-After·시간 초과 |
++>
++> 상세 요청·응답·오류 계약은 [RECEIPT_OCR.md의 Spring 공개 연결 계약](RECEIPT_OCR.md#spring-공개-연결-계약)을 따른다. 결과는 총무 확인용이며 저장·정산하지 않는다.
+ 
+ > **v12 변경(2026-10-14)** — 내부 알림의 대상·문구를 FC-005·010·011과 단위별 정산에 맞춘다.
+ >
+@@ -335,6 +344,14 @@ GET /api/v1/gatherings
+ | `ALREADY_SCHEDULED` | 409 | 이미 삭제 예정인 모임 |
+ | `PARTICIPANT_HAS_PAYMENT` | 409 | 입금 표시된 사람은 명단에서 못 뺀다 |
+ | `TOO_MANY_REQUESTS` | 429 | shareToken 무작위 대입 방어 |
++| `IMAGE_INVALID` / `IMAGE_SIZE_INVALID` / `IMAGE_DIMENSIONS_TOO_LARGE` | 400 | 빈·깨진 사진 또는 디코딩 픽셀 제한 |
++| `IMAGE_TOO_LARGE` | 413 | 영수증 본문 8MiB 초과 |
++| `IMAGE_FORMAT_UNSUPPORTED` | 415 | JPEG/PNG 이외 형식 |
++| `OCR_REQUEST_LIMIT` | 429 | 사용자당 60초 3회 초과, `Retry-After` 초 |
++| `OCR_BAD_RESPONSE` | 502 | 내부 OCR 응답의 크기·형식·schema v2 계약 위반 |
++| `OCR_BUSY` | 503 | 단일 추출 슬롯 또는 제한된 사용자 창 사용 중, `Retry-After: 2` |
++| `OCR_UNAVAILABLE` | 503 | OCR 미설정·연결 실패·내부 인증 설정 오류 |
++| `OCR_TIMEOUT` | 504 | 내부 OCR 연결·소켓 읽기 시간 초과 |
+ | `NOT_GROUP_OWNER` | 403 | 그룹 관리 기능은 OWNER 전용 (§3-b) |
+ | `ALREADY_GROUP_MEMBER` | 409 | 이미 그룹 멤버 (§3-b) |
+ | `INVALID_GROUP_TOKEN` | 404 | 그룹 초대 링크가 틀리거나 재발급됨 (§3-b) |
+@@ -1440,3 +1457,15 @@ Core v2 코드: `TOTAL_NOT_POSITIVE`, `ALCOHOL_NEGATIVE`, `ALCOHOL_EXCEEDS_TOTAL
+ | 409 | NO_ROUNDS / REMOVE_HOST / REMOVE_PAYER | 차수 없음 또는 보호 명단 제외 시도 |
+ | 409 | PAYOUT_MISSING / TRANSFER_ALREADY_SENT / INVALID_TRANSFER_TRANSITION | 수취 계좌 없음 / sentAt·confirmedAt 이력으로 취소 금지 / 송금 상태 불일치 |
+ | 400 | MALFORMED_REQUEST | 잘못된 명단·응답 타입·계좌·본문 |
++
++## 0.7 영수증 후보 추출 (v13)
++
++`POST /api/v1/gatherings/{gid}/settlement-units/{sid}/receipts/extract`
++
++WEB 쿠키 또는 APP Bearer 인증, 해당 술자리·단위의 ACTIVE 참여자이자 총무, 단위 OPEN일 때만
++허용한다. 단위가 해당 술자리 아래 없으면 404, 참여/총무 권한은 403, OPEN이 아니면 409다.
++본문은 `image/jpeg` 또는 `image/png` 바이너리이며 최대 8MiB다. multipart·URL 업로드는 없다.
++200은 schemaVersion 2 후보 DTO + `Cache-Control: no-store`이며 필드·nullable·범위·확인 사유는
++[영수증 계약](RECEIPT_OCR.md)의 요청/응답 절을 따른다. `requiresConfirmation`은 항상 true다.
++원본과 후보를 저장하지 않고 정산 입력·revision을 변경하지 않는다. 추출 뒤 사용자 확인·기존 차수
++저장 API를 거친다. OCR 오류는 §1.4의 IMAGE/OCR 코드이며 429/503 busy의 Retry-After는 초다.
+diff --git a/docs/RECEIPT_OCR.md b/docs/RECEIPT_OCR.md
+new file mode 100644
+index 0000000..da78bf4
+--- /dev/null
++++ b/docs/RECEIPT_OCR.md
+@@ -0,0 +1,160 @@
++# 영수증 추출 — Python 내부 API v2
++
++> **2026-10-19 Spring 선행 연결:** Python PR #34의 `57d1ee9` 계약 스냅샷을 사용한다. Python 코드·모델은 이 브랜치에서 바꾸지 않는다.
++> 아래의 "Spring 후속" 표기는 Python 초기 구현 시점 기록이다. 현재 Spring 계약은 다음 절을 따른다.
++
++## Spring 공개 연결 계약
++
++- `POST /api/v1/gatherings/{gid}/settlement-units/{sid}/receipts/extract`.
++- 기존 WEB 쿠키/APP Bearer 인증. 해당 술자리·단위의 활성 참여자이자 총무, OPEN 상태만 허용한다.
++- JPEG/PNG 바이너리 본문, 최대 8MiB. multipart·URL·PDF는 받지 않는다. 인증/권한 확인 뒤 제한 길이만 메모리에서 읽는다. 사진·원문·추출 후보를 DB나 파일에 저장하지 않는다.
++- 사용자당 60초 3회, 단일 Spring 프로세스에서 추출 요청 1개. 대기열·자동 재시도는 없다. 비인증·권한 오류 및 전역 busy 거절은 횟수를 소비하지 않는다. 입장한 요청은 이미지/추론 실패도 횟수에 포함한다.
++- Python의 schemaVersion 2 JSON을 명시된 필드로만 읽는다. 알 수 없는 추가 필드는 제거하며 null/0을 서로 바꾸지 않는다. schemaVersion·확인 플래그·숫자 타입/범위·코드 형식이 잘못되면 502다. 응답은 256KiB 이하이며 항상 requiresConfirmation=true다.
++- 결과는 입력 후보뿐이다. 총무 확인 뒤 기존 차수 저장 API를 호출한다. OCR 자체로 revision·타임라인·차수·정산·송금을 바꾸지 않는다. 외부 호출 중 DB 트랜잭션/행 잠금을 유지하지 않고 결과 반환 전 권한·OPEN을 재확인한다.
++- 내부 연결은 환경 설정의 http://127.0.0.1:포트, localhost, [::1] 또는 receipt-ocr 서비스명만 허용한다. 사용자 제공 URL은 받지 않는다. 키는 사용자 토큰과 분리해 Python으로만 보낸다.
++- 연결 대기 2초, 소켓 읽기 대기 45초. 이 시간 초과가 Python CPU 추론 중단을 보장하지 않는다. 단건 응답을 기다리는 동기 계약이며 실제 ARM 지연/부하는 별도 검증이다.
++- `RECEIPT_OCR_BASE_URL`·`RECEIPT_OCR_SERVICE_KEY` 모두 없으면 OCR만 503이다. 둘 중 일부만 설정하거나 URL/키가 잘못되면 기동 실패다. 운영 기본값·공인 Python 포트를 추가하지 않는다. 실제 배포 설정 연결은 Python 실행 환경 확정 뒤 진행한다.
++
++| HTTP | 공개 code | 조건 |
++|---|---|---|
++| 400 | IMAGE_INVALID / IMAGE_SIZE_INVALID / IMAGE_DIMENSIONS_TOO_LARGE | 빈/깨진 이미지 또는 Python 디코더 제한 |
++| 413 | IMAGE_TOO_LARGE | 8MiB 초과 |
++| 415 | IMAGE_FORMAT_UNSUPPORTED | 요청 타입/시그니처가 JPEG/PNG가 아님 |
++| 429 | OCR_REQUEST_LIMIT | 사용자별 제한, Retry-After 남은 초 |
++| 502 | OCR_BAD_RESPONSE | 내부 응답 타입·크기·스키마 불일치 |
++| 503 | OCR_BUSY | 로컬/Python 처리 중, Retry-After 2 |
++| 503 | OCR_UNAVAILABLE | 미설정·연결 실패·내부 인증/추론 실패 |
++| 504 | OCR_TIMEOUT | 내부 연결/읽기 시간 초과 |
++
++401/403/404/409는 기존 인증·참여자·총무·단위 상태 오류를 따른다. Python의 실제 형식 오류 400은 공개 415로 정규화한다.
++실제 Python 모델과의 E2E·OCI ARM·웹/앱 촬영 화면 연결·운영 배포는 이 선행 연결의 가짜 서버 검증과 구분한다.
++
++> 2026-10-14 · 초기 구현. 사용자 승인: PaddleOCR 한국어 CPU + Python 추출 + FastAPI.
++> Spring 공개 API·앱 연결·운영 배포·대표 표본 정확도 검증은 후속이다. 공개 웹 사례 점검은 별도 기록한다.
++> v2는 사용자 사전 팩트체크를 반영한다. v1의 브랜드별 기본 용기를 제거하고 명시된 용기만 읽는다.
++
++## 경계
++
++앱 → Spring(사용자 인증·총무 권한·OPEN 정산 단위) → Python → 확인용 입력 → 총무 확인 → 기존 차수 저장.
++Python은 사용자·Gathering·SettlementUnit·DB를 모르며 정산·송금·저장을 수행하지 않는다.
++기존 Java/Kotlin 기능을 이 Python에 중복 구현하지 않는다. 최초 코드는 독립 폴더이며 별도 저장소로 이동 가능하다.
++사진·원문을 저장하지 않는 최소 구현으로 시작한다. 장기 보관·학습 활용을 승인한 것은 아니다.
++
++## 요청과 응답
++
++Python만 제공하는 `POST /api/v1/receipts/extract`. **현재 Spring에는 이 URL이 없다.**
++Content-Type image/jpeg 또는 image/png의 바이너리 본문. multipart·URL·PDF는 받지 않는다.
++내부 `X-Receipt-Service-Key`가 필요하다. 공개 로그인·쿠키/Bearer 정책을 대체하는 헤더가 아니다.
++32자 이상 ASCII 비밀값 `RECEIPT_SERVICE_KEY`는 필수, 없음/짧은 값은 기동 실패.
++
++```json
++{
++  "schemaVersion": 2,
++  "total": 50000,
++  "drinks": [
++    {
++      "name": "참이슬 (세부형 미상)", "category": "SOJU", "unit": "UNKNOWN",
++      "unitPrice": 5000, "quantity": 3, "lineAmount": 15000,
++      "servingType": "UNKNOWN", "volumeMl": null, "bottleCount": null,
++      "confidence": 0.98, "reviewReasons": ["UNKNOWN_CONTAINER"]
++    }
++  ],
++  "warnings": ["ITEMS_NEED_REVIEW"],
++  "requiresConfirmation": true
++}
++```
++
++- total/unitPrice/lineAmount: 정수 원 또는 null. quantity: 정수 또는 null.
++- 추출 범위: 금액 0~10억 원(품목 단가·금액은 양수), 수량 1~1000. 운영 도메인 제한은 Spring/Core가 별도로 검증한다.
++- category: SOJU / BEER / MAKGEOLLI / CHEONGJU_YAKJU / WINE / WHISKY_SPIRIT / COCKTAIL_MIXED / OTHER_ALCOHOL / UNKNOWN.
++  내부 입력 후보 분류이며 법정 주종 확정값이 아니다. NON_ALCOHOL·NON_BEVERAGE 사전 행은 반환하지 않는다.
++- unit: BOTTLE / CAN / GLASS / PITCHER / PACK / UNKNOWN. 브랜드만으로 병을 가정하지 않는다.
++  기존 DrinkItem에는 unit이 없으므로 병 이외·미상은 총무가 수동 확인·매핑한 뒤 저장한다.
++- servingType: DRAFT / UNKNOWN. 일반 생맥 메뉴에만 DRAFT, 생막걸리·브랜드의 생드래프트 이름으로 추측하지 않는다.
++- volumeMl: 명시된 용량의 정수 mL 또는 null. 1~100,000mL, 정수 mL로 표현 못하는 소수는 null·확인 사유.
++  L은 정확히 1000배 변환한다. 단위 없는 500·도수·제품명의 25·1000억은 용량/수량으로 추측하지 않는다.
++- bottleCount: 병 용기와 양수 수량이 명시되고 관련 충돌이 없을 때 수량. 명확한 잔·캔·피처·생맥은 0,
++  용기·수량 미상, 세트·팩·취소, 낮은 신뢰도·수량/금액 충돌은 null이다. UNKNOWN 주종은 null이다.
++  항목의 null을 0으로 간주해 전체 병 수 합계를 확정하지 않는다. 모든 필드는 확인용 후보다.
++- confidence: 품목 행의 가장 낮은 OCR 점수. 필드가 맞을 확률을 보증하는 값은 아니다.
++- 항상 사람이 확인한다. null을 0으로 바꾸거나 경고 없는 후보를 자동 저장·자동 정산하지 않는다.
++- 동일 이름이 여러 구매 행이면 각각 반환한다. 병 수만 합치면 단가 차이가 지워질 수 있다.
++- 원본 OCR 텍스트·카드번호·승인번호·계좌·이미지 메타데이터는 응답하지 않는다.
++
++## 확인 사유
++
++| 필드 | 값 |
++|---|---|
++| drinks[].reviewReasons | COLUMN_HEADER_MISSING, ITEM_VALUES_MISSING, ITEM_UNIT_PRICE_MISSING, ITEM_DISCOUNT_PRESENT, NUMERIC_REGION_RECOGNIZED, ITEM_OUT_OF_RANGE, ITEM_AMOUNT_MISMATCH, LOW_CONFIDENCE, UNIT_CONFLICT, UNIT_REQUIRES_MAPPING, UNKNOWN_CONTAINER, UNKNOWN_CATEGORY, QUANTITY_INVALID_OR_CONFLICT, VOLUME_INVALID_OR_CONFLICT, COMBO_OR_PROMOTION, RETURN_OR_CANCEL |
++| warnings | OCR_NO_TEXT, TOTAL_NEEDS_REVIEW, TOTAL_NOT_FOUND, TOTAL_CONFLICT, NO_DRINK_ITEMS, ITEMS_NEED_REVIEW, DRINK_AMOUNT_EXCEEDS_TOTAL, MULTIPLE_RECEIPTS_SUSPECTED |
++
++총액 후보가 충돌하면 null이다. 품목 금액 불일치는 읽은 후보와 사유를 함께 반환한다.
++음식값이 포함된 총액과 술값은 같을 필요가 없다. 술값 초과만 모순으로 표시한다.
++미등록 주류·OCR에서 아예 놓친 품목은 검출 보장을 하지 못하므로 사람 확인은 항상 필요하다.
++
++## 사전·숫자 처리
++
++- 실행 사전은 `receipt-ocr/data/drinks.md`의 4열 또는 5열 표다. 정책·공식 출처는
++  `receipt-ocr/docs/receipt_alcohol_ocr_dictionary.md`에 분리했다. 현재 147개 정규화 표기다.
++- 단위는 표기 자체에 근거가 있어야 한다. `테라 | 병`처럼 브랜드의 대표 포장을 지정한 사전은 실행을 거절한다.
++- 완전 일치 상품명에서 명시 단위·용량·수량 표현만 분리한다. 알 수 없는 접미어를 버려 짧은 브랜드에 매칭하지 않는다.
++  카스 0.0·진로 토닉워터·테라 제로는 긴 전체 상품명을 보호하고 일반 주류로 반환하지 않는다.
++- 일반 생맥 표기와 사전의 정확한 BEER 브랜드가 괄호로 연결된 `생맥주(카스300cc)`는 브랜드 표시명·DRAFT·300mL로 읽는다.
++  괄호 안이 비주류·비음료·미등록 이름이거나 용기가 지정된 제품이면 조합하지 않는다. 잔 수·병 용기를 추측하지 않는다.
++- 신뢰 가능한 `단가 수량 금액`, `수량 금액`, `수량 할인 금액` 헤더 순서를 따른다. `단 가`처럼 분리된 글자는 공백만 제거한다.
++  단가가 없는 표는 quantity·lineAmount만 읽고 unitPrice=null + ITEM_UNIT_PRICE_MISSING이다. 가격으로 수량·단가를 역산하지 않는다.
++  할인 열의 0은 허용하고 양수 할인은 ITEM_DISCOUNT_PRESENT로 표시한다. 할인 전후 가격의 의미를 추측하지 않는다.
++  헤더 없이도 `2병`·`수량 2`·`x2`는 읽되 가격은 채우지 않는다.
++- 총액 라벨에 합계금액을 포함한다. 총매출액·할인금액·세금·승인번호를 총액 후보로 바꾸지 않는다.
++- 같은 가로 행에서 완전한 표 헤더의 수량·금액 열이 각각 반복되면 MULTIPLE_RECEIPTS_SUSPECTED와 total=null·drinks=[]를 반환한다.
++  두 영수증의 행을 한 주문으로 결합하지 않기 위한 보수적 확인 정책이다. 세로로 떨어진 반복 헤더는 계속 지원한다.
++- 최초 OCR의 명시된 표 헤더와 금액 행 좌표로 빈 수량·할인 칸만 재인식한다. 이미 읽힌 숫자/부호/상품명은 덮어쓰지 않는다.
++  분리된 숫자 헤더 또는 숫자 라벨 두 개가 합쳐진 상자만 지원하며 상품명까지 합쳐진 넓은 헤더는 추측하지 않는다.
++  숫자 라벨이 합쳐진 상자는 글자 위치 비율로 영역을 나누므로 비례 글꼴·기울기 등의 오차가 있을 수 있다.
++  사진의 실제 픽셀을 회색조·대비 보정·4배 확대하고 여백 16/32px로 같은 모델을 호출한다. 새로운 모델/의존성은 없다.
++  0.90 이상인 전체 정수 판독이 있어야 채택하고, 고신뢰도 숫자가 서로 다르거나 부호/소수/복수 텍스트이면 거절한다.
++  한 여백에서 미검출한 것은 다른 여백의 고신뢰도 판독을 지우지 않는다. 이는 독립 모델 합의나 정확도 보증이 아니다.
++  빈/균일한 칸·가로 구분선·잘린 잉크·겹친 글자는 재인식하지 않는다. 최대 8칸·16회 추가 호출이며 실패·한도 초과는 누락 값으로 남긴다.
++  채택한 숫자가 있는 품목은 NUMERIC_REGION_RECOGNIZED 확인 사유를 붙인다. 없는 숫자·할인 0·기본 수량 1을 만들지 않는다.
++  일부 열이 끝내 누락되면 재인식 수량·같은 행의 좌표 확인 금액만 보존하고 ITEM_VALUES_MISSING을 유지한다.
++  숫자 개수로 열을 밀어 채우거나 빠진 할인/단가를 역산하지 않는다. 같은 수량 칸의 근거가 중복되면 거절한다.
++- 음수·부호·소수 수량·잘못된 쉼표는 전체 숫자로 거절한다. `1.5병`을 5병, `-2병`을 2병으로 부분 매칭하지 않는다.
++- 팩 구성 수와 판매 수량을 구분한다. 명시된 팩 판매 수량은 보존하지만 낱병/캔 수로 환산하지 않는다.
++- 다중 줄 품목·좌표에 따른 완전한 표 인식·상호/광고 영역의 문서 분류는 아직 실제 샘플 개선 대상이다.
++
++## 오류
++
++이것은 내부 FastAPI 응답으로 `{"detail":{"code":"..."}}`다. Spring의 공개 오류 봉투로
++변환은 현재 Spring의 `HttpReceiptOcrClient`가 담당한다. 위 공개 계약과 오류 상태를 따른다.
++
++| HTTP | code | 의미 |
++|---|---|---|
++| 401 | SERVICE_AUTH_REQUIRED | 내부 키 없음/다름 |
++| 415 | IMAGE_FORMAT_UNSUPPORTED | 요청 미디어 타입이 JPEG/PNG가 아님 |
++| 413 | IMAGE_TOO_LARGE | 요청 스트림 8MiB 초과 |
++| 400 | IMAGE_SIZE_INVALID | 빈 파일 또는 디코더 크기 제한 |
++| 400 | IMAGE_INVALID | 디코딩 실패·깨진 사진 |
++| 400 | IMAGE_FORMAT_UNSUPPORTED | 실제 파일이 지원하지 않는 형식/다중 프레임 |
++| 400 | IMAGE_DIMENSIONS_TOO_LARGE | 1,600만 픽셀 초과 |
++| 503 | OCR_BUSY | 한 장 처리 중, Retry-After: 2 |
++| 503 | OCR_UNAVAILABLE | 추론 실패, 내부 오류 메시지 미노출 |
++
++## 가정·후속
++
++- 별도 저장소 경로가 지정되지 않아 브랜치의 receipt-ocr 폴더에 모았다. 독립 저장소로 이동할 때 이 폴더를 그대로 옮긴다.
++- 공개 웹 이미지 점검은 [Python 기준 검증 기록](https://github.com/owencity/jungsan_attack/blob/57d1ee955e890ce31c6d1f9eec361e130988dec9/receipt-ocr/docs/public-sample-validation.md)에 남긴다. 사용자의 직접 촬영·대표 표본 평가 전이므로 최종 엔진 채택·ARM 배포는 확정하지 않는다. Redis/Kafka/k3s를 발동하지 않는다.
++- 공개 Spring 업로드 API·권한·시간 제한·요청 제한은 선행 구현했다. 실제 Python 엔진·ARM 및 앱 촬영 화면 연결은 후속이다.
++- 8MiB·픽셀·한 장 동시 처리·신뢰도 0.85는 초기 자원/확인 정책이며 샘플 실측으로 조정한다.
++- 기준 main 3eb5254. 읽은 열림 FC: 005·009·010·011·014·015·020·021. 이번 Python 추출은 해당 FC를 완료하지 않으므로 상태를 유지한다.
++- FC-015의 단위별 권한과 FC-020의 자동 정산을 Spring 연결에 적용한다. 영수증 추출만으로 저장/확정을 유발하지 않는다.
++
++## 웹·앱 연결 시 주의
++
++업로드는 파일의 실제 JPEG/PNG 바이트와 해당 Content-Type을 전송한다. 웹은 기존 credentials
++include 쿠키, 앱은 기존 APP Bearer를 사용한다. multipart/FormData로 감싸지 않는다. 로컬 파일
++URL이나 서비스 키를 보내지 않는다. 후보의 UNKNOWN/null·경고를 표시하고 사용자 확인 뒤 기존
++차수 저장 API로 보낸다. API base는 기존과 같은 `https://jungsan-api.devkdk.com`이다.
++
++429/503의 Retry-After를 표시하되 자동 반복 업로드하지 않는다. 타임아웃에도 Python이 처리 중일
++수 있으므로 사용자의 명시적 재시도로 연결한다. 취소·화면 이동 시 앱의 요청 취소가 Python 추론
++중단까지 뜻하지 않는다. 실제 모델 설치·운영 내부 연결 전에는 OCR_UNAVAILABLE(503)이 정상이다.
+diff --git a/docs/pr-reviews/2026-10-19-receipt/.gitattributes b/docs/pr-reviews/2026-10-19-receipt/.gitattributes
+new file mode 100644
+index 0000000..fa1385d
+--- /dev/null
++++ b/docs/pr-reviews/2026-10-19-receipt/.gitattributes
+@@ -0,0 +1 @@
++* -text
+diff --git a/docs/pr-reviews/2026-10-19-receipt/local-results.json b/docs/pr-reviews/2026-10-19-receipt/local-results.json
+new file mode 100644
+index 0000000..378a708
+--- /dev/null
++++ b/docs/pr-reviews/2026-10-19-receipt/local-results.json
+@@ -0,0 +1,24 @@
++{
++  "base": "28ab9dd47f0ad6f8564b770176c7e6963f8bf67b",
++  "tests": {
++    "core": {
++      "tests": 54,
++      "failures": 0,
++      "errors": 0,
++      "skipped": 0
++    },
++    "server": {
++      "tests": 194,
++      "failures": 0,
++      "errors": 0,
++      "skipped": 0
++    }
++  },
++  "command": "gradlew :core:test :server:test :server:bootJar --no-daemon",
++  "result": "BUILD SUCCESSFUL",
++  "syntax": [
++    "Python AST",
++    "Bash -n"
++  ],
++  "database": "Not executed locally; GitHub Actions dedicated MySQL and mock OCR verification pending."
++}
+diff --git a/scripts/receipt-bridge-stub.py b/scripts/receipt-bridge-stub.py
+new file mode 100644
+index 0000000..fe6b757
+--- /dev/null
++++ b/scripts/receipt-bridge-stub.py
+@@ -0,0 +1,45 @@
++"""GitHub Actions 전용 OCR 계약 대역. 추론·사진 보관·외부 접속은 하지 않는다."""
++import json
++import os
++from http.server import BaseHTTPRequestHandler, HTTPServer
++from pathlib import Path
++
++assert os.environ.get("GITHUB_ACTIONS") == "true", "CI 전용이다."
++KEY = os.environ["RECEIPT_OCR_SERVICE_KEY"]
++FIXTURE = (Path(__file__).resolve().parents[1] / "server/src/test/resources/receipt/response-v2.json").read_bytes()
++calls = 0
++
++class Handler(BaseHTTPRequestHandler):
++    def log_message(self, *_args):
++        pass
++
++    def reply(self, status, body):
++        self.send_response(status)
++        self.send_header("Content-Type", "application/json")
++        self.send_header("Content-Length", str(len(body)))
++        self.end_headers()
++        self.wfile.write(body)
++
++    def do_GET(self):
++        if self.path == "/calls":
++            self.reply(200, json.dumps({"calls": calls}).encode())
++        else:
++            self.reply(404, b'{}')
++
++    def do_POST(self):
++        global calls
++        if self.path != "/api/v1/receipts/extract":
++            self.reply(404, b'{}')
++            return
++        if self.headers.get("X-Receipt-Service-Key") != KEY:
++            self.reply(401, b'{"detail":{"code":"SERVICE_AUTH_REQUIRED"}}')
++            return
++        length = int(self.headers.get("Content-Length", "0"))
++        if not 0 < length <= 8 * 1024 * 1024 or self.headers.get("Content-Type") not in ("image/jpeg", "image/png"):
++            self.reply(400, b'{"detail":{"code":"IMAGE_INVALID"}}')
++            return
++        self.rfile.read(length)
++        calls += 1
++        self.reply(200, FIXTURE)
++
++HTTPServer(("127.0.0.1", 18082), Handler).serve_forever()
+diff --git a/scripts/verify-receipt-bridge.py b/scripts/verify-receipt-bridge.py
+new file mode 100644
+index 0000000..98a8006
+--- /dev/null
++++ b/scripts/verify-receipt-bridge.py
+@@ -0,0 +1,140 @@
++"""CI 전용 실제 MySQL·Spring·모의 OCR 경계를 검증한다. 실제 Python 모델 검증은 아니다."""
++import base64
++import hashlib
++import hmac
++import http.client
++import json
++import os
++import subprocess
++import sys
++import time
++import uuid
++from urllib.error import HTTPError
++from urllib.request import Request, urlopen
++
++assert os.environ.get("GITHUB_ACTIONS") == "true", "CI 전용이다."
++BASE = "http://127.0.0.1:18081/api/v1"
++checks = 0
++disabled = sys.argv[1:] == ["disabled"]
++assert sys.argv[1:] in ([], ["disabled"])
++
++def sql(query):
++    result = subprocess.run(["docker", "exec", "jeongsan-v4-verification", "mysql", "--default-character-set=utf8mb4",
++        "-uroot", "-plocal-v4-test", "-N", "-s", "jeongsan_auth_test", "-e", query], capture_output=True, text=True, encoding="utf-8")
++    assert result.returncode == 0, result.stderr
++    return result.stdout.strip()
++
++assert sql("SELECT DATABASE()") == "jeongsan_auth_test"
++
++def check(value, label):
++    global checks
++    assert value, label
++    checks += 1
++    print(f"PASS OCR {checks}: {label}", flush=True)
++
++def token(user, client):
++    def encode(value): return base64.urlsafe_b64encode(value).rstrip(b"=").decode()
++    value = encode(b'{"alg":"HS256"}') + "." + encode(json.dumps({"sub": str(user), "client": client,
++        "jti": str(uuid.uuid4()), "exp": int(time.time()) + 3600}).encode())
++    secret = b"01234567890123456789012345678901" if disabled else b"local-only-dev-secret-please-change-32b"
++    return value + "." + encode(hmac.new(secret, value.encode(), hashlib.sha256).digest())
++
++def call(method, path, user=None, body=None, expected=200, media="application/json", client="WEB"):
++    headers = {"Content-Type": media}
++    if user is not None:
++        issued = token(user, client)
++        headers["Authorization" if client == "APP" else "Cookie"] = "Bearer " + issued if client == "APP" else "jeongsan_token=" + issued
++    payload = body if isinstance(body, bytes) else json.dumps(body).encode() if body is not None else None
++    try:
++        with urlopen(Request(BASE + path, method=method, headers=headers, data=payload), timeout=20) as response:
++            status, raw, returned = response.status, response.read(), response.headers
++    except HTTPError as error:
++        status, raw, returned = error.code, error.read(), error.headers
++    value = json.loads(raw) if raw else None
++    assert status == expected, (method, path, status, value)
++    return value, returned
++
++def upstream_calls():
++    with urlopen("http://127.0.0.1:18082/calls", timeout=3) as response:
++        return json.load(response)["calls"]
++
++if disabled:
++    fields = sql("""SELECT settlement_unit.gathering_id,settlement_unit.id,participant.user_id
++        FROM settlement_units settlement_unit JOIN participants participant ON participant.id=settlement_unit.host_participant_id
++        JOIN users actor ON actor.id=participant.user_id WHERE actor.provider='RECEIPT' AND settlement_unit.status='OPEN'
++        ORDER BY settlement_unit.id DESC LIMIT 1""").split("\t")
++    gathering_id, settlement_unit_id, user_id = map(int, fields)
++    before_calls = upstream_calls()
++    rejected, _ = call("POST", f"/gatherings/{gathering_id}/settlement-units/{settlement_unit_id}/receipts/extract",
++        user_id, b"\xff\xd8\xff\x00", 503, "image/jpeg")
++    check(rejected["code"] == "OCR_UNAVAILABLE" and upstream_calls() == before_calls, "prod에서 OCR 설정 없이 기동하고 OCR만 503")
++    sys.exit(0)
++
++users = []
++for name in ("영수증총무", "다른총무", "외부사용자"):
++    provider_id = str(uuid.uuid4())
++    sql(f"INSERT INTO users(provider,provider_id,nickname,display_name,tier,created_at) VALUES('RECEIPT','{provider_id}','계약검증','{name}','FREE',UTC_TIMESTAMP())")
++    users.append(int(sql(f"SELECT id FROM users WHERE provider_id='{provider_id}'")))
++host, other, stranger = users
++room, _ = call("POST", "/gatherings", host, expected=201)
++gathering_id, settlement_unit_id = room["id"], room["settlementUnits"][0]["id"]
++host_id = room["me"]["participantId"]
++joined, _ = call("POST", "/join/" + room["shareToken"], other, {"settlementUnitId": settlement_unit_id})
++other_id = joined["participantId"]
++other_unit, _ = call("POST", f"/gatherings/{gathering_id}/settlement-units", other,
++    {"requestId": str(uuid.uuid4()), "participantIds": [other_id, host_id]}, 201)
++root = f"/gatherings/{gathering_id}/settlement-units/{settlement_unit_id}"
++path = root + "/receipts/extract"
++jpeg = b"\xff\xd8\xff\x00"
++
++def snapshot():
++    return sql(f"""SELECT input_revision,status FROM settlement_units WHERE id={settlement_unit_id};
++        SELECT COUNT(*) FROM rounds WHERE settlement_unit_id={settlement_unit_id};
++        SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={settlement_unit_id};
++        SELECT COUNT(*) FROM timeline_entries WHERE gathering_id={gathering_id}""")
++
++before = snapshot()
++baseline = upstream_calls()
++response, headers = call("POST", path, host, jpeg, media="image/jpeg")
++check(response["schemaVersion"] == 2 and response["requiresConfirmation"] is True and headers["Cache-Control"] == "no-store", "WEB 총무가 schema v2 후보를 받음")
++check(response["drinks"][0]["bottleCount"] is None and response["drinks"][0]["unit"] == "UNKNOWN", "미인식 병 수·단위를 보정하지 않음")
++check(snapshot() == before, "추출로 revision·차수·정산·타임라인을 변경하지 않음")
++check(upstream_calls() == baseline + 1, "내부 경로·서비스 키·이미지 매체로 모의 OCR 1회 호출")
++
++denied = [(None, path, 401, "UNAUTHENTICATED"), (other, path, 403, "NOT_SETTLEMENT_UNIT_HOST"),
++    (stranger, path, 403, "NOT_PARTICIPANT"),
++    (host, f"/gatherings/{gathering_id + 100000}/settlement-units/{settlement_unit_id}/receipts/extract", 404, "SETTLEMENT_UNIT_NOT_FOUND"),
++    (host, f"/gatherings/{gathering_id}/settlement-units/{other_unit['id']}/receipts/extract", 403, "NOT_SETTLEMENT_UNIT_HOST")]
++for user, denied_path, expected, code in denied:
++    rejected, _ = call("POST", denied_path, user, jpeg, expected, "image/jpeg")
++    check(rejected["code"] == code, f"권한 범위 {code}")
++call("POST", path, host, jpeg, 415, "application/pdf")
++call("POST", path, None, b"malformed-multipart", 401, "multipart/form-data; boundary=missing")
++call("POST", path, host, b"malformed-multipart", 415, "multipart/form-data; boundary=missing")
++check(upstream_calls() == baseline + 1, "깨진 multipart도 선행 파싱 없이 401/415로 거절")
++check(upstream_calls() == baseline + 1, "권한·매체 거절은 모델을 호출하지 않음")
++connection = http.client.HTTPConnection("127.0.0.1", 18081, timeout=20)
++try:
++    # 큰 파일을 전송하기 전에 알려진 Content-Length만으로 거절되는지 확인한다.
++    connection.putrequest("POST", "/api/v1" + path)
++    connection.putheader("Content-Type", "image/jpeg")
++    connection.putheader("Content-Length", str(8 * 1024 * 1024 + 1))
++    connection.putheader("Cookie", "jeongsan_token=" + token(host, "WEB"))
++    connection.putheader("Connection", "close")
++    connection.endheaders()
++    oversized = connection.getresponse()
++    assert oversized.status == 413 and json.loads(oversized.read())["code"] == "IMAGE_TOO_LARGE"
++finally:
++    connection.close()
++check(upstream_calls() == baseline + 1, "8MiB 초과 업로드는 모델 호출 전 거절")
++sql(f"UPDATE settlement_units SET status='SETTLING' WHERE id={settlement_unit_id}")
++closed, _ = call("POST", path, host, jpeg, 409, "image/jpeg")
++check(closed["code"] == "SETTLEMENT_UNIT_NOT_OPEN" and upstream_calls() == baseline + 1, "정산 중 단위는 후보 추출 거절")
++sql(f"UPDATE settlement_units SET status='OPEN' WHERE id={settlement_unit_id}")
++call("POST", path, host, b"fake", 400, "image/jpeg")
++response, _ = call("POST", path, host, jpeg, media="image/jpeg", client="APP")
++check(response["requiresConfirmation"] is True, "APP Bearer 총무도 동일 후보 계약 사용")
++limited, headers = call("POST", path, host, jpeg, 429, "image/jpeg")
++check(limited["code"] == "OCR_REQUEST_LIMIT" and 1 <= int(headers["Retry-After"]) <= 60, "실패 포함 세 번 후 429와 남은 대기 초")
++check(upstream_calls() == baseline + 2 and snapshot() == before, "거절·잘못된 사진·재시도로 저장 부작용이 없음")
++print(f"Receipt bridge verification: {checks} checks passed", flush=True)
+diff --git a/scripts/verify-release.sh b/scripts/verify-release.sh
+index 5a0df1b..b057202 100644
+--- a/scripts/verify-release.sh
++++ b/scripts/verify-release.sh
+@@ -8,8 +8,10 @@ if docker inspect "$container" >/dev/null 2>&1; then
+   exit 1
+ fi
+ server_pid=''
++receipt_stub_pid=''
+ cleanup() {
+   [ -z "$server_pid" ] || kill "$server_pid" 2>/dev/null || true
++  [ -z "$receipt_stub_pid" ] || kill "$receipt_stub_pid" 2>/dev/null || true
+   if [ "$(docker inspect --format '{{index .Config.Labels "jeongsan.ci"}}' "$container" 2>/dev/null)" = "$GITHUB_RUN_ID" ]; then
+     docker rm -f "$container" >/dev/null
+   fi
+@@ -46,7 +48,18 @@ if [ -n "${BOOT3_BASELINE_JAR:-}" ]; then
+   server_pid=''
+ fi
+ 
+-java -Duser.timezone=Asia/Seoul -jar server/build/libs/server.jar --server.port=18081 \
++receipt_test_key='ci-only-receipt-service-key-32-characters'
++RECEIPT_OCR_SERVICE_KEY="$receipt_test_key" python3 scripts/receipt-bridge-stub.py > server/build/receipt-stub.log 2>&1 &
++receipt_stub_pid=$!
++ready=false
++for attempt in $(seq 1 20); do
++  if curl -fsS http://127.0.0.1:18082/calls >/dev/null; then ready=true; break; fi
++  kill -0 "$receipt_stub_pid" 2>/dev/null || break
++  sleep 1
++done
++[ "$ready" = true ] || { echo 'CI OCR 계약 대역 준비 실패' >&2; exit 1; }
++env RECEIPT_OCR_BASE_URL=http://127.0.0.1:18082 RECEIPT_OCR_SERVICE_KEY="$receipt_test_key" \
++  java -Duser.timezone=Asia/Seoul -jar server/build/libs/server.jar --server.port=18081 \
+   '--spring.datasource.url=jdbc:mysql://127.0.0.1:13306/jeongsan_auth_test?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true' \
+   --spring.datasource.password=local-v4-test > server/build/release-http.log 2>&1 &
+ server_pid=$!
+@@ -58,6 +71,7 @@ for attempt in $(seq 1 40); do
+ done
+ [ "$ready" = true ] || { echo 'CI HTTP 서버 준비 실패' >&2; exit 1; }
+ if [ -n "${BOOT3_BASELINE_JAR:-}" ]; then python3 scripts/verify-boot-upgrade.py verify; fi
++python3 scripts/verify-receipt-bridge.py
+ python3 scripts/verify-auto-settlement.py
+ python3 scripts/verify-notifications.py
+ python3 scripts/verify-auth-release.py
+@@ -88,3 +102,4 @@ for attempt in $(seq 1 40); do
+ done
+ [ "$ready" = true ] || { echo 'Apple 미설정 운영 프로필 기동 실패' >&2; tail -n 45 server/build/release-prod-http.log; exit 1; }
+ python3 scripts/verify-provider-availability.py
++python3 scripts/verify-receipt-bridge.py disabled
+diff --git a/server/src/main/java/app/jeongsan/server/receipt/javaimpl/ReceiptPolicy.java b/server/src/main/java/app/jeongsan/server/receipt/javaimpl/ReceiptPolicy.java
+new file mode 100644
+index 0000000..6422f56
+--- /dev/null
++++ b/server/src/main/java/app/jeongsan/server/receipt/javaimpl/ReceiptPolicy.java
+@@ -0,0 +1,42 @@
++package app.jeongsan.server.receipt.javaimpl;
++
++import java.util.Arrays;
++import java.util.Locale;
++
++/** 학습용 독립 구현. Spring 어댑터는 Kotlin 정책을 사용한다. */
++public final class ReceiptPolicy {
++    private ReceiptPolicy() {}
++
++    public static String access(boolean exists, boolean activeMember, boolean host, String state) {
++        if (!exists) return "SETTLEMENT_UNIT_NOT_FOUND";
++        if (!activeMember) return "NOT_PARTICIPANT";
++        if (!host) return "NOT_SETTLEMENT_UNIT_HOST";
++        if (!"OPEN".equals(state)) return "SETTLEMENT_UNIT_NOT_OPEN";
++        return null;
++    }
++
++    public static String mediaType(String header) {
++        if (header == null) return null;
++        String mediaType = header.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
++        return mediaType.equals("image/jpeg") || mediaType.equals("image/png") ? mediaType : null;
++    }
++
++    public static String lengthError(long length) {
++        if (length > 8L * 1024 * 1024) return "IMAGE_TOO_LARGE";
++        return length == 0 || length < -1 ? "IMAGE_SIZE_INVALID" : null;
++    }
++
++    public static boolean matchesSignature(byte[] bytes, String mediaType) {
++        if ("image/jpeg".equals(mediaType)) {
++            return bytes.length >= 3 && (bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xd8 && (bytes[2] & 0xff) == 0xff;
++        }
++        byte[] png = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
++        return "image/png".equals(mediaType) && bytes.length >= png.length && Arrays.equals(Arrays.copyOf(bytes, png.length), png);
++    }
++
++    public static long retryAfter(int usedCount, long elapsedNanos) {
++        long windowNanos = 60_000_000_000L;
++        if (usedCount < 3 || elapsedNanos >= windowNanos) return 0;
++        return Math.max(1, (windowNanos - elapsedNanos + 999_999_999L) / 1_000_000_000L);
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/common/GlobalExceptionHandler.kt b/server/src/main/kotlin/app/jeongsan/server/common/GlobalExceptionHandler.kt
+index b2aa635..d14d043 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/common/GlobalExceptionHandler.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/common/GlobalExceptionHandler.kt
+@@ -24,6 +24,13 @@ import org.springframework.web.servlet.resource.NoResourceFoundException
+ class GlobalExceptionHandler {
+     private val log = LoggerFactory.getLogger(javaClass)
+ 
++    @ExceptionHandler(app.jeongsan.server.receipt.ReceiptException::class)
++    fun handleReceipt(e: app.jeongsan.server.receipt.ReceiptException): ResponseEntity<ErrorResponse> {
++        val response = ResponseEntity.status(e.status).header("Cache-Control", "no-store")
++        e.retryAfter?.let { response.header("Retry-After", it.toString()) }
++        return response.body(ErrorResponse(e.code, e.message))
++    }
++
+     @ExceptionHandler(app.jeongsan.server.gathering.SettlementValidationException::class)
+     fun handleSettlement(e: app.jeongsan.server.gathering.SettlementValidationException): ResponseEntity<ErrorResponse> =
+         ResponseEntity.status(e.status).body(ErrorResponse(e.code, e.message, e.details.map {
+diff --git a/server/src/main/kotlin/app/jeongsan/server/receipt/HttpReceiptOcrClient.kt b/server/src/main/kotlin/app/jeongsan/server/receipt/HttpReceiptOcrClient.kt
+new file mode 100644
+index 0000000..c8b85ff
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/receipt/HttpReceiptOcrClient.kt
+@@ -0,0 +1,48 @@
++package app.jeongsan.server.receipt
++
++import org.springframework.http.MediaType
++import org.springframework.web.client.ResourceAccessException
++import org.springframework.web.client.RestClient
++import tools.jackson.databind.ObjectMapper
++import java.io.IOException
++import java.net.SocketTimeoutException
++
++class HttpReceiptOcrClient(private val settings: ReceiptOcrSettings?, private val http: RestClient, private val mapper: ObjectMapper) : ReceiptOcrClient {
++    private val reader = ReceiptResponseReader(mapper)
++    override fun available() = settings != null
++
++    override fun extract(bytes: ByteArray, mediaType: String): ReceiptExtractionResponse {
++        val configured = settings ?: throw ReceiptException("OCR_UNAVAILABLE", 503)
++        try {
++            return http.post().uri(configured.baseUrl.resolve("/api/v1/receipts/extract"))
++                .header("X-Receipt-Service-Key", configured.serviceKey).contentType(MediaType.parseMediaType(mediaType)).body(bytes)
++                .exchange { _, response ->
++                    if (response.statusCode.value() != 200) {
++                        val errorBytes = response.body.readNBytes(4097)
++                        val code = if (errorBytes.size <= 4096) try { mapper.readTree(errorBytes)["detail"]?.get("code")?.stringValue() } catch (_: RuntimeException) { null } else null
++                        val mapped = when {
++                            response.statusCode.value() == 503 && code == "OCR_BUSY" -> ReceiptException("OCR_BUSY", 503, 2)
++                            response.statusCode.value() == 503 && code == "OCR_UNAVAILABLE" -> ReceiptException("OCR_UNAVAILABLE", 503)
++                            response.statusCode.value() == 401 -> ReceiptException("OCR_UNAVAILABLE", 503)
++                            response.statusCode.value() == 413 && code == "IMAGE_TOO_LARGE" -> ReceiptException(code, 413)
++                            response.statusCode.value() in setOf(400, 415) && code == "IMAGE_FORMAT_UNSUPPORTED" -> ReceiptException(code, 415)
++                            response.statusCode.value() == 400 && code in setOf("IMAGE_INVALID", "IMAGE_SIZE_INVALID", "IMAGE_DIMENSIONS_TOO_LARGE") -> ReceiptException(code!!, 400)
++                            else -> ReceiptException("OCR_BAD_RESPONSE", 502)
++                        }
++                        throw mapped
++                    }
++                    val content = response.body.readNBytes(256 * 1024 + 1)
++                    if (content.size > 256 * 1024) throw ReceiptException("OCR_BAD_RESPONSE", 502)
++                    reader.read(content)
++                }
++        } catch (failure: ResourceAccessException) {
++            throw transportError(failure)
++        } catch (failure: IOException) {
++            throw transportError(failure)
++        }
++    }
++
++    private fun transportError(failure: Throwable): ReceiptException =
++        if (generateSequence(failure) { it.cause }.any { it is SocketTimeoutException }) ReceiptException("OCR_TIMEOUT", 504)
++        else ReceiptException("OCR_UNAVAILABLE", 503)
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptAdmission.kt b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptAdmission.kt
+new file mode 100644
+index 0000000..7b20839
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptAdmission.kt
+@@ -0,0 +1,30 @@
++package app.jeongsan.server.receipt
++
++import org.springframework.stereotype.Component
++import java.util.concurrent.Semaphore
++import java.util.concurrent.atomic.AtomicBoolean
++
++/** 모델 호출 중에는 모니터를 잡지 않는다. 단일 프로세스 한도이며 재시작하면 횟수가 초기화된다. */
++@Component
++class ReceiptAdmission {
++    private data class Window(val startedAt: Long, var usedCount: Int)
++    private val windows = LinkedHashMap<Long, Window>()
++    private val permit = Semaphore(1)
++
++    @Synchronized
++    fun enter(userId: Long, observedNanos: Long? = null): AutoCloseable {
++        val nowNanos = observedNanos ?: System.nanoTime()
++        val iterator = windows.entries.iterator()
++        while (iterator.hasNext()) {
++            if (nowNanos - iterator.next().value.startedAt >= ReceiptPolicy.WINDOW_NANOS) iterator.remove() else break
++        }
++        val window = windows[userId]
++        val retryAfter = window?.let { ReceiptPolicy.retryAfter(it.usedCount, nowNanos - it.startedAt) } ?: 0
++        if (retryAfter > 0) throw ReceiptException("OCR_REQUEST_LIMIT", 429, retryAfter)
++        if (window == null && windows.size >= 10_000) throw ReceiptException("OCR_BUSY", 503, 2)
++        if (!permit.tryAcquire()) throw ReceiptException("OCR_BUSY", 503, 2)
++        if (window == null) windows[userId] = Window(nowNanos, 1) else window.usedCount++
++        val released = AtomicBoolean()
++        return AutoCloseable { if (released.compareAndSet(false, true)) permit.release() }
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptController.kt b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptController.kt
+new file mode 100644
+index 0000000..79c8f47
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptController.kt
+@@ -0,0 +1,18 @@
++package app.jeongsan.server.receipt
++
++import app.jeongsan.server.common.LoginUser
++import jakarta.servlet.http.HttpServletRequest
++import org.springframework.http.ResponseEntity
++import org.springframework.web.bind.annotation.PathVariable
++import org.springframework.web.bind.annotation.PostMapping
++import org.springframework.web.bind.annotation.RequestMapping
++import org.springframework.web.bind.annotation.RestController
++
++@RestController
++@RequestMapping("/api/v1/gatherings/{gid}/settlement-units/{sid}/receipts")
++class ReceiptController(private val service: ReceiptService) {
++    @PostMapping("/extract")
++    fun extract(@LoginUser userId: Long, @PathVariable gid: Long, @PathVariable sid: Long, request: HttpServletRequest): ResponseEntity<ReceiptExtractionResponse> =
++        ResponseEntity.ok().header("Cache-Control", "no-store").body(
++            service.extract(gid, sid, userId, request.contentType, request.contentLengthLong) { request.inputStream })
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptDto.kt b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptDto.kt
+new file mode 100644
+index 0000000..cbecfa9
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptDto.kt
+@@ -0,0 +1,28 @@
++package app.jeongsan.server.receipt
++
++import com.fasterxml.jackson.annotation.JsonIgnoreProperties
++
++/** 후보의 null은 미인식이다. 병 수나 금액을 서버에서 보정하지 않는다. */
++@JsonIgnoreProperties(ignoreUnknown = true)
++data class ReceiptExtractionResponse(
++    val schemaVersion: Int,
++    val total: Long?,
++    val drinks: List<ReceiptDrink>,
++    val warnings: List<String>,
++    val requiresConfirmation: Boolean,
++)
++
++@JsonIgnoreProperties(ignoreUnknown = true)
++data class ReceiptDrink(
++    val name: String,
++    val category: String,
++    val unit: String,
++    val unitPrice: Long?,
++    val quantity: Int?,
++    val lineAmount: Long?,
++    val servingType: String,
++    val volumeMl: Int?,
++    val bottleCount: Int?,
++    val confidence: Double,
++    val reviewReasons: List<String>,
++)
+diff --git a/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptException.kt b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptException.kt
+new file mode 100644
+index 0000000..baa4046
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptException.kt
+@@ -0,0 +1,12 @@
++package app.jeongsan.server.receipt
++
++import app.jeongsan.server.common.ApiException
++import org.springframework.http.HttpStatus
++
++/** 내부 응답·사진·서비스 키는 오류 메시지에 포함하지 않는다. */
++class ReceiptException(code: String, status: Int, val retryAfter: Long? = null) :
++    ApiException(code, HttpStatus.valueOf(status), when (status) {
++        429 -> "영수증 요청이 많습니다. 잠시 후 다시 시도해주세요."
++        502, 503, 504 -> "영수증을 읽을 수 없습니다. 잠시 후 다시 시도해주세요."
++        else -> "JPEG 또는 PNG 영수증 사진을 확인해주세요."
++    })
+diff --git a/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptOcrConfiguration.kt b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptOcrConfiguration.kt
+new file mode 100644
+index 0000000..564d49a
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptOcrConfiguration.kt
+@@ -0,0 +1,45 @@
++package app.jeongsan.server.receipt
++
++import org.springframework.context.annotation.Bean
++import org.springframework.context.annotation.Configuration
++import org.springframework.core.env.Environment
++import org.springframework.http.client.SimpleClientHttpRequestFactory
++import org.springframework.web.client.RestClient
++import tools.jackson.databind.ObjectMapper
++import java.net.URI
++import java.net.HttpURLConnection
++
++/** 키를 자동 출력하는 data class를 피한다. 설정은 기동 시 한 번만 검증한다. */
++class ReceiptOcrSettings(val baseUrl: URI, val serviceKey: String) {
++    companion object {
++        fun read(environment: Environment): ReceiptOcrSettings? {
++            val baseUrl = environment.getProperty("receipt.ocr.base-url")
++            val serviceKey = environment.getProperty("receipt.ocr.service-key")
++            if (baseUrl == null && serviceKey == null) return null
++            require(baseUrl != null && serviceKey != null) { "영수증 연결 URL과 내부 키를 함께 설정해야 합니다." }
++            val uri = try { URI(baseUrl) } catch (_: Exception) { throw IllegalArgumentException("영수증 연결 URL이 올바르지 않습니다.") }
++            require(uri.scheme == "http" && uri.host in setOf("127.0.0.1", "localhost", "[::1]", "::1", "receipt-ocr") &&
++                uri.port in 1..65535 && uri.rawPath in setOf("", "/") && uri.rawUserInfo == null && uri.rawQuery == null && uri.rawFragment == null) {
++                "영수증 연결은 포트가 명시된 내부 HTTP 주소만 허용합니다."
++            }
++            require(serviceKey.length >= 32 && serviceKey.all { it.code in 33..126 }) { "영수증 내부 키는 공백 없는 ASCII 32자 이상이어야 합니다." }
++            return ReceiptOcrSettings(URI(baseUrl.removeSuffix("/")), serviceKey)
++        }
++    }
++}
++
++@Configuration
++class ReceiptOcrConfiguration {
++    @Bean
++    fun receiptOcrClient(environment: Environment, mapper: ObjectMapper): ReceiptOcrClient {
++        val settings = ReceiptOcrSettings.read(environment)
++        val factory = object : SimpleClientHttpRequestFactory() {
++            override fun prepareConnection(connection: HttpURLConnection, httpMethod: String) {
++                super.prepareConnection(connection, httpMethod)
++                // 내부 키가 리다이렉트 대상에 전달되지 않게 한다.
++                connection.instanceFollowRedirects = false
++            }
++        }.apply { setConnectTimeout(2000); setReadTimeout(45000) }
++        return HttpReceiptOcrClient(settings, RestClient.builder().requestFactory(factory).build(), mapper)
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptPolicy.kt b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptPolicy.kt
+new file mode 100644
+index 0000000..339a9c8
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptPolicy.kt
+@@ -0,0 +1,37 @@
++package app.jeongsan.server.receipt
++
++import java.util.Locale
++import kotlin.math.max
++
++/** OCR 후보는 저장 권한이 있는 OPEN 단위의 총무에게만 제공한다. */
++object ReceiptPolicy {
++    const val MAX_BYTES = 8 * 1024 * 1024
++    const val WINDOW_NANOS = 60_000_000_000L
++
++    fun access(exists: Boolean, activeMember: Boolean, host: Boolean, state: String): String? = when {
++        !exists -> "SETTLEMENT_UNIT_NOT_FOUND"
++        !activeMember -> "NOT_PARTICIPANT"
++        !host -> "NOT_SETTLEMENT_UNIT_HOST"
++        state != "OPEN" -> "SETTLEMENT_UNIT_NOT_OPEN"
++        else -> null
++    }
++
++    fun mediaType(header: String?): String? = header?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT)
++        ?.takeIf { it == "image/jpeg" || it == "image/png" }
++
++    fun lengthError(length: Long): String? = when {
++        length > MAX_BYTES -> "IMAGE_TOO_LARGE"
++        length == 0L || length < -1L -> "IMAGE_SIZE_INVALID"
++        else -> null
++    }
++
++    fun matchesSignature(bytes: ByteArray, mediaType: String): Boolean = when (mediaType) {
++        "image/jpeg" -> bytes.size >= 3 && bytes[0] == 0xff.toByte() && bytes[1] == 0xd8.toByte() && bytes[2] == 0xff.toByte()
++        "image/png" -> bytes.size >= 8 && bytes.take(8).toByteArray().contentEquals(
++            byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a))
++        else -> false
++    }
++
++    fun retryAfter(usedCount: Int, elapsedNanos: Long): Long =
++        if (usedCount < 3 || elapsedNanos >= WINDOW_NANOS) 0 else max(1, (WINDOW_NANOS - elapsedNanos + 999_999_999L) / 1_000_000_000L)
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptResponseReader.kt b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptResponseReader.kt
+new file mode 100644
+index 0000000..3d3e906
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptResponseReader.kt
+@@ -0,0 +1,58 @@
++package app.jeongsan.server.receipt
++
++import tools.jackson.databind.DeserializationFeature
++import tools.jackson.databind.JsonNode
++import tools.jackson.databind.ObjectMapper
++
++/** 외부 JSON의 숫자 자동 변환과 원문 필드 유입을 막는 HTTP 경계다. */
++class ReceiptResponseReader(private val mapper: ObjectMapper) {
++    private val categories = setOf("SOJU", "BEER", "MAKGEOLLI", "CHEONGJU_YAKJU", "WINE", "WHISKY_SPIRIT", "COCKTAIL_MIXED", "OTHER_ALCOHOL", "UNKNOWN")
++    private val units = setOf("BOTTLE", "CAN", "GLASS", "PITCHER", "PACK", "UNKNOWN")
++    private val codePattern = Regex("[A-Z][A-Z0-9_]{0,63}")
++
++    fun read(bytes: ByteArray): ReceiptExtractionResponse = try {
++        val root: JsonNode = mapper.readerFor(JsonNode::class.java).with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readValue(bytes)
++        require(root.isObject && root["schemaVersion"]?.isIntegralNumber == true && root["schemaVersion"].canConvertToInt() && root["schemaVersion"].intValue() == 2)
++        require(root["requiresConfirmation"]?.isBoolean == true && root["requiresConfirmation"].booleanValue())
++        val drinks = root["drinks"]
++        require(drinks != null && drinks.isArray && drinks.size() <= 1000)
++        ReceiptExtractionResponse(2, number(root, "total", 0, 1_000_000_000), (0 until drinks.size()).map { index ->
++            val drink = drinks[index]
++            require(drink.isObject)
++            val confidence = drink["confidence"]
++            require(confidence != null && confidence.isNumber && confidence.doubleValue().isFinite() && confidence.doubleValue() in 0.0..1.0)
++            ReceiptDrink(text(drink, "name").also { require(it.length in 1..120 && it.none { character -> character.isISOControl() }) },
++                choice(drink, "category", categories), choice(drink, "unit", units),
++                number(drink, "unitPrice", 1, 1_000_000_000), number(drink, "quantity", 1, 1000)?.toInt(),
++                number(drink, "lineAmount", 1, 1_000_000_000), choice(drink, "servingType", setOf("DRAFT", "UNKNOWN")),
++                number(drink, "volumeMl", 1, 100000)?.toInt(), number(drink, "bottleCount", 0, 1000)?.toInt(),
++                confidence.doubleValue(), codes(drink, "reviewReasons"))
++        }, codes(root, "warnings"), true)
++    } catch (_: RuntimeException) { throw ReceiptException("OCR_BAD_RESPONSE", 502) }
++
++    private fun text(node: JsonNode, field: String): String {
++        val value = node[field]
++        require(value != null && value.isString)
++        return value.stringValue()
++    }
++
++    private fun choice(node: JsonNode, field: String, allowed: Set<String>): String = text(node, field).also { require(it in allowed) }
++
++    private fun number(node: JsonNode, field: String, minimum: Long, maximum: Long): Long? {
++        val value = node[field]
++        require(value != null)
++        if (value.isNull) return null
++        require(value.isIntegralNumber && value.canConvertToLong())
++        return value.longValue().also { require(it in minimum..maximum) }
++    }
++
++    private fun codes(node: JsonNode, field: String): List<String> {
++        val values = node[field]
++        require(values != null && values.isArray && values.size() <= 32)
++        return (0 until values.size()).map { index ->
++            val value = values[index]
++            require(value.isString && codePattern.matches(value.stringValue()))
++            value.stringValue()
++        }
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptService.kt b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptService.kt
+new file mode 100644
+index 0000000..347ea4a
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptService.kt
+@@ -0,0 +1,31 @@
++package app.jeongsan.server.receipt
++
++import org.springframework.stereotype.Service
++import java.io.IOException
++import java.io.InputStream
++
++interface ReceiptOcrClient {
++    fun available(): Boolean
++    fun extract(bytes: ByteArray, mediaType: String): ReceiptExtractionResponse
++}
++
++@Service
++class ReceiptService(private val access: ReceiptUnitAccess, private val client: ReceiptOcrClient, private val admission: ReceiptAdmission) {
++    fun extract(gatheringId: Long, settlementUnitId: Long, userId: Long, contentType: String?, contentLength: Long,
++                source: () -> InputStream): ReceiptExtractionResponse {
++        access.requireHost(gatheringId, settlementUnitId, userId)
++        if (!client.available()) throw ReceiptException("OCR_UNAVAILABLE", 503)
++        val mediaType = ReceiptPolicy.mediaType(contentType) ?: throw ReceiptException("IMAGE_FORMAT_UNSUPPORTED", 415)
++        ReceiptPolicy.lengthError(contentLength)?.let { throw ReceiptException(it, if (it == "IMAGE_TOO_LARGE") 413 else 400) }
++        admission.enter(userId).use {
++            val bytes = try { source().use { it.readNBytes(ReceiptPolicy.MAX_BYTES + 1) } }
++                catch (_: IOException) { throw ReceiptException("IMAGE_INVALID", 400) }
++            ReceiptPolicy.lengthError(bytes.size.toLong())?.let { throw ReceiptException(it, if (it == "IMAGE_TOO_LARGE") 413 else 400) }
++            if (!ReceiptPolicy.matchesSignature(bytes, mediaType)) throw ReceiptException("IMAGE_INVALID", 400)
++            val result = client.extract(bytes, mediaType)
++            // 추론 도중 탈퇴·총무 변경·정산 확정이 있었다면 후보도 돌려주지 않는다.
++            access.requireHost(gatheringId, settlementUnitId, userId)
++            return result
++        }
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptUnitAccess.kt b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptUnitAccess.kt
+new file mode 100644
+index 0000000..1a351eb
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/receipt/ReceiptUnitAccess.kt
+@@ -0,0 +1,37 @@
++package app.jeongsan.server.receipt
++
++import app.jeongsan.server.common.ApiException
++import app.jeongsan.server.gathering.GatheringStore
++import org.springframework.http.HttpStatus
++import org.springframework.stereotype.Component
++import org.springframework.transaction.annotation.Transactional
++
++fun interface ReceiptUnitAccess {
++    fun requireHost(gatheringId: Long, settlementUnitId: Long, userId: Long)
++}
++
++@Component
++class DatabaseReceiptUnitAccess(private val store: GatheringStore) : ReceiptUnitAccess {
++    @Transactional(readOnly = true)
++    override fun requireHost(gatheringId: Long, settlementUnitId: Long, userId: Long) {
++        val row = store.rows("""
++            SELECT settlement_unit.status unit_status, settlement_unit.host_participant_id,
++                   participant.id participant_id, participant.status participant_status, unit_member.status member_status
++            FROM settlement_units settlement_unit
++            LEFT JOIN participants participant ON participant.gathering_id=settlement_unit.gathering_id AND participant.user_id=:userId
++            LEFT JOIN settlement_unit_members unit_member ON unit_member.settlement_unit_id=settlement_unit.id
++                AND unit_member.gathering_id=settlement_unit.gathering_id AND unit_member.participant_id=participant.id
++            WHERE settlement_unit.id=:settlementUnitId AND settlement_unit.gathering_id=:gatheringId
++        """.trimIndent(), "gatheringId" to gatheringId, "settlementUnitId" to settlementUnitId, "userId" to userId).singleOrNull()
++        val code = ReceiptPolicy.access(row != null,
++            row?.get("participant_status") == "ACTIVE" && row["member_status"] == "ACTIVE",
++            row?.get("participant_id") != null && row["participant_id"] == row["host_participant_id"],
++            row?.get("unit_status")?.toString().orEmpty()) ?: return
++        val status = when (code) {
++            "SETTLEMENT_UNIT_NOT_FOUND" -> HttpStatus.NOT_FOUND
++            "SETTLEMENT_UNIT_NOT_OPEN" -> HttpStatus.CONFLICT
++            else -> HttpStatus.FORBIDDEN
++        }
++        throw ApiException(code, status, "영수증을 입력할 수 있는 정산 단위인지 확인해주세요.")
++    }
++}
+diff --git a/server/src/main/resources/application.yml b/server/src/main/resources/application.yml
+index e578751..a70c28a 100644
+--- a/server/src/main/resources/application.yml
++++ b/server/src/main/resources/application.yml
+@@ -13,6 +13,11 @@ spring:
+   profiles:
+     default: local
+ 
++  servlet:
++    multipart:
++      # OCR은 raw 본문만 받는다. 잘못된 multipart도 인증 전에 파싱·임시 저장하지 않는다.
++      resolve-lazily: true
++
+   jpa:
+     properties:
+       hibernate:
+diff --git a/server/src/test/kotlin/app/jeongsan/server/receipt/ReceiptApiSpec.kt b/server/src/test/kotlin/app/jeongsan/server/receipt/ReceiptApiSpec.kt
+new file mode 100644
+index 0000000..cac658e
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/receipt/ReceiptApiSpec.kt
+@@ -0,0 +1,126 @@
++package app.jeongsan.server.receipt
++
++import app.jeongsan.server.common.ApiException
++import app.jeongsan.server.common.GlobalExceptionHandler
++import app.jeongsan.server.common.LoginUserArgumentResolver
++import app.jeongsan.server.user.AuthController
++import app.jeongsan.server.user.JwtService
++import io.kotest.assertions.throwables.shouldThrow
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++import jakarta.servlet.http.Cookie
++import org.springframework.http.HttpStatus
++import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
++import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
++import org.springframework.test.web.servlet.setup.MockMvcBuilders
++import tools.jackson.module.kotlin.jacksonMapperBuilder
++import java.io.ByteArrayInputStream
++
++class ReceiptApiSpec : StringSpec({
++    val mapper = jacksonMapperBuilder().build()
++    val fixture = ReceiptResponseReader(mapper).read(javaClass.getResourceAsStream("/receipt/response-v2.json")!!.readBytes())
++    val jwt = JwtService("01234567890123456789012345678901", 30)
++    val cookie = Cookie(AuthController.COOKIE_NAME, jwt.issue(12))
++    val path = "/api/v1/gatherings/1/settlement-units/10/receipts/extract"
++    val jpeg = byteArrayOf(0xff.toByte(), 0xd8.toByte(), 0xff.toByte(), 0)
++    var calls = 0
++    var checks = 0
++    var error: ApiException? = null
++    var afterCallError: ApiException? = null
++    var enabled = true
++    var failure: ReceiptException? = null
++    var admission = ReceiptAdmission()
++    val access = ReceiptUnitAccess { gatheringId, settlementUnitId, userId ->
++        listOf(gatheringId, settlementUnitId, userId) shouldBe listOf(1L, 10L, 12L)
++        checks++
++        error?.let { throw it }
++        if (checks > 1) afterCallError?.let { throw it }
++    }
++    val client = object : ReceiptOcrClient {
++        override fun available() = enabled
++        override fun extract(bytes: ByteArray, mediaType: String): ReceiptExtractionResponse {
++            calls++
++            mediaType shouldBe "image/jpeg"
++            failure?.let { throw it }
++            return fixture
++        }
++    }
++    fun service() = ReceiptService(access, client, admission)
++    fun mvc() = MockMvcBuilders.standaloneSetup(ReceiptController(service()))
++        .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt)).setControllerAdvice(GlobalExceptionHandler())
++        .setMessageConverters(JacksonJsonHttpMessageConverter(mapper)).build()
++    beforeTest { calls = 0; checks = 0; error = null; afterCallError = null; enabled = true; failure = null; admission = ReceiptAdmission() }
++
++    "총무에게만 저장하지 않은 후보를 no-store로 반환한다" {
++        mvc().perform(post(path).cookie(cookie).contentType("image/jpeg").content(jpeg))
++            .andExpect(status().isOk).andExpect(header().string("Cache-Control", "no-store"))
++            .andExpect(jsonPath("$.schemaVersion").value(2)).andExpect(jsonPath("$.requiresConfirmation").value(true))
++            .andExpect(jsonPath("$.drinks[0].unit").value("UNKNOWN")).andExpect(jsonPath("$.drinks[0].bottleCount").isEmpty)
++        calls shouldBe 1; checks shouldBe 2
++    }
++    "로그인 없는 사진 요청은 본문 처리에 진입하지 않는다" {
++        mvc().perform(post(path).contentType("application/pdf").content(jpeg)).andExpect(status().isUnauthorized)
++        calls shouldBe 0; checks shouldBe 0
++    }
++    "권한 검사가 실패하면 사진 스트림을 열지 않는다" {
++        error = ApiException("NOT_SETTLEMENT_UNIT_HOST", HttpStatus.FORBIDDEN, "총무만 가능")
++        var opened = false
++        shouldThrow<ApiException> { service().extract(1, 10, 12, "image/jpeg", -1) { opened = true; ByteArrayInputStream(jpeg) } }.code shouldBe "NOT_SETTLEMENT_UNIT_HOST"
++        opened shouldBe false; calls shouldBe 0
++        mvc().perform(post(path).cookie(cookie).contentType("image/jpeg").content(jpeg)).andExpect(status().isForbidden)
++    }
++    "OPEN이 아닌 단위는 409이며 추출하지 않는다" {
++        error = ApiException("SETTLEMENT_UNIT_NOT_OPEN", HttpStatus.CONFLICT, "OPEN 필요")
++        mvc().perform(post(path).cookie(cookie).contentType("image/jpeg").content(jpeg)).andExpect(status().isConflict)
++        calls shouldBe 0
++    }
++    "미설정은 503이고 매체 검증 전에도 다른 기능의 설정을 요구하지 않는다" {
++        enabled = false
++        mvc().perform(post(path).cookie(cookie).contentType("image/jpeg").content(jpeg))
++            .andExpect(status().isServiceUnavailable).andExpect(jsonPath("$.code").value("OCR_UNAVAILABLE"))
++        calls shouldBe 0
++    }
++    "지원하지 않는 매체와 위장 파일과 빈 사진을 거절한다" {
++        mvc().perform(post(path).cookie(cookie).contentType("application/pdf").content(jpeg)).andExpect(status().isUnsupportedMediaType)
++        mvc().perform(post(path).cookie(cookie).contentType("image/png").content(jpeg)).andExpect(status().isBadRequest)
++        mvc().perform(post(path).cookie(cookie).contentType("image/jpeg").content(byteArrayOf())).andExpect(status().isBadRequest)
++        calls shouldBe 0
++    }
++    "알 수 없는 길이도 최대 사진 길이보다 한 바이트만 더 읽는다" {
++        var readCount = 0
++        val source = object : java.io.InputStream() { override fun read(): Int { readCount++; return 0xff } }
++        shouldThrow<ReceiptException> { service().extract(1, 10, 12, "image/jpeg", -1) { source } }.code shouldBe "IMAGE_TOO_LARGE"
++        readCount shouldBe ReceiptPolicy.MAX_BYTES + 1; calls shouldBe 0
++    }
++    "명시한 길이가 초과하면 스트림을 열지 않는다" {
++        shouldThrow<ReceiptException> { service().extract(1, 10, 12, "image/jpeg", ReceiptPolicy.MAX_BYTES + 1L) { error("열면 안 된다") } }.status.value() shouldBe 413
++        calls shouldBe 0
++    }
++    "네 번째 요청은 Retry-After와 429를 반환한다" {
++        val mvc = mvc()
++        repeat(3) { mvc.perform(post(path).cookie(cookie).contentType("image/jpeg").content(jpeg)).andExpect(status().isOk) }
++        mvc.perform(post(path).cookie(cookie).contentType("image/jpeg").content(jpeg))
++            .andExpect(status().isTooManyRequests).andExpect(header().exists("Retry-After"))
++        calls shouldBe 3
++    }
++    "모델이 사용 중이면 대기열 없이 503을 반환한다" {
++        admission.enter(99).use {
++            mvc().perform(post(path).cookie(cookie).contentType("image/jpeg").content(jpeg))
++                .andExpect(status().isServiceUnavailable).andExpect(header().string("Retry-After", "2"))
++        }
++        calls shouldBe 0
++    }
++    "추론 도중 상태가 변경되면 후보를 반환하지 않는다" {
++        afterCallError = ApiException("SETTLEMENT_UNIT_NOT_OPEN", HttpStatus.CONFLICT, "OPEN 필요")
++        mvc().perform(post(path).cookie(cookie).contentType("image/jpeg").content(jpeg)).andExpect(status().isConflict)
++        calls shouldBe 1; checks shouldBe 2
++    }
++    "모델 장애 뒤에도 단일 실행 슬롯은 반환한다" {
++        failure = ReceiptException("OCR_TIMEOUT", 504)
++        mvc().perform(post(path).cookie(cookie).contentType("image/jpeg").content(jpeg)).andExpect(status().isGatewayTimeout)
++        failure = null
++        mvc().perform(post(path).cookie(cookie).contentType("image/jpeg").content(jpeg)).andExpect(status().isOk)
++        calls shouldBe 2
++    }
++})
+diff --git a/server/src/test/kotlin/app/jeongsan/server/receipt/ReceiptOcrClientSpec.kt b/server/src/test/kotlin/app/jeongsan/server/receipt/ReceiptOcrClientSpec.kt
+new file mode 100644
+index 0000000..53f82fa
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/receipt/ReceiptOcrClientSpec.kt
+@@ -0,0 +1,144 @@
++package app.jeongsan.server.receipt
++
++import com.sun.net.httpserver.HttpServer
++import io.kotest.assertions.throwables.shouldThrow
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++import org.springframework.http.HttpMethod
++import org.springframework.http.HttpStatus
++import org.springframework.http.MediaType
++import org.springframework.http.client.SimpleClientHttpRequestFactory
++import org.springframework.mock.env.MockEnvironment
++import org.springframework.test.web.client.MockRestServiceServer
++import org.springframework.test.web.client.match.MockRestRequestMatchers.*
++import org.springframework.test.web.client.response.MockRestResponseCreators.*
++import org.springframework.web.client.RestClient
++import tools.jackson.module.kotlin.jacksonMapperBuilder
++import java.net.InetSocketAddress
++import java.net.URI
++
++class ReceiptOcrClientSpec : StringSpec({
++    val mapper = jacksonMapperBuilder().build()
++    val fixture = javaClass.getResourceAsStream("/receipt/response-v2.json")!!.readBytes().toString(Charsets.UTF_8)
++    val key = "ci-only-receipt-service-key-32-characters"
++    val settings = ReceiptOcrSettings(URI("http://127.0.0.1:18082"), key)
++    val reader = ReceiptResponseReader(mapper)
++
++    "추가 원문 필드는 버리고 미인식과 0을 구분한다" {
++        val raw = fixture.replace("\"total\": 50000", "\"total\": 0, \"rawText\": \"카드 원문\"")
++            .replace("\"bottleCount\": null", "\"bottleCount\": 0, \"cardNumber\": \"출력하면 안 됨\"")
++        val result = reader.read(raw.toByteArray())
++        result.total shouldBe 0L; result.drinks.single().bottleCount shouldBe 0; result.drinks.single().volumeMl shouldBe null
++        mapper.readTree(mapper.writeValueAsBytes(result)).has("rawText") shouldBe false
++        mapper.readTree(mapper.writeValueAsBytes(result))["drinks"][0].has("cardNumber") shouldBe false
++    }
++    val invalidResponses = listOf(
++        "깨진 JSON" to "{", "루트 배열" to "[]", "후행 JSON" to "$fixture {}",
++        "거짓 확인 플래그" to fixture.replace("\"requiresConfirmation\": true", "\"requiresConfirmation\": false"),
++        "스키마 오버플로" to fixture.replace("\"schemaVersion\": 2", "\"schemaVersion\": 18446744073709551618"),
++        "문자 금액" to fixture.replace("\"total\": 50000", "\"total\": \"50000\""),
++        "실수 금액" to fixture.replace("\"total\": 50000", "\"total\": 50000.1"),
++        "음수 금액" to fixture.replace("\"total\": 50000", "\"total\": -1"),
++        "큰 금액" to fixture.replace("\"total\": 50000", "\"total\": 1000000001"),
++        "병 수 추측" to fixture.replace("\"bottleCount\": null", "\"bottleCount\": 1.2"),
++        "과도한 수량" to fixture.replace("\"quantity\": 3", "\"quantity\": 1001"),
++        "빠진 후보" to fixture.replace("\"volumeMl\": null,", ""),
++        "신뢰도 초과" to fixture.replace("\"confidence\": 0.98", "\"confidence\": 1.01"),
++        "임의 코드 원문" to fixture.replace("ITEMS_NEED_REVIEW", "영수증 원문"),
++        "새 단위 값" to fixture.replace("\"unit\": \"UNKNOWN\"", "\"unit\": \"TOTAL\""))
++    invalidResponses.forEach { (label, raw) ->
++        "$label 응답은 공개 후보로 변환하지 않는다" {
++            shouldThrow<ReceiptException> { reader.read(raw.toByteArray()) }.code shouldBe "OCR_BAD_RESPONSE"
++        }
++    }
++    "HTTP 어댑터는 내부 고정 경로와 키와 원본 바이트를 한번 보낸다" {
++        val builder = RestClient.builder()
++        val server = MockRestServiceServer.bindTo(builder).build()
++        val bytes = byteArrayOf(0xff.toByte(), 0xd8.toByte(), 0xff.toByte())
++        server.expect(requestTo("http://127.0.0.1:18082/api/v1/receipts/extract"))
++            .andExpect(method(HttpMethod.POST)).andExpect(header("X-Receipt-Service-Key", key))
++            .andExpect(content().contentType("image/jpeg")).andExpect(content().bytes(bytes))
++            .andRespond(withSuccess(fixture, MediaType.APPLICATION_JSON))
++        val result = HttpReceiptOcrClient(settings, builder.build(), mapper).extract(bytes, "image/jpeg")
++        result.requiresConfirmation shouldBe true; result.drinks.single().bottleCount shouldBe null
++        server.verify()
++    }
++    val errors = listOf(Triple(503, "OCR_BUSY", "OCR_BUSY"), Triple(503, "OCR_UNAVAILABLE", "OCR_UNAVAILABLE"),
++        Triple(401, "SERVICE_AUTH_REQUIRED", "OCR_UNAVAILABLE"), Triple(500, "secret-provider-error", "OCR_BAD_RESPONSE"),
++        Triple(400, "IMAGE_INVALID", "IMAGE_INVALID"), Triple(400, "IMAGE_DIMENSIONS_TOO_LARGE", "IMAGE_DIMENSIONS_TOO_LARGE"),
++        Triple(400, "IMAGE_FORMAT_UNSUPPORTED", "IMAGE_FORMAT_UNSUPPORTED"), Triple(413, "IMAGE_TOO_LARGE", "IMAGE_TOO_LARGE"))
++    errors.forEach { (status, internalCode, expected) ->
++        "내부 $status $internalCode 오류는 허용 코드로만 노출한다" {
++            val builder = RestClient.builder()
++            val server = MockRestServiceServer.bindTo(builder).build()
++            server.expect(anything()).andRespond(withStatus(HttpStatus.valueOf(status)).contentType(MediaType.APPLICATION_JSON)
++                .body("""{"detail":{"code":"$internalCode","message":"private-value"}}"""))
++            val failure = shouldThrow<ReceiptException> { HttpReceiptOcrClient(settings, builder.build(), mapper).extract(byteArrayOf(1), "image/png") }
++            failure.code shouldBe expected; failure.message.contains("private-value") shouldBe false
++            if (expected == "OCR_BUSY") failure.retryAfter shouldBe 2L
++            server.verify()
++        }
++    }
++    "응답 길이가 한도를 넘으면 502다" {
++        val builder = RestClient.builder()
++        val server = MockRestServiceServer.bindTo(builder).build()
++        server.expect(anything()).andRespond(withSuccess(" ".repeat(256 * 1024 + 1), MediaType.APPLICATION_JSON))
++        shouldThrow<ReceiptException> { HttpReceiptOcrClient(settings, builder.build(), mapper).extract(byteArrayOf(1), "image/png") }.code shouldBe "OCR_BAD_RESPONSE"
++        server.verify()
++    }
++    "실제 소켓 읽기 시간 초과는 504로 닫힌다" {
++        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
++        server.createContext("/api/v1/receipts/extract") { exchange ->
++            exchange.requestBody.readAllBytes()
++            Thread.sleep(250)
++            exchange.close()
++        }
++        server.start()
++        try {
++            val factory = SimpleClientHttpRequestFactory().apply { setConnectTimeout(500); setReadTimeout(30) }
++            val configured = ReceiptOcrSettings(URI("http://127.0.0.1:${server.address.port}"), key)
++            shouldThrow<ReceiptException> { HttpReceiptOcrClient(configured, RestClient.builder().requestFactory(factory).build(), mapper)
++                .extract(byteArrayOf(1), "image/png") }.code shouldBe "OCR_TIMEOUT"
++        } finally { server.stop(0) }
++    }
++    "실제 리다이렉트는 내부 키를 다른 경로로 전송하지 않는다" {
++        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
++        var redirectedCalls = 0
++        server.createContext("/api/v1/receipts/extract") { exchange ->
++            exchange.requestBody.readAllBytes()
++            exchange.responseHeaders.add("Location", "http://127.0.0.1:${server.address.port}/redirect-target")
++            exchange.sendResponseHeaders(307, -1)
++            exchange.close()
++        }
++        server.createContext("/redirect-target") { exchange -> redirectedCalls++; exchange.sendResponseHeaders(200, -1); exchange.close() }
++        server.start()
++        try {
++            val environment = MockEnvironment().withProperty("receipt.ocr.base-url", "http://127.0.0.1:${server.address.port}")
++                .withProperty("receipt.ocr.service-key", key)
++            val client = ReceiptOcrConfiguration().receiptOcrClient(environment, mapper)
++            shouldThrow<ReceiptException> { client.extract(byteArrayOf(1), "image/png") }.code shouldBe "OCR_BAD_RESPONSE"
++            redirectedCalls shouldBe 0
++        } finally { server.stop(0) }
++    }
++    "실제 연결 거부는 내부 주소를 노출하지 않고 503이다" {
++        val socket = java.net.ServerSocket(0, 0, java.net.InetAddress.getByName("127.0.0.1"))
++        val port = socket.localPort
++        socket.close()
++        val factory = SimpleClientHttpRequestFactory().apply { setConnectTimeout(500); setReadTimeout(500) }
++        val client = HttpReceiptOcrClient(ReceiptOcrSettings(URI("http://127.0.0.1:$port"), key), RestClient.builder().requestFactory(factory).build(), mapper)
++        val failure = shouldThrow<ReceiptException> { client.extract(byteArrayOf(1), "image/png") }
++        failure.code shouldBe "OCR_UNAVAILABLE"
++        failure.message.contains("127.0.0.1") shouldBe false
++    }
++    "미설정과 부분 설정과 외부 주소와 잘못된 키를 구분한다" {
++        ReceiptOcrSettings.read(MockEnvironment()) shouldBe null
++        val invalidSettings = listOf("https://127.0.0.1:8091", "http://external.example:8091", "http://localhost", "http://localhost:0",
++            "http://localhost:8091/path", "http://name@localhost:8091", "http://localhost:8091?secret=x", "http://localhost:8091#x")
++        invalidSettings.forEach { url ->
++            shouldThrow<IllegalArgumentException> { ReceiptOcrSettings.read(MockEnvironment().withProperty("receipt.ocr.base-url", url).withProperty("receipt.ocr.service-key", key)) }
++        }
++        shouldThrow<IllegalArgumentException> { ReceiptOcrSettings.read(MockEnvironment().withProperty("receipt.ocr.base-url", "http://localhost:8091")) }
++        shouldThrow<IllegalArgumentException> { ReceiptOcrSettings.read(MockEnvironment().withProperty("receipt.ocr.base-url", "http://localhost:8091").withProperty("receipt.ocr.service-key", "short")) }
++        ReceiptOcrSettings.read(MockEnvironment().withProperty("receipt.ocr.base-url", "http://receipt-ocr:8091/").withProperty("receipt.ocr.service-key", key))!!.baseUrl.toString() shouldBe "http://receipt-ocr:8091"
++    }
++})
+diff --git a/server/src/test/kotlin/app/jeongsan/server/receipt/ReceiptPolicySpec.kt b/server/src/test/kotlin/app/jeongsan/server/receipt/ReceiptPolicySpec.kt
+new file mode 100644
+index 0000000..d1e452c
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/receipt/ReceiptPolicySpec.kt
+@@ -0,0 +1,70 @@
++package app.jeongsan.server.receipt
++
++import app.jeongsan.server.receipt.javaimpl.ReceiptPolicy as JavaPolicy
++import io.kotest.assertions.throwables.shouldThrow
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++
++class ReceiptPolicySpec : StringSpec({
++    "권한 결정은 양 언어가 실제 기대 오류와 같다" {
++        val cases = listOf(
++            arrayOf<Any?>(false, false, false, "OPEN", "SETTLEMENT_UNIT_NOT_FOUND"),
++            arrayOf<Any?>(true, false, false, "OPEN", "NOT_PARTICIPANT"),
++            arrayOf<Any?>(true, true, false, "OPEN", "NOT_SETTLEMENT_UNIT_HOST"),
++            arrayOf<Any?>(true, true, true, "SETTLING", "SETTLEMENT_UNIT_NOT_OPEN"),
++            arrayOf<Any?>(true, true, true, "COMPLETED", "SETTLEMENT_UNIT_NOT_OPEN"),
++            arrayOf<Any?>(true, true, true, "OPEN", null))
++        cases.forEach { case ->
++            ReceiptPolicy.access(case[0] as Boolean, case[1] as Boolean, case[2] as Boolean, case[3] as String) shouldBe case[4]
++            JavaPolicy.access(case[0] as Boolean, case[1] as Boolean, case[2] as Boolean, case[3] as String) shouldBe case[4]
++        }
++    }
++    "매체 타입과 길이 경계는 양 언어에서 동일하다" {
++        listOf(null to null, "image/png" to "image/png", " IMAGE/JPEG ; charset=x" to "image/jpeg", "application/pdf" to null,
++            "multipart/form-data" to null, "image/jpg" to null).forEach { (header, expected) ->
++            ReceiptPolicy.mediaType(header) shouldBe expected
++            JavaPolicy.mediaType(header) shouldBe expected
++        }
++        listOf(-2L to "IMAGE_SIZE_INVALID", -1L to null, 0L to "IMAGE_SIZE_INVALID", 1L to null,
++            ReceiptPolicy.MAX_BYTES.toLong() to null, ReceiptPolicy.MAX_BYTES + 1L to "IMAGE_TOO_LARGE").forEach { (length, expected) ->
++            ReceiptPolicy.lengthError(length) shouldBe expected
++            JavaPolicy.lengthError(length) shouldBe expected
++        }
++    }
++    "파일 시그니처는 JPEG PNG의 실제 앞부분과 일치해야 한다" {
++        val jpeg = byteArrayOf(0xff.toByte(), 0xd8.toByte(), 0xff.toByte())
++        val png = byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
++        for ((bytes, mediaType, expected) in listOf(Triple(jpeg, "image/jpeg", true), Triple(png, "image/png", true),
++            Triple(jpeg, "image/png", false), Triple(png, "image/jpeg", false), Triple(byteArrayOf(), "image/png", false))) {
++            ReceiptPolicy.matchesSignature(bytes, mediaType) shouldBe expected
++            JavaPolicy.matchesSignature(bytes, mediaType) shouldBe expected
++        }
++    }
++    "요청 제한은 60초 경계와 남은 초 올림을 양 언어로 검증한다" {
++        listOf(Triple(2, 0L, 0L), Triple(3, 0L, 60L), Triple(3, 1L, 60L), Triple(3, 59_000_000_001L, 1L),
++            Triple(3, 60_000_000_000L, 0L)).forEach { (usedCount, elapsed, expected) ->
++            ReceiptPolicy.retryAfter(usedCount, elapsed) shouldBe expected
++            JavaPolicy.retryAfter(usedCount, elapsed) shouldBe expected
++        }
++    }
++    "대기열 없는 busy는 횟수를 소비하지 않고 lease는 한번만 반환한다" {
++        val admission = ReceiptAdmission()
++        val lease = admission.enter(1, 0)
++        shouldThrow<ReceiptException> { admission.enter(2, 0) }.code shouldBe "OCR_BUSY"
++        lease.close(); lease.close()
++        admission.enter(2, 0).use {
++            shouldThrow<ReceiptException> { admission.enter(3, 0) }.code shouldBe "OCR_BUSY"
++        }
++        repeat(2) { admission.enter(2, 0).close() }
++        val limited = shouldThrow<ReceiptException> { admission.enter(2, 1) }
++        limited.code shouldBe "OCR_REQUEST_LIMIT"
++        limited.retryAfter shouldBe 60L
++        admission.enter(2, ReceiptPolicy.WINDOW_NANOS).close()
++    }
++    "사용자 창은 만 개까지만 보관하며 만료 후 새 요청을 허용한다" {
++        val admission = ReceiptAdmission()
++        repeat(10_000) { admission.enter(it.toLong(), 0).close() }
++        shouldThrow<ReceiptException> { admission.enter(10_001, 1) }.code shouldBe "OCR_BUSY"
++        admission.enter(10_001, ReceiptPolicy.WINDOW_NANOS).close()
++    }
++})
+diff --git a/server/src/test/resources/receipt/response-v2.json b/server/src/test/resources/receipt/response-v2.json
+new file mode 100644
+index 0000000..af1234e
+--- /dev/null
++++ b/server/src/test/resources/receipt/response-v2.json
+@@ -0,0 +1,19 @@
++{
++  "schemaVersion": 2,
++  "total": 50000,
++  "drinks": [{
++    "name": "참이슬 (세부형 미상)",
++    "category": "SOJU",
++    "unit": "UNKNOWN",
++    "unitPrice": 5000,
++    "quantity": 3,
++    "lineAmount": 15000,
++    "servingType": "UNKNOWN",
++    "volumeMl": null,
++    "bottleCount": null,
++    "confidence": 0.98,
++    "reviewReasons": ["UNKNOWN_CONTAINER"]
++  }],
++  "warnings": ["ITEMS_NEED_REVIEW"],
++  "requiresConfirmation": true
++}

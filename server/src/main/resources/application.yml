@@ -13,6 +13,11 @@ spring:
   profiles:
     default: local
 
+  servlet:
+    multipart:
+      # OCR은 raw 본문만 받는다. 잘못된 multipart도 인증 전에 파싱·임시 저장하지 않는다.
+      resolve-lazily: true
+
   jpa:
     properties:
       hibernate:

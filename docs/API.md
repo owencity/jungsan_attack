@@ -1,4 +1,13 @@
-# 정산어택 — API 계약 · v12
+# 정산어택 — API 계약 · v13
+
+> **v13 변경(2026-10-19)** — 정산 단위 총무의 영수증 추출 후보 API를 추가한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | 영수증 추출 | POST U/receipts/extract, JPEG/PNG 8MiB, 인증·총무·OPEN 검증 |
+> | 오류·제한 | OCR/IMAGE 코드, 사용자 3회/분·단일 추출, Retry-After·시간 초과 |
+>
+> 상세 요청·응답·오류 계약은 [RECEIPT_OCR.md의 Spring 공개 연결 계약](RECEIPT_OCR.md#spring-공개-연결-계약)을 따른다. 결과는 총무 확인용이며 저장·정산하지 않는다.
 
 > **v12 변경(2026-10-14)** — 내부 알림의 대상·문구를 FC-005·010·011과 단위별 정산에 맞춘다.
 >
@@ -335,6 +344,14 @@ GET /api/v1/gatherings
 | `ALREADY_SCHEDULED` | 409 | 이미 삭제 예정인 모임 |
 | `PARTICIPANT_HAS_PAYMENT` | 409 | 입금 표시된 사람은 명단에서 못 뺀다 |
 | `TOO_MANY_REQUESTS` | 429 | shareToken 무작위 대입 방어 |
+| `IMAGE_INVALID` / `IMAGE_SIZE_INVALID` / `IMAGE_DIMENSIONS_TOO_LARGE` | 400 | 빈·깨진 사진 또는 디코딩 픽셀 제한 |
+| `IMAGE_TOO_LARGE` | 413 | 영수증 본문 8MiB 초과 |
+| `IMAGE_FORMAT_UNSUPPORTED` | 415 | JPEG/PNG 이외 형식 |
+| `OCR_REQUEST_LIMIT` | 429 | 사용자당 60초 3회 초과, `Retry-After` 초 |
+| `OCR_BAD_RESPONSE` | 502 | 내부 OCR 응답의 크기·형식·schema v2 계약 위반 |
+| `OCR_BUSY` | 503 | 단일 추출 슬롯 또는 제한된 사용자 창 사용 중, `Retry-After: 2` |
+| `OCR_UNAVAILABLE` | 503 | OCR 미설정·연결 실패·내부 인증 설정 오류 |
+| `OCR_TIMEOUT` | 504 | 내부 OCR 연결·소켓 읽기 시간 초과 |
 | `NOT_GROUP_OWNER` | 403 | 그룹 관리 기능은 OWNER 전용 (§3-b) |
 | `ALREADY_GROUP_MEMBER` | 409 | 이미 그룹 멤버 (§3-b) |
 | `INVALID_GROUP_TOKEN` | 404 | 그룹 초대 링크가 틀리거나 재발급됨 (§3-b) |
@@ -1440,3 +1457,15 @@ Core v2 코드: `TOTAL_NOT_POSITIVE`, `ALCOHOL_NEGATIVE`, `ALCOHOL_EXCEEDS_TOTAL
 | 409 | NO_ROUNDS / REMOVE_HOST / REMOVE_PAYER | 차수 없음 또는 보호 명단 제외 시도 |
 | 409 | PAYOUT_MISSING / TRANSFER_ALREADY_SENT / INVALID_TRANSFER_TRANSITION | 수취 계좌 없음 / sentAt·confirmedAt 이력으로 취소 금지 / 송금 상태 불일치 |
 | 400 | MALFORMED_REQUEST | 잘못된 명단·응답 타입·계좌·본문 |
+
+## 0.7 영수증 후보 추출 (v13)
+
+`POST /api/v1/gatherings/{gid}/settlement-units/{sid}/receipts/extract`
+
+WEB 쿠키 또는 APP Bearer 인증, 해당 술자리·단위의 ACTIVE 참여자이자 총무, 단위 OPEN일 때만
+허용한다. 단위가 해당 술자리 아래 없으면 404, 참여/총무 권한은 403, OPEN이 아니면 409다.
+본문은 `image/jpeg` 또는 `image/png` 바이너리이며 최대 8MiB다. multipart·URL 업로드는 없다.
+200은 schemaVersion 2 후보 DTO + `Cache-Control: no-store`이며 필드·nullable·범위·확인 사유는
+[영수증 계약](RECEIPT_OCR.md)의 요청/응답 절을 따른다. `requiresConfirmation`은 항상 true다.
+원본과 후보를 저장하지 않고 정산 입력·revision을 변경하지 않는다. 추출 뒤 사용자 확인·기존 차수
+저장 API를 거친다. OCR 오류는 §1.4의 IMAGE/OCR 코드이며 429/503 busy의 Retry-After는 초다.

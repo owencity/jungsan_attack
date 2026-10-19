@@ -8,8 +8,10 @@ if docker inspect "$container" >/dev/null 2>&1; then
   exit 1
 fi
 server_pid=''
+receipt_stub_pid=''
 cleanup() {
   [ -z "$server_pid" ] || kill "$server_pid" 2>/dev/null || true
+  [ -z "$receipt_stub_pid" ] || kill "$receipt_stub_pid" 2>/dev/null || true
   if [ "$(docker inspect --format '{{index .Config.Labels "jeongsan.ci"}}' "$container" 2>/dev/null)" = "$GITHUB_RUN_ID" ]; then
     docker rm -f "$container" >/dev/null
   fi
@@ -46,7 +48,18 @@ if [ -n "${BOOT3_BASELINE_JAR:-}" ]; then
   server_pid=''
 fi
 
-java -Duser.timezone=Asia/Seoul -jar server/build/libs/server.jar --server.port=18081 \
+receipt_test_key='ci-only-receipt-service-key-32-characters'
+RECEIPT_OCR_SERVICE_KEY="$receipt_test_key" python3 scripts/receipt-bridge-stub.py > server/build/receipt-stub.log 2>&1 &
+receipt_stub_pid=$!
+ready=false
+for attempt in $(seq 1 20); do
+  if curl -fsS http://127.0.0.1:18082/calls >/dev/null; then ready=true; break; fi
+  kill -0 "$receipt_stub_pid" 2>/dev/null || break
+  sleep 1
+done
+[ "$ready" = true ] || { echo 'CI OCR 계약 대역 준비 실패' >&2; exit 1; }
+env RECEIPT_OCR_BASE_URL=http://127.0.0.1:18082 RECEIPT_OCR_SERVICE_KEY="$receipt_test_key" \
+  java -Duser.timezone=Asia/Seoul -jar server/build/libs/server.jar --server.port=18081 \
   '--spring.datasource.url=jdbc:mysql://127.0.0.1:13306/jeongsan_auth_test?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true' \
   --spring.datasource.password=local-v4-test > server/build/release-http.log 2>&1 &
 server_pid=$!
@@ -58,6 +71,7 @@ for attempt in $(seq 1 40); do
 done
 [ "$ready" = true ] || { echo 'CI HTTP 서버 준비 실패' >&2; exit 1; }
 if [ -n "${BOOT3_BASELINE_JAR:-}" ]; then python3 scripts/verify-boot-upgrade.py verify; fi
+python3 scripts/verify-receipt-bridge.py
 python3 scripts/verify-auto-settlement.py
 python3 scripts/verify-notifications.py
 python3 scripts/verify-auth-release.py
@@ -88,3 +102,4 @@ for attempt in $(seq 1 40); do
 done
 [ "$ready" = true ] || { echo 'Apple 미설정 운영 프로필 기동 실패' >&2; tail -n 45 server/build/release-prod-http.log; exit 1; }
 python3 scripts/verify-provider-availability.py
+python3 scripts/verify-receipt-bridge.py disabled
