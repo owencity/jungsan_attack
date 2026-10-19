@@ -22,5 +22,6 @@
     "scripts/verify-release.sh",
     "scripts/ingress/install-caddy.sh"
   ],
-  "real_database_and_caddy": "pending consolidated PR CI; not executed locally"
+  "real_database_and_caddy": "pending consolidated PR CI; not executed locally",
+  "source_head": "8aa2b46adf1a0a2a7da68cbfc1b2295f8bd88095"
 }
