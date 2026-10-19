@@ -2,6 +2,12 @@
 
 `ADR-006`(단일 VM + docker compose)을 따른다. K8s·ArgoCD·Jenkins를 쓰지 않는다.
 
+**Caddy 직접 연결 결정 (2026-10-12):** CTO가 Cloudflare LAX 경유 지연을 줄이기 위해 OCI 호스트에
+Caddy 설치를 승인했다. Spring·MySQL·기존 Tunnel은 유지하고 `jungsan-api.devkdk.com`만
+DNS only A 레코드로 OCI에 직접 연결한다. 설치·OCI 인바운드·DNS·공인 인증서·실측을 구분한다.
+[설치와 전환·복구 절차](operations/caddy-direct-ingress.md), [ADR-021](ADR/021-caddy-direct-api-ingress.md)를 따른다.
+아래 Tunnel 절차는 이전 연결과 복구용 기록이며 직접 연결 중에는 DNS workflow를 실행하지 않는다.
+
 **운영 DB 최초 인증 (2026-10-10):** MySQL 8.4의 인증 캐시가 비어 있을 때도 연결되도록
 `application-prod.yml`의 JDBC URL에 `allowPublicKeyRetrieval=true`를 명시한다. 현재 MySQL은
 외부 포트를 열지 않는 단일 VM compose 내부 서비스다. 이 설정은 서버 신원 검증을 대신하지 않으므로
@@ -43,8 +49,8 @@ GitHub Actions (ARM 러너)                  OCI Ubuntu
 
 `OCI_USER`(`ubuntu`)는 숨길 값이 아니라 워크플로에 직접 적었다.
 
-> `OCI_HOST` 를 secret 에 두는 이유 — 저장소가 public 이고 Cloudflare 프록시로
-> origin IP 를 가리고 있다. 워크플로에 IP 를 적으면 그 보호가 무의미해진다.
+> `OCI_HOST`는 운영 접속 대상을 관리하는 설정이다. Caddy 직접 연결의 DNS only A 레코드에서는
+> 공인 IP가 공개되므로 이 Secret만으로 origin을 숨긴다고 가정하지 않는다.
 
 ### (b) 러너 아키텍처 확인 ⚠️
 
@@ -189,6 +195,11 @@ FC-021은 문서 수정, 콘솔 저장, 운영 배포, 웹 재배포, 실제 로
 모두 확인한 뒤 닫는다. DNS 없는 Apple 콜백 주소를 문서에서 바꾼 것만으로 반영 완료 처리하지 않는다.
 
 ### Cloudflare DNS 실행과 Tunnel 연결
+
+**Caddy 전환 이후에는 아래 workflow를 실행하지 않는다.** 이 workflow는 CNAME·proxied=true인
+이전 Tunnel 연결 전용이다. 직접 연결 A 레코드를 발견하면 기존 스크립트는 교체를 거절한다.
+DNS 화면에서 직접 바꾸는 경우 Cloudflare API 토큰은 필요 없다. Caddy 설치·HTTP/TLS 인증서 발급에도
+DNS 편집 토큰을 쓰지 않는다. `api.devkdk.com`·`webhook.devkdk.com`은 계속 기존 Tunnel을 쓴다.
 
 운영 API 도메인은 **`jungsan-api.devkdk.com` 하나**다. Apple·카카오 콜백에도 이 주소를 사용한다.
 CTO는 GitHub Repository Secret `CLOUDFLARE_API_TOKEN`에 **devkdk.com DNS 편집 전용** 토큰을 넣는다.
