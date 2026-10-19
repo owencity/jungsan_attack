@@ -1,0 +1,38 @@
+{
+  "pullRequest": "https://github.com/owencity/jungsan_attack/pull/34",
+  "base": "dbcc997884c6fcf62cc218554237333a614b9025",
+  "sourceHead": "f928e21eb42b21a6709b1703b6bab819073ad246",
+  "policyAndCatalogCommit": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "files": [
+    "receipt-ocr/receipt_ocr/numeric_regions.py",
+    "receipt-ocr/receipt_ocr/ocr.py",
+    "receipt-ocr/tests/test_numeric_regions.py",
+    "receipt-ocr/tests/test_ocr_adapter.py"
+  ],
+  "diffSha256": "af1d651557562d505e23e57476cb9590e5c956701b247cca06445aa0eb0ea130",
+  "validation": {
+    "unitTests": 106,
+    "unitResult": "OK",
+    "unitSeconds": 0.461,
+    "serverCompile": "BUILD SUCCESSFUL in 9s",
+    "fullyLabelledOriginalSamples": 2,
+    "totalExactCount": 2,
+    "allDrinkFieldsExactBefore": 1,
+    "allDrinkFieldsExactAfter": 2,
+    "evaluationFailures": 0,
+    "meanSecondsExcludingStartup": 23.068,
+    "modelStartupSeconds": 4.972,
+    "originalAndDerivedControls": 8,
+    "controlFailures": 0,
+    "actualModelAsgiUploads": 8,
+    "allUploadStatuses": 200,
+    "healthStatus": 200,
+    "unauthenticatedStatus": 401,
+    "invalidImageStatus": 400,
+    "independentAccuracyBenchmark": false,
+    "armOrProductionTested": false
+  },
+  "recognitionInstances": "same Korean weights; separate public TextRecognition instance adds memory",
+  "review": "self-review only; independent review not performed",
+  "imagesOrRawTokensCommitted": false
+}
