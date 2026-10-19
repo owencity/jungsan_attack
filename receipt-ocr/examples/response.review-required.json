@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "total": 81800,
+  "drinks": [{
+    "name": "청도맥주 (세부형 미상)", "category": "BEER", "unit": "UNKNOWN",
+    "unitPrice": null, "quantity": null, "lineAmount": null,
+    "confidence": 0.9434, "reviewReasons": ["ITEM_VALUES_MISSING", "UNKNOWN_CONTAINER"],
+    "servingType": "UNKNOWN", "volumeMl": null, "bottleCount": null
+  }],
+  "warnings": ["ITEMS_NEED_REVIEW"],
+  "requiresConfirmation": true
+}

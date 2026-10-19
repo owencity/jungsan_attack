@@ -1,0 +1,21 @@
+{
+  "pullRequest": "https://github.com/owencity/jungsan_attack/pull/34",
+  "base": "a37d257337b500ce7dd4c0cf73f626963c1395f4",
+  "implementationHead": "d10b73b947c7af38536f458b77728c052c9758ed",
+  "policyBase": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "files": [
+    "receipt-ocr/receipt_ocr/dictionary.py",
+    "receipt-ocr/receipt_ocr/product.py",
+    "receipt-ocr/receipt_ocr/extract.py",
+    "receipt-ocr/receipt_ocr/model.py",
+    "receipt-ocr/receipt_ocr/evaluate.py",
+    "receipt-ocr/tests/test_policy.py",
+    "receipt-ocr/tests/test_extract.py",
+    "receipt-ocr/tests/test_evaluate.py"
+  ],
+  "tests": 61,
+  "review": "self-review only",
+  "sourceDocument": "receipt_alcohol_ocr_dictionary.md",
+  "sourceSha256": "b650a617d1d4543b005e8c22501cab2e1f6e85d9fd2214de1ce816189e84ec5a",
+  "diffSha256": "50977bc59527075865fa62684c8d9ea9d0a0680470232b781b45b3e3a9681515"
+}

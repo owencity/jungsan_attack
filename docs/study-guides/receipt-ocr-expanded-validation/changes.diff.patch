@@ -1,0 +1,118 @@
+diff --git a/receipt-ocr/data/drinks.md b/receipt-ocr/data/drinks.md
+index bd1aeac..3ba51be 100644
+--- a/receipt-ocr/data/drinks.md
++++ b/receipt-ocr/data/drinks.md
+@@ -71,0 +72 @@ CTO 제공 문서의 브랜드·표기와 팩트체크 수정 사항을 실행
++| 청도맥주 | 맥주 | 청도맥주 (세부형 미상) | 미상 | 미상 |
+diff --git a/receipt-ocr/examples/manifest.expanded-public.example.json b/receipt-ocr/examples/manifest.expanded-public.example.json
+new file mode 100644
+index 0000000..67e2455
+--- /dev/null
++++ b/receipt-ocr/examples/manifest.expanded-public.example.json
+@@ -0,0 +1,16 @@
++[
++  {
++    "image": "ramen.jpg", "total": 18500,
++    "drinks": [{
++      "name": "카스 (세부형 미상)", "category": "BEER", "unit": "UNKNOWN", "servingType": "DRAFT",
++      "unitPrice": null, "quantity": 1, "lineAmount": 2000, "volumeMl": 300, "bottleCount": 0
++    }]
++  },
++  {
++    "image": "newtown.jpg", "total": 81800,
++    "drinks": [{
++      "name": "청도맥주 (세부형 미상)", "category": "BEER", "unit": "UNKNOWN", "servingType": "UNKNOWN",
++      "unitPrice": 7000, "quantity": 1, "lineAmount": 7000, "volumeMl": null, "bottleCount": null
++    }]
++  }
++]
+diff --git a/receipt-ocr/examples/response.review-required.json b/receipt-ocr/examples/response.review-required.json
+new file mode 100644
+index 0000000..848efb8
+--- /dev/null
++++ b/receipt-ocr/examples/response.review-required.json
+@@ -0,0 +1,12 @@
++{
++  "schemaVersion": 2,
++  "total": 81800,
++  "drinks": [{
++    "name": "청도맥주 (세부형 미상)", "category": "BEER", "unit": "UNKNOWN",
++    "unitPrice": null, "quantity": null, "lineAmount": null,
++    "confidence": 0.9434, "reviewReasons": ["ITEM_VALUES_MISSING", "UNKNOWN_CONTAINER"],
++    "servingType": "UNKNOWN", "volumeMl": null, "bottleCount": null
++  }],
++  "warnings": ["ITEMS_NEED_REVIEW"],
++  "requiresConfirmation": true
++}
+diff --git a/receipt-ocr/receipt_ocr/extract.py b/receipt-ocr/receipt_ocr/extract.py
+index 3652639..75160e0 100644
+--- a/receipt-ocr/receipt_ocr/extract.py
++++ b/receipt-ocr/receipt_ocr/extract.py
+@@ -36 +35,0 @@ def group_rows(tokens: list[Token]) -> list[list[Token]]:
+-        center = (token.box[1] + token.box[3]) / 2
+@@ -40,2 +39,3 @@ def group_rows(tokens: list[Token]) -> list[list[Token]]:
+-            anchor_center = (anchor.box[1] + anchor.box[3]) / 2
+-            if abs(center - anchor_center) <= 0.5 * min(height, anchor.box[3] - anchor.box[1]):
++            overlap = min(token.box[3], anchor.box[3]) - max(token.box[1], anchor.box[1])
++            # 원근으로 글자 높이가 달라도 실제 세로 영역이 절반 이상 겹치면 같은 줄 후보다.
++            if overlap >= 0.5 * min(height, anchor.box[3] - anchor.box[1]):
+diff --git a/receipt-ocr/tests/test_public_layouts.py b/receipt-ocr/tests/test_public_layouts.py
+index 548630f..bacec76 100644
+--- a/receipt-ocr/tests/test_public_layouts.py
++++ b/receipt-ocr/tests/test_public_layouts.py
+@@ -1,0 +2 @@
++import json
+@@ -6 +7,2 @@ from receipt_ocr.dictionary import load_dictionary
+-from receipt_ocr.extract import extract
++from receipt_ocr.extract import extract, group_rows
++from receipt_ocr.model import Token
+@@ -22,0 +25,49 @@ class PublicLayoutTests(unittest.TestCase):
++    def test_perspective_total_uses_overlapping_unequal_height_boxes(self):
++        result = extract([Token("81,800", .99, (1523, 1165, 1691, 1231)),
++                          Token("합계 금액", .98, (650, 1186, 963, 1288)),
++                          Token("부가세", .99, (872, 1294, 1342, 1392)),
++                          Token("7,435", .99, (1530, 1282, 1698, 1350))], self.dictionary)
++        self.assertEqual(81800, result.total)
++        self.assertTrue(result.to_dict()["requiresConfirmation"])
++
++    def test_separate_tax_row_is_not_borrowed_for_missing_total(self):
++        result = extract([Token("합계금액", .99, (10, 10, 100, 40)),
++                          Token("부가세", .99, (10, 45, 100, 75)),
++                          Token("7,435", .99, (200, 45, 300, 75))], self.dictionary)
++        self.assertIsNone(result.total)
++
++    def test_two_different_totals_in_separate_rows_keep_conflict_detection(self):
++        result = extract([Token("합계금액", .99, (10, 10, 100, 45)),
++                          Token("81,800", .99, (200, 5, 300, 30)),
++                          Token("결제금액", .99, (10, 55, 100, 90)),
++                          Token("82,000", .99, (200, 50, 300, 75))], self.dictionary)
++        self.assertIsNone(result.total)
++        self.assertIn("TOTAL_CONFLICT", result.warnings)
++
++    def test_row_overlap_boundary_and_input_are_preserved(self):
++        first = Token("소주", .99, (10, 10, 70, 30))
++        half_overlap = Token("1", .99, (150, 20, 170, 40))
++        next_row = Token("맥주", .99, (10, 31, 70, 51))
++        source = [next_row, half_overlap, first]
++        self.assertEqual([[first, half_overlap], [next_row]], group_rows(source))
++        self.assertEqual([next_row, half_overlap, first], source)
++        self.assertEqual([[first], [Token("1", .99, (150, 21, 170, 41))]],
++                         group_rows([first, Token("1", .99, (150, 21, 170, 41))]))
++
++    def test_observed_beer_alias_does_not_assume_bottle_or_subtype(self):
++        drink = self.read("품명 단가 수량 금액", "청도맥주 7,000 1 7,000").drinks[0]
++        self.assertEqual(("청도맥주 (세부형 미상)", "BEER", 7000, 1, 7000),
++                         (drink.name, drink.category, drink.unit_price, drink.quantity, drink.line_amount))
++        self.assertEqual(("UNKNOWN", "UNKNOWN", None), (drink.unit, drink.serving_type, drink.bottle_count))
++        for name in ("청도맥주 무알콜", "청도맥주(미등록)"):
++            self.assertEqual([], self.read("품명 수량 금액", name + " 1 7,000").drinks)
++        decimal = self.read("품명 수량 금액", "청도맥주 0.0 1 7,000").drinks[0]
++        self.assertIsNone(decimal.quantity)
++        self.assertIsNone(decimal.bottle_count)
++
++    def test_spring_example_preserves_missing_values_and_review_reasons(self):
++        expected = json.loads((Path(__file__).resolve().parents[1] /
++                               "examples/response.review-required.json").read_text(encoding="utf-8"))
++        result = self.read("품명 단가 수량 금액", "청도맥주 7,000 7,000", "합계금액 81,800", confidence=.9434)
++        self.assertEqual(expected, result.to_dict())
++

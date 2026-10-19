@@ -1,0 +1,35 @@
+{
+  "pullRequest": "https://github.com/owencity/jungsan_attack/pull/34",
+  "base": "57d1ee955e890ce31c6d1f9eec361e130988dec9",
+  "sourceHead": "069cf4307057393e2a31531432f6d7eee2e63bef",
+  "policyAndCatalogCommit": "3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420",
+  "files": [
+    "receipt-ocr/receipt_ocr/extract.py",
+    "receipt-ocr/tests/test_public_layouts.py",
+    "receipt-ocr/data/drinks.md",
+    "receipt-ocr/examples/manifest.expanded-public.example.json",
+    "receipt-ocr/examples/response.review-required.json"
+  ],
+  "diffSha256": "9814b86bcafc7a6737d4de07b62bb4b4744c0d453f79f7e8969d9edf391757b1",
+  "validation": {
+    "unitTests": 98,
+    "unitResult": "OK",
+    "unitSeconds": 0.579,
+    "serverCompile": "BUILD SUCCESSFUL in 16s",
+    "receiptImageFiles": 6,
+    "foodControlImageFiles": 2,
+    "fullyLabelledOriginalSamples": 2,
+    "totalExactCount": 2,
+    "allDrinkFieldsExactCount": 1,
+    "evaluationFailures": 0,
+    "meanSecondsExcludingStartup": 39.237,
+    "actualModelAsgiUploads": 4,
+    "allUploadStatuses": 200,
+    "healthStatus": 200,
+    "unauthenticatedStatus": 401,
+    "independentAccuracyBenchmark": false,
+    "armOrProductionTested": false
+  },
+  "review": "self-review only; independent review not performed",
+  "imagesOrRawTokensCommitted": false
+}

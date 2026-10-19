@@ -1,5 +1,25 @@
 # PR 리뷰·스터디 기록
 
+영수증 숫자 직접 인식은 [가이드](receipt-ocr-direct-recognition/guide.md) ·
+[고정 diff](receipt-ocr-direct-recognition/changes.diff.patch) · [검증 기준](receipt-ocr-direct-recognition/manifest.json)을 본다.
+같은 개발 사진의 주류 전체 일치 1/2 → 2/2, 원본/파생 대조 8건과 추가 인식 인스턴스 비용을 구분한다.
+
+영수증 추가 원본 검증은 [가이드](receipt-ocr-expanded-validation/guide.md) ·
+[고정 diff](receipt-ocr-expanded-validation/changes.diff.patch) · [검증 기준](receipt-ocr-expanded-validation/manifest.json)을 본다.
+총액 2/2와 주류 전체 필드 1/2를 구분하고, 새 사진의 작은 수량 누락과 운영/연결 미검증을 남긴다.
+
+영수증 작은 숫자 재인식 후속은 [가이드](receipt-ocr-numeric-regions/guide.md) ·
+[고정 diff](receipt-ocr-numeric-regions/changes.diff.patch) · [검증 기준](receipt-ocr-numeric-regions/manifest.json)을 본다.
+기존 실패 사례의 개선과 빈 칸·음수·재압축 대조를 보존하며 독립 사진 정확도와 구분한다.
+
+영수증 공개 웹 사례 후속은 [가이드](receipt-ocr-public-samples/guide.md) ·
+[고정 diff](receipt-ocr-public-samples/changes.diff.patch) · [검증 기준](receipt-ocr-public-samples/manifest.json)을 본다.
+실제 수량 누락과 전체 필드 평가 실패도 보존한다. 이전 사용자 사전 가이드는 아래에 유지한다.
+
+영수증 Python [PR #34](https://github.com/owencity/jungsan_attack/pull/34)의 사용자 사전 후속은
+[고정 가이드](receipt-ocr-policy/guide.md) · [구현 diff](receipt-ocr-policy/changes.diff.patch) ·
+[기준 SHA](receipt-ocr-policy/manifest.json)를 본다. Java/Kotlin 교재 목차와는 별도 기술 학습이다.
+
 운영 DB 최초 인증 후속은 [v2 가이드](apple-provider-v2/guide.md) · [고정 diff](apple-provider-v2/changes.patch) · [진도](progress/apple-provider-v2.md)를 본다. 원본 Apple/언어 구현 학습은 v1에 남아 있다.
 
 최신 Apple 설정 발급 대기 변경은 [가이드](apple-provider-v1/guide.md) · [diff](apple-provider-v1/changes.patch) · [리뷰](../pr-reviews/2026-10-10-apple-provider/README.md) · [진도](progress/apple-provider.md)를 본다.
