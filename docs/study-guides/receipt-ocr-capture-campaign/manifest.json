@@ -1,0 +1,37 @@
+{
+  "pullRequest": "https://github.com/owencity/jungsan_attack/pull/34",
+  "base": "524ee20cfc15e18fce276758114c2c5947cc25f2",
+  "sourceHead": "d1c9b23736b76c7057e0cb8c5e6e9f3323b86275",
+  "policyAndCatalogCommit": "3e37cb54d50253ac185223e7b26aee0fbe08fffa",
+  "files": [
+    "receipt-ocr/tools/validate_capture_campaign.py",
+    "receipt-ocr/tests/test_campaign.py",
+    "receipt-ocr/examples/manifest.capture-campaign.example.json"
+  ],
+  "diffSha256": "7ab031b0a26bded515ab21efa0cc44629d58c289da0c9a72ec4383d9f7fc50f8",
+  "validation": {
+    "images": 16,
+    "families": 15,
+    "executionFailures": 0,
+    "allAnnotatedChecksMatch": 8,
+    "modelStartupSeconds": 8.947,
+    "meanSeconds": 23.559,
+    "medianSeconds": 18.547,
+    "minSeconds": 11.566,
+    "maxSeconds": 50.809,
+    "numericTotalMatches": 5,
+    "numericTotalSamples": 10,
+    "unitTests": 112,
+    "unitResult": "OK",
+    "unitSeconds": 0.619,
+    "serverCompile": "BUILD SUCCESSFUL in 24s",
+    "newImages": 8,
+    "nativeRequests": 17,
+    "nativeCliMismatchExit": 1,
+    "independentAccuracyBenchmark": false,
+    "armOrProductionTested": false,
+    "ocrRuntimeCodeChanged": false
+  },
+  "review": "self-review only; independent review not performed",
+  "imagesOrRawTokensCommitted": false
+}

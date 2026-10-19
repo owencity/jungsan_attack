@@ -1,5 +1,9 @@
 # PR 리뷰·스터디 기록
 
+영수증 촬영 조건·새 원본 대조는 [가이드](receipt-ocr-capture-campaign/guide.md) ·
+[고정 diff](receipt-ocr-capture-campaign/changes.diff.patch) · [검증 기준](receipt-ocr-capture-campaign/manifest.json)을 본다.
+16개/15묶음의 기대 조건 8개 불일치·숫자 총액 5/10과 부분 정답·메뉴판 오인식을 보존한다. 일반 정확도와 구분한다.
+
 영수증 숫자 직접 인식은 [가이드](receipt-ocr-direct-recognition/guide.md) ·
 [고정 diff](receipt-ocr-direct-recognition/changes.diff.patch) · [검증 기준](receipt-ocr-direct-recognition/manifest.json)을 본다.
 같은 개발 사진의 주류 전체 일치 1/2 → 2/2, 원본/파생 대조 8건과 추가 인식 인스턴스 비용을 구분한다.
