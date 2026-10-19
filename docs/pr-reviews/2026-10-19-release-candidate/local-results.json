@@ -1,0 +1,26 @@
+{
+  "integration_head": "08b28b20b68c0569767e6fec45d8bdccf339ba60",
+  "runtime_source": "identical to PR37 28ab9dd",
+  "tests": {
+    "core": {
+      "tests": 54,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "server": {
+      "tests": 146,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "result": "BUILD SUCCESSFUL in 3m 12s",
+  "firewall_checks": 8,
+  "dns_checks": 9,
+  "bash_syntax": [
+    "scripts/verify-release.sh",
+    "scripts/ingress/install-caddy.sh"
+  ],
+  "real_database_and_caddy": "pending consolidated PR CI; not executed locally"
+}

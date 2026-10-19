@@ -1,0 +1,13 @@
+{
+  "source": "local read-only snapshot; built/deployed identity not verified",
+  "git_head": "fe5f305861ecb099421bb9b9f976f56bbb952509",
+  "file": "composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/V3Gateway.kt",
+  "sha256": "c1453991f901a4a10acb998ff6b62949103eb59b4cba1dcebcccd5dbd7d06e55",
+  "line": 193,
+  "excerpt": [
+    "            val ids = (listOfNotNull(me?.id) + participantIds).distinct()",
+    "            // 다음 차 인원의 시작값은 고른 사람 + 나(FC-020) — R2에서 바꿀 수 있다",
+    "            val u = c.createUnit(gid, Uuid.random().toString(), ids, ids.size)",
+    "            refresh(c, gid)"
+  ]
+}
