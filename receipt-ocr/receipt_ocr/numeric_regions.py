@@ -2,6 +2,7 @@
 from dataclasses import dataclass, replace
 import math
 import re
+from statistics import median
 
 from PIL import Image, ImageOps, ImageStat
 
@@ -61,7 +62,8 @@ def _column_bounds(cell: Token, cells: dict[str, Token]) -> tuple[float, float]:
 
 def _regions(image: Image.Image, tokens: list[Token]):
     cells = None
-    for row in group_rows(tokens):
+    rows = group_rows(tokens)
+    for row in rows:
         text = re.sub(r"\s+", "", "".join(token.text for token in row))
         if HEADER_TEXT.fullmatch(text) and HEADER_LABELS.search(text):
             cells = _header_cells(row)
@@ -83,15 +85,36 @@ def _regions(image: Image.Image, tokens: list[Token]):
             continue
         if anchor.box[1] <= max(cell.box[3] for cell in cells.values()) or height > 80:
             continue
-        for label in ("수량", "할인"):
-            if label not in cells:
-                continue
-            left, right = _column_bounds(cells[label], cells)
-            # 이미 읽은 숫자·부호·인접 상품명이 있으면 덮어쓰거나 일부만 다시 읽지 않는다.
-            if any(token.box[0] < right and token.box[2] > left for token in row):
-                continue
-            box = (max(0, math.floor(left)), max(0, math.floor(anchor.box[1]-.1*height)),
-                   min(image.width, math.ceil(right)), min(image.height, math.ceil(anchor.box[3]+.1*height)))
+        bounds = {label: _column_bounds(cell, cells) for label, cell in cells.items()}
+        # 기존 토큰이 있는 칸을 먼저 제외해 값을 보존하고 불필요한 인접 행 탐색을 줄인다.
+        empty_columns = {label: bounds[label] for label in ("수량", "할인") if label in bounds
+                         and not any(token.box[0] < bounds[label][1] and token.box[2] > bounds[label][0] for token in row)}
+        if not empty_columns:
+            continue
+        numeric_left = min(bound[0] for bound in bounds.values())
+        numeric_right = max(bound[1] for bound in bounds.values())
+
+        def numeric_center(other_row):
+            return median((token.box[1]+token.box[3])/2 for token in other_row
+                          if numeric_left <= (token.box[0]+token.box[2])/2 <= numeric_right
+                          and token.confidence >= MIN_CONFIDENCE
+                          and re.fullmatch(rf"{INTEGER}원?", re.sub(r"\s+", "", token.text)))
+
+        center = numeric_center(row)
+        neighbor_centers = [numeric_center(other_row) for other_row in rows if other_row is not row
+                            and any(money_left <= (token.box[0]+token.box[2])/2 <= money_right
+                                    and token.box[1] > max(cell.box[3] for cell in cells.values())
+                                    and token.confidence >= MIN_CONFIDENCE
+                                    and re.fullmatch(rf"{INTEGER}원?", re.sub(r"\s+", "", token.text))
+                                    for token in other_row)]
+        above = [value for value in neighbor_centers if value < center]
+        below = [value for value in neighbor_centers if value > center]
+        # 원근 사진에서 금액 행 높이를 그대로 쓰면 앞/뒷줄의 작은 수량까지 잘라 담을 수 있다.
+        top = max(anchor.box[1]-.1*height, (max(above)+center)/2 if above else 0)
+        bottom = min(anchor.box[3]+.1*height, (min(below)+center)/2 if below else image.height)
+        for label, (left, right) in empty_columns.items():
+            box = (max(0, math.floor(left)), max(0, math.ceil(top)),
+                   min(image.width, math.ceil(right)), min(image.height, math.floor(bottom)))
             if 4 <= box[2]-box[0] <= 160 and 8 <= box[3]-box[1] <= 96:
                 yield NumericRegion(label, box, min(cell.confidence for cell in cells.values()), anchor)
 

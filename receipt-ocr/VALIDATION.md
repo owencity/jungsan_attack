@@ -1,5 +1,17 @@
 # 영수증 OCR 검증 — 2026-10-14
 
+## 2026-10-19 숫자 직접 인식·인접 행 경계 후속
+
+- 기존 98개 + 회귀 8개: **106 tests / OK (0.461초)**. 기존 테스트 삭제/비활성화 없음.
+- 앞줄 숫자가 걸리던 원근 수량 칸을 인접 숫자 행의 중앙값/중간점으로 제한하고 공개 TextRecognition API에 직접 넣는다.
+- 동일한 한국어 가중치의 별도 인스턴스 사용. 새 의존성/모델 종류 없음, 추가 메모리 비용·ARM 실측 후속.
+- 실제 두 원본은 수량 1과 금액을 읽었다. evaluator: samples=2, failedSamples=0, totalExactRate=1.0, allDrinkFieldsExactRate=1.0, warningSampleCount=2, 평균 23.068초(초기화 제외).
+- 같은 개발 사진의 주류 전체 일치가 1/2 → 2/2다. 독립 표본 정확도 100%가 아니다.
+- 두 원본과 수량 지움/-2/JPEG 50 파생 6개 대조 **8건 통과**. 빈/음수 수량은 null, 재압축 두 장은 원본 정답 유지.
+- 실제 모델+ASGI 업로드 8건 모두 200·기대 후보/경고 유지. health 200·키 없음 401·깨진 사진 400. 전표/복합 사진의 기존 누락은 미해결이며 8장 정확도 성공을 뜻하지 않는다.
+- `:server:compileKotlin`: BUILD SUCCESSFUL in 9s, 6 tasks up-to-date. Java/Kotlin/Core·DB·운영 변경 없음.
+- [구현·대조·실측·한계](docs/direct-recognition-validation.md). 다중 줄·대표 표본·ARM·Spring/앱 연결은 후속이다.
+
 ## 2026-10-19 추가 원본·API 검증
 
 - 기존 92개 + 회귀 6개: **98 tests / OK (0.579초)**. 삭제·비활성화 없음.

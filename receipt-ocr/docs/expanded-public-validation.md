@@ -1,5 +1,7 @@
 # 추가 공개 사진 검증 · 2026-10-19
 
+> 이 문서는 `dbcc997`까지의 기록이다. 수량 누락을 보완한 후속은 [숫자 직접 인식 검증](direct-recognition-validation.md)을 본다. 아래의 실패·정답 기록은 보존한다.
+
 기준 코드 `57d1ee955e890ce31c6d1f9eec361e130988dec9`, 문서 기준 origin/main
 `3eb525464a32a3415c4d3c0db9dd6bfd9bcc3420`을 갱신해서 확인했다.
 Python 영역의 후속이다. Spring·core·DB·앱·운영 설정은 변경하지 않았다.

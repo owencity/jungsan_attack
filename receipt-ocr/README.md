@@ -74,6 +74,8 @@ API는 `RECEIPT_DICTIONARY_PATH`로 지정하고 재시작한다. 잘못된 분�
 - 팩의 판매 수량은 보존하지만 병/캔 개수로 환산하지 않는다. 취소·증정·세트는 자동 판매 수량으로 채우지 않는다.
 - 가격·수량·항목 금액 불일치와 낮은 신뢰도는 reviewReasons에 표시한다.
 - 작은 수량·할인이 빠진 칸은 명시 헤더/금액 행 좌표로만 제한해 같은 모델로 다시 읽는다. 기존 숫자는 덮어쓰지 않는다.
+  인접 숫자 행 중심으로 경계를 제한하고 공개 TextRecognition API로 위치 검출 없이 읽는다.
+  한국어 가중치는 같지만 전체 OCR과 별도 인식 인스턴스를 두므로 추가 메모리와 운영 지연 실측이 필요하다.
   회색조·대비 보정·4배 확대, 여백 16/32px, 정수 인식 점수 0.90 이상과 고신뢰도 이견 검사를 사용한다.
   빈 칸·잘린 글자·겹친 글자는 건너뛰며 최대 8칸·16회만 추가 호출한다. 채택한 품목에 NUMERIC_REGION_RECOGNIZED를 표시한다.
 - 잔·캔은 병 수 계약에 그대로 넣을 수 없어 `UNIT_REQUIRES_MAPPING`을 반환한다.
@@ -104,6 +106,7 @@ manifest의 image는 manifest 파일 기준 상대 경로다. 사진과 정답�
 작은 수량 누락의 후속 수정과 대조 테스트는 [숫자 영역 검증](docs/numeric-region-validation.md)을 본다.
 추가 원본·실패 사례·원근 줄 묶기는 [확장 검증](docs/expanded-public-validation.md),
 Spring 요청·응답·오류 의미와 연결 완료 기준은 [인계 자료](docs/spring-handoff.md)를 본다.
+숫자 직접 인식과 인접 행 경계 후속은 [직접 인식 검증](docs/direct-recognition-validation.md)을 본다.
 이는 작은 개발용 사례 점검이며 대표 표본의 정확도 평가가 아니다. 사용자의 직접 촬영 샘플은 아직 없다.
 
 API 필드와 오류는 [계약 문서](../docs/RECEIPT_OCR.md)를 따른다.

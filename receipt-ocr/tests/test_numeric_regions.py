@@ -225,14 +225,68 @@ class NumericRegionTests(unittest.TestCase):
         class Engine(PaddleEngine):
             def __init__(self):
                 self.calls = 0
+                self.numeric_calls = 0
             def _recognize_once(self, patch):
                 self.calls += 1
-                return tokens if self.calls == 1 else [Token("1", .99, (1, 1, 20, 20))]
+                return tokens
+            def _recognize_numeric(self, patch):
+                self.numeric_calls += 1
+                return [Token("1", .99, (1, 1, 20, 20))]
         engine = Engine()
         with image:
             result = engine.recognize(image)
-        self.assertEqual(3, engine.calls)
+        self.assertEqual(1, engine.calls)
+        self.assertEqual(2, engine.numeric_calls)
         self.assertEqual("1", result[-1].text)
+
+    def test_neighbor_amount_rows_exclude_previous_and_next_quantity_ink(self):
+        image = Image.new("RGB", (500, 180), "white")
+        tokens = [Token("품명", .99, (10, 10, 80, 30)), Token("수량", .99, (210, 10, 250, 30)),
+                  Token("금액", .99, (380, 10, 440, 30)),
+                  Token("소주", .99, (10, 50, 80, 80)), Token("2", .99, (220, 60, 245, 82)),
+                  Token("10,000", .99, (380, 50, 440, 80)),
+                  Token("소주", .99, (10, 82, 80, 112)), Token("5,000", .99, (380, 82, 440, 112)),
+                  Token("소주", .99, (10, 114, 80, 144)), Token("3", .99, (220, 114, 245, 144)),
+                  Token("15,000", .99, (380, 114, 440, 144))]
+        draw = ImageDraw.Draw(image)
+        for bounds in ((230, 60, 233, 80), (230, 88, 233, 105), (230, 114, 233, 140)):
+            draw.rectangle(bounds, fill="black")
+        with image:
+            result = recover_numeric_regions(image, tokens, PatchReader(["1", "1"]))
+        recovered = [token for token in result if token.recovered_numeric]
+        self.assertEqual(1, len(recovered))
+        self.assertGreater(recovered[0].box[1], 80)
+        self.assertLess(recovered[0].box[3], 114)
+        self.assertEqual([2, 1, 3], [drink.quantity for drink in self.extract(result).drinks])
+
+    def test_perspective_uses_numeric_row_centers_without_clipping_target_digit(self):
+        image = Image.new("RGB", (1800, 1300), "white")
+        tokens = [Token("품명", .99, (737, 802, 1012, 890)),
+                  Token("단 가 수량", .99, (1170, 802, 1448, 879)), Token("금액", .99, (1543, 800, 1678, 876)),
+                  Token("소주", .99, (643, 942, 859, 1010)), Token("5,000", .99, (1141, 930, 1301, 999)),
+                  Token("2", .99, (1378, 939, 1416, 989)), Token("10,000", .99, (1521, 924, 1686, 993)),
+                  Token("소주", .99, (641, 1004, 861, 1088)), Token("7,000", .99, (1159, 996, 1296, 1060)),
+                  Token("7,000", .99, (1541, 984, 1687, 1054)),
+                  Token("소주", .99, (643, 1065, 954, 1158)), Token("3,000", .99, (1142, 1058, 1297, 1126)),
+                  Token("1", .99, (1380, 1070, 1410, 1110)), Token("3,000", .99, (1522, 1046, 1688, 1115))]
+        draw = ImageDraw.Draw(image)
+        for bounds in ((1391, 945, 1395, 985), (1391, 1007, 1400, 1047), (1391, 1070, 1395, 1108)):
+            draw.rectangle(bounds, fill="black")
+        with image:
+            result = recover_numeric_regions(image, tokens, PatchReader(["1", "1"]))
+        self.assertEqual([2, 1, 1], [drink.quantity for drink in self.extract(result).drinks])
+        recovered = next(token for token in result if token.recovered_numeric)
+        self.assertGreater(recovered.box[1], 985)
+        self.assertGreater(recovered.box[3], 1049)
+        self.assertLess(recovered.box[3], 1070)
+
+    def test_money_inside_header_padding_remains_a_valid_geometry_anchor(self):
+        image, tokens = fixture(discount=False)
+        tokens[-1] = Token("10,000", .99, (374, 50, 382, 70))
+        with image:
+            result = recover_numeric_regions(image, tokens, PatchReader(["1", "1"]))
+        self.assertEqual("1", result[-1].text)
+        self.assertTrue(result[-1].recovered_numeric)
 
     def test_patch_failure_propagates_without_mutating_image_or_tokens(self):
         image, tokens = fixture(discount=False)
