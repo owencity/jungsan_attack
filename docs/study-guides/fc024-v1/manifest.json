@@ -1,0 +1,274 @@
+{
+  "base": "defd9d11ef90b2a9200090669974faf0f13807a5",
+  "code_head": "b71d7766558dc402355f6ec1790b87756ebbbf93",
+  "pr": 42,
+  "sources": [
+    {
+      "path": "DEVLOG.md",
+      "before": {
+        "blob": "34275a0ee3fba57c365b5e0b24cc1fb4fb906de5",
+        "sha256": "fd7f3cdf2657c1eb6acd1e7b6527d5ae885f973211a4979a8276ef326c83c118"
+      },
+      "after": {
+        "blob": "0108b03409d53326660284e14c4e5fd43c7250f4",
+        "sha256": "85ac2330f9d356f7426dfe24c1182b0b3feeb4b6944a49e04d42910c30943873"
+      }
+    },
+    {
+      "path": "docs/API.md",
+      "before": {
+        "blob": "e9c3d9c5ca5a021a2cdbd35f34790ad4ed2e7cbb",
+        "sha256": "ca580ebed580fd7465d7138ab7703494eac2207fe9981be5c12b94f929ffba3f"
+      },
+      "after": {
+        "blob": "e8c5bfbc629a24099afe629c49a528b4727f8b88",
+        "sha256": "296075cf22ed049b42e11f577de69edb5f8011c3f872545864a5ad826b191c2c"
+      }
+    },
+    {
+      "path": "docs/DOMAIN_DB_DESIGN_V2.md",
+      "before": {
+        "blob": "cd976e8a9d3b8da67b6c87b06ea7a82bb6069673",
+        "sha256": "225b22029744cd1332d283a2596482e307249c0f2730a91f1b3f22914c9ed942"
+      },
+      "after": {
+        "blob": "84b92b85ba7ff453d8b968f3d7e3f7f385294d6c",
+        "sha256": "ab9720060ac9c3b7fea69bf17fb11d616e5e3bf670c8d945ee330d1b67f347f6"
+      }
+    },
+    {
+      "path": "docs/ERD.md",
+      "before": {
+        "blob": "d63cecafb92a490eeb7d5ea57b9bb7d2f5efced9",
+        "sha256": "20aad3178c6c9ba34b1e331f7126b99b1b94f3238f14752ae789e9558e4898ab"
+      },
+      "after": {
+        "blob": "fb53da3b3f126bbf204d61298581e659f5da638a",
+        "sha256": "79fa4b6f53ff933020edc9988ef066b4653c665833bbbb1285d6ce30121d483a"
+      }
+    },
+    {
+      "path": "docs/REQUIREMENTS.md",
+      "before": {
+        "blob": "0ba3f2d5c50955c2e54e52ac0c6e851918cbbb17",
+        "sha256": "681ab6017c43285a575e9f5c4351b4a3ba36028ed2de8d810f9911fd6491d3a0"
+      },
+      "after": {
+        "blob": "99f6d82d8fc04d42865da0497df124d3cdb9248d",
+        "sha256": "56761ff021d89dc7afbe95e20d1bb63b633c25324ea227ccabfbd9585d78a085"
+      }
+    },
+    {
+      "path": "docs/UGC_SAFETY.md",
+      "before": null,
+      "after": {
+        "blob": "6bf4d5613619b804d9a20bea2653176b0c2cc41c",
+        "sha256": "bdd3e77c4cea199c6411266d57ecb2bad1d89e6c2400d2613b80130e7b208caf"
+      }
+    },
+    {
+      "path": "docs/flow-changes/README.md",
+      "before": {
+        "blob": "fa4f60a0dbc52321fb12664d7db202471cd1fb37",
+        "sha256": "8be174ced818ba8ed18efeaa4fa3139f198ba8a89fe8ef62599df4cecf9ccd5f"
+      },
+      "after": {
+        "blob": "38bb40f50377a146ab2e64bacf60c13220734f54",
+        "sha256": "72813240fdf56a59b19b128bbd10a4163f63a77972d624b0f7885c1fa33eadb9"
+      }
+    },
+    {
+      "path": "docs/operations/ugc-moderation.md",
+      "before": null,
+      "after": {
+        "blob": "27cf7be6a27035f2d47f06b55604bd5acbabeb2c",
+        "sha256": "bc331f0f35e69dbeec13d83f622830f6bd1620c4e17b2a66a04d3bacde6087e0"
+      }
+    },
+    {
+      "path": "scripts/verify-boot-upgrade.py",
+      "before": {
+        "blob": "a0419e0a5aaf3886882431e5c55cdeab970ba4b2",
+        "sha256": "4cb333881d0ef93b9d338e708f4c4f4e1099717ce284e8cfd86ac588d04e845d"
+      },
+      "after": {
+        "blob": "b250f63495fdaede6ab6317c79d6df984caa2f28",
+        "sha256": "b180cd5431e12cb13cfaa22b26d5e9eb1c44e98abcd756066f7fa2cac1993242"
+      }
+    },
+    {
+      "path": "scripts/verify-release.sh",
+      "before": {
+        "blob": "5a0df1b7016b02116e06ac7ee2cf14715d83f0e7",
+        "sha256": "f49860ae2c157cb61b6fbbabdba13fe0c4afcfefc7c3498c7acd0c1476fc3a3f"
+      },
+      "after": {
+        "blob": "9b244f8051dd34317665aae7938f487864ac24a0",
+        "sha256": "31a6e3daf72e29e9b366aee578723c3270ab054997048b2ce375008eba65311b"
+      }
+    },
+    {
+      "path": "scripts/verify-ugc-safety.py",
+      "before": null,
+      "after": {
+        "blob": "9fb0ad7e06490794fc84a7318f0c3eda35b9d298",
+        "sha256": "1ef6625bfe553b5f93f2c8a5079efb7ea468fba4bdc42bd38459aa269edf76ff"
+      }
+    },
+    {
+      "path": "server/src/main/java/app/jeongsan/server/moderation/javaimpl/ModerationPolicy.java",
+      "before": null,
+      "after": {
+        "blob": "46665684a877ab9fd0fff690da8aaaa1de04df81",
+        "sha256": "638248e51446a5e35ad478b3d47a5ca9a6bac7b5cbffc1e68c2eb78365308c87"
+      }
+    },
+    {
+      "path": "server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt",
+      "before": {
+        "blob": "ae53868411822befb52991a482b2bfc71bcc108d",
+        "sha256": "d61b634d300cde509c6047974f742408e179424b28bbbad551ecba57a1e649d7"
+      },
+      "after": {
+        "blob": "ac2477eb7abba71e05d2abc7f295ade28ed4eefd",
+        "sha256": "e661538144dc834e8857e4aa21a9b01e67a29c7d013527ea181700e0d66391fd"
+      }
+    },
+    {
+      "path": "server/src/main/kotlin/app/jeongsan/server/moderation/ModerationController.kt",
+      "before": null,
+      "after": {
+        "blob": "0ea3465c8dee3004058467da18c1c2348f5d933f",
+        "sha256": "2ddfe50dfce86c917fb533123a30fc598bdf165ee518523dd3bf790ca95a090e"
+      }
+    },
+    {
+      "path": "server/src/main/kotlin/app/jeongsan/server/moderation/ModerationDto.kt",
+      "before": null,
+      "after": {
+        "blob": "984c1d5d5558a1dc208c75f178485dbcb418e108",
+        "sha256": "8866526296a32caf796b0db301f13b29ca8693a8d67fa9f81eb45e1349b9d00a"
+      }
+    },
+    {
+      "path": "server/src/main/kotlin/app/jeongsan/server/moderation/ModerationLog.kt",
+      "before": null,
+      "after": {
+        "blob": "38de09b5de61d199cf8a03bdccb89546b3d9c574",
+        "sha256": "e8956df9000eb22014b0e8d58843d28ce7fdbc96fee42aa307d27e76e24b57ba"
+      }
+    },
+    {
+      "path": "server/src/main/kotlin/app/jeongsan/server/moderation/ModerationPolicy.kt",
+      "before": null,
+      "after": {
+        "blob": "27fbf4b7b5dc8d018e584391fc5eeee35c1915a9",
+        "sha256": "0cdc3cdccaed36e2a5a2cec2cb93ab3fda3471e9160c69a9282ff868d9c1a83f"
+      }
+    },
+    {
+      "path": "server/src/main/kotlin/app/jeongsan/server/moderation/ModerationService.kt",
+      "before": null,
+      "after": {
+        "blob": "6cc2ac6b660fa449e4bb710d345b80f1835f050d",
+        "sha256": "3bae0df634dcad0412f1b6864bdf097cbb21e90e3fcc01b7193f38da30069b76"
+      }
+    },
+    {
+      "path": "server/src/main/kotlin/app/jeongsan/server/user/User.kt",
+      "before": {
+        "blob": "31cfe13e7f7b2f7aed8228948ba9147d7ea89947",
+        "sha256": "0df234deba68751ea458ab1a0d125852b63b09bcb76de84d1d082647bf21f377"
+      },
+      "after": {
+        "blob": "c5fcb226a2f0799ba8cec0cddfaddfa696395d19",
+        "sha256": "98e70eee397a4ca445b6544d2403165de7ba970c97bd7df6cfab491065bb9cc3"
+      }
+    },
+    {
+      "path": "server/src/main/resources/db/changelog/019-ugc-safety.yaml",
+      "before": null,
+      "after": {
+        "blob": "d7d992554ffc152a98e0296b439ea505d73b6817",
+        "sha256": "2118bec1236b055b62c70cecffcbdb11dd1987b0faa218194f13abc6c5b4e15e"
+      }
+    },
+    {
+      "path": "server/src/main/resources/db/changelog/db.changelog-master.yaml",
+      "before": {
+        "blob": "531a3fd8a3ced9d6d9004aa6c344bb4da305fa42",
+        "sha256": "8524eeff76866349fda157072a3e7597749fd0e9aad486fc55b7470187880562"
+      },
+      "after": {
+        "blob": "724c714543ef671a1a718731da9316b6267526db",
+        "sha256": "258af86fca2e3b93cea2ff5c2dfb4ada59c5624b5df50b229cc01a5614f0ee74"
+      }
+    },
+    {
+      "path": "server/src/main/resources/moderation/forbidden-words.txt",
+      "before": null,
+      "after": {
+        "blob": "673e8f2389b5b4a007ca7891ac937cfafd71461e",
+        "sha256": "52435058551f6c83006dce4fb150eeff7a3f7df64716d0fdab0d3f885d50c476"
+      }
+    },
+    {
+      "path": "server/src/test/kotlin/app/jeongsan/server/moderation/ModerationApiSpec.kt",
+      "before": null,
+      "after": {
+        "blob": "87ca2d2206f7cd5a47c3e4ea733ed7c9b527e0a8",
+        "sha256": "1292b1008a86323670d2c8d67dc99ba391e6f0f1310bf3222a585d39e044faec"
+      }
+    },
+    {
+      "path": "server/src/test/kotlin/app/jeongsan/server/moderation/ModerationPolicySpec.kt",
+      "before": null,
+      "after": {
+        "blob": "d654a8626c062e080e9f8e3208fddf6af437e4b0",
+        "sha256": "e04a68fcd6cd115c02592cb7343dac7d1a8a5976058649ff27be4426e4d5e23f"
+      }
+    }
+  ],
+  "files": {
+    "after/DEVLOG.md": "85ac2330f9d356f7426dfe24c1182b0b3feeb4b6944a49e04d42910c30943873",
+    "after/docs/API.md": "296075cf22ed049b42e11f577de69edb5f8011c3f872545864a5ad826b191c2c",
+    "after/docs/DOMAIN_DB_DESIGN_V2.md": "ab9720060ac9c3b7fea69bf17fb11d616e5e3bf670c8d945ee330d1b67f347f6",
+    "after/docs/ERD.md": "79fa4b6f53ff933020edc9988ef066b4653c665833bbbb1285d6ce30121d483a",
+    "after/docs/flow-changes/README.md": "72813240fdf56a59b19b128bbd10a4163f63a77972d624b0f7885c1fa33eadb9",
+    "after/docs/operations/ugc-moderation.md": "bc331f0f35e69dbeec13d83f622830f6bd1620c4e17b2a66a04d3bacde6087e0",
+    "after/docs/REQUIREMENTS.md": "56761ff021d89dc7afbe95e20d1bb63b633c25324ea227ccabfbd9585d78a085",
+    "after/docs/UGC_SAFETY.md": "bdd3e77c4cea199c6411266d57ecb2bad1d89e6c2400d2613b80130e7b208caf",
+    "after/scripts/verify-boot-upgrade.py": "b180cd5431e12cb13cfaa22b26d5e9eb1c44e98abcd756066f7fa2cac1993242",
+    "after/scripts/verify-release.sh": "31a6e3daf72e29e9b366aee578723c3270ab054997048b2ce375008eba65311b",
+    "after/scripts/verify-ugc-safety.py": "1ef6625bfe553b5f93f2c8a5079efb7ea468fba4bdc42bd38459aa269edf76ff",
+    "after/server/src/main/java/app/jeongsan/server/moderation/javaimpl/ModerationPolicy.java": "638248e51446a5e35ad478b3d47a5ca9a6bac7b5cbffc1e68c2eb78365308c87",
+    "after/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt": "e661538144dc834e8857e4aa21a9b01e67a29c7d013527ea181700e0d66391fd",
+    "after/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationController.kt": "2ddfe50dfce86c917fb533123a30fc598bdf165ee518523dd3bf790ca95a090e",
+    "after/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationDto.kt": "8866526296a32caf796b0db301f13b29ca8693a8d67fa9f81eb45e1349b9d00a",
+    "after/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationLog.kt": "e8956df9000eb22014b0e8d58843d28ce7fdbc96fee42aa307d27e76e24b57ba",
+    "after/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationPolicy.kt": "0cdc3cdccaed36e2a5a2cec2cb93ab3fda3471e9160c69a9282ff868d9c1a83f",
+    "after/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationService.kt": "3bae0df634dcad0412f1b6864bdf097cbb21e90e3fcc01b7193f38da30069b76",
+    "after/server/src/main/kotlin/app/jeongsan/server/user/User.kt": "98e70eee397a4ca445b6544d2403165de7ba970c97bd7df6cfab491065bb9cc3",
+    "after/server/src/main/resources/db/changelog/019-ugc-safety.yaml": "2118bec1236b055b62c70cecffcbdb11dd1987b0faa218194f13abc6c5b4e15e",
+    "after/server/src/main/resources/db/changelog/db.changelog-master.yaml": "258af86fca2e3b93cea2ff5c2dfb4ada59c5624b5df50b229cc01a5614f0ee74",
+    "after/server/src/main/resources/moderation/forbidden-words.txt": "52435058551f6c83006dce4fb150eeff7a3f7df64716d0fdab0d3f885d50c476",
+    "after/server/src/test/kotlin/app/jeongsan/server/moderation/ModerationApiSpec.kt": "1292b1008a86323670d2c8d67dc99ba391e6f0f1310bf3222a585d39e044faec",
+    "after/server/src/test/kotlin/app/jeongsan/server/moderation/ModerationPolicySpec.kt": "e04a68fcd6cd115c02592cb7343dac7d1a8a5976058649ff27be4426e4d5e23f",
+    "before/DEVLOG.md": "fd7f3cdf2657c1eb6acd1e7b6527d5ae885f973211a4979a8276ef326c83c118",
+    "before/docs/API.md": "ca580ebed580fd7465d7138ab7703494eac2207fe9981be5c12b94f929ffba3f",
+    "before/docs/DOMAIN_DB_DESIGN_V2.md": "225b22029744cd1332d283a2596482e307249c0f2730a91f1b3f22914c9ed942",
+    "before/docs/ERD.md": "20aad3178c6c9ba34b1e331f7126b99b1b94f3238f14752ae789e9558e4898ab",
+    "before/docs/flow-changes/README.md": "8be174ced818ba8ed18efeaa4fa3139f198ba8a89fe8ef62599df4cecf9ccd5f",
+    "before/docs/REQUIREMENTS.md": "681ab6017c43285a575e9f5c4351b4a3ba36028ed2de8d810f9911fd6491d3a0",
+    "before/scripts/verify-boot-upgrade.py": "4cb333881d0ef93b9d338e708f4c4f4e1099717ce284e8cfd86ac588d04e845d",
+    "before/scripts/verify-release.sh": "f49860ae2c157cb61b6fbbabdba13fe0c4afcfefc7c3498c7acd0c1476fc3a3f",
+    "before/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt": "d61b634d300cde509c6047974f742408e179424b28bbbad551ecba57a1e649d7",
+    "before/server/src/main/kotlin/app/jeongsan/server/user/User.kt": "0df234deba68751ea458ab1a0d125852b63b09bcb76de84d1d082647bf21f377",
+    "before/server/src/main/resources/db/changelog/db.changelog-master.yaml": "8524eeff76866349fda157072a3e7597749fd0e9aad486fc55b7470187880562",
+    "changes.diff": "d1ab20d09384e2f218046992d2e11232f78ab4e968e9b4bb7c48ecd416f098e6",
+    "guide.md": "fe71f366938a66ab4cb7aab6c627baab2410e68ff9a6ed1653c4ef9efb2197f7",
+    "original/STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
+    "original/STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+    "progress.json": "45b0a5b52977b44facb3f379d5244ed78bb25c579e824d9f38862d7f2b21abfb"
+  }
+}
