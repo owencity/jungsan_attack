@@ -266,9 +266,10 @@
     "before/server/src/main/kotlin/app/jeongsan/server/user/User.kt": "0df234deba68751ea458ab1a0d125852b63b09bcb76de84d1d082647bf21f377",
     "before/server/src/main/resources/db/changelog/db.changelog-master.yaml": "8524eeff76866349fda157072a3e7597749fd0e9aad486fc55b7470187880562",
     "changes.diff": "d1ab20d09384e2f218046992d2e11232f78ab4e968e9b4bb7c48ecd416f098e6",
-    "guide.md": "fe71f366938a66ab4cb7aab6c627baab2410e68ff9a6ed1653c4ef9efb2197f7",
+    "guide.md": "df264fd41c2477f190951549b87ae3b5a8345fbaad43618e7a75701b9dc36535",
     "original/STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79",
     "original/STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
-    "progress.json": "45b0a5b52977b44facb3f379d5244ed78bb25c579e824d9f38862d7f2b21abfb"
-  }
+    "progress.json": "0d10ab13e819e21423c670fd367a65dd3a65e37c7f9b7751dac860ea220a570f"
+  },
+  "hash_format": "Canonical Git blob bytes; working-tree CRLF conversion is not part of the digest"
 }
