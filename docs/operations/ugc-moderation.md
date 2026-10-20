@@ -32,6 +32,7 @@ SELECT id, gathering_id, type, body, hidden_at FROM timeline_entries WHERE id = 
 
 ```sql
 START TRANSACTION;
+SET @gathering_id = NULL;
 SELECT gathering_id INTO @gathering_id FROM timeline_entries WHERE id = @entry_id;
 SELECT id FROM gatherings WHERE id = @gathering_id FOR UPDATE;
 UPDATE timeline_entries SET hidden_at = COALESCE(hidden_at, UTC_TIMESTAMP(6))
@@ -47,6 +48,7 @@ COMMIT;
 대상 ID를 먼저 확인하고 사용자 행 잠금으로 메시지 전송과 직렬화한다.
 
 ```sql
+SET @author_user_id = NULL;
 SELECT participant.user_id INTO @author_user_id
 FROM timeline_entries entry JOIN participants participant ON participant.id = entry.author_participant_id
 WHERE entry.id = @entry_id AND entry.type = 'MESSAGE';
