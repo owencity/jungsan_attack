@@ -423,3 +423,14 @@ ADR 문서를 조용히 덮어쓰지 않는다. 대체·개정은 각 ADR 상단
 - [ ] 계좌번호 저장 시 암호화·조회 권한·로그 마스킹을 확정한다.
 - [ ] 탈퇴하려는 사용자가 진행 중인 술자리의 총무·결제자일 때의 처리를 정한다.
 - [ ] 영수증 인식 방식과 이미지 보관 여부를 실측 후 정한다(`REQUIREMENTS.md` §9).
+
+
+## FC-024 메시지 안전 추가 (2026-10-20)
+
+최신 메시지 안전 계약은 [UGC_SAFETY](UGC_SAFETY.md)다. 신규 019 / changeSet 029:
+- message_reports(id,entry_id,reporter_user_id,reason,created_at,handled_at), UNIQUE(entry_id,reporter_user_id).
+- user_blocks(blocker_user_id,blocked_user_id,created_at), 복합 PK.
+- timeline_entries.hidden_at / users.message_banned_at, nullable UTC DATETIME(6).
+신고·차단은 금액·명단·단위 상태를 변경하지 않는다. 메시지 삭제는 신고 CASCADE,
+신고자 탈퇴는 reporter_user_id SET NULL, 차단 양쪽 FK는 계정 삭제 CASCADE다.
+동시 신고는 Gathering→사용자→메시지 잠금 후 집계한다. 기존 v3 설계 전체를 구현 근거로 되살리지 않는다.

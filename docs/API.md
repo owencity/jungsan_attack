@@ -1,4 +1,14 @@
-# 정산어택 — API 계약 · v12
+# 정산어택 — API 계약 · v13
+
+> **v13 변경(2026-10-20)** — FC-024 메시지 신고·차단·금칙어·운영 금지.
+>
+> | 절 | 변경 |
+> |---|---|
+> | §0.7 메시지 안전 | 신고 204·사용자 차단 POST/GET/DELETE, 본인·전체 timeline 숨김 |
+> | §1.4 오류 | MESSAGE_NOT_ALLOWED(422), MESSAGE_BANNED(403) |
+> | UGC_SAFETY / ERD 019 | 신고·차단 테이블, hidden_at·message_banned_at, 로그·일일 운영 SQL |
+>
+
 
 > **v12 변경(2026-10-14)** — 내부 알림의 대상·문구를 FC-005·010·011과 단위별 정산에 맞춘다.
 >
@@ -1440,3 +1450,33 @@ Core v2 코드: `TOTAL_NOT_POSITIVE`, `ALCOHOL_NEGATIVE`, `ALCOHOL_EXCEEDS_TOTAL
 | 409 | NO_ROUNDS / REMOVE_HOST / REMOVE_PAYER | 차수 없음 또는 보호 명단 제외 시도 |
 | 409 | PAYOUT_MISSING / TRANSFER_ALREADY_SENT / INVALID_TRANSFER_TRANSITION | 수취 계좌 없음 / sentAt·confirmedAt 이력으로 취소 금지 / 송금 상태 불일치 |
 | 400 | MALFORMED_REQUEST | 잘못된 명단·응답 타입·계좌·본문 |
+
+## 0.7 메시지 신고·차단·금칙어 (FC-024 · v13)
+
+전체 계약·동시성·삭제는 [UGC_SAFETY](UGC_SAFETY.md), 운영 절차는 [일일 신고 처리](operations/ugc-moderation.md)를 따른다.
+기존 WEB 쿠키·APP Bearer를 사용한다.
+
+| 요청 | 응답 |
+|---|---|
+| POST /api/v1/gatherings/{gid}/messages/{entryId}/reports `{reason}` | 204, reason ABUSE / SEXUAL / SPAM / OTHER. ACTIVE 참여자만 남의 MESSAGE 신고, 중복 204 |
+| POST /api/v1/me/blocks `{gatheringId,participantId}` | 204. 같은 방 ACTIVE 참여자를 사용자로 변환해 차단. 중복 204 |
+| GET /api/v1/me/blocks | 200 `[{userId,displayName,blockedAt}]`, 최신순·동률 userId순, 본인 목록 |
+| DELETE /api/v1/me/blocks/{userId} | 204. 본인이 건 차단만 삭제, 없어도 204 |
+
+신고자 본인의 신고 MESSAGE는 즉시 조회에서 제외한다. 서로 다른 2명이면 hidden_at을 설정해 모두에게 숨긴다.
+차단 대상이 다른 술자리의 participantId로 나타나도 본인의 모든 timeline에서 해당 사용자의 MESSAGE를 제외한다.
+SYSTEM·SPOON·참여자·응답·정산·송금은 유지한다. 처리 완료·차단 해제는 신고 숨김을 풀지 않는다.
+신고는 본인 글·SYSTEM·SPOON이면 400, 차단은 본인·탈퇴 계정이면 400, 비참여자는 403 NOT_PARTICIPANT다.
+다른 방의 메시지 ID는 404 NOT_FOUND다. 기존 POST messages의 201 DTO는 유지한다.
+
+### 1.4 추가 — v13 메시지 오류
+
+| HTTP | code | message |
+|---|---|---|
+| 422 | MESSAGE_NOT_ALLOWED | 부적절한 표현이 있어요 |
+| 403 | MESSAGE_BANNED | 메시지를 보낼 수 없는 계정이에요 |
+
+금칙어·메시지 금지 요청은 저장하지 않는다. 금칙어는 NFKC·대소문자·공백/특수문자 정규화 후 검사한다.
+신규 신고 커밋 뒤 `MESSAGE_REPORTED entryId=… gatheringId=… reason=…`만 로그에 남긴다.
+본문·이름·계좌·신고자 ID는 로그에 포함하지 않는다. n8n 없이 운영자가 매일 DB 미처리를 조회한다.
+약관 동의 체크·지원 연락처·실기기 재심사 녹화는 프론트/CTO 범위며 termsVersion 저장은 이번에 추가하지 않는다.

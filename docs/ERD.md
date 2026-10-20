@@ -338,3 +338,17 @@ NULL 좌석은 탈퇴 자료에만 사용한다. 가입 API는 항상 유효한 
 물리 정의는 `018-auto-settlement.yaml`, changeSet `028`이다. `settlement_units`에 nullable `headcount INT`,
 `headcount_exceeded_notified BOOLEAN NOT NULL DEFAULT FALSE`, nullable `auto_settlement_error VARCHAR(40)`를 추가한다.
 인원 범위는 서비스가 검증하며 기존 단위의 NULL은 자동 정산을 끈다. 기존 테이블·FK·송금 스냅샷은 유지한다.
+
+
+## 019 메시지 안전 · changeSet 029 (2026-10-20)
+
+[019-ugc-safety.yaml](../server/src/main/resources/db/changelog/019-ugc-safety.yaml)이 진실이다.
+| 테이블 | 추가 필드·제약 |
+|---|---|
+| timeline_entries | hidden_at DATETIME(6) NULL |
+| users | message_banned_at DATETIME(6) NULL |
+| message_reports | id BIGINT PK AUTO_INCREMENT, entry_id BIGINT NOT NULL FK CASCADE, reporter_user_id BIGINT NULL FK SET NULL, reason VARCHAR(10), created_at DATETIME(6), handled_at DATETIME(6) NULL; UNIQUE(entry_id,reporter_user_id) |
+| user_blocks | PK(blocker_user_id,blocked_user_id), 두 열 BIGINT FK users CASCADE; created_at DATETIME(6) |
+신고 사유는 ABUSE/SEXUAL/SPAM/OTHER이며 CHECK 없이 애플리케이션에서 검증한다.
+idx_report_reporter는 개인 숨김, idx_report_pending은 미처리 일일 조회, idx_block_target은 대상 탈퇴 정리에 사용한다.
+메시지 본문·계좌를 신고 테이블에 복제하지 않는다. 기존 데이터의 숨김·금지 값은 NULL이다.

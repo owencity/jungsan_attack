@@ -32,3 +32,5 @@ databaseChangeLog:
       file: db/changelog/017-release-auth.yaml
   - include:
       file: db/changelog/018-auto-settlement.yaml
+  - include:
+      file: db/changelog/019-ugc-safety.yaml

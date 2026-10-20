@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: 029-ugc-safety
+      author: jeongsan
+      comment: "FC-024. 정산을 바꾸지 않고 메시지 신고·개인 차단·운영 숨김과 메시지 금지를 지원한다."
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              ALTER TABLE timeline_entries ADD hidden_at DATETIME(6) NULL COMMENT '2명 신고 또는 운영 조치로 모두에게 숨긴 UTC 시각';
+              ALTER TABLE users ADD message_banned_at DATETIME(6) NULL COMMENT '정산 접근은 유지하고 새 메시지만 금지한 UTC 시각';
+              CREATE TABLE message_reports (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '운영 처리 대상을 식별하는 신고 번호',
+                entry_id BIGINT NOT NULL COMMENT '본문을 복제하지 않고 신고한 메시지 참조',
+                reporter_user_id BIGINT NULL COMMENT '중복 신고 방지와 개인 숨김, 탈퇴하면 NULL 익명화',
+                reason VARCHAR(10) NOT NULL COMMENT '신고자가 선택한 첫 사유 ABUSE SEXUAL SPAM OTHER',
+                created_at DATETIME(6) NOT NULL COMMENT '24시간 대응 확인 기준인 UTC 접수 시각',
+                handled_at DATETIME(6) NULL COMMENT '운영자가 검토를 마친 UTC 시각, 숨김 해제와 무관',
+                UNIQUE KEY uq_report_entry_user(entry_id,reporter_user_id),
+                INDEX idx_report_reporter(reporter_user_id,entry_id),
+                INDEX idx_report_pending(handled_at,created_at,id),
+                CONSTRAINT fk_report_entry FOREIGN KEY(entry_id) REFERENCES timeline_entries(id) ON DELETE CASCADE,
+                CONSTRAINT fk_report_user FOREIGN KEY(reporter_user_id) REFERENCES users(id) ON DELETE SET NULL
+              ) COMMENT='신고자 개인 숨김과 2명 신고 전체 숨김 및 일일 운영 확인의 근거';
+              CREATE TABLE user_blocks (
+                blocker_user_id BIGINT NOT NULL COMMENT '다른 사용자의 메시지를 보지 않기로 한 사용자',
+                blocked_user_id BIGINT NOT NULL COMMENT '모든 술자리에서 MESSAGE만 가릴 대상 사용자',
+                created_at DATETIME(6) NOT NULL COMMENT '차단 목록의 최신순과 최초 차단 시각',
+                PRIMARY KEY(blocker_user_id,blocked_user_id),
+                INDEX idx_block_target(blocked_user_id),
+                CONSTRAINT fk_block_owner FOREIGN KEY(blocker_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                CONSTRAINT fk_block_target FOREIGN KEY(blocked_user_id) REFERENCES users(id) ON DELETE CASCADE
+              ) COMMENT='정산 권한·금액과 무관한 사용자별 단방향 메시지 차단';

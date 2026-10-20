@@ -83,3 +83,4 @@
 | FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (Caddy 직접 HTTPS·운영 200/401·로그인 시작 302 확인, 실계정/앱 E2E 후속) | PR #27~#30 병합 · [PR #32](https://github.com/owencity/jungsan_attack/pull/32) Caddy 운영 적용·DNS only·공인 TLS/CORS 검증, 웹/앱 최종 로그인 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
 | FC-022 | Apple 이름·이메일 동의 요청 제거 | 반영됨 (API v10·양쪽 언어·서버 130건, 병합·운영·실계정 후속) | AuthPolicy.kt/java·ProviderGateway·ApplePrivacySpec·AppleTokensSpec · 기존 FC-021 전체 로그인 시험은 후속 | [2026-10-10-apple-privacy.md](2026-10-10-apple-privacy.md) |
 | FC-023 | 다음 차의 나 혼자 시작하기가 headcount 1을 보냄 | 프론트만 (웹/앱 소스 불일치·수정 제안, 실제 빌드 후속) | 서버 최소 2 계약 유지 · GatheringApiSpec·기존 DB HTTP 대조 추가, 실행 결과는 PR 검증 기록 | [2026-10-18-app-connection.md](2026-10-18-app-connection.md) |
+| FC-024 | 정산방 메시지 신고·차단·금칙어·약관 동의 | 열림 (구현·검증 진행) | API v13·019/029·ModerationService·운영 SQL; 로그/일일 조회 ⓐ·2명 숨김 결정 반영 | [2026-10-20-ugc-safety.md](2026-10-20-ugc-safety.md) |
