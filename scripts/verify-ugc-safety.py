@@ -67,6 +67,8 @@ def join(target_room, user):
         {"settlementUnitId": target_room["settlementUnits"][0]["id"]})["participantId"]
 first_participant = join(room, first)
 second_participant = join(room, second)
+call("POST", f"/gatherings/{gathering}/settlement-units/{unit}/rounds", author,
+    {"total": 30000, "payerParticipantId": author_participant}, 201)
 other_room = call("POST", "/gatherings", author, expected=201)
 other_gathering = other_room["id"]
 join(other_room, first)
@@ -170,7 +172,7 @@ check(call("GET", "/me/blocks", first) == [] and visible(first, remaining)
     and not visible(first, entry), "차단 해제는 멱등 204, 신고 숨김은 유지")
 
 message_count = count_messages()
-for text in ("씨 ! 발", "씨\u200b발", "병.신", "ＦＵＣＫ"):
+for text in ("씨 ! 발", "씨\u200b발", "병.신", "ＦＵＣＫ", "섹 스"):
     response = call("POST", f"/gatherings/{gathering}/messages", author, {"text": text}, 422)
     assert response["code"] == "MESSAGE_NOT_ALLOWED" and response["message"] == "부적절한 표현이 있어요"
 check(count_messages() == message_count, "금칙어·공백·특수문자·전각 우회는 422이며 저장 없음")
