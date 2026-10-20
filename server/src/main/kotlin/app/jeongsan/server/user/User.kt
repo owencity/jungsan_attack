@@ -30,6 +30,10 @@ class User(
     @Column(name = "display_name", updatable = false)
     val displayName: String? = null,
 
+    // 운영 SQL의 메시지 금지 시각을 로그인 save가 덮어쓰지 않는다(019-ugc-safety.yaml).
+    @Column(name = "message_banned_at", updatable = false)
+    val messageBannedAt: Instant? = null,
+
     @Column(name = "profile_image_url")
     var profileImageUrl: String? = null,
 

@@ -1,0 +1,21 @@
+{
+  "code_head": "b71d7766558dc402355f6ec1790b87756ebbbf93",
+  "run_id": 39419625606,
+  "job_id": 118617027266,
+  "url": "https://github.com/owencity/jungsan_attack/actions/runs/39419625606",
+  "conclusion": "success",
+  "core": 54,
+  "server": 170,
+  "ugc_real_mysql_http": 29,
+  "boot_upgrade": 13,
+  "app_contract": 2,
+  "auto_settlement": 20,
+  "notifications": 18,
+  "auth_http": 17,
+  "auth_db": 15,
+  "deploy_restore": 6,
+  "dns": 9,
+  "firewall": 8,
+  "caddy": "success",
+  "production": "not yet deployed at this snapshot"
+}

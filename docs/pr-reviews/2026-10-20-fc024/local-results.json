@@ -1,0 +1,24 @@
+{
+  "code_head": "b71d7766558dc402355f6ec1790b87756ebbbf93",
+  "modules": {
+    "core": {
+      "tests": 54,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "server": {
+      "tests": 170,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "compileKotlin": "success",
+  "bootJar": "success",
+  "mysql_local": "not run: Docker engine unavailable",
+  "ci": "success: 39419625606; see ci-source.json",
+  "production": "pending",
+  "local_runtime_source": "1650372534fb7f4c9e28e5835d1d22b8c590ecf6",
+  "runtime_equivalent_to_code_head": true
+}

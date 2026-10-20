@@ -152,7 +152,15 @@ def verify():
     state = json.loads(STATE.read_text(encoding="utf-8"))
     check(state["baseline_ref"] == BASELINE_REF and state["target_version"] == boot_version(ROOT / "server/build/libs/server.jar"),
           "다른 소스·산출물의 검증 상태를 재사용하지 않음")
-    check(changelog() == state["changelog"], "Boot 4 기동 뒤 기존 changeSet·체크섬·실행 시각 불변")
+    current_history = changelog()
+    previous_history = state["changelog"]
+    check(current_history[:len(previous_history)] == previous_history,
+          "Boot 4 기동 뒤 기존 changeSet·체크섬·실행 시각 불변")
+    added_history = [row.split("\t") for row in current_history[len(previous_history):]]
+    check(len(added_history) == 1 and added_history[0][0:3] ==
+          ["029-ugc-safety", "jeongsan", "db/changelog/019-ugc-safety.yaml"]
+          and added_history[0][3].startswith("9:") and added_history[0][5] == "EXECUTED",
+          "신고·차단 신규 changeSet 029만 정확히 한 번 추가 적용")
     check(sql(f"SELECT HEX(payout_encrypted) FROM users WHERE id={state['host_id']}") == state["payout_hex"],
           "구버전 계좌 암호문을 변경·재암호화하지 않음")
     me = call("GET", "/auth/me", state["host"])

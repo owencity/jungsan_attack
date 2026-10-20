@@ -16,7 +16,8 @@ import java.security.MessageDigest
 
 @Service
 @Transactional(isolation = Isolation.READ_COMMITTED)
-class GatheringService(private val db: GatheringStore, private val mapper: ObjectMapper, private val cipher: PayoutCipher) {
+class GatheringService(private val db: GatheringStore, private val mapper: ObjectMapper, private val cipher: PayoutCipher,
+    private val moderation: app.jeongsan.server.moderation.ModerationService) {
     private fun user(uid: Long): Map<String, Any?> = db.rows("SELECT * FROM users WHERE id=:id", "id" to uid).singleOrNull()
         ?: fail("UNAUTHENTICATED", status=HttpStatus.UNAUTHORIZED)
     private fun named(uid: Long): Map<String, Any?> = user(uid).also { if (it["display_name"] == null) fail("DISPLAY_NAME_REQUIRED") }
@@ -370,7 +371,16 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         val responses=db.rows("SELECT a.*,r.gathering_id FROM round_responses a JOIN rounds r ON r.id=a.round_id WHERE r.gathering_id IN (:ids)","ids" to ids).groupBy{it.long("gathering_id")}
         val transfers=db.rows("SELECT t.*,s.gathering_id,s.settlement_unit_id FROM settlement_transfers t JOIN settlements s ON s.id=t.settlement_id WHERE s.gathering_id IN (:ids) ORDER BY t.id","ids" to ids).groupBy{it.long("gathering_id")}
         val basis=db.rows("SELECT b.* FROM settlement_transfer_items b JOIN settlement_transfers t ON t.id=b.transfer_id JOIN settlements s ON s.id=t.settlement_id WHERE s.gathering_id IN (:ids) ORDER BY b.round_id","ids" to ids).groupBy{it.long("transfer_id")}
-        val timeline=db.rows("SELECT * FROM timeline_entries WHERE gathering_id IN (:ids) ORDER BY id","ids" to ids).groupBy{it.long("gathering_id")}
+        // 방·항목별 조회를 늘리지 않고 MESSAGE에만 개인/전체 숨김을 적용한다.
+        val timeline=db.rows("""
+            SELECT entry.* FROM timeline_entries entry
+            WHERE entry.gathering_id IN (:ids) AND (entry.type<>'MESSAGE' OR (
+                entry.hidden_at IS NULL
+                AND NOT EXISTS(SELECT 1 FROM message_reports report WHERE report.entry_id=entry.id AND report.reporter_user_id=:viewer)
+                AND NOT EXISTS(SELECT 1 FROM user_blocks block JOIN participants author ON author.user_id=block.blocked_user_id
+                    WHERE block.blocker_user_id=:viewer AND author.id=entry.author_participant_id)
+            )) ORDER BY entry.id
+        """.trimIndent(),"ids" to ids,"viewer" to uid).groupBy{it.long("gathering_id")}
         return ids.map{gid-> val row=g.getValue(gid);val ps=people[gid].orEmpty();val me=ps.first{(it["user_id"] as? Number)?.toLong()==uid}.long("id")
             val ts=transfers[gid].orEmpty();val allowed=ts.filter{it.long("sender_participant_id")==me}.map{it.long("recipient_participant_id")}.toSet()+me
             mapOf("id" to gid,"title" to row["name"],"date" to (row["gathering_date"] as java.sql.Date).toLocalDate(),"createdByUserId" to row["host_user_id"],"shareToken" to row["share_token"],"status" to row["status"],"completedAt" to row.instant("completed_at"),"deleteScheduledAt" to row.instant("delete_scheduled_at"),
@@ -427,7 +437,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
     }
     fun message(gid: Long,uid: Long,request: MessageRequest): Map<String,Any?> {
         val p=person(gid,uid);val text=request.text.trim();if(text.isEmpty()||text.length>200) fail("MALFORMED_REQUEST",status=HttpStatus.BAD_REQUEST)
-        room(gid,true);val now=Instant.now()
+        room(gid,true);moderation.checkMessage(uid,text);val now=Instant.now()
         val id=db.insert("INSERT INTO timeline_entries(gathering_id,type,author_participant_id,body,created_at) VALUES(:g,'MESSAGE',:p,:b,:n)","g" to gid,"p" to p.id,"b" to text,"n" to now);touch(gid)
         return mapOf("id" to id,"type" to "MESSAGE","authorParticipantId" to p.id,"body" to text,"createdAt" to now,"settlementUnitId" to null)
     }

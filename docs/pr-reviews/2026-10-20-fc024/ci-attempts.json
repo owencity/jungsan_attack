@@ -1,0 +1,26 @@
+{
+  "attempts": [
+    {
+      "head": "136aef2",
+      "run_id": 39418677475,
+      "conclusion": "failure",
+      "reason": "Upgrade verifier compared entire history and rejected the new 029 migration",
+      "fix": "Preserve all previous changelog columns exactly; assert only 029 added"
+    },
+    {
+      "head": "3fcb497",
+      "run_id": 39419100086,
+      "conclusion": "failure",
+      "ugc_checks_passed": 22,
+      "reason": "Fixture had no round and settlement preview correctly returned NO_ROUNDS",
+      "fix": "Create a valid round; keep preview success and financial invariants assertions"
+    },
+    {
+      "head": "b71d776",
+      "run_id": 39419625606,
+      "conclusion": "success",
+      "ugc_checks_passed": 29
+    }
+  ],
+  "tests_removed_or_disabled": false
+}

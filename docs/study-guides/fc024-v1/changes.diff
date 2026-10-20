@@ -1,0 +1,1076 @@
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 34275a0..0108b03 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,12 @@
+ # 개발 결정 로그
+ 
++## [2026-10-20] FC-024 메시지 안전을 정산과 분리한다
++- 문제: App Store 재심사에 메시지 신고·차단과 부적절한 내용 필터·운영 대응이 필요했다.
++- 고려한 대안: 메시지 제거, n8n 즉시 알림, 기존 메시지에 개인/전체 숨김과 서버 로그·일일 SQL 확인을 추가.
++- 선택 이유·트레이드오프: CTO 최신 결정 ⓐ와 서로 다른 2명 자동 숨김을 반영한다. 신고·차단은 메시지에만 적용하며 금액·명단은 유지한다. Gathering 잠금·신고 유일 제약·FK 삭제로 경합과 탈퇴를 제어하고 커밋된 신규 신고만 개인정보 없는 로그로 남긴다.
++- 아쉬운 점: 일일 확인은 운영자의 실행이 필요하고 프로세스 종료로 로그가 유실될 수 있어 DB 미처리 목록이 기준이다. 단순 금칙어는 문맥 오탐·신조어 누락이 있으며 실기기 약관·재심사 녹화는 별도다.
++
++
+ ## [2026-10-19] 개발 결과와 다음 진행을 반드시 함께 보고한다
+ - 문제: PR과 테스트 결과만 보고하면 무엇을 개발했고 어디까지 완료됐으며 다음에 무엇을 할지 사용자가 알기 어려웠다.
+ - 고려한 대안: 완료 여부만 짧게 알리기, 매번 보고 항목을 다시 요청받기, 저장소 작업 지침에 네 항목을 필수 규칙으로 고정하기.
+diff --git a/docs/API.md b/docs/API.md
+index e9c3d9c..e8c5bfb 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1,4 +1,14 @@
+-# 정산어택 — API 계약 · v12
++# 정산어택 — API 계약 · v13
++
++> **v13 변경(2026-10-20)** — FC-024 메시지 신고·차단·금칙어·운영 금지.
++>
++> | 절 | 변경 |
++> |---|---|
++> | §0.7 메시지 안전 | 신고 204·사용자 차단 POST/GET/DELETE, 본인·전체 timeline 숨김 |
++> | §1.4 오류 | MESSAGE_NOT_ALLOWED(422), MESSAGE_BANNED(403) |
++> | UGC_SAFETY / ERD 019 | 신고·차단 테이블, hidden_at·message_banned_at, 로그·일일 운영 SQL |
++>
++
+ 
+ > **v12 변경(2026-10-14)** — 내부 알림의 대상·문구를 FC-005·010·011과 단위별 정산에 맞춘다.
+ >
+@@ -1440,3 +1450,33 @@ Core v2 코드: `TOTAL_NOT_POSITIVE`, `ALCOHOL_NEGATIVE`, `ALCOHOL_EXCEEDS_TOTAL
+ | 409 | NO_ROUNDS / REMOVE_HOST / REMOVE_PAYER | 차수 없음 또는 보호 명단 제외 시도 |
+ | 409 | PAYOUT_MISSING / TRANSFER_ALREADY_SENT / INVALID_TRANSFER_TRANSITION | 수취 계좌 없음 / sentAt·confirmedAt 이력으로 취소 금지 / 송금 상태 불일치 |
+ | 400 | MALFORMED_REQUEST | 잘못된 명단·응답 타입·계좌·본문 |
++
++## 0.7 메시지 신고·차단·금칙어 (FC-024 · v13)
++
++전체 계약·동시성·삭제는 [UGC_SAFETY](UGC_SAFETY.md), 운영 절차는 [일일 신고 처리](operations/ugc-moderation.md)를 따른다.
++기존 WEB 쿠키·APP Bearer를 사용한다.
++
++| 요청 | 응답 |
++|---|---|
++| POST /api/v1/gatherings/{gid}/messages/{entryId}/reports `{reason}` | 204, reason ABUSE / SEXUAL / SPAM / OTHER. ACTIVE 참여자만 남의 MESSAGE 신고, 중복 204 |
++| POST /api/v1/me/blocks `{gatheringId,participantId}` | 204. 같은 방 ACTIVE 참여자를 사용자로 변환해 차단. 중복 204 |
++| GET /api/v1/me/blocks | 200 `[{userId,displayName,blockedAt}]`, 최신순·동률 userId순, 본인 목록 |
++| DELETE /api/v1/me/blocks/{userId} | 204. 본인이 건 차단만 삭제, 없어도 204 |
++
++신고자 본인의 신고 MESSAGE는 즉시 조회에서 제외한다. 서로 다른 2명이면 hidden_at을 설정해 모두에게 숨긴다.
++차단 대상이 다른 술자리의 participantId로 나타나도 본인의 모든 timeline에서 해당 사용자의 MESSAGE를 제외한다.
++SYSTEM·SPOON·참여자·응답·정산·송금은 유지한다. 처리 완료·차단 해제는 신고 숨김을 풀지 않는다.
++신고는 본인 글·SYSTEM·SPOON이면 400, 차단은 본인·탈퇴 계정이면 400, 비참여자는 403 NOT_PARTICIPANT다.
++다른 방의 메시지 ID는 404 NOT_FOUND다. 기존 POST messages의 201 DTO는 유지한다.
++
++### 1.4 추가 — v13 메시지 오류
++
++| HTTP | code | message |
++|---|---|---|
++| 422 | MESSAGE_NOT_ALLOWED | 부적절한 표현이 있어요 |
++| 403 | MESSAGE_BANNED | 메시지를 보낼 수 없는 계정이에요 |
++
++금칙어·메시지 금지 요청은 저장하지 않는다. 금칙어는 NFKC·대소문자·공백/특수문자 정규화 후 검사한다.
++신규 신고 커밋 뒤 `MESSAGE_REPORTED entryId=… gatheringId=… reason=…`만 로그에 남긴다.
++본문·이름·계좌·신고자 ID는 로그에 포함하지 않는다. n8n 없이 운영자가 매일 DB 미처리를 조회한다.
++약관 동의 체크·지원 연락처·실기기 재심사 녹화는 프론트/CTO 범위며 termsVersion 저장은 이번에 추가하지 않는다.
+diff --git a/docs/DOMAIN_DB_DESIGN_V2.md b/docs/DOMAIN_DB_DESIGN_V2.md
+index cd976e8..84b92b8 100644
+--- a/docs/DOMAIN_DB_DESIGN_V2.md
++++ b/docs/DOMAIN_DB_DESIGN_V2.md
+@@ -423,3 +423,14 @@ ADR 문서를 조용히 덮어쓰지 않는다. 대체·개정은 각 ADR 상단
+ - [ ] 계좌번호 저장 시 암호화·조회 권한·로그 마스킹을 확정한다.
+ - [ ] 탈퇴하려는 사용자가 진행 중인 술자리의 총무·결제자일 때의 처리를 정한다.
+ - [ ] 영수증 인식 방식과 이미지 보관 여부를 실측 후 정한다(`REQUIREMENTS.md` §9).
++
++
++## FC-024 메시지 안전 추가 (2026-10-20)
++
++최신 메시지 안전 계약은 [UGC_SAFETY](UGC_SAFETY.md)다. 신규 019 / changeSet 029:
++- message_reports(id,entry_id,reporter_user_id,reason,created_at,handled_at), UNIQUE(entry_id,reporter_user_id).
++- user_blocks(blocker_user_id,blocked_user_id,created_at), 복합 PK.
++- timeline_entries.hidden_at / users.message_banned_at, nullable UTC DATETIME(6).
++신고·차단은 금액·명단·단위 상태를 변경하지 않는다. 메시지 삭제는 신고 CASCADE,
++신고자 탈퇴는 reporter_user_id SET NULL, 차단 양쪽 FK는 계정 삭제 CASCADE다.
++동시 신고는 Gathering→사용자→메시지 잠금 후 집계한다. 기존 v3 설계 전체를 구현 근거로 되살리지 않는다.
+diff --git a/docs/ERD.md b/docs/ERD.md
+index d63ceca..fb53da3 100644
+--- a/docs/ERD.md
++++ b/docs/ERD.md
+@@ -338,3 +338,17 @@ NULL 좌석은 탈퇴 자료에만 사용한다. 가입 API는 항상 유효한
+ 물리 정의는 `018-auto-settlement.yaml`, changeSet `028`이다. `settlement_units`에 nullable `headcount INT`,
+ `headcount_exceeded_notified BOOLEAN NOT NULL DEFAULT FALSE`, nullable `auto_settlement_error VARCHAR(40)`를 추가한다.
+ 인원 범위는 서비스가 검증하며 기존 단위의 NULL은 자동 정산을 끈다. 기존 테이블·FK·송금 스냅샷은 유지한다.
++
++
++## 019 메시지 안전 · changeSet 029 (2026-10-20)
++
++[019-ugc-safety.yaml](../server/src/main/resources/db/changelog/019-ugc-safety.yaml)이 진실이다.
++| 테이블 | 추가 필드·제약 |
++|---|---|
++| timeline_entries | hidden_at DATETIME(6) NULL |
++| users | message_banned_at DATETIME(6) NULL |
++| message_reports | id BIGINT PK AUTO_INCREMENT, entry_id BIGINT NOT NULL FK CASCADE, reporter_user_id BIGINT NULL FK SET NULL, reason VARCHAR(10), created_at DATETIME(6), handled_at DATETIME(6) NULL; UNIQUE(entry_id,reporter_user_id) |
++| user_blocks | PK(blocker_user_id,blocked_user_id), 두 열 BIGINT FK users CASCADE; created_at DATETIME(6) |
++신고 사유는 ABUSE/SEXUAL/SPAM/OTHER이며 CHECK 없이 애플리케이션에서 검증한다.
++idx_report_reporter는 개인 숨김, idx_report_pending은 미처리 일일 조회, idx_block_target은 대상 탈퇴 정리에 사용한다.
++메시지 본문·계좌를 신고 테이블에 복제하지 않는다. 기존 데이터의 숨김·금지 값은 NULL이다.
+diff --git a/docs/REQUIREMENTS.md b/docs/REQUIREMENTS.md
+index 0ba3f2d..99f6d82 100644
+--- a/docs/REQUIREMENTS.md
++++ b/docs/REQUIREMENTS.md
+@@ -532,3 +532,15 @@ stateDiagram-v2
+ 결제자 변경만으로 관리 총무가 바뀌지 않으며 예외적인 대신 결제를 계속 지원한다.
+ 단위 생성·권한·초기 명단·차수 순서·입력 hash·독립 계산·상태·수명은 SETTLEMENT_UNITS가 구현 계약이다.
+ 계산 호출 범위 → 논리 DB → API → 신규 Liquibase/엔티티 → Java/Kotlin 구현·비교 테스트 → PR·diff 학습 순서로 진행한다.
++
++
++## 8.1.1 메시지 안전 (FC-024 · CTO 2026-10-20)
++
++- 남의 MESSAGE에 신고 사유(욕설·비방 / 음란·불쾌 / 스팸·광고 / 기타)를 보낼 수 있다.
++- 신고 즉시 본인에게서 숨기고 서로 다른 2명이면 모두에게 숨긴다. SYSTEM·SPOON·본인 글은 신고하지 않는다.
++- 다른 참여자 차단은 모든 술자리의 본인 MESSAGE 조회에만 적용하며 정산·명단·응답·송금은 유지한다.
++- 내 차단 목록과 차단 해제를 제공한다. 상대에게 차단 알림을 보내지 않는다.
++- 서버 기본 금칙어로 부적절한 표현을 거절하고 운영자는 메시지 숨김·상습 작성자 메시지 금지·처리 완료를 수행한다.
++- 부적절한 콘텐츠 무관용 약관·동의 체크·지원 연락처는 프론트에서 제공한다. 서버 약관 동의 기록은 이번 범위에서 제외한다.
++- 신고 로그는 본문·개인정보 없는 MESSAGE_REPORTED 한 줄만 기록한다. 운영자는 매일 최소 한 번 미처리를 조회하고 24시간 안에 확인한다.
++- [API·스키마 계약](UGC_SAFETY.md)과 [운영 SQL](operations/ugc-moderation.md)을 따른다.
+diff --git a/docs/UGC_SAFETY.md b/docs/UGC_SAFETY.md
+new file mode 100644
+index 0000000..6bf4d56
+--- /dev/null
++++ b/docs/UGC_SAFETY.md
+@@ -0,0 +1,50 @@
++# FC-024 메시지 안전 정책 · API v13
++
++CTO 2026-10-20 결정: 메시지 기능을 유지하며 신고·차단·금칙어·운영 SQL을 제공한다.
++신고 알림은 서버 로그와 운영자의 일일 조회(ⓐ)다. n8n·메일·약관 서버 저장은 이번 범위에 없다.
++
++## API 계약
++
++모두 기존 WEB 쿠키 / APP Bearer 인증을 사용한다. `/api/v1` 프리픽스를 생략하지 않는다.
++
++| 요청 | 응답·규칙 |
++|---|---|
++| POST /api/v1/gatherings/{gid}/messages/{entryId}/reports `{reason}` | 204. ACTIVE 참여자만, 그 방의 MESSAGE만, 본인 글 불가. reason은 ABUSE / SEXUAL / SPAM / OTHER. 같은 사람·메시지는 첫 사유를 유지하고 멱등 204 |
++| POST /api/v1/me/blocks `{gatheringId,participantId}` | 204. 본인과 대상이 해당 술자리의 ACTIVE 참여자여야 한다. 탈퇴 계정·본인 대상은 400. 같은 사용자 재차단은 최초 시각 유지, 멱등 204 |
++| GET /api/v1/me/blocks | 200 `[{userId,displayName,blockedAt}]`, blockedAt 내림차순·userId 오름차순. 본인 목록만 |
++| DELETE /api/v1/me/blocks/{userId} | 204. 본인이 건 차단만 삭제. 이미 없거나 탈퇴한 대상도 멱등 204 |
++
++신고·차단의 잘못된 종류·사유·본인 대상은 400 MALFORMED_REQUEST, 없는 방·메시지는 404 NOT_FOUND,
++비참여자는 403 NOT_PARTICIPANT다. 잘못된 본문 검증은 기존 400 VALIDATION_FAILED/MALFORMED_REQUEST를 따른다.
++
++GET 술자리 상세·목록의 timeline은 신고자 본인의 신고 MESSAGE와 본인이 차단한 사용자의 MESSAGE를 제외한다.
++서로 다른 신고자 2명부터 hidden_at을 한 번 설정하여 작성자를 포함한 모두에게 숨긴다.
++처리 완료(handled_at)는 운영 상태일 뿐, 개인 숨김·전체 숨김을 해제하지 않는다.
++SYSTEM·SPOON, 참여자·응답·명단·정산·송금과 권한에는 영향이 없다. 차단은 단방향이다.
++
++기존 POST messages는 201 응답 모양을 유지한다. message_banned_at이 있으면 403 MESSAGE_BANNED
++`메시지를 보낼 수 없는 계정이에요`, 금칙어면 422 MESSAGE_NOT_ALLOWED `부적절한 표현이 있어요`이며 저장하지 않는다.
++금칙어는 리소스 기본 목록을 NFKC·소문자·문자/숫자만 남기는 정규화 후 포함 비교한다.
++단어 뜻·문맥을 판별하지 못해 오탐·신조어 누락이 있을 수 있다. 금칙어 추가는 리소스 변경 PR로 관리한다.
++
++## 저장·동시성·삭제
++
++진실은 신규 019-ugc-safety.yaml / changeSet 029다. 기존 changelog는 변경하지 않는다.
++- message_reports: id, entry_id, reporter_user_id, reason, created_at, handled_at. UNIQUE(entry_id,reporter_user_id).
++  entry FK CASCADE로 방 만료·작성자 탈퇴 시 메시지와 함께 지운다. 신고자 탈퇴는 reporter_user_id를 NULL로 익명화한다.
++  각 행은 원래 서로 다른 신고자가 만든 것이므로 익명화 뒤에도 접수한 신고 수와 hidden_at은 유지한다. 본문·계좌·이름 스냅샷은 복제하지 않는다.
++- user_blocks: PK(blocker_user_id,blocked_user_id), created_at. 어느 계정이든 탈퇴하면 FK CASCADE로 제거한다.
++- timeline_entries.hidden_at, users.message_banned_at: nullable UTC DATETIME(6). 기존 데이터의 동작은 NULL로 유지한다.
++
++신고는 기존 삭제 순서와 같은 Gathering 잠금 뒤 메시지 행을 잠가 중복·2명 경합을 직렬화한다.
++차단은 Gathering 잠금 뒤 사용자 행을 id 순서로 공유 잠금해 탈퇴와 경합을 제어하고 PK로 중복을 막는다.
++메시지는 기존 Gathering 잠금 뒤 작성자 공유 잠금으로 메시지 금지 SQL과 직렬화한다.
++조회는 한 timeline 배치 쿼리의 NOT EXISTS로 숨김을 적용해 방·항목마다 쿼리를 추가하지 않는다.
++
++## 신고 로그·운영
++
++신규 신고가 커밋된 뒤에만 한 줄 `MESSAGE_REPORTED entryId=… gatheringId=… reason=…`를 남긴다.
++중복 요청은 새 신고·새 로그를 만들지 않는다. 로그에 본문·사용자 ID·이름·계좌·토큰은 넣지 않는다.
++커밋 후 프로세스 종료 등으로 로그가 유실될 수 있으므로 DB의 미처리 신고가 운영 확인의 기준이다.
++운영자는 매일 최소 한 번 [신고 처리 SQL 절차](operations/ugc-moderation.md)를 실행하고 24시간 안에 확인한다.
++코드는 운영자의 실제 일일 확인이나 프론트 약관 동의·App Store 재심사 통과를 증명하지 않는다.
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index fa4f60a..38bb40f 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -83,4 +83,4 @@
+ | FC-021 | 앱 로그인 연결 완료 · 운영 API 502 · Apple 콜백 도메인 불일치 | 열림 (Caddy 직접 HTTPS·운영 200/401·로그인 시작 302 확인, 실계정/앱 E2E 후속) | PR #27~#30 병합 · [PR #32](https://github.com/owencity/jungsan_attack/pull/32) Caddy 운영 적용·DNS only·공인 TLS/CORS 검증, 웹/앱 최종 로그인 후속 | [2026-10-10-auth-deploy.md](2026-10-10-auth-deploy.md) |
+ | FC-022 | Apple 이름·이메일 동의 요청 제거 | 반영됨 (API v10·양쪽 언어·서버 130건, 병합·운영·실계정 후속) | AuthPolicy.kt/java·ProviderGateway·ApplePrivacySpec·AppleTokensSpec · 기존 FC-021 전체 로그인 시험은 후속 | [2026-10-10-apple-privacy.md](2026-10-10-apple-privacy.md) |
+ | FC-023 | 다음 차의 나 혼자 시작하기가 headcount 1을 보냄 | 프론트만 (웹/앱 소스 불일치·수정 제안, 실제 빌드 후속) | 서버 최소 2 계약 유지 · GatheringApiSpec·기존 DB HTTP 대조 추가, 실행 결과는 PR 검증 기록 | [2026-10-18-app-connection.md](2026-10-18-app-connection.md) |
+-| FC-024 | 정산방 메시지 신고·차단·금칙어·약관 동의 (App Store 1.2) | 열림 (CTO 결정 2026-10-20 B안 · 알림=서버 로그 일일 확인 · 2명 신고 시 자동 숨김) | 신고·차단·금칙어 API, message_reports·user_blocks, 운영 SQL · 프론트 웹/앱 동시 구현 | [2026-10-20-ugc-safety.md](2026-10-20-ugc-safety.md) |
++| FC-024 | 정산방 메시지 신고·차단·금칙어·약관 동의 | 열림 (구현·검증 진행) | API v13·019/029·ModerationService·운영 SQL; 로그/일일 조회 ⓐ·2명 숨김 결정 반영 | [2026-10-20-ugc-safety.md](2026-10-20-ugc-safety.md) |
+diff --git a/docs/operations/ugc-moderation.md b/docs/operations/ugc-moderation.md
+new file mode 100644
+index 0000000..27cf7be
+--- /dev/null
++++ b/docs/operations/ugc-moderation.md
+@@ -0,0 +1,80 @@
++# FC-024 신고 일일 처리 절차
++
++운영자(CTO)는 **매일 최소 한 번**, 접수 후 24시간 안에 확인한다. 자동 스케줄·n8n 알림은 이번 결정에 없다.
++신고 로그는 알림 보조이며 DB 미처리 조회가 기준이다. 사용자 메시지·이름·계좌를 채팅·CI·공개 로그에 복사하지 않는다.
++운영 MySQL은 기존 SSH와 내부 docker compose mysql을 통해서만 접속한다. 비밀번호를 명령줄·문서에 넣지 않는다.
++먼저 `SELECT DATABASE();`로 jeongsan 운영 DB인지 확인하고 세션을 UTC로 고정한다.
++
++## 1. 미처리 조회·기한 점검
++
++```sql
++SET time_zone = '+00:00';
++SELECT report.id, report.entry_id, entry.gathering_id, report.reason,
++       report.created_at, entry.hidden_at,
++       TIMESTAMPDIFF(HOUR, report.created_at, UTC_TIMESTAMP()) AS pending_hours
++FROM message_reports report JOIN timeline_entries entry ON entry.id = report.entry_id
++WHERE report.handled_at IS NULL ORDER BY report.created_at, report.id;
++```
++
++모든 미처리를 확인한다. 로그 조회는 `docker compose -f docker-compose.prod.yml logs --since 24h app`의
++`MESSAGE_REPORTED entryId=… gatheringId=… reason=…`만 필터한다. 해당 로그에는 신고자·본문을 넣지 않는다.
++본문 확인이 필요할 때만 비공개 운영 세션에서 다음 한 건을 조회한다.
++
++```sql
++SET @entry_id = 123; -- 실제 검토할 entry_id를 직접 지정
++SELECT id, gathering_id, type, body, hidden_at FROM timeline_entries WHERE id = @entry_id;
++```
++
++## 2. 메시지 전체 숨김
++
++신고가 2명이면 이미 숨겨져 있다. 1명이더라도 운영 검토로 숨길 수 있다.
++자동 숨김·개인 신고 숨김은 handled_at을 채워도 풀리지 않는다.
++
++```sql
++START TRANSACTION;
++SET @gathering_id = NULL;
++SELECT gathering_id INTO @gathering_id FROM timeline_entries WHERE id = @entry_id;
++SELECT id FROM gatherings WHERE id = @gathering_id FOR UPDATE;
++UPDATE timeline_entries SET hidden_at = COALESCE(hidden_at, UTC_TIMESTAMP(6))
++WHERE id = @entry_id AND type = 'MESSAGE';
++SELECT ROW_COUNT() AS affected;
++COMMIT;
++```
++
++## 3. 상습 작성자의 새 메시지 금지
++
++계정·참여자·정산을 삭제하지 않는다. 과거 메시지는 별도 2번 조치로 숨긴다.
++이후 POST messages는 403 MESSAGE_BANNED다. 차단·신고·정산·송금은 계속 사용할 수 있다.
++대상 ID를 먼저 확인하고 사용자 행 잠금으로 메시지 전송과 직렬화한다.
++
++```sql
++SET @author_user_id = NULL;
++SELECT participant.user_id INTO @author_user_id
++FROM timeline_entries entry JOIN participants participant ON participant.id = entry.author_participant_id
++WHERE entry.id = @entry_id AND entry.type = 'MESSAGE';
++START TRANSACTION;
++UPDATE users SET message_banned_at = COALESCE(message_banned_at, UTC_TIMESTAMP(6)) WHERE id = @author_user_id;
++SELECT ROW_COUNT() AS affected;
++COMMIT;
++```
++
++복구가 필요하면 별도 운영 판단과 비공개 작업 기록을 남긴 뒤
++`UPDATE users SET message_banned_at=NULL WHERE id=@author_user_id;`로 새 메시지만 허용한다.
++숨긴 메시지를 다시 노출하는 API는 이번 범위에 없다.
++
++## 4. 처리 완료·재확인
++
++어떤 조치를 했는지는 운영자의 비공개 작업 기록에 남긴다.
++반드시 검토한 신고 ID만 지정하며 미처리 전체를 일괄 완료하지 않는다.
++
++```sql
++SET @report_id = 456; -- 검토를 마친 신고 번호
++UPDATE message_reports SET handled_at = COALESCE(handled_at, UTC_TIMESTAMP(6)) WHERE id = @report_id;
++SELECT id, entry_id, created_at, handled_at FROM message_reports WHERE id = @report_id;
++SELECT COUNT(*) AS pending FROM message_reports WHERE handled_at IS NULL;
++```
++
++방의 7일/유휴 만료와 작성자 탈퇴 시 메시지·신고는 함께 삭제된다. 신고자 탈퇴는 ID만 NULL로 익명화한다.
++차단은 사용자 탈퇴 시 양방향 FK CASCADE로 삭제된다. 신고 기록을 백업·다른 저장소에 무기한 복제하지 않는다.
++앱 심사 녹화는 프론트·CTO가 실제 계정으로 신고→숨김·차단→숨김·차단 해제를 보여준다.
++자동 API 테스트는 최종 앱 녹화를 대신하지 않는다.
+diff --git a/scripts/verify-boot-upgrade.py b/scripts/verify-boot-upgrade.py
+index a0419e0..b250f63 100644
+--- a/scripts/verify-boot-upgrade.py
++++ b/scripts/verify-boot-upgrade.py
+@@ -152,7 +152,15 @@ def verify():
+     state = json.loads(STATE.read_text(encoding="utf-8"))
+     check(state["baseline_ref"] == BASELINE_REF and state["target_version"] == boot_version(ROOT / "server/build/libs/server.jar"),
+           "다른 소스·산출물의 검증 상태를 재사용하지 않음")
+-    check(changelog() == state["changelog"], "Boot 4 기동 뒤 기존 changeSet·체크섬·실행 시각 불변")
++    current_history = changelog()
++    previous_history = state["changelog"]
++    check(current_history[:len(previous_history)] == previous_history,
++          "Boot 4 기동 뒤 기존 changeSet·체크섬·실행 시각 불변")
++    added_history = [row.split("\t") for row in current_history[len(previous_history):]]
++    check(len(added_history) == 1 and added_history[0][0:3] ==
++          ["029-ugc-safety", "jeongsan", "db/changelog/019-ugc-safety.yaml"]
++          and added_history[0][3].startswith("9:") and added_history[0][5] == "EXECUTED",
++          "신고·차단 신규 changeSet 029만 정확히 한 번 추가 적용")
+     check(sql(f"SELECT HEX(payout_encrypted) FROM users WHERE id={state['host_id']}") == state["payout_hex"],
+           "구버전 계좌 암호문을 변경·재암호화하지 않음")
+     me = call("GET", "/auth/me", state["host"])
+diff --git a/scripts/verify-release.sh b/scripts/verify-release.sh
+index 5a0df1b..9b244f8 100644
+--- a/scripts/verify-release.sh
++++ b/scripts/verify-release.sh
+@@ -60,6 +60,7 @@ done
+ if [ -n "${BOOT3_BASELINE_JAR:-}" ]; then python3 scripts/verify-boot-upgrade.py verify; fi
+ python3 scripts/verify-auto-settlement.py
+ python3 scripts/verify-notifications.py
++python3 scripts/verify-ugc-safety.py
+ python3 scripts/verify-auth-release.py
+ ./gradlew :server:authDatabaseProbe --no-daemon
+ python3 scripts/verify-deploy.py
+diff --git a/scripts/verify-ugc-safety.py b/scripts/verify-ugc-safety.py
+new file mode 100644
+index 0000000..9fb0ad7
+--- /dev/null
++++ b/scripts/verify-ugc-safety.py
+@@ -0,0 +1,214 @@
++"""FC-024: CI 전용 MySQL/HTTP에서 중복·권한·개인/전체 숨김·차단·탈퇴를 검증한다."""
++import base64
++import hashlib
++import hmac
++import json
++from pathlib import Path
++import re
++import subprocess
++import sys
++import time
++import uuid
++from concurrent.futures import ThreadPoolExecutor
++from urllib.error import HTTPError
++from urllib.request import Request, urlopen
++
++sys.stdout.reconfigure(encoding="utf-8")
++BASE = "http://127.0.0.1:18081/api/v1"
++checks = 0
++
++def sql(query):
++    process = subprocess.run(["docker", "exec", "jeongsan-v4-verification", "mysql", "--default-character-set=utf8mb4",
++        "-uroot", "-plocal-v4-test", "-N", "-s", "jeongsan_auth_test", "-e", query],
++        capture_output=True, text=True, encoding="utf-8")
++    assert process.returncode == 0, process.stderr
++    return process.stdout.strip()
++
++assert sql("SELECT DATABASE()") == "jeongsan_auth_test"
++
++def check(condition, label):
++    global checks
++    assert condition, label
++    checks += 1
++    print(f"PASS {checks}: {label}", flush=True)
++
++def call(method, path, user=None, body=None, expected=200):
++    def encode(value):
++        return base64.urlsafe_b64encode(value).rstrip(b"=").decode()
++    headers = {"Content-Type": "application/json"}
++    if user is not None:
++        token = encode(b'{"alg":"HS256"}') + "." + encode(json.dumps({
++            "sub": str(user), "client": "WEB", "jti": str(uuid.uuid4()), "exp": int(time.time()) + 3600}).encode())
++        signature = encode(hmac.new(b"local-only-dev-secret-please-change-32b", token.encode(), hashlib.sha256).digest())
++        headers["Cookie"] = "jeongsan_token=" + token + "." + signature
++    request = Request(BASE + path, headers=headers, method=method,
++        data=json.dumps(body).encode() if body is not None else None)
++    try:
++        with urlopen(request, timeout=20) as response:
++            status, raw = response.status, response.read()
++    except HTTPError as error:
++        status, raw = error.code, error.read()
++    value = json.loads(raw) if raw else None
++    assert status == expected, (method, path, status, value)
++    return value
++
++def new_user(name):
++    identity = str(uuid.uuid4())
++    sql(f"INSERT INTO users(provider,provider_id,nickname,display_name,tier,created_at) VALUES('UGC_TEST','{identity}','검증{name}','{name}','FREE',UTC_TIMESTAMP())")
++    return int(sql(f"SELECT id FROM users WHERE provider_id='{identity}'"))
++
++author, first, second, outsider = [new_user(name) for name in ("안전작성자", "첫신고자", "두신고자", "외부사용자")]
++room = call("POST", "/gatherings", author, expected=201)
++gathering = room["id"]
++unit = room["settlementUnits"][0]["id"]
++author_participant = room["me"]["participantId"]
++def join(target_room, user):
++    return call("POST", "/join/" + target_room["shareToken"], user,
++        {"settlementUnitId": target_room["settlementUnits"][0]["id"]})["participantId"]
++first_participant = join(room, first)
++second_participant = join(room, second)
++call("POST", f"/gatherings/{gathering}/settlement-units/{unit}/rounds", author,
++    {"total": 30000, "payerParticipantId": author_participant}, 201)
++other_room = call("POST", "/gatherings", author, expected=201)
++other_gathering = other_room["id"]
++join(other_room, first)
++join(other_room, second)
++other_author_participant = other_room["me"]["participantId"]
++
++def message(user, text, gathering_id=gathering):
++    return call("POST", f"/gatherings/{gathering_id}/messages", user, {"text": text}, 201)["id"]
++def report(entry, user, reason="ABUSE", gathering_id=gathering, expected=204):
++    return call("POST", f"/gatherings/{gathering_id}/messages/{entry}/reports", user, {"reason": reason}, expected)
++def timeline(user, gathering_id=gathering):
++    return call("GET", f"/gatherings/{gathering_id}", user)["timeline"]
++def visible(user, entry, gathering_id=gathering):
++    return any(row["id"] == entry for row in timeline(user, gathering_id))
++def count_messages():
++    return int(sql(f"SELECT COUNT(*) FROM timeline_entries WHERE gathering_id={gathering} AND type='MESSAGE'"))
++
++check(sql("SELECT COUNT(*) FROM information_schema.keywords WHERE WORD IN ('MESSAGE_REPORTS','USER_BLOCKS','ENTRY','REPORT','BLOCK') AND RESERVED=1") == "0",
++    "새 테이블·쿼리 별칭은 MySQL 예약어와 충돌하지 않음")
++check(sql("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name IN ('message_reports','user_blocks') AND column_comment=''") == "0",
++    "신규 신고·차단 모든 컬럼에 설명 존재")
++check(sql(f"SELECT COUNT(*) FROM users WHERE id={author} AND message_banned_at IS NULL") == "1",
++    "기존 사용자 메시지 금지는 NULL로 호환")
++entry = message(author, "본문비공개표식 메시지")
++for method, path, body in (
++    ("POST", f"/gatherings/{gathering}/messages/{entry}/reports", {"reason": "ABUSE"}),
++    ("POST", "/me/blocks", {"gatheringId": gathering, "participantId": author_participant}),
++    ("GET", "/me/blocks", None), ("DELETE", f"/me/blocks/{author}", None)):
++    call(method, path, body=body, expected=401)
++check(True, "신고·차단 4개 엔드포인트는 비인증 401")
++report(entry, outsider, expected=403)
++call("POST", "/me/blocks", outsider, {"gatheringId": gathering, "participantId": author_participant}, 403)
++check(True, "비참여자는 신고·차단 불가")
++report(entry, author, expected=400)
++report(entry, first, "UNKNOWN", expected=400)
++system_entry = next(row["id"] for row in timeline(author) if row["type"] == "SYSTEM")
++report(system_entry, first, expected=400)
++spoon = int(sql(f"INSERT INTO timeline_entries(gathering_id,type,body,created_at) VALUES({gathering},'SPOON','검증 스푼',UTC_TIMESTAMP()); SELECT LAST_INSERT_ID()"))
++report(spoon, first, expected=400)
++report(entry, first, gathering_id=other_gathering, expected=404)
++check(sql(f"SELECT COUNT(*) FROM message_reports WHERE entry_id={entry}") == "0",
++    "본인·SYSTEM·SPOON·잘못된 사유·다른 방 신고는 400/404이며 저장 없음")
++
++with ThreadPoolExecutor(6) as pool:
++    list(pool.map(lambda _: report(entry, first), range(6)))
++check(sql(f"SELECT COUNT(*) FROM message_reports WHERE entry_id={entry}") == "1"
++    and sql(f"SELECT hidden_at IS NULL FROM timeline_entries WHERE id={entry}") == "1",
++    "같은 신고자 동시 요청은 1행이고 전체 숨김 없음")
++check(not visible(first, entry) and visible(second, entry) and visible(author, entry), "첫 신고자는 즉시 숨김, 다른 사람은 계속 표시")
++report(entry, first, "OTHER")
++check(sql(f"SELECT reason FROM message_reports WHERE entry_id={entry}") == "ABUSE", "중복 신고는 첫 사유 유지하며 204")
++with ThreadPoolExecutor(4) as pool:
++    list(pool.map(lambda _: report(entry, second, "SPAM"), range(4)))
++check(sql(f"SELECT COUNT(*) FROM message_reports WHERE entry_id={entry}") == "2"
++    and sql(f"SELECT hidden_at IS NOT NULL FROM timeline_entries WHERE id={entry}") == "1",
++    "서로 다른 2명 신고는 정확히 2행과 전체 숨김")
++check(all(not visible(user, entry) for user in (author, first, second)), "작성자 포함 전체 상세에서 숨김")
++check(all(all(row["id"] != entry for gathering_row in call("GET", "/me/gatherings", user) for row in gathering_row["timeline"])
++    for user in (author, first, second)), "목록의 timeline에도 같은 숨김 적용")
++
++simultaneous = message(author, "서로 다른 첫 신고 경합")
++with ThreadPoolExecutor(2) as pool:
++    list(pool.map(lambda user: report(simultaneous, user), (first, second)))
++check(sql(f"SELECT COUNT(*) FROM message_reports WHERE entry_id={simultaneous}") == "2"
++    and not visible(author, simultaneous), "서로 다른 최초 신고가 동시에 와도 전체 숨김")
++
++personal_entry = message(author, "개인 신고는 차단 해제 후에도 숨김")
++report(personal_entry, first, "OTHER")
++remaining = message(author, "차단 검증 정상 메시지")
++other_entry = message(author, "다른 방의 같은 작성자", other_gathering)
++before = call("GET", f"/gatherings/{gathering}", first)
++for target in (author_participant,):
++    call("POST", "/me/blocks", first, {"gatheringId": gathering, "participantId": target}, 204)
++blocked_at = sql(f"SELECT created_at FROM user_blocks WHERE blocker_user_id={first} AND blocked_user_id={author}")
++with ThreadPoolExecutor(4) as pool:
++    list(pool.map(lambda _: call("POST", "/me/blocks", first,
++        {"gatheringId": other_gathering, "participantId": other_author_participant}, 204), range(4)))
++check(sql(f"SELECT COUNT(*) FROM user_blocks WHERE blocker_user_id={first} AND blocked_user_id={author}") == "1"
++    and sql(f"SELECT created_at FROM user_blocks WHERE blocker_user_id={first} AND blocked_user_id={author}") == blocked_at,
++    "다른 방의 같은 사용자 차단도 멱등·최초 시각 보존")
++blocks = call("GET", "/me/blocks", first)
++check(len(blocks) == 1 and blocks[0]["userId"] == author and blocks[0]["displayName"] == "안전작성자"
++    and isinstance(blocks[0]["blockedAt"], str), "차단 목록 실제 DTO·UTC 시각 확인")
++check(not visible(first, remaining) and not visible(first, other_entry, other_gathering)
++    and visible(second, remaining) and visible(second, other_entry, other_gathering), "차단은 모든 방의 본인 MESSAGE 조회에만 적용")
++after = call("GET", f"/gatherings/{gathering}", first)
++check({key: value for key, value in before.items() if key != "timeline"}
++    == {key: value for key, value in after.items() if key != "timeline"}
++    and any(row["id"] == system_entry for row in after["timeline"])
++    and any(row["id"] == spoon for row in after["timeline"]),
++    "차단 전후 정산·명단·응답·송금 전체 동일, SYSTEM·SPOON 유지")
++call("POST", "/me/blocks", first, {"gatheringId": gathering, "participantId": first_participant}, 400)
++call("POST", "/me/blocks", first, {"gatheringId": other_gathering, "participantId": author_participant}, 400)
++check(True, "자기 자신과 다른 방의 participant ID 차단 거절")
++call("DELETE", f"/me/blocks/{author}", second, expected=204)
++check(len(call("GET", "/me/blocks", first)) == 1, "다른 사람은 내 차단을 해제할 수 없음")
++call("DELETE", f"/me/blocks/{author}", first, expected=204)
++call("DELETE", f"/me/blocks/{author}", first, expected=204)
++check(call("GET", "/me/blocks", first) == [] and visible(first, remaining)
++    and visible(first, other_entry, other_gathering) and not visible(first, personal_entry)
++    and not visible(first, entry), "차단 해제는 멱등 204, 신고 숨김은 유지")
++
++message_count = count_messages()
++for text in ("씨 ! 발", "씨\u200b발", "병.신", "ＦＵＣＫ", "섹 스"):
++    response = call("POST", f"/gatherings/{gathering}/messages", author, {"text": text}, 422)
++    assert response["code"] == "MESSAGE_NOT_ALLOWED" and response["message"] == "부적절한 표현이 있어요"
++check(count_messages() == message_count, "금칙어·공백·특수문자·전각 우회는 422이며 저장 없음")
++sql(f"UPDATE users SET message_banned_at=UTC_TIMESTAMP(6) WHERE id={author}")
++response = call("POST", f"/gatherings/{gathering}/messages", author, {"text": "정상 문장"}, 403)
++check(response["code"] == "MESSAGE_BANNED" and count_messages() == message_count, "운영 메시지 금지는 403이며 저장 없음")
++call("GET", f"/gatherings/{gathering}", author)
++call("GET", f"/gatherings/{gathering}/settlement-units/{unit}/settlement/preview", author)
++check(True, "메시지 금지 계정의 상세·정산 접근은 유지")
++sql(f"UPDATE users SET message_banned_at=NULL WHERE id={author}")
++message(author, "가" * 200)
++check(count_messages() == message_count + 1, "정상 최대 길이 메시지는 201")
++sql(f"UPDATE message_reports SET handled_at=UTC_TIMESTAMP(6) WHERE entry_id IN ({entry},{personal_entry})")
++check(not visible(first, personal_entry) and not visible(author, entry), "처리 완료는 개인·전체 숨김을 해제하지 않음")
++
++# 신고자 탈퇴 뒤에도 이미 받은 서로 다른 신고는 집계하고 양방향 차단 FK는 제거한다.
++late_entry = message(author, "신고자 탈퇴 후 검토")
++report(late_entry, first)
++call("POST", "/me/blocks", first, {"gatheringId": gathering, "participantId": author_participant}, 204)
++call("POST", "/me/blocks", second, {"gatheringId": gathering, "participantId": first_participant}, 204)
++sql(f"UPDATE settlement_units SET status='COMPLETED',completed_at=UTC_TIMESTAMP() WHERE gathering_id IN ({gathering},{other_gathering});"
++    f"UPDATE gatherings SET status='COMPLETED',completed_at=UTC_TIMESTAMP(),delete_scheduled_at=UTC_TIMESTAMP()+INTERVAL 7 DAY WHERE id IN ({gathering},{other_gathering})")
++call("DELETE", "/users/me", first, expected=204)
++check(sql(f"SELECT COUNT(*) FROM user_blocks WHERE blocker_user_id={first} OR blocked_user_id={first}") == "0"
++    and sql(f"SELECT COUNT(*) FROM message_reports WHERE entry_id={late_entry} AND reporter_user_id IS NULL") == "1",
++    "실제 탈퇴는 신고자 익명화·양방향 차단 FK 삭제")
++report(late_entry, second)
++check(not visible(author, late_entry), "신고자 탈퇴 전후 서로 다른 2행이면 전체 숨김")
++
++logs = Path("server/build/release-http.log").read_text(encoding="utf-8")
++report_lines = [line for line in logs.splitlines() if " MESSAGE_REPORTED " in line]
++check(all(re.search(r"MESSAGE_REPORTED entryId=\d+ gatheringId=\d+ reason=(ABUSE|SEXUAL|SPAM|OTHER)$", line) for line in report_lines)
++    and len([line for line in report_lines if f"entryId={entry} " in line]) == 2
++    and "본문비공개표식" not in "\n".join(report_lines),
++    "커밋 신고만 정해진 한 줄 로그, 재시도 중복·본문·개인정보 없음")
++call("DELETE", "/users/me", author, expected=204)
++check(sql(f"SELECT COUNT(*) FROM message_reports WHERE entry_id IN ({entry},{simultaneous},{personal_entry},{late_entry})") == "0",
++    "실제 작성자 탈퇴로 메시지와 신고 FK CASCADE 삭제")
++print(json.dumps({"checks": checks, "http": "real Spring Boot", "database": "jeongsan_auth_test"}), flush=True)
+diff --git a/server/src/main/java/app/jeongsan/server/moderation/javaimpl/ModerationPolicy.java b/server/src/main/java/app/jeongsan/server/moderation/javaimpl/ModerationPolicy.java
+new file mode 100644
+index 0000000..4666568
+--- /dev/null
++++ b/server/src/main/java/app/jeongsan/server/moderation/javaimpl/ModerationPolicy.java
+@@ -0,0 +1,54 @@
++package app.jeongsan.server.moderation.javaimpl;
++
++import java.text.Normalizer;
++import java.util.List;
++import java.util.Locale;
++import java.util.Set;
++
++/** Spring Bean을 등록하지 않는 독립 Java 학습 구현. Kotlin 정책을 호출하지 않는다. */
++public final class ModerationPolicy {
++    private static final Set<String> REASONS = Set.of("ABUSE", "SEXUAL", "SPAM", "OTHER");
++
++    private ModerationPolicy() {}
++
++    public static String normalize(String text) {
++        String normalized = Normalizer.normalize(text, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT);
++        StringBuilder result = new StringBuilder();
++        normalized.codePoints().filter(Character::isLetterOrDigit).forEach(result::appendCodePoint);
++        return result.toString();
++    }
++
++    public static String messageViolation(String text, boolean banned, List<String> forbiddenWords) {
++        if (banned) return "MESSAGE_BANNED";
++        // Kotlin trim과 같이 유니코드 공백도 경계에서 제거한다.
++        int start = 0;
++        int end = text.length();
++        while (start < end && isSpace(text.codePointAt(start))) start += Character.charCount(text.codePointAt(start));
++        while (end > start && isSpace(text.codePointBefore(end))) end -= Character.charCount(text.codePointBefore(end));
++        String trimmed = text.substring(start, end);
++        if (trimmed.isEmpty() || trimmed.length() > 200) return "MALFORMED_REQUEST";
++        String normalizedText = normalize(text);
++        for (String forbiddenWord : forbiddenWords) {
++            String normalizedWord = normalize(forbiddenWord);
++            if (!normalizedWord.isEmpty() && normalizedText.contains(normalizedWord)) return "MESSAGE_NOT_ALLOWED";
++        }
++        return null;
++    }
++
++    public static boolean reportAllowed(String type, Long authorParticipantId, long reporterParticipantId, String reason) {
++        return "MESSAGE".equals(type) && authorParticipantId != null
++            && authorParticipantId.longValue() != reporterParticipantId && REASONS.contains(reason);
++    }
++
++    public static boolean hideForEveryone(long distinctReporterCount) {
++        return distinctReporterCount >= 2;
++    }
++
++    public static boolean blockAllowed(long blockerUserId, Long blockedUserId) {
++        return blockedUserId != null && blockedUserId.longValue() != blockerUserId;
++    }
++
++    private static boolean isSpace(int codePoint) {
++        return Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint);
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
+index ae53868..ac2477e 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
+@@ -16,7 +16,8 @@ import java.security.MessageDigest
+ 
+ @Service
+ @Transactional(isolation = Isolation.READ_COMMITTED)
+-class GatheringService(private val db: GatheringStore, private val mapper: ObjectMapper, private val cipher: PayoutCipher) {
++class GatheringService(private val db: GatheringStore, private val mapper: ObjectMapper, private val cipher: PayoutCipher,
++    private val moderation: app.jeongsan.server.moderation.ModerationService) {
+     private fun user(uid: Long): Map<String, Any?> = db.rows("SELECT * FROM users WHERE id=:id", "id" to uid).singleOrNull()
+         ?: fail("UNAUTHENTICATED", status=HttpStatus.UNAUTHORIZED)
+     private fun named(uid: Long): Map<String, Any?> = user(uid).also { if (it["display_name"] == null) fail("DISPLAY_NAME_REQUIRED") }
+@@ -370,7 +371,16 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+         val responses=db.rows("SELECT a.*,r.gathering_id FROM round_responses a JOIN rounds r ON r.id=a.round_id WHERE r.gathering_id IN (:ids)","ids" to ids).groupBy{it.long("gathering_id")}
+         val transfers=db.rows("SELECT t.*,s.gathering_id,s.settlement_unit_id FROM settlement_transfers t JOIN settlements s ON s.id=t.settlement_id WHERE s.gathering_id IN (:ids) ORDER BY t.id","ids" to ids).groupBy{it.long("gathering_id")}
+         val basis=db.rows("SELECT b.* FROM settlement_transfer_items b JOIN settlement_transfers t ON t.id=b.transfer_id JOIN settlements s ON s.id=t.settlement_id WHERE s.gathering_id IN (:ids) ORDER BY b.round_id","ids" to ids).groupBy{it.long("transfer_id")}
+-        val timeline=db.rows("SELECT * FROM timeline_entries WHERE gathering_id IN (:ids) ORDER BY id","ids" to ids).groupBy{it.long("gathering_id")}
++        // 방·항목별 조회를 늘리지 않고 MESSAGE에만 개인/전체 숨김을 적용한다.
++        val timeline=db.rows("""
++            SELECT entry.* FROM timeline_entries entry
++            WHERE entry.gathering_id IN (:ids) AND (entry.type<>'MESSAGE' OR (
++                entry.hidden_at IS NULL
++                AND NOT EXISTS(SELECT 1 FROM message_reports report WHERE report.entry_id=entry.id AND report.reporter_user_id=:viewer)
++                AND NOT EXISTS(SELECT 1 FROM user_blocks block JOIN participants author ON author.user_id=block.blocked_user_id
++                    WHERE block.blocker_user_id=:viewer AND author.id=entry.author_participant_id)
++            )) ORDER BY entry.id
++        """.trimIndent(),"ids" to ids,"viewer" to uid).groupBy{it.long("gathering_id")}
+         return ids.map{gid-> val row=g.getValue(gid);val ps=people[gid].orEmpty();val me=ps.first{(it["user_id"] as? Number)?.toLong()==uid}.long("id")
+             val ts=transfers[gid].orEmpty();val allowed=ts.filter{it.long("sender_participant_id")==me}.map{it.long("recipient_participant_id")}.toSet()+me
+             mapOf("id" to gid,"title" to row["name"],"date" to (row["gathering_date"] as java.sql.Date).toLocalDate(),"createdByUserId" to row["host_user_id"],"shareToken" to row["share_token"],"status" to row["status"],"completedAt" to row.instant("completed_at"),"deleteScheduledAt" to row.instant("delete_scheduled_at"),
+@@ -427,7 +437,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+     }
+     fun message(gid: Long,uid: Long,request: MessageRequest): Map<String,Any?> {
+         val p=person(gid,uid);val text=request.text.trim();if(text.isEmpty()||text.length>200) fail("MALFORMED_REQUEST",status=HttpStatus.BAD_REQUEST)
+-        room(gid,true);val now=Instant.now()
++        room(gid,true);moderation.checkMessage(uid,text);val now=Instant.now()
+         val id=db.insert("INSERT INTO timeline_entries(gathering_id,type,author_participant_id,body,created_at) VALUES(:g,'MESSAGE',:p,:b,:n)","g" to gid,"p" to p.id,"b" to text,"n" to now);touch(gid)
+         return mapOf("id" to id,"type" to "MESSAGE","authorParticipantId" to p.id,"body" to text,"createdAt" to now,"settlementUnitId" to null)
+     }
+diff --git a/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationController.kt b/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationController.kt
+new file mode 100644
+index 0000000..0ea3465
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationController.kt
+@@ -0,0 +1,32 @@
++package app.jeongsan.server.moderation
++
++import app.jeongsan.server.common.LoginUser
++import jakarta.validation.Valid
++import org.springframework.http.HttpStatus
++import org.springframework.web.bind.annotation.*
++
++@RestController
++@RequestMapping("/api/v1")
++class ModerationController(private val service: ModerationService) {
++    @PostMapping("/gatherings/{gid}/messages/{entryId}/reports")
++    @ResponseStatus(HttpStatus.NO_CONTENT)
++    fun report(@PathVariable gid: Long, @PathVariable entryId: Long, @LoginUser userId: Long,
++               @Valid @RequestBody request: MessageReportRequest) {
++        service.report(gid, entryId, userId, request.reason)
++    }
++
++    @PostMapping("/me/blocks")
++    @ResponseStatus(HttpStatus.NO_CONTENT)
++    fun block(@LoginUser userId: Long, @Valid @RequestBody request: UserBlockRequest) {
++        service.block(userId, request)
++    }
++
++    @GetMapping("/me/blocks")
++    fun blocks(@LoginUser userId: Long): List<UserBlockResponse> = service.blocks(userId)
++
++    @DeleteMapping("/me/blocks/{userId}")
++    @ResponseStatus(HttpStatus.NO_CONTENT)
++    fun unblock(@PathVariable userId: Long, @LoginUser blockerUserId: Long) {
++        service.unblock(blockerUserId, userId)
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationDto.kt b/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationDto.kt
+new file mode 100644
+index 0000000..984c1d5
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationDto.kt
+@@ -0,0 +1,16 @@
++package app.jeongsan.server.moderation
++
++import jakarta.validation.constraints.Pattern
++import jakarta.validation.constraints.Positive
++import java.time.Instant
++
++data class MessageReportRequest(
++    @field:Pattern(regexp = "ABUSE|SEXUAL|SPAM|OTHER") val reason: String,
++)
++
++data class UserBlockRequest(
++    @field:Positive val gatheringId: Long,
++    @field:Positive val participantId: Long,
++)
++
++data class UserBlockResponse(val userId: Long, val displayName: String, val blockedAt: Instant)
+diff --git a/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationLog.kt b/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationLog.kt
+new file mode 100644
+index 0000000..38de09b
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationLog.kt
+@@ -0,0 +1,19 @@
++package app.jeongsan.server.moderation
++
++import org.slf4j.LoggerFactory
++import org.springframework.stereotype.Component
++import org.springframework.transaction.event.TransactionPhase
++import org.springframework.transaction.event.TransactionalEventListener
++
++data class MessageReported(val entryId: Long, val gatheringId: Long, val reason: String)
++
++/** 롤백된 신고를 접수 완료로 기록하지 않는다. 복구·일일 처리는 DB 미처리 조회가 기준이다. */
++@Component
++class ModerationLog {
++    private val log = LoggerFactory.getLogger(javaClass)
++
++    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
++    fun reported(event: MessageReported) {
++        log.info("MESSAGE_REPORTED entryId={} gatheringId={} reason={}", event.entryId, event.gatheringId, event.reason)
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationPolicy.kt b/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationPolicy.kt
+new file mode 100644
+index 0000000..27fbf4b
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationPolicy.kt
+@@ -0,0 +1,30 @@
++package app.jeongsan.server.moderation
++
++import java.text.Normalizer
++import java.util.Locale
++
++/** DB와 HTTP에 의존하지 않아 Java 학습 구현과 정책의 기대값을 각각 검증한다. */
++object ModerationPolicy {
++    private val reasons = setOf("ABUSE", "SEXUAL", "SPAM", "OTHER")
++
++    fun normalize(text: String): String = buildString {
++        Normalizer.normalize(text, Normalizer.Form.NFKC).lowercase(Locale.ROOT).codePoints()
++            .filter { Character.isLetterOrDigit(it) }.forEach { appendCodePoint(it) }
++    }
++
++    fun messageViolation(text: String, banned: Boolean, forbiddenWords: List<String>): String? = when {
++        banned -> "MESSAGE_BANNED"
++        text.trim().isEmpty() || text.trim().length > 200 -> "MALFORMED_REQUEST"
++        forbiddenWords.any { normalize(it).let { word -> word.isNotEmpty() && normalize(text).contains(word) } } ->
++            "MESSAGE_NOT_ALLOWED"
++        else -> null
++    }
++
++    fun reportAllowed(type: String, authorParticipantId: Long?, reporterParticipantId: Long, reason: String): Boolean =
++        type == "MESSAGE" && authorParticipantId != null && authorParticipantId != reporterParticipantId && reason in reasons
++
++    fun hideForEveryone(distinctReporterCount: Long): Boolean = distinctReporterCount >= 2
++
++    fun blockAllowed(blockerUserId: Long, blockedUserId: Long?): Boolean =
++        blockedUserId != null && blockedUserId != blockerUserId
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationService.kt b/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationService.kt
+new file mode 100644
+index 0000000..6cc2ac6
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/moderation/ModerationService.kt
+@@ -0,0 +1,106 @@
++package app.jeongsan.server.moderation
++
++import app.jeongsan.server.common.ApiException
++import app.jeongsan.server.common.MalformedRequestException
++import app.jeongsan.server.common.NotFoundException
++import app.jeongsan.server.common.UnauthenticatedException
++import app.jeongsan.server.gathering.GatheringStore
++import app.jeongsan.server.gathering.instant
++import app.jeongsan.server.gathering.long
++import org.springframework.context.ApplicationEventPublisher
++import org.springframework.core.io.ClassPathResource
++import org.springframework.http.HttpStatus
++import org.springframework.stereotype.Service
++import org.springframework.transaction.annotation.Isolation
++import org.springframework.transaction.annotation.Transactional
++import java.time.Instant
++
++/** 스키마의 진실은 019-ugc-safety.yaml. 정산 데이터와 분리한 메시지 안전 처리. */
++@Service
++@Transactional(isolation = Isolation.READ_COMMITTED)
++class ModerationService(private val db: GatheringStore, private val events: ApplicationEventPublisher) {
++    private val forbiddenWords = ClassPathResource("moderation/forbidden-words.txt").inputStream
++        .bufferedReader(Charsets.UTF_8).use { reader ->
++            reader.readLines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
++        }.also { require(it.isNotEmpty()) { "메시지 금칙어 목록이 비어 있습니다." } }
++
++    private fun lockGathering(gatheringId: Long) {
++        if (db.rows("SELECT id FROM gatherings WHERE id=:id FOR UPDATE", "id" to gatheringId).isEmpty())
++            throw NotFoundException()
++    }
++
++    private fun participant(gatheringId: Long, userId: Long): Long =
++        db.rows("SELECT id FROM participants WHERE gathering_id=:gatheringId AND user_id=:userId AND status='ACTIVE'",
++            "gatheringId" to gatheringId, "userId" to userId).singleOrNull()?.long("id")
++            ?: throw ApiException("NOT_PARTICIPANT", HttpStatus.FORBIDDEN, "술자리 참여자만 사용할 수 있어요")
++
++    private fun user(userId: Long, lock: Boolean = false): Map<String, Any?> =
++        db.rows("SELECT id,message_banned_at FROM users WHERE id=:id" + if (lock) " FOR SHARE" else "",
++            "id" to userId).singleOrNull() ?: throw UnauthenticatedException()
++
++    fun report(gatheringId: Long, entryId: Long, reporterUserId: Long, reason: String) {
++        // 기존 만료·탈퇴의 Gathering→users 순서와 맞추고 같은 방의 신고 경합을 직렬화한다.
++        lockGathering(gatheringId)
++        user(reporterUserId, true)
++        val reporterParticipantId = participant(gatheringId, reporterUserId)
++        val entry = db.rows("SELECT type,author_participant_id FROM timeline_entries WHERE id=:entryId AND gathering_id=:gatheringId FOR UPDATE",
++            "entryId" to entryId, "gatheringId" to gatheringId).singleOrNull() ?: throw NotFoundException()
++        val authorParticipantId = (entry["author_participant_id"] as? Number)?.toLong()
++        if (!ModerationPolicy.reportAllowed(entry["type"].toString(), authorParticipantId, reporterParticipantId, reason))
++            throw MalformedRequestException("다른 참여자의 메시지만 신고할 수 있어요")
++        if (db.rows("SELECT id FROM message_reports WHERE entry_id=:entryId AND reporter_user_id=:userId",
++                "entryId" to entryId, "userId" to reporterUserId).isNotEmpty()) return
++
++        val now = Instant.now()
++        db.insert("INSERT INTO message_reports(entry_id,reporter_user_id,reason,created_at) VALUES(:entryId,:userId,:reason,:now)",
++            "entryId" to entryId, "userId" to reporterUserId, "reason" to reason, "now" to now)
++        // 각 행은 유일한 신고자에게서 생성됐다. 탈퇴로 ID가 NULL이 되어도 이미 접수한 신고는 센다.
++        val reporterCount = db.rows("SELECT COUNT(*) reporter_count FROM message_reports WHERE entry_id=:entryId",
++            "entryId" to entryId).single().long("reporter_count")
++        if (ModerationPolicy.hideForEveryone(reporterCount))
++            db.update("UPDATE timeline_entries SET hidden_at=COALESCE(hidden_at,:now) WHERE id=:entryId",
++                "now" to now, "entryId" to entryId)
++        events.publishEvent(MessageReported(entryId, gatheringId, reason))
++    }
++
++    fun block(blockerUserId: Long, request: UserBlockRequest) {
++        lockGathering(request.gatheringId)
++        val blockerParticipantId = participant(request.gatheringId, blockerUserId)
++        val target = db.rows("SELECT user_id FROM participants WHERE id=:participantId AND gathering_id=:gatheringId AND status='ACTIVE'",
++            "participantId" to request.participantId, "gatheringId" to request.gatheringId).singleOrNull()
++            ?: throw MalformedRequestException("해당 술자리의 참여자를 선택해주세요")
++        val blockedUserId = (target["user_id"] as? Number)?.toLong()
++        if (blockerParticipantId == request.participantId || !ModerationPolicy.blockAllowed(blockerUserId, blockedUserId))
++            throw MalformedRequestException("자신이나 탈퇴한 사용자는 차단할 수 없어요")
++        // 두 계정의 삭제와 차단 FK 입력을 교차하지 않도록 고정된 순서로 확인한다.
++        val users = db.rows("SELECT id FROM users WHERE id IN (:ids) ORDER BY id FOR SHARE",
++            "ids" to listOf(blockerUserId, checkNotNull(blockedUserId)).sorted())
++        if (users.size != 2) throw MalformedRequestException("탈퇴한 사용자는 차단할 수 없어요")
++        db.update("INSERT INTO user_blocks(blocker_user_id,blocked_user_id,created_at) VALUES(:blocker,:blocked,:now) ON DUPLICATE KEY UPDATE created_at=created_at",
++            "blocker" to blockerUserId, "blocked" to blockedUserId, "now" to Instant.now())
++    }
++
++    @Transactional(readOnly = true)
++    fun blocks(blockerUserId: Long): List<UserBlockResponse> {
++        user(blockerUserId)
++        return db.rows("SELECT b.blocked_user_id,COALESCE(u.display_name,u.nickname) display_name,b.created_at FROM user_blocks b JOIN users u ON u.id=b.blocked_user_id WHERE b.blocker_user_id=:userId ORDER BY b.created_at DESC,b.blocked_user_id",
++            "userId" to blockerUserId).map { row ->
++            UserBlockResponse(row.long("blocked_user_id"), row["display_name"].toString(), checkNotNull(row.instant("created_at")))
++        }
++    }
++
++    fun unblock(blockerUserId: Long, blockedUserId: Long) {
++        user(blockerUserId, true)
++        db.update("DELETE FROM user_blocks WHERE blocker_user_id=:blocker AND blocked_user_id=:blocked",
++            "blocker" to blockerUserId, "blocked" to blockedUserId)
++    }
++
++    fun checkMessage(userId: Long, text: String) {
++        val violation = ModerationPolicy.messageViolation(text, user(userId, true)["message_banned_at"] != null, forbiddenWords)
++        when (violation) {
++            "MESSAGE_BANNED" -> throw ApiException(violation, HttpStatus.FORBIDDEN, "메시지를 보낼 수 없는 계정이에요")
++            "MESSAGE_NOT_ALLOWED" -> throw ApiException(violation, HttpStatus.UNPROCESSABLE_ENTITY, "부적절한 표현이 있어요")
++            "MALFORMED_REQUEST" -> throw MalformedRequestException("메시지는 1~200자까지 입력해주세요")
++        }
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/User.kt b/server/src/main/kotlin/app/jeongsan/server/user/User.kt
+index 31cfe13..c5fcb22 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/User.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/User.kt
+@@ -30,6 +30,10 @@ class User(
+     @Column(name = "display_name", updatable = false)
+     val displayName: String? = null,
+ 
++    // 운영 SQL의 메시지 금지 시각을 로그인 save가 덮어쓰지 않는다(019-ugc-safety.yaml).
++    @Column(name = "message_banned_at", updatable = false)
++    val messageBannedAt: Instant? = null,
++
+     @Column(name = "profile_image_url")
+     var profileImageUrl: String? = null,
+ 
+diff --git a/server/src/main/resources/db/changelog/019-ugc-safety.yaml b/server/src/main/resources/db/changelog/019-ugc-safety.yaml
+new file mode 100644
+index 0000000..d7d9925
+--- /dev/null
++++ b/server/src/main/resources/db/changelog/019-ugc-safety.yaml
+@@ -0,0 +1,33 @@
++databaseChangeLog:
++  - changeSet:
++      id: 029-ugc-safety
++      author: jeongsan
++      comment: "FC-024. 정산을 바꾸지 않고 메시지 신고·개인 차단·운영 숨김과 메시지 금지를 지원한다."
++      changes:
++        - sql:
++            splitStatements: true
++            sql: |
++              ALTER TABLE timeline_entries ADD hidden_at DATETIME(6) NULL COMMENT '2명 신고 또는 운영 조치로 모두에게 숨긴 UTC 시각';
++              ALTER TABLE users ADD message_banned_at DATETIME(6) NULL COMMENT '정산 접근은 유지하고 새 메시지만 금지한 UTC 시각';
++              CREATE TABLE message_reports (
++                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '운영 처리 대상을 식별하는 신고 번호',
++                entry_id BIGINT NOT NULL COMMENT '본문을 복제하지 않고 신고한 메시지 참조',
++                reporter_user_id BIGINT NULL COMMENT '중복 신고 방지와 개인 숨김, 탈퇴하면 NULL 익명화',
++                reason VARCHAR(10) NOT NULL COMMENT '신고자가 선택한 첫 사유 ABUSE SEXUAL SPAM OTHER',
++                created_at DATETIME(6) NOT NULL COMMENT '24시간 대응 확인 기준인 UTC 접수 시각',
++                handled_at DATETIME(6) NULL COMMENT '운영자가 검토를 마친 UTC 시각, 숨김 해제와 무관',
++                UNIQUE KEY uq_report_entry_user(entry_id,reporter_user_id),
++                INDEX idx_report_reporter(reporter_user_id,entry_id),
++                INDEX idx_report_pending(handled_at,created_at,id),
++                CONSTRAINT fk_report_entry FOREIGN KEY(entry_id) REFERENCES timeline_entries(id) ON DELETE CASCADE,
++                CONSTRAINT fk_report_user FOREIGN KEY(reporter_user_id) REFERENCES users(id) ON DELETE SET NULL
++              ) COMMENT='신고자 개인 숨김과 2명 신고 전체 숨김 및 일일 운영 확인의 근거';
++              CREATE TABLE user_blocks (
++                blocker_user_id BIGINT NOT NULL COMMENT '다른 사용자의 메시지를 보지 않기로 한 사용자',
++                blocked_user_id BIGINT NOT NULL COMMENT '모든 술자리에서 MESSAGE만 가릴 대상 사용자',
++                created_at DATETIME(6) NOT NULL COMMENT '차단 목록의 최신순과 최초 차단 시각',
++                PRIMARY KEY(blocker_user_id,blocked_user_id),
++                INDEX idx_block_target(blocked_user_id),
++                CONSTRAINT fk_block_owner FOREIGN KEY(blocker_user_id) REFERENCES users(id) ON DELETE CASCADE,
++                CONSTRAINT fk_block_target FOREIGN KEY(blocked_user_id) REFERENCES users(id) ON DELETE CASCADE
++              ) COMMENT='정산 권한·금액과 무관한 사용자별 단방향 메시지 차단';
+diff --git a/server/src/main/resources/db/changelog/db.changelog-master.yaml b/server/src/main/resources/db/changelog/db.changelog-master.yaml
+index 531a3fd..724c714 100644
+--- a/server/src/main/resources/db/changelog/db.changelog-master.yaml
++++ b/server/src/main/resources/db/changelog/db.changelog-master.yaml
+@@ -32,3 +32,5 @@ databaseChangeLog:
+       file: db/changelog/017-release-auth.yaml
+   - include:
+       file: db/changelog/018-auto-settlement.yaml
++  - include:
++      file: db/changelog/019-ugc-safety.yaml
+diff --git a/server/src/main/resources/moderation/forbidden-words.txt b/server/src/main/resources/moderation/forbidden-words.txt
+new file mode 100644
+index 0000000..673e8f2
+--- /dev/null
++++ b/server/src/main/resources/moderation/forbidden-words.txt
+@@ -0,0 +1,11 @@
++# FC-024 기본 목록. 원문을 로그에 남기지 않으며 변경은 코드 리뷰로 관리한다.
++씨발
++시발
++개새끼
++병신
++좆
++지랄
++섹스
++강간
++fuck
++motherfucker
+diff --git a/server/src/test/kotlin/app/jeongsan/server/moderation/ModerationApiSpec.kt b/server/src/test/kotlin/app/jeongsan/server/moderation/ModerationApiSpec.kt
+new file mode 100644
+index 0000000..87ca2d2
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/moderation/ModerationApiSpec.kt
+@@ -0,0 +1,62 @@
++package app.jeongsan.server.moderation
++
++import app.jeongsan.server.common.GlobalExceptionHandler
++import app.jeongsan.server.common.LoginUserArgumentResolver
++import app.jeongsan.server.user.AuthController
++import app.jeongsan.server.user.JwtService
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++import jakarta.servlet.http.Cookie
++import org.mockito.Mockito
++import org.springframework.http.HttpMethod
++import org.springframework.http.MediaType
++import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request
++import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
++import org.springframework.test.web.servlet.setup.MockMvcBuilders
++import tools.jackson.module.kotlin.jacksonMapperBuilder
++import java.time.Instant
++
++class ModerationApiSpec : StringSpec({
++    val service = Mockito.mock(ModerationService::class.java)
++    val jwt = JwtService("01234567890123456789012345678901", 30)
++    val mvc = MockMvcBuilders.standaloneSetup(ModerationController(service))
++        .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt)).setControllerAdvice(GlobalExceptionHandler())
++        .setMessageConverters(JacksonJsonHttpMessageConverter(jacksonMapperBuilder().build())).build()
++    val cookie = Cookie(AuthController.COOKIE_NAME, jwt.issue(12))
++    data class Case(val method: String, val path: String, val body: String? = null, val expected: Int = 204)
++    val cases = listOf(Case("POST", "/api/v1/gatherings/1/messages/2/reports", """{"reason":"ABUSE"}"""),
++        Case("POST", "/api/v1/me/blocks", """{"gatheringId":1,"participantId":3}"""),
++        Case("GET", "/api/v1/me/blocks", expected = 200), Case("DELETE", "/api/v1/me/blocks/3"))
++    beforeTest { Mockito.reset(service) }
++    for (case in cases) {
++        "${case.method} ${case.path}: 인증 후 계약 상태로 한 번만 호출한다" {
++            val builder = request(HttpMethod.valueOf(case.method), case.path).cookie(cookie).contentType(MediaType.APPLICATION_JSON)
++            case.body?.let { builder.content(it) }
++            mvc.perform(builder).andExpect(status().`is`(case.expected))
++            Mockito.mockingDetails(service).invocations.size shouldBe 1
++        }
++        "${case.method} ${case.path}: 인증 없으면 서비스 진입 전 401" {
++            val builder = request(HttpMethod.valueOf(case.method), case.path).contentType(MediaType.APPLICATION_JSON)
++            case.body?.let { builder.content(it) }
++            mvc.perform(builder).andExpect(status().isUnauthorized)
++            Mockito.verifyNoInteractions(service)
++        }
++    }
++    "사유·양수 ID·JSON 검증 실패는 저장하지 않는다" {
++        for (case in listOf(Case("POST", cases[0].path, """{"reason":"UNKNOWN"}"""),
++            Case("POST", cases[0].path, """{}"""), Case("POST", cases[0].path, "{"),
++            Case("POST", "/api/v1/me/blocks", """{"gatheringId":0,"participantId":3}"""),
++            Case("POST", "/api/v1/me/blocks", """{"gatheringId":1,"participantId":-1}"""))) {
++            mvc.perform(request(HttpMethod.POST, case.path).cookie(cookie).contentType(MediaType.APPLICATION_JSON).content(case.body!!))
++                .andExpect(status().isBadRequest)
++        }
++        Mockito.verifyNoInteractions(service)
++    }
++    "차단 목록은 문서의 userId displayName blockedAt을 반환한다" {
++        Mockito.`when`(service.blocks(12)).thenReturn(listOf(UserBlockResponse(3, "김하나", Instant.parse("2026-10-20T00:00:00Z"))))
++        mvc.perform(request(HttpMethod.GET, "/api/v1/me/blocks").cookie(cookie)).andExpect(status().isOk)
++            .andExpect(jsonPath("$[0].userId").value(3)).andExpect(jsonPath("$[0].displayName").value("김하나"))
++            .andExpect(jsonPath("$[0].blockedAt").value("2026-10-20T00:00:00Z"))
++    }
++})
+diff --git a/server/src/test/kotlin/app/jeongsan/server/moderation/ModerationPolicySpec.kt b/server/src/test/kotlin/app/jeongsan/server/moderation/ModerationPolicySpec.kt
+new file mode 100644
+index 0000000..d654a86
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/moderation/ModerationPolicySpec.kt
+@@ -0,0 +1,50 @@
++package app.jeongsan.server.moderation
++
++import app.jeongsan.server.moderation.javaimpl.ModerationPolicy as JavaPolicy
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++
++class ModerationPolicySpec : StringSpec({
++    val words = listOf("씨발", "병신", "fuck")
++    for (text in listOf("씨발", "씨 ! 발", "씨\u200b발", "병.신", "ＦＵＣＫ", "F.u c-k")) {
++        "정규화된 금칙어를 양쪽 언어가 거절: $text" {
++            ModerationPolicy.messageViolation(text, false, words) shouldBe "MESSAGE_NOT_ALLOWED"
++            JavaPolicy.messageViolation(text, false, words) shouldBe "MESSAGE_NOT_ALLOWED"
++        }
++    }
++    for (text in listOf("감사합니다", "정산했어요 12,000원", "🍻", "부족하면 알려주세요", "a".repeat(200))) {
++        "정상 메시지는 양쪽 언어가 허용: $text" {
++            ModerationPolicy.messageViolation(text, false, words) shouldBe null
++            JavaPolicy.messageViolation(text, false, words) shouldBe null
++        }
++    }
++    "빈칸·최대 길이·메시지 금지의 기대 오류가 일치한다" {
++        for (text in listOf("", "   ", "\u00a0\u3000", "a".repeat(201))) {
++            ModerationPolicy.messageViolation(text, false, words) shouldBe "MALFORMED_REQUEST"
++            JavaPolicy.messageViolation(text, false, words) shouldBe "MALFORMED_REQUEST"
++        }
++        ModerationPolicy.messageViolation("씨발", true, words) shouldBe "MESSAGE_BANNED"
++        JavaPolicy.messageViolation("씨발", true, words) shouldBe "MESSAGE_BANNED"
++    }
++    "SYSTEM·SPOON·본인 글·작성자 없는 글·잘못된 사유는 신고할 수 없다" {
++        data class Case(val type: String, val author: Long?, val reporter: Long, val reason: String, val expected: Boolean)
++        for (case in listOf(Case("MESSAGE", 1, 2, "ABUSE", true), Case("MESSAGE", 1, 2, "SEXUAL", true),
++            Case("MESSAGE", 1, 2, "SPAM", true), Case("MESSAGE", 1, 2, "OTHER", true),
++            Case("MESSAGE", 1, 1, "ABUSE", false), Case("SYSTEM", 1, 2, "ABUSE", false),
++            Case("SPOON", 1, 2, "ABUSE", false), Case("MESSAGE", null, 2, "OTHER", false),
++            Case("MESSAGE", 1, 2, "abuse", false))) {
++            ModerationPolicy.reportAllowed(case.type, case.author, case.reporter, case.reason) shouldBe case.expected
++            JavaPolicy.reportAllowed(case.type, case.author, case.reporter, case.reason) shouldBe case.expected
++        }
++    }
++    "서로 다른 두 신고자부터 전체 숨김, 자기 자신과 탈퇴 계정은 차단 불가" {
++        for (count in 0L..4L) {
++            ModerationPolicy.hideForEveryone(count) shouldBe (count >= 2)
++            JavaPolicy.hideForEveryone(count) shouldBe (count >= 2)
++        }
++        for (target in listOf<Long?>(null, 1, 2)) {
++            ModerationPolicy.blockAllowed(1, target) shouldBe (target == 2L)
++            JavaPolicy.blockAllowed(1, target) shouldBe (target == 2L)
++        }
++    }
++})

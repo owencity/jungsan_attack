@@ -2,7 +2,7 @@
 
 ## FC-024 메시지 신고·차단·금칙어·이용약관 동의
 
-- **상태:** 열림 (CTO 결정 2026-10-20 — 메시지 기능을 유지하고 신고·차단을 만든다(B안). 알림 ⓐ·자동 숨김 2명 결정)
+- **상태:** 반영됨 (백엔드 API v13·신고/차단/금칙어/운영 SQL 검증 완료. 운영 결과는 PR #42, 프론트 약관·재심사 녹화는 별도)
 - **배경:** App Store 첫 심사에서 Apple이 "사용자 생성 콘텐츠가 있으면 **필수인 신고·차단 기능**을 녹화로 보여 달라"고
   요청했다(Guideline 2.1 정보 요청, 1.2 근거). 정산방 "한마디 남기기"(`POST /gatherings/{gid}/messages`, 타임라인 `MESSAGE`)가
   사용자 생성 콘텐츠다. 지금은 신고·차단이 없어 이대로면 1.2로 반려된다.
@@ -56,7 +56,7 @@
 
 ### 기존 문서와 충돌
 
-- `API.md` 메시지 절(v6 표 `POST /gatherings/{gid}/messages`)에 신고·차단·금칙어가 없다. `DOMAIN_DB_DESIGN_V2.md`에 테이블 3개(+열 2개) 추가
+- `API.md` 메시지 절(v6 표 `POST /gatherings/{gid}/messages`)에 신고·차단·금칙어가 없다. `DOMAIN_DB_DESIGN_V2.md`에 테이블 2개(+열 2개) 추가
 - REQUIREMENTS 타임라인 절에 "신고·차단·무관용 약관"을 더해야 한다
 
 ### 결정 (CTO 2026-10-20)
@@ -70,3 +70,13 @@
 
 `API.md`(신고·차단·금칙어), `DOMAIN_DB_DESIGN_V2.md`(message_reports·user_blocks·hidden_at·message_banned_at), 운영 문서(신고 처리 SQL),
 REQUIREMENTS 타임라인 절. **App Store 재심사 녹화가 이 기능을 기다린다 — 출시 경로의 가장 앞이다.**
+
+### 백엔드 반영·근거 (2026-10-20 · PR #42)
+
+- [PR #42](https://github.com/owencity/jungsan_attack/pull/42): 제안 경로·reason·DTO·204 유지, API v13·UGC_SAFETY·019/029 반영.
+- ModerationService·ModerationPolicy(Java/Kotlin 독립)·ModerationLog: 본인 즉시/2명 전체 숨김, 모든 방 단방향 MESSAGE 차단, 금칙어422·금지403.
+- [코드 CI](https://github.com/owencity/jungsan_attack/actions/runs/39419625606): Core54/서버170·실제 MySQL/HTTP29·기존 업그레이드13 등 전체 성공.
+  중복·동시 신고, 조회/정산 보존, 처리 완료 후 숨김 유지, 신고자/작성자 탈퇴, 로그 본문·개인정보 미포함을 확인했다.
+- [운영 SQL](../operations/ugc-moderation.md): 미처리 일일 조회·숨김·메시지 금지·처리 완료. 실제 운영자의 매일 실행은 CTO 담당이다.
+- 서버 약관 동의 저장은 선택 항목이므로 이번에 추가하지 않았다. 프론트 약관/연락처·최종 앱·웹 녹화는 프론트/CTO 후속이다.
+- 이 문서는 코드·검증 스냅샷이다. 최신 head CI·병합·배포 및 운영 신고/차단204 결과는 PR 본문에 별도로 보존한다.
