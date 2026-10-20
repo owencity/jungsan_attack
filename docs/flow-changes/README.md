@@ -84,3 +84,4 @@
 | FC-022 | Apple 이름·이메일 동의 요청 제거 | 반영됨 (API v10·양쪽 언어·서버 130건, 병합·운영·실계정 후속) | AuthPolicy.kt/java·ProviderGateway·ApplePrivacySpec·AppleTokensSpec · 기존 FC-021 전체 로그인 시험은 후속 | [2026-10-10-apple-privacy.md](2026-10-10-apple-privacy.md) |
 | FC-023 | 다음 차의 나 혼자 시작하기가 headcount 1을 보냄 | 프론트만 (웹/앱 소스 불일치·수정 제안, 실제 빌드 후속) | 서버 최소 2 계약 유지 · GatheringApiSpec·기존 DB HTTP 대조 추가, 실행 결과는 PR 검증 기록 | [2026-10-18-app-connection.md](2026-10-18-app-connection.md) |
 | FC-024 | 정산방 메시지 신고·차단·금칙어·약관 동의 | 반영됨 (백엔드 API v13, 프론트·운영 일일 확인은 별도) | [PR #42](https://github.com/owencity/jungsan_attack/pull/42) · 019/029·서버170·실제 DB/HTTP29 · 로그 ⓐ·2명 숨김, 운영 결과는 PR 본문 | [2026-10-20-ugc-safety.md](2026-10-20-ugc-safety.md) |
+| FC-025 | Apple 로그인 콜백(form_post)이 403 Invalid CORS request — 웹·앱 Apple 로그인 실패 | 열림 (긴급 · 심사관 로그인 막힘) | WebConfig 콜백만 appleid.apple.com POST 허용 · 콜백 HTTP 테스트 | [2026-10-21-apple-callback-cors.md](2026-10-21-apple-callback-cors.md) |
