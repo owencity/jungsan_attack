@@ -4,6 +4,12 @@
 
 - **상태:** 열림 (Caddy 직접 HTTPS·운영 200/401·로그인 시작 302 확인, 실계정·앱 E2E 후속)
 
+### Apple POST 콜백 후속 (2026-10-21 · FC-025)
+
+- 기존 시작 302 확인에는 Apple 출처의 실제 form POST가 빠져 있었다. 운영에서 403 CORS 차단을 재현했다.
+- [FC-025](2026-10-21-apple-callback-cors.md)로 콜백 하나에 Apple POST·credentials를 허용하고 실제 MVC·HTTP 회귀를 추가한다. 잘못된 state는 기존 401, 정상 WEB/APP는 기존 303이며 상태 쿠키 None·Secure는 유지한다.
+- 병합·운영 재현 결과는 해당 PR 본문에 별도 기록한다. 실제 Apple 계정 웹·TestFlight 복귀와 티켓 교환은 아직 확인하지 않았으므로 FC-021은 열림이다.
+
 ### Caddy 운영 연결 확인 (2026-10-12 · PR #32)
 
 - CTO가 Caddy 설치를 승인하고 `jungsan-api` DNS를 A·OCI IP·DNS only로 저장했다. 외부 TCP 80/443 도달과 공인 Let's Encrypt 인증서 검증을 통과했다.

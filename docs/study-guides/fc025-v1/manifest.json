@@ -1,0 +1,107 @@
+{
+  "base": "493d1a74e908ba3daa31e1f4b55cce0c250303b2",
+  "code_head": "0f3482b23f14902a1cc318e9d398a0dc08608ba0",
+  "hash_basis": "canonical Git blob bytes",
+  "files": [
+    {
+      "path": "changes.diff",
+      "sha256": "7c35fd39d8b545ae6498a349372e71fad8cd3cd0ae7fc16f7bb8610ba804e5f1"
+    },
+    {
+      "path": "before/DEVLOG.md",
+      "sha256": "85ac2330f9d356f7426dfe24c1182b0b3feeb4b6944a49e04d42910c30943873"
+    },
+    {
+      "path": "after/DEVLOG.md",
+      "sha256": "be95cdd9d0540f9936bb058be80095d4d1baacd3340f5e34a7bae9f1eaaaff58"
+    },
+    {
+      "path": "before/docs/API.md",
+      "sha256": "296075cf22ed049b42e11f577de69edb5f8011c3f872545864a5ad826b191c2c"
+    },
+    {
+      "path": "after/docs/API.md",
+      "sha256": "bbe62075651d94437f9995d3ae44cd5c4e2797a023ab7c6d3137dfed47730d86"
+    },
+    {
+      "path": "before/docs/AUTH_RELEASE.md",
+      "sha256": "49168a216bfe2c566076083da8c13a8fe69c1446cfadd2d7d908cb9454b49225"
+    },
+    {
+      "path": "after/docs/AUTH_RELEASE.md",
+      "sha256": "7014b2b5c5ad2dc6d38c019f8abc2a2a2bbcf7edcd51ccc9b419f77aefeb256b"
+    },
+    {
+      "path": "before/docs/DEPLOY.md",
+      "sha256": "3b3c6e538234b10825b8be3e1d5e992b2337a65afbc6b93d2c6f203d5ef2fa4f"
+    },
+    {
+      "path": "after/docs/DEPLOY.md",
+      "sha256": "f3e6450fa76a5d9aa7b1e011de04f8b16d8799feb2318d2d173adb2056737064"
+    },
+    {
+      "path": "before/docs/flow-changes/2026-10-10-auth-deploy.md",
+      "sha256": "980450d9477ca9921b706cc8cc3fe768d8d64987e9765d65666395fa8a1e47ac"
+    },
+    {
+      "path": "after/docs/flow-changes/2026-10-10-auth-deploy.md",
+      "sha256": "cf506afaec076f11810aa7c458ce6e34d0bd3f7ff1d63809e887e97cb7b607d8"
+    },
+    {
+      "path": "before/docs/flow-changes/2026-10-21-apple-callback-cors.md",
+      "sha256": "271d42939905dcc8dbb36da2aef16cfbffeb6a758f623ee3bd7b4810f8e9e221"
+    },
+    {
+      "path": "after/docs/flow-changes/2026-10-21-apple-callback-cors.md",
+      "sha256": "1bbb8fa8fc47eaeeaa0a3e2d4d8dc6f02f63b9237c7847691a1e89f0715aa894"
+    },
+    {
+      "path": "before/docs/flow-changes/README.md",
+      "sha256": "365a5d52ea95b1ab07f8a88686c1e11d238e09e8f89b149c790b29c63a14b2a1"
+    },
+    {
+      "path": "after/docs/flow-changes/README.md",
+      "sha256": "83ab2a4279b754557af1c72bc205a1d88907893babb2a46b70f5ce9b2e1648e1"
+    },
+    {
+      "path": "after/scripts/verify-apple-callback-cors.py",
+      "sha256": "98a9a364cf41905b5cbd1ba1d90d9aee5e4b4b1b0d4cc9a591ab6982b9c5d78b"
+    },
+    {
+      "path": "before/scripts/verify-release.sh",
+      "sha256": "31a6e3daf72e29e9b366aee578723c3270ab054997048b2ce375008eba65311b"
+    },
+    {
+      "path": "after/scripts/verify-release.sh",
+      "sha256": "3166214760e6d96894fbbacffcf01950b8f7b6bb5256996ea276edf65b2ce6de"
+    },
+    {
+      "path": "before/server/src/main/kotlin/app/jeongsan/server/config/WebConfig.kt",
+      "sha256": "fcc9db278a425144ed73e026731b34159a21ae917c3a9e1c25e451cbfb8dfdd3"
+    },
+    {
+      "path": "after/server/src/main/kotlin/app/jeongsan/server/config/WebConfig.kt",
+      "sha256": "6bd2226593d632d726dbd8da3db7fdd1c0448e4106f7f2bfad11dd9709d30381"
+    },
+    {
+      "path": "after/server/src/test/kotlin/app/jeongsan/server/config/AppleCallbackCorsSpec.kt",
+      "sha256": "763d96ce862c452e078829abd20a255e4791a5de7a300361fcff84424239ab72"
+    },
+    {
+      "path": "STUDY_POLICY.md",
+      "sha256": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3"
+    },
+    {
+      "path": "STUDY_CATALOG.md",
+      "sha256": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79"
+    },
+    {
+      "path": "guide.md",
+      "sha256": "1806d8931b41d9489b58a880ecf600277ada587cfe2769b686c1c4f62017ec6e"
+    },
+    {
+      "path": "progress.md",
+      "sha256": "edfbef1be99316ddfb32b86c3c3c3d8da8cc042e5873da4b795791706be1fc9f"
+    }
+  ]
+}

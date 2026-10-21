@@ -162,6 +162,11 @@ Done → Continue → Save까지 저장한다. 등록 값과 OCI `.env`의 `APPL
 운영에서 `SameSite=None; Secure`다. 컨트롤러 소스의 값을 배포 때 직접 바꿀 필요가 없다.
 `FRONTEND_ORIGIN`은 실제 웹 주소 `https://jungsan.devkdk.com`과 맞춘다.
 
+FC-025: Apple 출처 POST는 `/api/v1/auth/apple/callback`에만 허용한다. 배포 후
+`python3 scripts/verify-apple-callback-cors.py --production`으로 잘못된 state의 기존 401,
+다른 API의 403, WEB/APP 상태 쿠키 속성과 health를 확인한다. 리다이렉트를 따라가지 않으며
+쿠키 값·state·인가 URL은 출력하지 않는다. 실제 Apple 계정 웹·TestFlight 로그인은 별도 확인한다.
+
 ### (g) Vercel 웹 API 연결
 
 웹 `profile` 프로젝트 → Settings → Environment Variables에 아래 값을 Production 범위로 저장한다.

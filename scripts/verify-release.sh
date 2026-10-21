@@ -89,3 +89,4 @@ for attempt in $(seq 1 40); do
 done
 [ "$ready" = true ] || { echo 'Apple 미설정 운영 프로필 기동 실패' >&2; tail -n 45 server/build/release-prod-http.log; exit 1; }
 python3 scripts/verify-provider-availability.py
+python3 scripts/verify-apple-callback-cors.py

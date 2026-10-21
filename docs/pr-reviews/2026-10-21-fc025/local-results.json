@@ -1,0 +1,17 @@
+{
+  "code_head": "0f3482b23f14902a1cc318e9d398a0dc08608ba0",
+  "server": {
+    "tests": 177,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "mvc_cors": 7,
+  "compileKotlin": "passed",
+  "bootJar": "passed",
+  "production_before": {
+    "status": 403,
+    "body": "Invalid CORS request"
+  },
+  "production_after": "pending deployment"
+}

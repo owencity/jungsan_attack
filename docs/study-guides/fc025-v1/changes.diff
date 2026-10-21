@@ -1,0 +1,351 @@
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 0108b03..35f342c 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,11 @@
+ # 개발 결정 로그
+ 
++## [2026-10-21] FC-025 Apple POST 콜백에만 CORS 예외를 둔다
++- 문제: Apple form_post의 Origin이 프론트 출처와 달라 컨트롤러 진입 전에 CORS 403이 발생했다.
++- 고려한 대안: 전체 API에 Apple 출처 추가, 콜백 CORS 비활성화, 정확한 콜백 경로에 Apple POST만 허용.
++- 선택 이유·트레이드오프: 구체 매핑을 먼저 등록해 허용 범위를 콜백 하나로 한정한다. 기존 상태·쿠키·nonce 검증과 정상 303/실패 401을 유지하고 실제 MVC 설정·HTTP 회귀 검증을 추가한다.
++- 아쉬운 점: 쿠키 속성·서버 수신 검증만으로 실제 Safari·TestFlight의 실계정 왕복을 보장하지 않는다. 운영 상태 쿠키 발급과 CORS 재현은 배포 뒤 별도 기록한다.
++
+ ## [2026-10-20] FC-024 메시지 안전을 정산과 분리한다
+ - 문제: App Store 재심사에 메시지 신고·차단과 부적절한 내용 필터·운영 대응이 필요했다.
+ - 고려한 대안: 메시지 제거, n8n 즉시 알림, 기존 메시지에 개인/전체 숨김과 서버 로그·일일 SQL 확인을 추가.
+diff --git a/docs/API.md b/docs/API.md
+index e8c5bfb..2114691 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1,4 +1,12 @@
+-# 정산어택 — API 계약 · v13
++# 정산어택 — API 계약 · v14
++
++> **v14 변경(2026-10-21)** — FC-025 Apple POST 콜백의 CORS 차단 수정.
++>
++> | 절 | 변경 |
++> |---|---|
++> | AUTH_RELEASE 로그인 | `/api/v1/auth/apple/callback`만 Apple 출처 POST·credentials 허용, 나머지 API 허용 출처 유지 |
++> | 콜백 실패 | `code=x&state=y`는 기존 401 `UNAUTHENTICATED`, 정상 콜백은 기존 303 유지 |
++>
+ 
+ > **v13 변경(2026-10-20)** — FC-024 메시지 신고·차단·금칙어·운영 금지.
+ >
+diff --git a/docs/AUTH_RELEASE.md b/docs/AUTH_RELEASE.md
+index ee972f8..c3420ce 100644
+--- a/docs/AUTH_RELEASE.md
++++ b/docs/AUTH_RELEASE.md
+@@ -5,6 +5,9 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
+ 
+ ## 로그인
+ 
++- **FC-025 CORS:** `/api/v1/auth/apple/callback`만 `Origin: https://appleid.apple.com`의 POST와 credentials를 허용한다. 구체 경로를 `/api/**`보다 먼저 등록하며 다른 API는 기존 프론트 출처만 허용한다. 상태·브라우저 상관 쿠키·nonce 검증은 그대로다. 잘못된 `state=y`는 401 `UNAUTHENTICATED`, 정상 완료는 웹/앱 모두 303이다.
++- Apple 상태 쿠키는 운영에서 `HttpOnly; Secure; SameSite=None; Path=/api/v1/auth; Max-Age=300`이다. WEB JWT는 `SameSite=Lax`를 유지한다. 발급 속성과 서버의 쿠키 수신 테스트는 실제 Safari·TestFlight 브라우저 전달·실계정 로그인 완료와 구분한다.
++
+ - `GET /api/v1/auth/{kakao|apple}/login?client=web|app&returnTo=/jungsan/...`
+   - 웹 기본값. 상대 경로 `/jungsan/`만 허용하며 `//`, 역슬래시, 제어문자, percent 인코딩을 거절한다.
+   - 앱은 추가로 `codeChallenge` (SHA-256, base64url 43자)를 보낸다. 앱이 생성한 43~128자 `codeVerifier`는 앱에만 보관한다. [RFC 7636 §4.1·4.2](https://www.rfc-editor.org/rfc/rfc7636#section-4.1)의 문자·길이·S256 방식을 티켓 교환에 적용한다.
+diff --git a/docs/DEPLOY.md b/docs/DEPLOY.md
+index 97e84ee..05a3f0b 100644
+--- a/docs/DEPLOY.md
++++ b/docs/DEPLOY.md
+@@ -162,6 +162,11 @@ Done → Continue → Save까지 저장한다. 등록 값과 OCI `.env`의 `APPL
+ 운영에서 `SameSite=None; Secure`다. 컨트롤러 소스의 값을 배포 때 직접 바꿀 필요가 없다.
+ `FRONTEND_ORIGIN`은 실제 웹 주소 `https://jungsan.devkdk.com`과 맞춘다.
+ 
++FC-025: Apple 출처 POST는 `/api/v1/auth/apple/callback`에만 허용한다. 배포 후
++`python3 scripts/verify-apple-callback-cors.py --production`으로 잘못된 state의 기존 401,
++다른 API의 403, WEB/APP 상태 쿠키 속성과 health를 확인한다. 리다이렉트를 따라가지 않으며
++쿠키 값·state·인가 URL은 출력하지 않는다. 실제 Apple 계정 웹·TestFlight 로그인은 별도 확인한다.
++
+ ### (g) Vercel 웹 API 연결
+ 
+ 웹 `profile` 프로젝트 → Settings → Environment Variables에 아래 값을 Production 범위로 저장한다.
+diff --git a/docs/flow-changes/2026-10-10-auth-deploy.md b/docs/flow-changes/2026-10-10-auth-deploy.md
+index 2dee993..b9d42d3 100644
+--- a/docs/flow-changes/2026-10-10-auth-deploy.md
++++ b/docs/flow-changes/2026-10-10-auth-deploy.md
+@@ -4,6 +4,12 @@
+ 
+ - **상태:** 열림 (Caddy 직접 HTTPS·운영 200/401·로그인 시작 302 확인, 실계정·앱 E2E 후속)
+ 
++### Apple POST 콜백 후속 (2026-10-21 · FC-025)
++
++- 기존 시작 302 확인에는 Apple 출처의 실제 form POST가 빠져 있었다. 운영에서 403 CORS 차단을 재현했다.
++- [FC-025](2026-10-21-apple-callback-cors.md)로 콜백 하나에 Apple POST·credentials를 허용하고 실제 MVC·HTTP 회귀를 추가한다. 잘못된 state는 기존 401, 정상 WEB/APP는 기존 303이며 상태 쿠키 None·Secure는 유지한다.
++- 병합·운영 재현 결과는 해당 PR 본문에 별도 기록한다. 실제 Apple 계정 웹·TestFlight 복귀와 티켓 교환은 아직 확인하지 않았으므로 FC-021은 열림이다.
++
+ ### Caddy 운영 연결 확인 (2026-10-12 · PR #32)
+ 
+ - CTO가 Caddy 설치를 승인하고 `jungsan-api` DNS를 A·OCI IP·DNS only로 저장했다. 외부 TCP 80/443 도달과 공인 Let's Encrypt 인증서 검증을 통과했다.
+diff --git a/docs/flow-changes/2026-10-21-apple-callback-cors.md b/docs/flow-changes/2026-10-21-apple-callback-cors.md
+index 3f274ce..d78d60f 100644
+--- a/docs/flow-changes/2026-10-21-apple-callback-cors.md
++++ b/docs/flow-changes/2026-10-21-apple-callback-cors.md
+@@ -2,7 +2,7 @@
+ 
+ ## FC-025 Apple `form_post` 콜백이 403 "Invalid CORS request"
+ 
+-- **상태:** 열림 (긴급 — App Store 심사관은 Apple 로그인으로만 들어온다)
++- **상태:** 반영됨 (백엔드 API v14·콜백 전용 CORS와 회귀 테스트, 병합·운영 결과는 PR에 기록; 실계정 웹·앱 E2E 후속)
+ - **바뀐 흐름:** 없음. 서버 버그다. 웹(2026-10-21 Apple 로그인 버튼 추가, 웹 `87be8e6`)과 앱(브라우저 + PKCE, FC-021)이
+   **같은 콜백** `POST /api/v1/auth/apple/callback`을 쓴다. 웹에서 Apple로 로그인하면 "Invalid CORS request"만 보이고 끝난다.
+   앱의 Apple 로그인도 같은 콜백이라 같은 이유로 실패한다고 본다(카카오는 GET 리다이렉트라 영향 없음).
+@@ -21,7 +21,11 @@
+   2. 상태 쿠키는 이미 Apple일 때 `SameSite=None; Secure`다(`AuthController`) — 크로스 사이트 POST에도 실리는지 같이 확인
+   3. 테스트: `Origin: https://appleid.apple.com` POST 콜백이 403이 아니라 기존 처리(정상 state면 302)로 들어가는지, 다른 경로에
+      같은 Origin을 보내면 여전히 403인지
+-- **확인 방법(배포 뒤):** 위 curl이 403이 아니라 state 불일치 처리(로그인 실패로 302)로 바뀐다. 이어서 실제 Apple 계정으로
++- **확인 방법(배포 뒤):** 위 curl이 403이 아니라 기존 state 검증의 **401 `UNAUTHENTICATED`**로 바뀐다. 원래 제안의 실패 302는 현재 구현과 달랐다. 정상 콜백은 기존 **303 See Other**다. 이어서 실제 Apple 계정으로
+   웹 `https://jungsan.devkdk.com/jungsan` → [Apple로 계속하기] → 이름 화면까지, TestFlight 빌드 8 → [Apple로 계속하기] → 이름 화면까지
+ - **기존 문서와 충돌:** 없음. FC-021·FC-022의 Apple 로그인 운영 확인에서 콜백 POST가 빠져 있었다
+ - **반영할 곳:** `WebConfig.kt`, Apple 콜백 HTTP 테스트, FC-021 운영 확인 기록
++
++- **백엔드 반영·근거:** `fix/apple-callback-cors` · WebConfig의 정확한 경로·출처·POST만 허용. AppleCallbackCorsSpec은 실제 WebConfig MVC에서 WEB/APP 쿠키 전달→303, 잘못된 state→401, 다른 출처·경로·GET preflight 거절과 기존 프론트 CORS를 검사한다. `verify-apple-callback-cors.py`는 CI 실제 HTTP와 배포 뒤 운영 재현용이다. 쿠키는 이미 None·Secure여서 변경하지 않았다. 신규 업무 정책·DB·의존성 변경이 없는 공유 MVC 설정 수정이므로 Java 업무 정책 복제는 해당 없음이다.
++- **배포 전 운영 재현:** 2026-10-21 12:15 KST, 요청과 동일한 Origin/form POST가 403 `Invalid CORS request`. 배포 후 결과·최종 CI·리뷰 근거는 PR 본문에 보존한다. 실제 Safari·TestFlight 로그인은 프론트/CTO 후속이다.
++- **참고:** [Spring MVC CORS](https://docs.spring.io/spring-framework/reference/web/webmvc-cors.html), [쿠키 SameSite=None·Secure](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie).
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index 1a4c3c5..075285d 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -84,4 +84,4 @@
+ | FC-022 | Apple 이름·이메일 동의 요청 제거 | 반영됨 (API v10·양쪽 언어·서버 130건, 병합·운영·실계정 후속) | AuthPolicy.kt/java·ProviderGateway·ApplePrivacySpec·AppleTokensSpec · 기존 FC-021 전체 로그인 시험은 후속 | [2026-10-10-apple-privacy.md](2026-10-10-apple-privacy.md) |
+ | FC-023 | 다음 차의 나 혼자 시작하기가 headcount 1을 보냄 | 프론트만 (웹/앱 소스 불일치·수정 제안, 실제 빌드 후속) | 서버 최소 2 계약 유지 · GatheringApiSpec·기존 DB HTTP 대조 추가, 실행 결과는 PR 검증 기록 | [2026-10-18-app-connection.md](2026-10-18-app-connection.md) |
+ | FC-024 | 정산방 메시지 신고·차단·금칙어·약관 동의 | 반영됨 (백엔드 API v13, 프론트·운영 일일 확인은 별도) | [PR #42](https://github.com/owencity/jungsan_attack/pull/42) · 019/029·서버170·실제 DB/HTTP29 · 로그 ⓐ·2명 숨김, 운영 결과는 PR 본문 | [2026-10-20-ugc-safety.md](2026-10-20-ugc-safety.md) |
+-| FC-025 | Apple 로그인 콜백(form_post)이 403 Invalid CORS request — 웹·앱 Apple 로그인 실패 | 열림 (긴급 · 심사관 로그인 막힘) | WebConfig 콜백만 appleid.apple.com POST 허용 · 콜백 HTTP 테스트 | [2026-10-21-apple-callback-cors.md](2026-10-21-apple-callback-cors.md) |
++| FC-025 | Apple 로그인 콜백(form_post)이 403 Invalid CORS request — 웹·앱 Apple 로그인 실패 | 반영됨 (백엔드 API v14, 실계정 E2E 후속) | fix/apple-callback-cors · 콜백 전용 Apple POST·실제 MVC/HTTP 회귀, 병합·운영 결과는 PR에 기록 | [2026-10-21-apple-callback-cors.md](2026-10-21-apple-callback-cors.md) |
+diff --git a/scripts/verify-apple-callback-cors.py b/scripts/verify-apple-callback-cors.py
+new file mode 100644
+index 0000000..4e17f5f
+--- /dev/null
++++ b/scripts/verify-apple-callback-cors.py
+@@ -0,0 +1,74 @@
++"""로컬 CI 또는 지정 운영 호스트의 CORS 경계만 확인한다. 제공자 인증·리다이렉트는 실행하지 않는다."""
++import argparse
++import json
++import urllib.error
++import urllib.request
++
++parser = argparse.ArgumentParser()
++parser.add_argument('--production', action='store_true')
++arguments = parser.parse_args()
++base = 'https://jungsan-api.devkdk.com' if arguments.production else 'http://127.0.0.1:18081'
++apple_origin = 'https://appleid.apple.com'
++callback = '/api/v1/auth/apple/callback'
++
++class NoRedirect(urllib.request.HTTPRedirectHandler):
++    def redirect_request(self, request, response, code, message, headers, new_url):
++        return None
++
++opener = urllib.request.build_opener(NoRedirect())
++checks = []
++
++def call(method, path, origin=None, form=None, preflight_method=None):
++    headers = {}
++    if origin:
++        headers['Origin'] = origin
++    if form is not None:
++        headers['Content-Type'] = 'application/x-www-form-urlencoded'
++    if preflight_method:
++        headers['Access-Control-Request-Method'] = preflight_method
++    request = urllib.request.Request(base + path, headers=headers, method=method,
++                                     data=form.encode() if form is not None else None)
++    try:
++        response = opener.open(request, timeout=20)
++    except urllib.error.HTTPError as error:
++        response = error
++    with response:
++        return response.status, response.headers, response.read()
++
++def check(condition, label, status):
++    assert condition, (label, status)
++    checks.append({'check': label, 'status': status})
++
++status, headers, body = call('POST', callback, apple_origin, 'code=x&state=y')
++check(status == 401 and json.loads(body)['code'] == 'UNAUTHENTICATED'
++      and headers.get('Access-Control-Allow-Origin') == apple_origin
++      and headers.get('Access-Control-Allow-Credentials') == 'true', 'invalid state reaches existing authentication handler', status)
++for method, path, form in [('GET', '/api/v1/auth/me', None),
++                           ('GET', '/api/v1/auth/kakao/callback?code=x&state=y', None),
++                           ('POST', '/api/v1/auth/app/exchange', '')]:
++    status, headers, body = call(method, path, apple_origin, form)
++    check(status == 403 and body == b'Invalid CORS request' and not headers.get('Access-Control-Allow-Origin'),
++          'Apple origin denied: ' + path.split('?')[0], status)
++for origin in ['https://evil.test', 'https://appleid.apple.com.evil.test', 'http://appleid.apple.com']:
++    status, headers, body = call('POST', callback, origin, 'code=x&state=y')
++    check(status == 403 and body == b'Invalid CORS request', 'callback rejects origin: ' + origin, status)
++status, headers, body = call('OPTIONS', callback, apple_origin, preflight_method='POST')
++check(status == 200 and headers.get('Access-Control-Allow-Methods') == 'POST', 'Apple POST preflight allowed', status)
++status, headers, body = call('OPTIONS', callback, apple_origin, preflight_method='GET')
++check(status == 403, 'Apple GET preflight denied', status)
++status, headers, body = call('GET', '/actuator/health')
++check(status == 200 and json.loads(body)['status'] == 'UP', 'health', status)
++if arguments.production:
++    # Cookie値・state・nonce・Locationは出力しない。未完了のchallengeは既存の5分TTLで失効する。
++    for client in ['web', 'app']:
++        query = '?client=' + client + ('&codeChallenge=' + 'a' * 43 if client == 'app' else '')
++        status, headers, body = call('GET', '/api/v1/auth/apple/login' + query)
++        cookie = headers.get('Set-Cookie', '')
++        check(status == 302 and all(attribute in cookie for attribute in
++              ['jeongsan_auth_', 'SameSite=None', 'Secure', 'HttpOnly', 'Path=/api/v1/auth', 'Max-Age=300']),
++              client + ' production state cookie flags', status)
++    status, headers, body = call('GET', '/api/v1/auth/me', 'https://jungsan.devkdk.com')
++    check(status == 401 and headers.get('Access-Control-Allow-Origin') == 'https://jungsan.devkdk.com',
++          'existing frontend CORS preserved', status)
++print(json.dumps({'base': base, 'passed': True, 'checks': checks,
++                  'real_account_browser_e2e': 'not performed'}, indent=2))
+diff --git a/scripts/verify-release.sh b/scripts/verify-release.sh
+index 9b244f8..10604d2 100644
+--- a/scripts/verify-release.sh
++++ b/scripts/verify-release.sh
+@@ -89,3 +89,4 @@ for attempt in $(seq 1 40); do
+ done
+ [ "$ready" = true ] || { echo 'Apple 미설정 운영 프로필 기동 실패' >&2; tail -n 45 server/build/release-prod-http.log; exit 1; }
+ python3 scripts/verify-provider-availability.py
++python3 scripts/verify-apple-callback-cors.py
+diff --git a/server/src/main/kotlin/app/jeongsan/server/config/WebConfig.kt b/server/src/main/kotlin/app/jeongsan/server/config/WebConfig.kt
+index 7c3493b..7ddb9d2 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/config/WebConfig.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/config/WebConfig.kt
+@@ -19,6 +19,11 @@ class WebConfig(
+ ) : WebMvcConfigurer {
+ 
+     override fun addCorsMappings(registry: CorsRegistry) {
++        // Apple은 form_post로 돌아오므로 이 경로만 예외로 둔다. 첫 일치 매핑이 적용된다.
++        registry.addMapping("/api/v1/auth/apple/callback")
++            .allowedOrigins("https://appleid.apple.com")
++            .allowedMethods("POST")
++            .allowCredentials(true)
+         registry.addMapping("/api/**")
+             .allowedOrigins(frontendOrigin)
+             .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+diff --git a/server/src/test/kotlin/app/jeongsan/server/config/AppleCallbackCorsSpec.kt b/server/src/test/kotlin/app/jeongsan/server/config/AppleCallbackCorsSpec.kt
+new file mode 100644
+index 0000000..a2de83c
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/config/AppleCallbackCorsSpec.kt
+@@ -0,0 +1,123 @@
++package app.jeongsan.server.config
++
++import app.jeongsan.server.common.GlobalExceptionHandler
++import app.jeongsan.server.common.LoginUserArgumentResolver
++import app.jeongsan.server.user.AuthController
++import app.jeongsan.server.user.AuthFinish
++import app.jeongsan.server.user.AuthFlowService
++import app.jeongsan.server.user.AuthStart
++import app.jeongsan.server.user.JwtService
++import app.jeongsan.server.user.UserService
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++import jakarta.servlet.http.Cookie
++import org.mockito.Mockito
++import org.springframework.context.annotation.Bean
++import org.springframework.context.annotation.Configuration
++import org.springframework.context.annotation.Import
++import org.springframework.http.MediaType
++import org.springframework.mock.env.MockEnvironment
++import org.springframework.mock.web.MockServletContext
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
++import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
++import org.springframework.test.web.servlet.setup.MockMvcBuilders
++import org.springframework.web.context.support.AnnotationConfigWebApplicationContext
++import org.springframework.web.servlet.config.annotation.EnableWebMvc
++
++class AppleCallbackCorsSpec : StringSpec({
++    // standaloneSetup은 운영 WebConfig의 CORS 처리를 실행하지 않아 이 장애를 놓친다.
++    val context = AnnotationConfigWebApplicationContext().apply {
++        servletContext = MockServletContext()
++        environment = MockEnvironment().withProperty("app.frontend-origin", "https://web.test")
++        register(CorsConfiguration::class.java)
++        refresh()
++    }
++    afterSpec { context.close() }
++    val mvc = MockMvcBuilders.webAppContextSetup(context).build()
++    val flow = context.getBean(AuthFlowService::class.java)
++    val callbackPath = "/api/v1/auth/apple/callback"
++    val appleOrigin = "https://appleid.apple.com"
++    val state = "s".repeat(43)
++    beforeTest { Mockito.reset(flow) }
++
++    listOf("web", "app").forEach { client ->
++        "Apple $client POST는 발급한 상태 쿠키를 전달하고 기존 303 콜백을 실행한다" {
++            val challenge = if (client == "app") "a".repeat(43) else null
++            Mockito.`when`(flow.start("APPLE", client, null, challenge))
++                .thenReturn(AuthStart(state, "browser-binding", "https://appleid.apple.com/auth/authorize"))
++            val loginRequest = get("/api/v1/auth/apple/login").param("client", client)
++            if (challenge != null) loginRequest.param("codeChallenge", challenge)
++            val loginResponse = mvc.perform(loginRequest).andExpect(status().isFound).andReturn().response
++            val bindingCookie = checkNotNull(loginResponse.getCookie(AuthController.bindingName(state)))
++            val cookieHeader = checkNotNull(loginResponse.getHeader("Set-Cookie"))
++            listOf("SameSite=None", "Secure", "HttpOnly", "Path=/api/v1/auth", "Max-Age=300")
++                .forEach { attribute -> cookieHeader.contains(attribute) shouldBe true }
++            bindingCookie.value shouldBe "browser-binding"
++            Mockito.`when`(flow.finish("APPLE", state, bindingCookie.value, "code"))
++                .thenReturn(AuthFinish(client, "/jungsan/", "credential"))
++            val target = if (client == "app") "jeongsan://auth?ticket=credential" else "https://web.test/jungsan"
++            val response = mvc.perform(post(callbackPath).header("Origin", appleOrigin)
++                .contentType(MediaType.APPLICATION_FORM_URLENCODED).param("code", "code").param("state", state)
++                .cookie(Cookie(bindingCookie.name, bindingCookie.value)))
++                .andExpect(status().isSeeOther).andExpect(header().string("Location", target))
++                .andExpect(header().string("Access-Control-Allow-Origin", appleOrigin))
++                .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
++                .andReturn().response
++            response.getHeaders("Set-Cookie").any {
++                it.startsWith(bindingCookie.name + "=") && it.contains("Max-Age=0") && it.contains("SameSite=None") && it.contains("Secure")
++            } shouldBe true
++            Mockito.verify(flow).finish("APPLE", state, "browser-binding", "code")
++        }
++    }
++    "운영 재현의 잘못된 state는 CORS 403 대신 기존 401을 반환한다" {
++        mvc.perform(post(callbackPath).header("Origin", appleOrigin)
++            .contentType(MediaType.APPLICATION_FORM_URLENCODED).param("code", "x").param("state", "y"))
++            .andExpect(status().isUnauthorized).andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
++            .andExpect(header().string("Access-Control-Allow-Origin", appleOrigin))
++        Mockito.verifyNoInteractions(flow)
++    }
++    "Apple 출처는 다른 API와 카카오 콜백에 접근할 수 없다" {
++        listOf("/api/v1/auth/me", "/api/v1/auth/kakao/callback").forEach { path ->
++            mvc.perform(get(path).header("Origin", appleOrigin)).andExpect(status().isForbidden)
++                .andExpect(content().string("Invalid CORS request"))
++        }
++        mvc.perform(post("/api/v1/auth/app/exchange").header("Origin", appleOrigin)
++            .contentType(MediaType.APPLICATION_JSON).content("{}"))
++            .andExpect(status().isForbidden).andExpect(content().string("Invalid CORS request"))
++        Mockito.verifyNoInteractions(flow)
++    }
++    "다른 출처와 유사 Apple 도메인은 콜백에서도 거절한다" {
++        listOf("https://evil.test", "https://appleid.apple.com.evil.test", "http://appleid.apple.com", "https://web.test")
++            .forEach { origin ->
++                mvc.perform(post(callbackPath).header("Origin", origin)
++                    .contentType(MediaType.APPLICATION_FORM_URLENCODED).param("code", "x").param("state", "y"))
++                    .andExpect(status().isForbidden).andExpect(content().string("Invalid CORS request"))
++            }
++        Mockito.verifyNoInteractions(flow)
++    }
++    "콜백의 Apple POST preflight만 허용하며 GET과 다른 API preflight는 거절한다" {
++        mvc.perform(options(callbackPath).header("Origin", appleOrigin).header("Access-Control-Request-Method", "POST"))
++            .andExpect(status().isOk).andExpect(header().string("Access-Control-Allow-Methods", "POST"))
++        mvc.perform(options(callbackPath).header("Origin", appleOrigin).header("Access-Control-Request-Method", "GET"))
++            .andExpect(status().isForbidden)
++        mvc.perform(options("/api/v1/auth/me").header("Origin", appleOrigin).header("Access-Control-Request-Method", "POST"))
++            .andExpect(status().isForbidden)
++    }
++    "기존 프론트의 다른 API CORS와 인증 401은 유지한다" {
++        mvc.perform(get("/api/v1/auth/me").header("Origin", "https://web.test"))
++            .andExpect(status().isUnauthorized).andExpect(header().string("Access-Control-Allow-Origin", "https://web.test"))
++        Mockito.verifyNoInteractions(flow)
++    }
++}) {
++    @Configuration(proxyBeanMethods = false)
++    @EnableWebMvc
++    @Import(WebConfig::class)
++    class CorsConfiguration {
++        @Bean fun flow(): AuthFlowService = Mockito.mock(AuthFlowService::class.java)
++        @Bean fun userService(): UserService = Mockito.mock(UserService::class.java)
++        @Bean fun authController(flow: AuthFlowService, userService: UserService) =
++            AuthController(flow, userService, "https://web.test/jungsan", "https://web.test", true, 30)
++        @Bean fun loginUserArgumentResolver() = LoginUserArgumentResolver(JwtService("01234567890123456789012345678901", 30))
++        @Bean fun exceptionHandler() = GlobalExceptionHandler()
++    }
++}
