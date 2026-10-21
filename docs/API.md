@@ -1,4 +1,12 @@
-# 정산어택 — API 계약 · v13
+# 정산어택 — API 계약 · v14
+
+> **v14 변경(2026-10-21)** — FC-025 Apple POST 콜백의 CORS 차단 수정.
+>
+> | 절 | 변경 |
+> |---|---|
+> | AUTH_RELEASE 로그인 | `/api/v1/auth/apple/callback`만 Apple 출처 POST·credentials 허용, 나머지 API 허용 출처 유지 |
+> | 콜백 실패 | `code=x&state=y`는 기존 401 `UNAUTHENTICATED`, 정상 콜백은 기존 303 유지 |
+>
 
 > **v13 변경(2026-10-20)** — FC-024 메시지 신고·차단·금칙어·운영 금지.
 >

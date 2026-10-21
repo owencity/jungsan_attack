@@ -5,6 +5,9 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
 
 ## 로그인
 
+- **FC-025 CORS:** `/api/v1/auth/apple/callback`만 `Origin: https://appleid.apple.com`의 POST와 credentials를 허용한다. 구체 경로를 `/api/**`보다 먼저 등록하며 다른 API는 기존 프론트 출처만 허용한다. 상태·브라우저 상관 쿠키·nonce 검증은 그대로다. 잘못된 `state=y`는 401 `UNAUTHENTICATED`, 정상 완료는 웹/앱 모두 303이다.
+- Apple 상태 쿠키는 운영에서 `HttpOnly; Secure; SameSite=None; Path=/api/v1/auth; Max-Age=300`이다. WEB JWT는 `SameSite=Lax`를 유지한다. 발급 속성과 서버의 쿠키 수신 테스트는 실제 Safari·TestFlight 브라우저 전달·실계정 로그인 완료와 구분한다.
+
 - `GET /api/v1/auth/{kakao|apple}/login?client=web|app&returnTo=/jungsan/...`
   - 웹 기본값. 상대 경로 `/jungsan/`만 허용하며 `//`, 역슬래시, 제어문자, percent 인코딩을 거절한다.
   - 앱은 추가로 `codeChallenge` (SHA-256, base64url 43자)를 보낸다. 앱이 생성한 43~128자 `codeVerifier`는 앱에만 보관한다. [RFC 7636 §4.1·4.2](https://www.rfc-editor.org/rfc/rfc7636#section-4.1)의 문자·길이·S256 방식을 티켓 교환에 적용한다.

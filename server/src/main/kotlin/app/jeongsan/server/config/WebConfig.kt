@@ -19,6 +19,11 @@ class WebConfig(
 ) : WebMvcConfigurer {
 
     override fun addCorsMappings(registry: CorsRegistry) {
+        // Apple은 form_post로 돌아오므로 이 경로만 예외로 둔다. 첫 일치 매핑이 적용된다.
+        registry.addMapping("/api/v1/auth/apple/callback")
+            .allowedOrigins("https://appleid.apple.com")
+            .allowedMethods("POST")
+            .allowCredentials(true)
         registry.addMapping("/api/**")
             .allowedOrigins(frontendOrigin)
             .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
