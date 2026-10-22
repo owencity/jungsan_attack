@@ -1,0 +1,16 @@
+{
+  "base": "f8e4e133807559bef31a2d6ba8407115331dbee3",
+  "code_head": "38150caa0f725507a2d56a740ef969cd775b7351",
+  "server": {
+    "tests": 194,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "new_page_specs": 10,
+  "compileKotlin": "passed",
+  "bootJar": "passed",
+  "real_database_ttl": "pending CI",
+  "production": "not deployed; merge approval pending",
+  "real_kakao_android_login": "not performed"
+}

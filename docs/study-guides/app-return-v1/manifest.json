@@ -1,0 +1,155 @@
+{
+  "base": "f8e4e133807559bef31a2d6ba8407115331dbee3",
+  "code_head": "38150caa0f725507a2d56a740ef969cd775b7351",
+  "policy_ref": "560fee34cb704c40c3273238eb2bd38e31edd719",
+  "files": [
+    {
+      "path": "changes.diff",
+      "sha256": "d7631a1fbab3f754f6db7e8c27f581926ca676fb116743e2990378717c1186c8"
+    },
+    {
+      "path": "before/DEVLOG.md",
+      "sha256": "2332efcb8bddcce20565b93d1c64a1470b6aba60dfde399baaf9ccaa83146257"
+    },
+    {
+      "path": "after/DEVLOG.md",
+      "sha256": "c4d1208622ba24edaeb3fe961f5ec7a5ff63fb17899fe47bf8d3b9840f4282a2"
+    },
+    {
+      "path": "before/docs/API.md",
+      "sha256": "19919d8adfebee36e3c49af8961468226295e9c09458aef54af050a14e859453"
+    },
+    {
+      "path": "after/docs/API.md",
+      "sha256": "c8385d621f761c5f97731aead3bc7f9b9753db9df60e6907f69d0e5657cbd140"
+    },
+    {
+      "path": "before/docs/AUTH_RELEASE.md",
+      "sha256": "24c6f3bfd4d0f6938a1cf54446f687f997107bbbeef3e2cc8bfeed0b440e16ee"
+    },
+    {
+      "path": "after/docs/AUTH_RELEASE.md",
+      "sha256": "2bdd5e30cde90234c62e570172e518eb23330688f16bf5c18937467e33bc4566"
+    },
+    {
+      "path": "before/docs/ERD.md",
+      "sha256": "79fa4b6f53ff933020edc9988ef066b4653c665833bbbb1285d6ce30121d483a"
+    },
+    {
+      "path": "after/docs/ERD.md",
+      "sha256": "a9fdd47a40919e71281aa412eca2ca35a8926d22567743f82bcce59ee9adcca8"
+    },
+    {
+      "path": "before/docs/flow-changes/2026-10-10-auth-deploy.md",
+      "sha256": "cf506afaec076f11810aa7c458ce6e34d0bd3f7ff1d63809e887e97cb7b607d8"
+    },
+    {
+      "path": "after/docs/flow-changes/2026-10-10-auth-deploy.md",
+      "sha256": "7ebb05d61d81a887319932d8faa6760f5f1df86c387e94e31b7e321c2c110b63"
+    },
+    {
+      "path": "before/docs/flow-changes/2026-10-22-android-auth-logout.md",
+      "sha256": "1459c9248d6d14efcfbfbc3ccd7711549f982f05b6d94935745075296459e57f"
+    },
+    {
+      "path": "before/docs/flow-changes/2026-10-22-app-return-page.md",
+      "sha256": "2643ac6fba4e0803f92484b3a53b9576bca1fdcf888625df7f763b9cf2d245e3"
+    },
+    {
+      "path": "after/docs/flow-changes/2026-10-22-app-return-page.md",
+      "sha256": "9d05ac03408a022be356aac7a0bd0bfbc3ec765aaec268e5929525aa60e78291"
+    },
+    {
+      "path": "before/docs/flow-changes/README.md",
+      "sha256": "562f91970825a28c64314caefaf12afb028d8d8b8e72717702fdc1769ff82247"
+    },
+    {
+      "path": "after/docs/flow-changes/README.md",
+      "sha256": "5b71160cfc8d3e6eabbc6f90f721306ff40cea0bde85f403b4dfdac03cde8de7"
+    },
+    {
+      "path": "after/docs/operations/android-auth-investigation.md",
+      "sha256": "8d9e01e766c7cc56dbd95095e1699381315735d04514a61a2c8fa23e6aa07211"
+    },
+    {
+      "path": "before/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java",
+      "sha256": "e9a60d5bef2ba2845b07b73f0b3d9390b0d920432bff66fd28595a776f91137a"
+    },
+    {
+      "path": "after/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java",
+      "sha256": "632c60c4939fb8cc27997ed8d5654aa29f01cfe28baf4220c5446830e2464293"
+    },
+    {
+      "path": "after/server/src/main/kotlin/app/jeongsan/server/user/AppReturnPage.kt",
+      "sha256": "e3f5e297d3cc0f4ea4a6e35850693774236f4c784144bc8a8a34cd7cf69bb975"
+    },
+    {
+      "path": "before/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt",
+      "sha256": "978a7c90424bc450147abc113dde9eb2dbb18ee86ad4181fe3883632920655d1"
+    },
+    {
+      "path": "after/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt",
+      "sha256": "3003de10ee0063e678f43f528690414e1d41514bc05b5c60573be8c588b001a4"
+    },
+    {
+      "path": "before/server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "sha256": "d8bb6d8e11b98c7f3a8584a60886fc020c433cb20afadd7e26ad2d62e67793b7"
+    },
+    {
+      "path": "after/server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "sha256": "ee6119286dc03d54d63d9073743fa7736ef3c22e236b9783638a476c78978408"
+    },
+    {
+      "path": "before/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt",
+      "sha256": "c8624fff30f7d06cebb5c845394850a378d80b795dea456626b5c8d8ee6faab6"
+    },
+    {
+      "path": "after/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt",
+      "sha256": "7b6d1cb5aae45f4c331510a3be358b84bbe4db0a74695f5b406d11bed99f5e59"
+    },
+    {
+      "path": "before/server/src/test/kotlin/app/jeongsan/server/config/AppleCallbackCorsSpec.kt",
+      "sha256": "763d96ce862c452e078829abd20a255e4791a5de7a300361fcff84424239ab72"
+    },
+    {
+      "path": "after/server/src/test/kotlin/app/jeongsan/server/config/AppleCallbackCorsSpec.kt",
+      "sha256": "e34cf47cc4530dba3b9423cf1d65b508edfc174d8ae804c5129481b86fbdb6a2"
+    },
+    {
+      "path": "after/server/src/test/kotlin/app/jeongsan/server/user/AppReturnPageSpec.kt",
+      "sha256": "7881c37d79ca09beff71983eaba04aef5f09e7de7f041e4fe15783f11163fe49"
+    },
+    {
+      "path": "before/server/src/test/kotlin/app/jeongsan/server/user/AuthApiSpec.kt",
+      "sha256": "29a6b85cf992c2bbe82791a479a5700a33d7ac7a8fcb1c89b6ab9409e5ea69b1"
+    },
+    {
+      "path": "after/server/src/test/kotlin/app/jeongsan/server/user/AuthApiSpec.kt",
+      "sha256": "89a1d89a0f2c97b17152f0e089a740b8ff9405ccdd01157d08c606fe09beea8b"
+    },
+    {
+      "path": "before/server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt",
+      "sha256": "e56531663ac1cf2d38368b5594861ba3581fe5f4a65d5bc1d7d2007db6f64f2d"
+    },
+    {
+      "path": "after/server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt",
+      "sha256": "1cb628ba71eefb057327e5e1dec44c0afe9592e9f627f8acbeef6c820a39de83"
+    },
+    {
+      "path": "STUDY_POLICY.md",
+      "sha256": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3"
+    },
+    {
+      "path": "STUDY_CATALOG.md",
+      "sha256": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79"
+    },
+    {
+      "path": "guide.md",
+      "sha256": "a94b077f4dbc3c2548e83dcfcd810ffccd2b139f7f9e9644e4a853db0568160d"
+    },
+    {
+      "path": "progress.md",
+      "sha256": "264a20a1631f2d711c24f423454b64852e7b8b06310027cbaed413ffaf873270"
+    }
+  ]
+}
