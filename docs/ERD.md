@@ -324,7 +324,7 @@ NULL 좌석은 탈퇴 자료에만 사용한다. 가입 API는 항상 유효한 
 | 테이블 | 역할·수명 |
 |---|---|
 | auth_challenges | state 해시·provider·client·nonce·상관 쿠키 해시·앱 challenge·복귀 경로, 5분 |
-| auth_tickets | 티켓 해시·user FK(cascade)·앱 challenge, 60초·한 번 교환 |
+| auth_tickets | 티켓 해시·user FK(cascade)·앱 challenge, FC-026에 따라5분·한 번 교환(적용017의60초 설명은 과거 값) |
 | auth_credentials | user PK/FK(cascade)·Apple client ID·암호화 refresh token |
 | auth_revocations | 로그아웃 JWT 해시·실제 JWT 만료, 만료 후 정리 |
 | auth_revoke_jobs | 탈퇴 트랜잭션에서 복사한 Apple client ID·암호문·재시도 시각, 성공 후 삭제 |

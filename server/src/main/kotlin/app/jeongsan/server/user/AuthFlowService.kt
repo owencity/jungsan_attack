@@ -66,7 +66,7 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
         db.update("DELETE FROM auth_challenges WHERE state_hash=:s","s" to AuthPolicy.hash(state))
         if(row.text("client")=="web") return AuthFinish("web",row.text("return_to"),jwt.issue(uid))
         val ticket=random()
-        db.update("INSERT INTO auth_tickets VALUES(:t,:u,:a,:e)","t" to AuthPolicy.hash(ticket),"u" to uid,"a" to row.text("app_challenge"),"e" to Instant.now().plusSeconds(60))
+        db.update("INSERT INTO auth_tickets VALUES(:t,:u,:a,:e)","t" to AuthPolicy.hash(ticket),"u" to uid,"a" to row.text("app_challenge"),"e" to AuthPolicy.appTicketExpiresAt(Instant.now()))
         return AuthFinish("app",row.text("return_to"),ticket)
     }
     fun exchange(request: AppExchangeRequest): AppExchangeResponse {

@@ -32,3 +32,11 @@
   Play 앱 서명 인증서 SHA-256이 필요하다. 웹·앱·서버 모두 바뀌어 지금은 하지 않는다
 - **기존 문서와 충돌:** FC-021(앱 로그인 연결)의 "브라우저 → 303 jeongsan://" 복귀 방식이 바뀐다
 - **반영할 곳:** `AuthController.finish`, `AuthFlowService` 티켓 TTL, API.md 앱 로그인 절, FC-021 기록
+
+### 백엔드 구현·검증 후속 (PR #47)
+
+- 프론트 문서 `67d2b7c`와 CTO의 문서 확인 요청을 반영해 PR #47을 진단·로그아웃 보완에서 실제 A안 구현으로 확장했다. 초기 백엔드가 별도로 붙인026 조사 문서는 [운영 조사](../operations/android-auth-investigation.md)로 이동해 번호 중복을 해소했다.
+- 앱 콜백200 HTML·Android Intent/다른 환경 기존 스킴·자동1회 시도와 수동 링크·티켓300초를 구현한다. Java/Kotlin 링크·만료 정책은 독립 구현, 렌더링·HTTP는 공유한다. WEB303·Cookie/PKCE/state/nonce/일회용 검증·기존 Apple CORS는 유지한다.
+- CSP는 제안의 unsafe-inline 스크립트 대신 고정 코드 SHA256으로 제한한다. URL의 인증 query를 history.replaceState로 지우고 외부 자원·프레임·폼을 차단한다. 티켓·UA를 임의 HTML/스크립트에 주입하지 않는다.
+- Apple POST 직접200의 새로고침은 소비된state의 기존401로 처리한다. 원래 문서가 제안한 A안 범위를 유지하고 별도 완료 URL·임시 저장소를 추가하지 않는다. UA가 Android를 숨기면 기존 스킴의 수동 링크를 제공한다.
+- 상태는 운영 반영·Android 실기기 왕복 확인까지 열림이다. 코드/단위/MVC·실제DB·CI·병합/배포 결과는 PR에 구분해 기록한다. Chrome 차단 설명은 코드·공식 정책에 근거한 원인 후보이며 이 환경에서 실기기 재현을 완료했다고 보고하지 않는다.

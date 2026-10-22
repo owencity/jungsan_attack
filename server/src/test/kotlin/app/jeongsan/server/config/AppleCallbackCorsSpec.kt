@@ -41,7 +41,7 @@ class AppleCallbackCorsSpec : StringSpec({
     beforeTest { Mockito.reset(flow) }
 
     listOf("web", "app").forEach { client ->
-        "Apple $client POST는 발급한 상태 쿠키를 전달하고 기존 303 콜백을 실행한다" {
+        "Apple $client POST는 발급한 상태 쿠키를 전달하고 클라이언트별 복귀 응답을 반환한다" {
             val challenge = if (client == "app") "a".repeat(43) else null
             Mockito.`when`(flow.start("APPLE", client, null, challenge))
                 .thenReturn(AuthStart(state, "browser-binding", "https://appleid.apple.com/auth/authorize"))
@@ -54,15 +54,16 @@ class AppleCallbackCorsSpec : StringSpec({
                 .forEach { attribute -> cookieHeader.contains(attribute) shouldBe true }
             bindingCookie.value shouldBe "browser-binding"
             Mockito.`when`(flow.finish("APPLE", state, bindingCookie.value, "code"))
-                .thenReturn(AuthFinish(client, "/jungsan/", "credential"))
-            val target = if (client == "app") "jeongsan://auth?ticket=credential" else "https://web.test/jungsan"
-            val response = mvc.perform(post(callbackPath).header("Origin", appleOrigin)
+                .thenReturn(AuthFinish(client, "/jungsan/", "c".repeat(43)))
+            val actions = mvc.perform(post(callbackPath).header("Origin", appleOrigin)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED).param("code", "code").param("state", state)
                 .cookie(Cookie(bindingCookie.name, bindingCookie.value)))
-                .andExpect(status().isSeeOther).andExpect(header().string("Location", target))
                 .andExpect(header().string("Access-Control-Allow-Origin", appleOrigin))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
-                .andReturn().response
+            if (client == "app") actions.andExpect(status().isOk).andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(header().doesNotExist("Location"))
+            else actions.andExpect(status().isSeeOther).andExpect(header().string("Location", "https://web.test/jungsan"))
+            val response = actions.andReturn().response
             response.getHeaders("Set-Cookie").any {
                 it.startsWith(bindingCookie.name + "=") && it.contains("Max-Age=0") && it.contains("SameSite=None") && it.contains("Secure")
             } shouldBe true

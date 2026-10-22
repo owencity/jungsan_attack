@@ -5,6 +5,7 @@ import app.jeongsan.server.common.UnauthenticatedException
 import app.jeongsan.server.gathering.GatheringStore
 import app.jeongsan.server.gathering.PayoutCipher
 import app.jeongsan.server.gathering.long
+import app.jeongsan.server.gathering.instant
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -64,6 +65,10 @@ fun main() {
         check(db.rows("SELECT state_hash FROM auth_challenges WHERE state_hash=:h","h" to AuthPolicy.hash(start.state)).size==1)
         passed("외부 인가 실패 시 상태 소비·가입을 rollback")
         val finish=flow.finish("KAKAO",start.state,start.browser,"good")
+        val persistedExpiry=checkNotNull(db.rows("SELECT expires_at FROM auth_tickets WHERE ticket_hash=:h",
+            "h" to AuthPolicy.hash(finish.credential)).single().instant("expires_at"))
+        check(java.time.Duration.between(Instant.now(),persistedExpiry).seconds in 295L..300L)
+        passed("앱 티켓 DB 만료 시각은 발급부터 5분")
         rejects("UNAUTHENTICATED") { flow.finish("KAKAO",start.state,start.browser,"good") }; passed("완료된 OAuth state 재사용 거절")
         rejects("UNAUTHENTICATED") { flow.exchange(AppExchangeRequest(finish.credential,"b".repeat(43))) }; passed("탈취 티켓은 verifier 불일치로 거절")
         val pool=Executors.newFixedThreadPool(4)
