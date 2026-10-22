@@ -44,7 +44,8 @@ call("POST","/auth/logout",app,"APP",status=204);call("GET","/auth/me",app,"APP"
 logout_web=jwt(uid);other_device=jwt(uid,"APP")
 _,_,logout_headers=call("POST","/auth/logout",logout_web,status=204)
 check(logout_headers.get("Cache-Control")=="no-store" and all(attribute in logout_headers.get("Set-Cookie","") for attribute in
-    ["Max-Age=0","Path=/","HttpOnly","Secure","SameSite=Lax"]),"웹 로그아웃 204는 쿠키 만료·캐시 금지")
+    ["Max-Age=0","Path=/","HttpOnly","SameSite=Lax"]) and "Secure" not in logout_headers.get("Set-Cookie",""),
+    "로컬 HTTP 웹 로그아웃 204는 비Secure 쿠키 만료·캐시 금지")
 call("GET","/auth/me",logout_web,status=401)
 call("POST","/auth/logout",logout_web,status=401)
 check(True,"로그아웃 쿠키의 보호 API·반복 로그아웃은 기존 401")
