@@ -36,11 +36,24 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
         return AuthStart(state,browser,location)
     }
     fun finish(provider: String, state: String, browser: String?, code: String): AuthFinish {
-        if(!Regex("[A-Za-z0-9_-]{43}").matches(state) || code.isBlank() || code.length>2048 || browser==null) throw UnauthenticatedException()
-        val row=db.rows("SELECT * FROM auth_challenges WHERE state_hash=:s FOR UPDATE","s" to AuthPolicy.hash(state)).singleOrNull() ?: throw UnauthenticatedException()
-        AuthPolicy.validUntil(checkNotNull(row.instant("expires_at")),Instant.now())
-        if(row.text("provider")!=provider || row.text("browser_hash")!=AuthPolicy.hash(browser)) throw UnauthenticatedException()
-        val identity=gateway.identity(provider,code,row.text("nonce"))
+        fun reject(reason: AuthCallbackLog.Failure): Nothing {
+            AuthCallbackLog.failed(provider, reason)
+            throw UnauthenticatedException()
+        }
+        if(!Regex("[A-Za-z0-9_-]{43}").matches(state)) reject(AuthCallbackLog.Failure.INVALID_STATE)
+        if(code.isBlank() || code.length>2048) reject(AuthCallbackLog.Failure.INVALID_CODE)
+        if(browser==null) reject(AuthCallbackLog.Failure.MISSING_BROWSER_COOKIE)
+        val row=db.rows("SELECT * FROM auth_challenges WHERE state_hash=:s FOR UPDATE","s" to AuthPolicy.hash(state)).singleOrNull()
+            ?: reject(AuthCallbackLog.Failure.STATE_NOT_FOUND)
+        try { AuthPolicy.validUntil(checkNotNull(row.instant("expires_at")),Instant.now()) }
+            catch (_: UnauthenticatedException) { reject(AuthCallbackLog.Failure.STATE_EXPIRED) }
+        if(row.text("provider")!=provider) reject(AuthCallbackLog.Failure.PROVIDER_MISMATCH)
+        if(row.text("browser_hash")!=AuthPolicy.hash(browser)) reject(AuthCallbackLog.Failure.BROWSER_MISMATCH)
+        val identity=try { gateway.identity(provider,code,row.text("nonce")) }
+            catch (exception: app.jeongsan.server.common.ApiException) {
+                AuthCallbackLog.failed(provider, AuthCallbackLog.Failure.PROVIDER_REJECTED)
+                throw exception
+            }
         if(identity.id.length !in 1..100) throw UnauthenticatedException()
         db.update("INSERT INTO users(provider,provider_id,nickname,profile_image_url,created_at) VALUES(:p,:id,:n,:i,:t) ON DUPLICATE KEY UPDATE nickname=VALUES(nickname),profile_image_url=VALUES(profile_image_url)",
             "p" to provider,"id" to identity.id,"n" to identity.nickname.take(50),"i" to identity.image,"t" to Instant.now())

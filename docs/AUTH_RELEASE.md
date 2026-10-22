@@ -19,6 +19,22 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
 - 앱 Authorization Bearer는 APP 토큰만 받는다. 쿠키는 WEB 토큰만 받는다. 둘 다 있으면 Bearer를 우선하고 잘못된 헤더를 쿠키로 우회하지 않는다.
 - `POST /api/v1/auth/logout` → 204 + 쿠키 만료. 사용한 JWT의 해시를 만료까지 저장해 복사된 토큰도 무효화한다.
 
+### 로그아웃 백엔드 연결 계약 (2026-10-22)
+
+- API는 이미 운영에 존재한다. 본문 없이 `POST /api/v1/auth/logout`, 앱은 `Authorization: Bearer <APP 토큰>`, 웹은 기존 httpOnly WEB 쿠키를 보낸다.
+- 성공은 **204·빈 본문**, `Cache-Control: no-store`, WEB 쿠키 만료(`Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`, Secure는 운영 기준)다. 앱은 JSON 응답을 읽지 않는다.
+- 전달한 **현재 자격만** 무효화한다. 같은 계정의 다른 기기 WEB/APP 토큰은 유지한다. 카카오 계정 자체의 브라우저 세션 종료·연결 해제·회원 탈퇴와는 별도다.
+- 이후 같은 토큰의 보호 API·로그아웃 재호출은 기존 **401 `UNAUTHENTICATED`**다. 동시 요청은 인증 검사 시점에 따라204 또는401이며 무효화 행은 한 개다. 반복 요청을 새204 계약으로 바꾸지 않는다.
+- 프론트는204 또는 이미 무효화된401 후 로컬 토큰·로그인 상태를 제거한다. 네트워크 실패 때 로컬 토큰만 버린 경우 서버 무효화 성공으로 보고하지 않는다. 이번 작업에서 프론트 코드는 변경하지 않았다.
+
+### 로그인 복귀 진단
+
+- `AUTH_LOGIN_STARTED provider=KAKAO client=app`: 서버가 인가 시작을 처리했다.
+- `AUTH_CALLBACK_FAILED provider=KAKAO reason=...`: INVALID_STATE, INVALID_CODE, MISSING_BROWSER_COOKIE, STATE_NOT_FOUND, STATE_EXPIRED, PROVIDER_MISMATCH, BROWSER_MISMATCH, PROVIDER_REJECTED 중 하나다. 공개401/503 등 기존 응답은 유지한다.
+- `AUTH_CALLBACK_COMPLETED provider=KAKAO client=app`: 트랜잭션이 커밋돼 티켓과 복귀 응답을 구성했다. **브라우저가 실제 앱을 열었거나 티켓 교환에 성공했다는 뜻은 아니다.**
+- 로그에는 code·state/해시·쿠키·nonce·티켓·JWT·사용자 ID·이름·예외 본문·요청 URL을 기록하지 않는다. 제공자/client는 허용 목록으로 제한한다. 요청별 추적 ID나 전체 접근 로그를 추가하지 않는다.
+- Android 복귀 실패의 원인과 실기기 재현은 [FC-026](flow-changes/2026-10-22-android-auth-logout.md)에 별도 기록한다.
+
 ## 탈퇴
 
 - `DELETE /api/v1/users/me` → 204 + 쿠키 만료.

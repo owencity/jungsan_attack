@@ -64,7 +64,18 @@ class AuthApiSpec : StringSpec({
     "앱 Bearer 로그아웃은 204와 쿠키 만료를 반환한다" {
         mvc.perform(post("/api/v1/auth/logout").header("Authorization","Bearer $app"))
             .andExpect(status().isNoContent).andExpect(header().string("Set-Cookie",org.hamcrest.Matchers.containsString("Max-Age=0")))
+            .andExpect(header().string("Cache-Control","no-store"))
         Mockito.verify(flow).logout(app)
+    }
+    "웹 로그아웃은 본인 쿠키를 무효화하고 같은 속성으로 만료한다" {
+        val response=mvc.perform(post("/api/v1/auth/logout").cookie(web))
+            .andExpect(status().isNoContent).andExpect(header().string("Cache-Control","no-store"))
+            .andReturn().response
+        val expiredCookie=checkNotNull(response.getHeader("Set-Cookie"))
+        listOf("jeongsan_token=", "Max-Age=0", "Path=/", "Secure", "HttpOnly", "SameSite=Lax")
+            .forEach { attribute -> expiredCookie.contains(attribute) shouldBe true }
+        response.contentAsByteArray.size shouldBe 0
+        Mockito.verify(flow).logout(web.value)
     }
     "웹 토큰을 Bearer로 쓰거나 앱 토큰을 쿠키로 쓰면 거절한다" {
         mvc.perform(post("/api/v1/auth/logout").header("Authorization","Bearer ${web.value}")).andExpect(status().isUnauthorized)

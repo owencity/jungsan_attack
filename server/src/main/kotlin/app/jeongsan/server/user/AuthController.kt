@@ -32,6 +32,7 @@ class AuthController(private val flow: AuthFlowService, private val userService:
         val result=flow.start(provider,client,path,challenge)
         val binding=ResponseCookie.from(bindingName(result.state),result.browser).httpOnly(true).secure(secure)
             .sameSite(if(provider=="APPLE"&&secure) "None" else "Lax").path("/api/v1/auth").maxAge(Duration.ofMinutes(5)).build()
+        AuthCallbackLog.started(provider, client)
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(result.location)).header(HttpHeaders.SET_COOKIE,binding.toString())
             .header(HttpHeaders.CACHE_CONTROL,"no-store").build()
     }
@@ -40,7 +41,10 @@ class AuthController(private val flow: AuthFlowService, private val userService:
     @PostMapping("/api/v1/auth/apple/callback", consumes=[MediaType.APPLICATION_FORM_URLENCODED_VALUE])
     fun appleCallback(@RequestParam code: String, @RequestParam state: String, request: HttpServletRequest) = finish("APPLE",code,state,request)
     private fun finish(provider: String,code: String,state: String,request: HttpServletRequest): ResponseEntity<Unit> {
-        if(!Regex("[A-Za-z0-9_-]{43}").matches(state)) throw app.jeongsan.server.common.UnauthenticatedException()
+        if(!Regex("[A-Za-z0-9_-]{43}").matches(state)) {
+            AuthCallbackLog.failed(provider, AuthCallbackLog.Failure.INVALID_STATE)
+            throw app.jeongsan.server.common.UnauthenticatedException()
+        }
         val browser=request.cookies?.firstOrNull { it.name==bindingName(state) }?.value
         val result=flow.finish(provider,state,browser,code)
         val target=if(result.client=="app") "jeongsan://auth?ticket=${result.credential}" else
@@ -51,6 +55,8 @@ class AuthController(private val flow: AuthFlowService, private val userService:
             .header(HttpHeaders.SET_COOKIE,ResponseCookie.from(bindingName(state),"").httpOnly(true).secure(secure)
                 .sameSite(if(provider=="APPLE"&&secure) "None" else "Lax").path("/api/v1/auth").maxAge(0).build().toString())
         if(result.client=="web") response.header(HttpHeaders.SET_COOKIE,cookie(result.credential,secure,expiryDays).toString())
+        // 서비스의 트랜잭션이 커밋된 뒤다. 브라우저가 실제로 앱을 열었다는 의미는 아니다.
+        AuthCallbackLog.completed(provider, result.client)
         return response.build()
     }
     @PostMapping("/api/v1/auth/app/exchange")
@@ -59,7 +65,8 @@ class AuthController(private val flow: AuthFlowService, private val userService:
     @PostMapping("/api/v1/auth/logout")
     fun logout(@LoginUser userId: Long, request: HttpServletRequest): ResponseEntity<Unit> {
         flow.logout(AuthPolicy.token(request.getHeader(HttpHeaders.AUTHORIZATION),request.cookies?.firstOrNull { it.name==COOKIE_NAME }?.value).first)
-        return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE,cookie("",secure,0).toString()).build()
+        return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE,cookie("",secure,0).toString())
+            .header(HttpHeaders.CACHE_CONTROL,"no-store").build()
     }
     @GetMapping("/api/v1/auth/me")
     fun me(@LoginUser userId: Long): MeResponse = userService.me(userId)
