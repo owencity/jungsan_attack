@@ -1,0 +1,16 @@
+{
+  "base": "560fee34cb704c40c3273238eb2bd38e31edd719",
+  "code_head": "89fd5ee8f69f8d4f639389047988bba2f5ec384e",
+  "server": {
+    "tests": 184,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "compileKotlin": "passed",
+  "bootJar": "passed",
+  "python_syntax": "passed",
+  "real_android_login": "not reproduced",
+  "root_cause": "unconfirmed",
+  "production_deployment": "pending"
+}

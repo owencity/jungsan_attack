@@ -85,3 +85,4 @@
 | FC-023 | 다음 차의 나 혼자 시작하기가 headcount 1을 보냄 | 프론트만 (웹/앱 소스 불일치·수정 제안, 실제 빌드 후속) | 서버 최소 2 계약 유지 · GatheringApiSpec·기존 DB HTTP 대조 추가, 실행 결과는 PR 검증 기록 | [2026-10-18-app-connection.md](2026-10-18-app-connection.md) |
 | FC-024 | 정산방 메시지 신고·차단·금칙어·약관 동의 | 반영됨 (백엔드 API v13, 프론트·운영 일일 확인은 별도) | [PR #42](https://github.com/owencity/jungsan_attack/pull/42) · 019/029·서버170·실제 DB/HTTP29 · 로그 ⓐ·2명 숨김, 운영 결과는 PR 본문 | [2026-10-20-ugc-safety.md](2026-10-20-ugc-safety.md) |
 | FC-025 | Apple 로그인 콜백(form_post)이 403 Invalid CORS request — 웹·앱 Apple 로그인 실패 | 반영됨 (백엔드 API v14, 실계정 E2E 후속) | fix/apple-callback-cors · 콜백 전용 Apple POST·실제 MVC/HTTP 회귀, 병합·운영 결과는 PR에 기록 | [2026-10-21-apple-callback-cors.md](2026-10-21-apple-callback-cors.md) |
+| FC-026 | 앱 로그인 뒤 앱으로 안 돌아옴(안드로이드 카카오톡 로그인 → 빈 화면) | 열림 (A안 구현·운영/실기기 후속) | PR #47 · 앱200 HTML·Intent/기존 스킴 수동 링크·티켓5분·일회용/PKCE 유지, 실행 결과는 PR | [2026-10-22-app-return-page.md](2026-10-22-app-return-page.md) |

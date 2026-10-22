@@ -1,0 +1,18 @@
+{
+  "original_code_head": "89fd5ee8f69f8d4f639389047988bba2f5ec384e",
+  "code_head": "4d8f1049f577539fcf7ba69cada87ebebd1f5484",
+  "files": [
+    {
+      "path": "changes.diff",
+      "sha256": "e92188501771d6462bdfde0135d3f98de8ca04132d9a35bdbeb908cdbe8b2764"
+    },
+    {
+      "path": "verify-auth-release.py",
+      "sha256": "ad850104858f22f36c9ab28d8a50862cdc45309ce7651e4a04c36729a519ac28"
+    },
+    {
+      "path": "guide.md",
+      "sha256": "2f377184d661bdc0c4c9cc5a32699d164bdbb0bf92f354793661c70ce96644c1"
+    }
+  ]
+}

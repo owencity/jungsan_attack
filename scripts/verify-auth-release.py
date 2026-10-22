@@ -40,6 +40,27 @@ web=jwt(uid);app=jwt(uid,"APP")
 call("GET","/auth/me",web);call("GET","/auth/me",app,"APP");check(True,"실제 리졸버가 웹 쿠키·앱 Bearer 계정을 조회")
 call("GET","/auth/me",web,"APP",status=401);call("GET","/auth/me",app,"WEB",status=401);check(True,"APP/WEB 교차 사용은 실제 HTTP 401")
 call("POST","/auth/logout",app,"APP",status=204);call("GET","/auth/me",app,"APP",status=401);check(True,"로그아웃 후 동일 Bearer 복사본이 401")
+# 동일 계정의 다른 기기는 유지하고 현재 자격만 무효화하는 기존 계약을 검증한다.
+logout_web=jwt(uid);other_device=jwt(uid,"APP")
+_,_,logout_headers=call("POST","/auth/logout",logout_web,status=204)
+check(logout_headers.get("Cache-Control")=="no-store" and all(attribute in logout_headers.get("Set-Cookie","") for attribute in
+    ["Max-Age=0","Path=/","HttpOnly","SameSite=Lax"]) and "Secure" not in logout_headers.get("Set-Cookie",""),
+    "로컬 HTTP 웹 로그아웃 204는 비Secure 쿠키 만료·캐시 금지")
+call("GET","/auth/me",logout_web,status=401)
+call("POST","/auth/logout",logout_web,status=401)
+check(True,"로그아웃 쿠키의 보호 API·반복 로그아웃은 기존 401")
+call("GET","/auth/me",web);call("GET","/auth/me",other_device,"APP")
+check(True,"현재 자격 로그아웃은 같은 계정의 다른 WEB·APP 토큰을 유지")
+concurrent_logout=jwt(uid,"APP")
+with ThreadPoolExecutor(4) as pool:
+    logout_replies=list(pool.map(lambda _:call("POST","/auth/logout",concurrent_logout,"APP",status=None),range(4)))
+check(any(reply[0]==204 for reply in logout_replies) and all(reply[0] in [204,401] for reply in logout_replies),
+      "동시 로그아웃은 204 또는 이미 무효화된 401이며 500 없음")
+check(sql("SELECT COUNT(*) FROM auth_revocations WHERE token_hash='"+hashlib.sha256(concurrent_logout.encode()).hexdigest()+"'")=="1",
+      "동시 로그아웃의 무효화 행은 정확히 한 개")
+call("GET","/auth/me",concurrent_logout,"APP",status=401)
+call("POST","/auth/logout",status=401)
+check(True,"동시 로그아웃 이후 재사용·무인증 로그아웃은 401")
 verifier="v"*43;challenge=enc(hashlib.sha256(verifier.encode()).digest());ticket=enc(uuid.uuid4().bytes+uuid.uuid4().bytes);th=hashlib.sha256(ticket.encode()).hexdigest()
 sql(f"INSERT INTO auth_tickets VALUES('{th}',{uid},'{challenge}',UTC_TIMESTAMP()+INTERVAL 50 SECOND)")
 call("POST","/auth/app/exchange",body={"ticket":ticket,"codeVerifier":"x"*43},status=401)

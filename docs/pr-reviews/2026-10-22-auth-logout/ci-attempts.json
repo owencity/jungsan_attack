@@ -1,0 +1,11 @@
+[
+  {
+    "run": 39758535100,
+    "head": "8cd0744515b387e782202bf00379e166897bd459",
+    "conclusion": "failure",
+    "core": 54,
+    "server": 184,
+    "reason": "local HTTP test incorrectly required Secure cookie",
+    "fix_code_head": "4d8f1049f577539fcf7ba69cada87ebebd1f5484"
+  }
+]

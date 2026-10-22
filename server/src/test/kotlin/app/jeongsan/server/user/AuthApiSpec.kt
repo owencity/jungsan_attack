@@ -12,6 +12,7 @@ import org.mockito.Mockito
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
+import org.springframework.http.converter.StringHttpMessageConverter
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -23,7 +24,7 @@ class AuthApiSpec : StringSpec({
     val jwt=JwtService("01234567890123456789012345678901",30)
     val mvc=MockMvcBuilders.standaloneSetup(AuthController(flow,service,"https://web.test/jungsan","https://web.test",true,30),UserController(service,deletion,true))
         .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt)).setControllerAdvice(GlobalExceptionHandler())
-        .setMessageConverters(JacksonJsonHttpMessageConverter(jacksonMapperBuilder().build())).build()
+        .setMessageConverters(StringHttpMessageConverter(Charsets.UTF_8),JacksonJsonHttpMessageConverter(jacksonMapperBuilder().build())).build()
     val web=Cookie(AuthController.COOKIE_NAME,jwt.issue(12)); val app=jwt.issue(12,"APP")
     val state="s".repeat(43)
     beforeTest { Mockito.reset(flow,service,deletion) }
@@ -41,11 +42,14 @@ class AuthApiSpec : StringSpec({
             .andExpect(header().string("Cache-Control","no-store"))
         Mockito.verify(flow).finish("APPLE",state,"browser","code")
     }
-    "앱 콜백에는 JWT 대신 티켓만 딥링크에 담는다" {
-        Mockito.`when`(flow.finish("KAKAO",state,"browser","code")).thenReturn(AuthFinish("app","/jungsan/","ticket"))
+    "앱 콜백은 JWT 대신 티켓을 담은 완료 페이지와 복귀 버튼을 반환한다" {
+        val ticket="t".repeat(43)
+        Mockito.`when`(flow.finish("KAKAO",state,"browser","code")).thenReturn(AuthFinish("app","/jungsan/",ticket))
         val response=mvc.perform(get("/api/v1/auth/kakao/callback").param("code","code").param("state",state)
-            .cookie(Cookie(AuthController.bindingName(state),"browser"))).andExpect(status().isSeeOther)
-            .andExpect(header().string("Location","jeongsan://auth?ticket=ticket")).andReturn().response
+            .cookie(Cookie(AuthController.bindingName(state),"browser"))).andExpect(status().isOk)
+            .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+            .andExpect(header().doesNotExist("Location")).andReturn().response
+        response.contentAsString.contains("jeongsan://auth?ticket=$ticket") shouldBe true
         response.getHeaders("Set-Cookie").any { it.startsWith("jeongsan_token=") } shouldBe false
     }
     "콜백의 잘못된 state는 서비스·제공자를 호출하지 않는다" {
@@ -64,7 +68,18 @@ class AuthApiSpec : StringSpec({
     "앱 Bearer 로그아웃은 204와 쿠키 만료를 반환한다" {
         mvc.perform(post("/api/v1/auth/logout").header("Authorization","Bearer $app"))
             .andExpect(status().isNoContent).andExpect(header().string("Set-Cookie",org.hamcrest.Matchers.containsString("Max-Age=0")))
+            .andExpect(header().string("Cache-Control","no-store"))
         Mockito.verify(flow).logout(app)
+    }
+    "웹 로그아웃은 본인 쿠키를 무효화하고 같은 속성으로 만료한다" {
+        val response=mvc.perform(post("/api/v1/auth/logout").cookie(web))
+            .andExpect(status().isNoContent).andExpect(header().string("Cache-Control","no-store"))
+            .andReturn().response
+        val expiredCookie=checkNotNull(response.getHeader("Set-Cookie"))
+        listOf("jeongsan_token=", "Max-Age=0", "Path=/", "Secure", "HttpOnly", "SameSite=Lax")
+            .forEach { attribute -> expiredCookie.contains(attribute) shouldBe true }
+        response.contentAsByteArray.size shouldBe 0
+        Mockito.verify(flow).logout(web.value)
     }
     "웹 토큰을 Bearer로 쓰거나 앱 토큰을 쿠키로 쓰면 거절한다" {
         mvc.perform(post("/api/v1/auth/logout").header("Authorization","Bearer ${web.value}")).andExpect(status().isUnauthorized)

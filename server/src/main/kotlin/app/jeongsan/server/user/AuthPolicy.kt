@@ -6,9 +6,19 @@ import java.net.URI
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.Base64
+import java.util.Locale
 
 /** 같은 리다이렉트·티켓 규칙을 Java와 독립 비교한다. 시계·DB·HTTP는 호출부에서 제공한다. */
 object AuthPolicy {
+    fun appTicketExpiresAt(now: Instant): Instant = now.plusSeconds(300)
+
+    fun appReturnLink(ticket: String, userAgent: String?): String {
+        if (!Regex("[A-Za-z0-9_-]{43}").matches(ticket)) throw UnauthenticatedException()
+        return if (userAgent?.lowercase(Locale.ROOT)?.contains("android") == true)
+            "intent://auth?ticket=$ticket#Intent;scheme=jeongsan;package=app.jeongsan;end"
+        else "jeongsan://auth?ticket=$ticket"
+    }
+
     // 실명은 L2에서 받으므로 Apple 이름·이메일 동의를 요청하지 않는다.
     fun appleAuthorizationParameters(nonce: String): Map<String, String> = mapOf(
         "response_mode" to "form_post",

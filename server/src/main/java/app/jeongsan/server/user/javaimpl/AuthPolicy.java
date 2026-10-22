@@ -14,6 +14,15 @@ import java.util.HexFormat;
 
 /** Java 학습 구현. Kotlin 정책으로 위임하지 않는다. */
 public final class AuthPolicy {
+    public static Instant appTicketExpiresAt(Instant now) { return now.plusSeconds(300); }
+
+    public static String appReturnLink(String ticket, String userAgent) {
+        if (!ticket.matches("[A-Za-z0-9_-]{43}")) throw new UnauthenticatedException();
+        if (userAgent != null && userAgent.toLowerCase(java.util.Locale.ROOT).contains("android"))
+            return "intent://auth?ticket=" + ticket + "#Intent;scheme=jeongsan;package=app.jeongsan;end";
+        return "jeongsan://auth?ticket=" + ticket;
+    }
+
     // 실명은 L2에서 받으므로 Apple 이름·이메일 동의를 요청하지 않는다.
     public static Map<String, String> appleAuthorizationParameters(String nonce) {
         return Map.of("response_mode", "form_post", "nonce", nonce);
