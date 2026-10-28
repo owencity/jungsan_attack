@@ -33,6 +33,16 @@ def call(verb,path,token=None,client="WEB",body=None,status=200):
     decoded=json.loads(data) if data else None
     if status is not None: assert actual==status,(path,actual,status,decoded)
     return actual,decoded,rh
+# 공개 데모는 인증 토큰을 만들지 않고 고정 앱 안내만 반환한다.
+with urlopen(BASE + "/review/demo", timeout=20) as demo_reply:
+    demo_html = demo_reply.read().decode("utf-8")
+    check(demo_reply.status == 200 and 'href="jeongsan://demo"' in demo_html
+          and "가상 데이터" in demo_html, "실제 HTTP 공개 데모 안내는200·고정앱링크·가상데이터 표시")
+    check(demo_reply.headers.get("Cache-Control") == "no-store"
+          and demo_reply.headers.get("Referrer-Policy") == "no-referrer"
+          and demo_reply.headers.get("Set-Cookie") is None
+          and "script-src 'none'" in demo_reply.headers.get("Content-Security-Policy", ""),
+          "공개 안내는 인증 쿠키 발급 없이 캐시·참조자·스크립트를 제한")
 key=str(uuid.uuid4())
 challenge_count = sql("SELECT COUNT(*) FROM auth_challenges")
 for invalid_path in (
