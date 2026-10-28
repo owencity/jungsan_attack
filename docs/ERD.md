@@ -287,6 +287,16 @@ docker rm -f jeongsan-mysql-test && docker network rm jeongsan-test-net
       갱신 — 엑셀은 이 문서와 달리 손으로 열어 고쳐야 한다, 아직 안 함
 
 
+## 2026-10-28 iOS 인증 세션 복귀 선택
+
+진실은 `020-auth-session-return.yaml`의 changeSet030이다. 기존 auth_challenges의 컬럼과 적용 changelog는 변경하지 않는다.
+
+| 테이블 | 키·참조·역할 |
+|---|---|
+| auth_session_returns | state_hash CHAR(64) PK, auth_challenges.state_hash FK ON DELETE CASCADE. 행 존재=session303, 부재=기존page. 원문state·티켓·개인정보는 저장하지 않음 |
+
+기존 바이너리의 auth_challenges8개 VALUES INSERT와 롤백을 지원하려고 부모에 컬럼을 늘리지 않는다. state 소비·기존 만료 정리 시 표식도 함께 제거한다. 엔티티 대신 AuthFlowService/GatheringStore가 같은 DataSource의 트랜잭션으로 접근한다.
+
 ## 2026-10-07 v4 구현 스키마
 
 진실은 `016-independent-settlement-units.yaml`의 새 changeSet 024~026이다. 기존 changelog는 수정하지 않았다.

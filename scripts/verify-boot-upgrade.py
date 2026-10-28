@@ -157,10 +157,11 @@ def verify():
     check(current_history[:len(previous_history)] == previous_history,
           "Boot 4 기동 뒤 기존 changeSet·체크섬·실행 시각 불변")
     added_history = [row.split("\t") for row in current_history[len(previous_history):]]
-    check(len(added_history) == 1 and added_history[0][0:3] ==
-          ["029-ugc-safety", "jeongsan", "db/changelog/019-ugc-safety.yaml"]
-          and added_history[0][3].startswith("9:") and added_history[0][5] == "EXECUTED",
-          "신고·차단 신규 changeSet 029만 정확히 한 번 추가 적용")
+    check([row[0:3] for row in added_history] == [
+          ["029-ugc-safety", "jeongsan", "db/changelog/019-ugc-safety.yaml"],
+          ["030-auth-session-return", "jeongsan", "db/changelog/020-auth-session-return.yaml"],
+          ] and all(row[3].startswith("9:") and row[5] == "EXECUTED" for row in added_history),
+          "신고·차단029와 인증 세션030만 순서대로 정확히 한 번 추가 적용")
     check(sql(f"SELECT HEX(payout_encrypted) FROM users WHERE id={state['host_id']}") == state["payout_hex"],
           "구버전 계좌 암호문을 변경·재암호화하지 않음")
     me = call("GET", "/auth/me", state["host"])

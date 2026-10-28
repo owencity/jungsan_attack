@@ -34,6 +34,15 @@ def call(verb,path,token=None,client="WEB",body=None,status=200):
     if status is not None: assert actual==status,(path,actual,status,decoded)
     return actual,decoded,rh
 key=str(uuid.uuid4())
+challenge_count = sql("SELECT COUNT(*) FROM auth_challenges")
+for invalid_path in (
+    "/auth/kakao/login?client=web&appReturn=session",
+    "/auth/apple/login?client=app&appReturn=unknown&codeChallenge=" + "c" * 43,
+):
+    invalid_reply = call("GET", invalid_path, status=400)[1]
+    assert invalid_reply["code"] == "MALFORMED_REQUEST"
+check(sql("SELECT COUNT(*) FROM auth_challenges") == challenge_count,
+      "인증 세션 모드 오류는 실제 HTTP400이며 OAuth state를 만들지 않음")
 sql(f"INSERT INTO users(provider,provider_id,nickname,display_name,created_at) VALUES('AUTH_TEST','{key}','로그인검증','김검증',UTC_TIMESTAMP());")
 uid=int(sql(f"SELECT id FROM users WHERE provider_id='{key}'"))
 web=jwt(uid);app=jwt(uid,"APP")

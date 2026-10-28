@@ -14,6 +14,19 @@ import java.util.HexFormat;
 
 /** Java 학습 구현. Kotlin 정책으로 위임하지 않는다. */
 public final class AuthPolicy {
+    public static String appReturnMode(String client, String value) {
+        String mode = value == null ? "page" : value;
+        if ((!"page".equals(mode) && !"session".equals(mode)) ||
+                (!"app".equals(client) && !"page".equals(mode)))
+            throw new MalformedRequestException("appReturn은 앱에서 page 또는 session으로 지정합니다.");
+        return mode;
+    }
+
+    public static String appSessionReturnLink(String ticket) {
+        if (!ticket.matches("[A-Za-z0-9_-]{43}")) throw new UnauthenticatedException();
+        return "jeongsan://auth?ticket=" + ticket;
+    }
+
     public static Instant appTicketExpiresAt(Instant now) { return now.plusSeconds(300); }
 
     public static String appReturnLink(String ticket, String userAgent) {

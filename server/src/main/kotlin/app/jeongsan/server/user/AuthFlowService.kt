@@ -15,7 +15,7 @@ import java.time.Instant
 import java.util.Base64
 
 data class AuthStart(val state: String, val browser: String, val location: String)
-data class AuthFinish(val client: String, val returnTo: String, val credential: String)
+data class AuthFinish(val client: String, val returnTo: String, val credential: String, val appReturnMode: String = "page")
 data class AppExchangeRequest(val ticket: String, val codeVerifier: String)
 data class AppExchangeResponse(val token: String, val expiresAt: Instant)
 
@@ -26,13 +26,17 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
     // 계좌 암호화와 키는 분리하되 AES GCM 형식은 공용 인프라로 사용한다.
     private val cipher = PayoutCipher(key)
     private fun random() = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32).also { SecureRandom().nextBytes(it) })
-    fun start(provider: String, client: String, returnTo: String?, challenge: String?): AuthStart {
+    fun start(provider: String, client: String, returnTo: String?, challenge: String?, appReturn: String? = null): AuthStart {
         AuthPolicy.client(client)
+        val appReturnMode = AuthPolicy.appReturnMode(client, appReturn)
         val path=AuthPolicy.returnTo(returnTo); val app=AuthPolicy.challenge(client,challenge)
         val state=random(); val browser=random(); val nonce=random()
         val location=gateway.authorize(provider,state,nonce)
-        db.update("INSERT INTO auth_challenges VALUES(:s,:p,:c,:r,:n,:b,:a,:e)","s" to AuthPolicy.hash(state),"p" to provider,
+        // 기존 바이너리는 VALUES 전체 INSERT이므로 부모 컬럼을 추가하면 운영 롤백이 깨진다.
+        db.update("INSERT INTO auth_challenges(state_hash,provider,client,return_to,nonce,browser_hash,app_challenge,expires_at) VALUES(:s,:p,:c,:r,:n,:b,:a,:e)","s" to AuthPolicy.hash(state),"p" to provider,
             "c" to client,"r" to path,"n" to nonce,"b" to AuthPolicy.hash(browser),"a" to app,"e" to Instant.now().plusSeconds(300))
+        if (appReturnMode == "session") db.update("INSERT INTO auth_session_returns(state_hash) VALUES(:stateHash)",
+            "stateHash" to AuthPolicy.hash(state))
         return AuthStart(state,browser,location)
     }
     fun finish(provider: String, state: String, browser: String?, code: String): AuthFinish {
@@ -63,11 +67,13 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
                 "u" to uid,"c" to identity.clientId,"t" to cipher.encrypt(identity.refreshToken))
             else if(db.rows("SELECT user_id FROM auth_credentials WHERE user_id=:u","u" to uid).isEmpty()) throw UnauthenticatedException()
         }
+        val appReturnMode = if (row.text("client") == "app" && db.rows(
+            "SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to AuthPolicy.hash(state)).isNotEmpty()) "session" else "page"
         db.update("DELETE FROM auth_challenges WHERE state_hash=:s","s" to AuthPolicy.hash(state))
         if(row.text("client")=="web") return AuthFinish("web",row.text("return_to"),jwt.issue(uid))
         val ticket=random()
         db.update("INSERT INTO auth_tickets VALUES(:t,:u,:a,:e)","t" to AuthPolicy.hash(ticket),"u" to uid,"a" to row.text("app_challenge"),"e" to AuthPolicy.appTicketExpiresAt(Instant.now()))
-        return AuthFinish("app",row.text("return_to"),ticket)
+        return AuthFinish("app",row.text("return_to"),ticket,appReturnMode)
     }
     fun exchange(request: AppExchangeRequest): AppExchangeResponse {
         if(!Regex("[A-Za-z0-9_-]{43}").matches(request.ticket)) throw UnauthenticatedException()

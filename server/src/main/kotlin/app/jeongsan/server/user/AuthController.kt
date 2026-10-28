@@ -24,12 +24,12 @@ class AuthController(private val flow: AuthFlowService, private val userService:
     @param:Value("\${jwt.expiration-days}") private val expiryDays: Long) {
     @GetMapping("/api/v1/auth/kakao/login")
     fun login(@RequestParam(defaultValue="web") client: String, @RequestParam(required=false) returnTo: String?,
-        @RequestParam(required=false) codeChallenge: String?) = start("KAKAO",client,returnTo,codeChallenge)
+        @RequestParam(required=false) codeChallenge: String?, @RequestParam(required=false) appReturn: String?) = start("KAKAO",client,returnTo,codeChallenge,appReturn)
     @GetMapping("/api/v1/auth/apple/login")
     fun appleLogin(@RequestParam(defaultValue="web") client: String, @RequestParam(required=false) returnTo: String?,
-        @RequestParam(required=false) codeChallenge: String?) = start("APPLE",client,returnTo,codeChallenge)
-    private fun start(provider: String,client: String,path: String?,challenge: String?): ResponseEntity<Unit> {
-        val result=flow.start(provider,client,path,challenge)
+        @RequestParam(required=false) codeChallenge: String?, @RequestParam(required=false) appReturn: String?) = start("APPLE",client,returnTo,codeChallenge,appReturn)
+    private fun start(provider: String,client: String,path: String?,challenge: String?,appReturn: String?): ResponseEntity<Unit> {
+        val result=flow.start(provider,client,path,challenge,appReturn)
         val binding=ResponseCookie.from(bindingName(result.state),result.browser).httpOnly(true).secure(secure)
             .sameSite(if(provider=="APPLE"&&secure) "None" else "Lax").path("/api/v1/auth").maxAge(Duration.ofMinutes(5)).build()
         AuthCallbackLog.started(provider, client)
@@ -47,7 +47,10 @@ class AuthController(private val flow: AuthFlowService, private val userService:
         }
         val browser=request.cookies?.firstOrNull { it.name==bindingName(state) }?.value
         val result=flow.finish(provider,state,browser,code)
-        val response=if(result.client=="app") ResponseEntity.ok() else {
+        val authSession = result.client == "app" && result.appReturnMode == "session"
+        val response=if(authSession) ResponseEntity.status(HttpStatus.SEE_OTHER)
+            .location(URI.create(AuthPolicy.appSessionReturnLink(result.credential)))
+        else if(result.client=="app") ResponseEntity.ok() else {
             val target=if(result.returnTo=="/jungsan/") loginSuccessUrl else frontendOrigin.trimEnd('/')+result.returnTo
             ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(target))
         }
@@ -58,7 +61,8 @@ class AuthController(private val flow: AuthFlowService, private val userService:
         if(result.client=="web") response.header(HttpHeaders.SET_COOKIE,cookie(result.credential,secure,expiryDays).toString())
         // 서비스의 트랜잭션이 커밋된 뒤다. 브라우저가 실제로 앱을 열었다는 의미는 아니다.
         AuthCallbackLog.completed(provider, result.client)
-        return if(result.client=="app") response.contentType(MediaType("text", "html", Charsets.UTF_8))
+        return if(authSession) response.build()
+        else if(result.client=="app") response.contentType(MediaType("text", "html", Charsets.UTF_8))
             .header("Content-Security-Policy",AppReturnPage.contentSecurityPolicy)
             .header("X-Content-Type-Options","nosniff")
             .body(AppReturnPage.html(result.credential,request.getHeader(HttpHeaders.USER_AGENT)))

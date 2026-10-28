@@ -57,6 +57,34 @@ fun main() {
         fun rejects(code: String,action: ()->Unit) { try { action(); error("expected $code") } catch(e: ApiException) { check(e.code==code) {e.code} } }
         val verifier="a".repeat(43)
         val challenge=Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray()))
+        val challengeCount = db.rows("SELECT state_hash FROM auth_challenges").size
+        listOf("", "SESSION", "https://evil.test").forEach { invalidMode ->
+            rejects("MALFORMED_REQUEST") { flow.start("KAKAO", "app", null, challenge, invalidMode) }
+        }
+        rejects("MALFORMED_REQUEST") { flow.start("KAKAO", "web", null, null, "session") }
+        check(db.rows("SELECT state_hash FROM auth_challenges").size == challengeCount)
+        check(gateway.calls == 0)
+        passed("잘못된 복귀 모드는 state 기록·제공자 교환 전에 거절")
+        val sessionStart = flow.start("KAKAO", "app", null, challenge, "session")
+        val sessionHash = AuthPolicy.hash(sessionStart.state)
+        check(db.rows("SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to sessionHash).size == 1)
+        val sessionFinish = flow.finish("KAKAO", sessionStart.state, sessionStart.browser, "good")
+        check(sessionFinish.appReturnMode == "session")
+        check(db.rows("SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to sessionHash).isEmpty())
+        rejects("UNAUTHENTICATED") { flow.finish("KAKAO", sessionStart.state, sessionStart.browser, "good") }
+        flow.exchange(AppExchangeRequest(sessionFinish.credential, verifier))
+        passed("인증 세션 선택 저장·콜백 소비·표식CASCADE·PKCE 교환·재사용 거절")
+        val staleSession = flow.start("KAKAO", "app", null, challenge, "session")
+        db.update("DELETE FROM auth_challenges WHERE state_hash=:stateHash", "stateHash" to AuthPolicy.hash(staleSession.state))
+        check(db.rows("SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to AuthPolicy.hash(staleSession.state)).isEmpty())
+        passed("기존 state 정리 경로도 인증 세션 표식을 함께 제거")
+        // 이전 운영 바이너리의8개 VALUES INSERT를 새 스키마에서도 그대로 실행한다.
+        val legacyHash = AuthPolicy.hash(UUID.randomUUID().toString())
+        db.update("INSERT INTO auth_challenges VALUES(:stateHash,'KAKAO','web','/jungsan/',:nonce,:browser,NULL,:expiry)",
+            "stateHash" to legacyHash, "nonce" to "n".repeat(43), "browser" to "b".repeat(64), "expiry" to Instant.now().plusSeconds(300))
+        db.update("DELETE FROM auth_challenges WHERE state_hash=:stateHash", "stateHash" to legacyHash)
+        passed("이전 운영 바이너리의 컬럼 목록 없는INSERT도 새 스키마에서 성공")
+        gateway.calls = 0
         val start=flow.start("KAKAO","app",null,challenge)
         rejects("UNAUTHENTICATED") { flow.finish("KAKAO",start.state,null,"good") }
         rejects("UNAUTHENTICATED") { flow.finish("APPLE",start.state,start.browser,"good") }
@@ -65,6 +93,7 @@ fun main() {
         check(db.rows("SELECT state_hash FROM auth_challenges WHERE state_hash=:h","h" to AuthPolicy.hash(start.state)).size==1)
         passed("외부 인가 실패 시 상태 소비·가입을 rollback")
         val finish=flow.finish("KAKAO",start.state,start.browser,"good")
+        check(finish.appReturnMode == "page")
         val persistedExpiry=checkNotNull(db.rows("SELECT expires_at FROM auth_tickets WHERE ticket_hash=:h",
             "h" to AuthPolicy.hash(finish.credential)).single().instant("expires_at"))
         check(java.time.Duration.between(Instant.now(),persistedExpiry).seconds in 295L..300L)
