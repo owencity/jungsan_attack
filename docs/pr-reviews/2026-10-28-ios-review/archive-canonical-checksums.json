@@ -1,0 +1,147 @@
+{
+  "snapshot_commit": "2d3a39b88a9b03ec4abecabd4f1cb6fcaf650872",
+  "source_manifest": "docs/study-guides/ios-review-v1/manifest.json",
+  "hash_basis": "canonical Git blob bytes",
+  "files": [
+    {
+      "path": "after/DEVLOG.md",
+      "sha256": "34d07cca854a6b54c95323a8c9061c61c2e791e8004a575cf3caebb9d9fe106e"
+    },
+    {
+      "path": "after/docs/API.md",
+      "sha256": "483b08a8bd27d59f071133e7a9374fc982402b5c31a50cfc00b5490b91e5549d"
+    },
+    {
+      "path": "after/docs/AUTH_RELEASE.md",
+      "sha256": "a1e6d122979aec2b0b4eacd5c1d3b3105792ec39e1c8ebc44c79169864ddc9fd"
+    },
+    {
+      "path": "after/docs/ERD.md",
+      "sha256": "6dc0e092d1ed2081154c8dff73a8e5cd9565fd1cc703a69958c544c734aa70f4"
+    },
+    {
+      "path": "after/docs/flow-changes/2026-10-28-ios-review-access.md",
+      "sha256": "caa5c8467702d68b498d8253f323b5a172ce499e3458f8e5e858e446dc8f04f6"
+    },
+    {
+      "path": "after/docs/flow-changes/README.md",
+      "sha256": "2db875d40ec9164401370ebb46638cfd8ad5be640acd3c6c2eaf3470f5659e08"
+    },
+    {
+      "path": "after/docs/operations/app-review-access.md",
+      "sha256": "dbc4d74586b39e86ba395ed66502ead5d9b69b43d9371fd1f2564f67230d39cd"
+    },
+    {
+      "path": "after/scripts/verify-auth-release.py",
+      "sha256": "cf53368a2af891a2f374d87333dd77ce8cf1c176951d17592ba73499d32fcee5"
+    },
+    {
+      "path": "after/scripts/verify-boot-upgrade.py",
+      "sha256": "f92429c680bd824fb06e2d8049eb8033b7fa25417f12074978ce4a7a87e32a0e"
+    },
+    {
+      "path": "after/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java",
+      "sha256": "5a967cea96597047af4062b0c4984a9239642eaf6d6db42179e6b7d4b6cad096"
+    },
+    {
+      "path": "after/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt",
+      "sha256": "3cb055f3e9274fb0ffa7dc159c3f98e8ad9eba26756b40544ebd6da78c03413f"
+    },
+    {
+      "path": "after/server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "sha256": "bb896273e1415d916fe69e7ed81e443d944487db14d1be982370fadc771d848c"
+    },
+    {
+      "path": "after/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt",
+      "sha256": "a224681516950254c6da01b8fe03aa37dfe21d6880790e2e146160dbd3926ec6"
+    },
+    {
+      "path": "after/server/src/main/resources/db/changelog/020-auth-session-return.yaml",
+      "sha256": "4afe0a95eb65d54c2d77cebbab526a351a2e77643a33c1235be2354c523bdc3f"
+    },
+    {
+      "path": "after/server/src/main/resources/db/changelog/db.changelog-master.yaml",
+      "sha256": "54c542bc624e40dabea36c822b93c9dfcedefd8c0cd0cba3d2cce4aff3f4f55f"
+    },
+    {
+      "path": "after/server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt",
+      "sha256": "95bc19c20fa732bdbc6deea5535c92b0ee284157fe8e1f2fd41b0cdce289c968"
+    },
+    {
+      "path": "after/server/src/test/kotlin/app/jeongsan/server/user/AuthSessionReturnSpec.kt",
+      "sha256": "a61f60888bf6847e25791e3abf6db5997e33660f0ec0e90a6bc84b6ee9cc10d7"
+    },
+    {
+      "path": "before/DEVLOG.md",
+      "sha256": "c4d1208622ba24edaeb3fe961f5ec7a5ff63fb17899fe47bf8d3b9840f4282a2"
+    },
+    {
+      "path": "before/docs/API.md",
+      "sha256": "c8385d621f761c5f97731aead3bc7f9b9753db9df60e6907f69d0e5657cbd140"
+    },
+    {
+      "path": "before/docs/AUTH_RELEASE.md",
+      "sha256": "2bdd5e30cde90234c62e570172e518eb23330688f16bf5c18937467e33bc4566"
+    },
+    {
+      "path": "before/docs/ERD.md",
+      "sha256": "a9fdd47a40919e71281aa412eca2ca35a8926d22567743f82bcce59ee9adcca8"
+    },
+    {
+      "path": "before/docs/flow-changes/README.md",
+      "sha256": "5b71160cfc8d3e6eabbc6f90f721306ff40cea0bde85f403b4dfdac03cde8de7"
+    },
+    {
+      "path": "before/scripts/verify-auth-release.py",
+      "sha256": "ad850104858f22f36c9ab28d8a50862cdc45309ce7651e4a04c36729a519ac28"
+    },
+    {
+      "path": "before/scripts/verify-boot-upgrade.py",
+      "sha256": "b180cd5431e12cb13cfaa22b26d5e9eb1c44e98abcd756066f7fa2cac1993242"
+    },
+    {
+      "path": "before/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java",
+      "sha256": "632c60c4939fb8cc27997ed8d5654aa29f01cfe28baf4220c5446830e2464293"
+    },
+    {
+      "path": "before/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt",
+      "sha256": "3003de10ee0063e678f43f528690414e1d41514bc05b5c60573be8c588b001a4"
+    },
+    {
+      "path": "before/server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt",
+      "sha256": "ee6119286dc03d54d63d9073743fa7736ef3c22e236b9783638a476c78978408"
+    },
+    {
+      "path": "before/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt",
+      "sha256": "7b6d1cb5aae45f4c331510a3be358b84bbe4db0a74695f5b406d11bed99f5e59"
+    },
+    {
+      "path": "before/server/src/main/resources/db/changelog/db.changelog-master.yaml",
+      "sha256": "258af86fca2e3b93cea2ff5c2dfb4ada59c5624b5df50b229cc01a5614f0ee74"
+    },
+    {
+      "path": "before/server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt",
+      "sha256": "1cb628ba71eefb057327e5e1dec44c0afe9592e9f627f8acbeef6c820a39de83"
+    },
+    {
+      "path": "changes.diff",
+      "sha256": "e43eb6a8d279b5a8fa62cf5c6b68bb7a3bc88bc7abc34f0922ed4758bc3f3a1a"
+    },
+    {
+      "path": "guide.md",
+      "sha256": "ddcc9b97f2c969e6f7a3fab42d41aefa186918fdf60b83ffdd54c149809f560e"
+    },
+    {
+      "path": "progress.json",
+      "sha256": "2f1ad3ece46e9a3e319f335de035e4f3c955b0014b17dcfdec0e215848124e4d"
+    },
+    {
+      "path": "STUDY_CATALOG.md",
+      "sha256": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79"
+    },
+    {
+      "path": "STUDY_POLICY.md",
+      "sha256": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3"
+    }
+  ]
+}
