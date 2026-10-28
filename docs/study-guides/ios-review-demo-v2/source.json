@@ -1,0 +1,21 @@
+{
+  "backend": {
+    "base": "1198a49dbba43293d9b37601c4fd6cdb500aaf53",
+    "head": "b753586b014f02e7fbd8fef4fcab4ee0663f0f2a",
+    "repository": "owencity/jungsan_attack"
+  },
+  "app": {
+    "base": "95c4985c39bd0bb67fea1c63d5134fedd1c03c98",
+    "head": "98d9877e8c0a6eadb1620ea943a6beba24848397",
+    "repository": "owencity/jungsan_app"
+  },
+  "study_policy_source": {
+    "repository": "owencity/jungsan_attack",
+    "commit": "8d27496270e6c8adcb78b4580d68c150f9c3cce6",
+    "frozen_directory": "../ios-review-v1",
+    "files": {
+      "STUDY_POLICY.md": "b359ef4d86bb4db357b63b487b3484c570cf1a0fc2c164da3e1127ccbb256ad3",
+      "STUDY_CATALOG.md": "b23b8a201a1c872f107df6b0530192351a0c80e16c59830ee418ee8027736d79"
+    }
+  }
+}

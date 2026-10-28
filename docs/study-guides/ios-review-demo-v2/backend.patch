@@ -1,0 +1,257 @@
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 718dfe5..3470e33 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,11 @@
+ # 개발 결정 로그
+ 
++## [2026-10-28] FC-027 공개 데모 진입을 고정 안내로 제공한다
++- 문제: 심사자가 받은 링크로 새 앱의 다중 사용자 체험을 시작할 수 있어야 하며 앱 담당자 부재로 CTO가 앱 구현도 요청했다.
++- 고려한 대안: 고정 비밀번호·데모 JWT 발급, 운영 가상 계정 생성, 인증과 무관한 고정 안내 페이지와 앱의 별도 가상 상태.
++- 선택 이유·트레이드오프: 공개 GET /api/v1/review/demo는 고정 jeongsan://demo 링크와 설치 안내만 제공한다. 사용자 입력·인증 발급·DB 쓰기 없이 기존 인증을 유지하고 앱 PR1의 역할 전환 데모로 연결한다.
++- 아쉬운 점: 새 앱 설치와 백엔드 배포가 함께 필요하고 커스텀 스킴은 자동 설치를 제공하지 않는다. 로컬 데모는 실제 소셜 로그인·서버 동시성·회원 탈퇴를 검증하지 않으므로 실기기 후속이 남는다.
++
+ ## [2026-10-28] FC-027 iOS 시스템 인증 세션의 직접 복귀를 선택한다
+ - 문제: App Review가 외부 기본 브라우저 로그인과 다중 사용자 기능의 접근 부족을 지적했다. FC-026 HTML만으로 iOS 앱 내부 인증 화면 전환은 해결되지 않는다.
+ - 고려한 대안: 앱 콜백을 전부303으로 되돌리기, UA로 iOS를 추정하기, 시작state에 인증 세션 복귀 선택을 저장하기.
+diff --git a/docs/API.md b/docs/API.md
+index 4b4507f..b6b0cca 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1,4 +1,12 @@
+-# 정산어택 — API 계약 · v16
++# 정산어택 — API 계약 · v17
++
++> **v17 변경(2026-10-28)** — FC-027 공개 데모 진입 안내 페이지.
++>
++> | 절 | 변경 |
++> |---|---|
++> | §0.8 데모 안내 | GET /api/v1/review/demo 공개200 HTML, 고정 jeongsan://demo 버튼. 계정·티켓·JWT 발급 없음 |
++> | FC-027 운영 | 앱 PR과 백엔드 배포 후 링크·제출 빌드 검증, 실제 로그인과 분리 |
++>
+ 
+ > **v16 변경(2026-10-28)** — FC-027 iOS 시스템 인증 세션의 선택적 직접 복귀.
+ >
+@@ -1508,3 +1516,11 @@ SYSTEM·SPOON·참여자·응답·정산·송금은 유지한다. 처리 완료
+ 신규 신고 커밋 뒤 `MESSAGE_REPORTED entryId=… gatheringId=… reason=…`만 로그에 남긴다.
+ 본문·이름·계좌·신고자 ID는 로그에 포함하지 않는다. n8n 없이 운영자가 매일 DB 미처리를 조회한다.
+ 약관 동의 체크·지원 연락처·실기기 재심사 녹화는 프론트/CTO 범위며 termsVersion 저장은 이번에 추가하지 않는다.
++
++## 0.8 공개 데모 진입 안내 (FC-027 · v17)
++
++`GET /api/v1/review/demo`는 로그인 없이200 `text/html;charset=UTF-8` 안내를 반환한다. 설치된 새 앱의 `jeongsan://demo`를 여는 고정 버튼과 로그인 화면의 데모 체험 진입 방법을 제공한다. query를 본문·링크에 반영하지 않는다.
++
++가상 데이터·역할 전환·초기화·실제 송금 없음·앱 설치 필요를 명시한다. 이 페이지는 데모 계정 생성이나 인증 우회가 아니며 JWT·로그인 티켓·쿠키를 발급하지 않는다. `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, 스크립트·외부 리소스·frame·form을 막는CSP를 적용한다.
++
++운영 주소는 `https://jungsan-api.devkdk.com/api/v1/review/demo`. 페이지 배포와 새 앱 빌드 설치를 모두 확인한 뒤 심사 정보에 적는다. 실제 소셜 로그인·탈퇴 검증은 데모와 별도다. [앱 구현 PR](https://github.com/owencity/jungsan_app/pull/1), [운영 준비](operations/app-review-access.md).
+diff --git a/docs/flow-changes/2026-10-28-ios-review-access.md b/docs/flow-changes/2026-10-28-ios-review-access.md
+index e95fb7f..233f4d9 100644
+--- a/docs/flow-changes/2026-10-28-ios-review-access.md
++++ b/docs/flow-changes/2026-10-28-ios-review-access.md
+@@ -2,7 +2,7 @@
+ 
+ ## FC-027 iOS 인증 세션 복귀·다중 사용자 데모
+ 
+-- **상태:** 열림 — 백엔드 구현 중, 앱 수정·iPhone 실기기·심사 제출은 후속.
++- **상태:** 열림 — 백엔드 PR48 구현·검증, 앱 PR1 구현·CI 확인 중. 운영 배포·iPhone 실기기·심사 제출은 후속.
+ - **근거:** CTO가 전달한 App Review Guideline 4와 2.1(a) 피드백. 기본 브라우저로 로그인하는 UX를 수정하고 다른 사용자와 기능을 확인할 데모 링크·접근 방법이 필요하다.
+ - **기존 흐름:** 앱 main `95c4985`의 App.kt는 `LocalUriHandler.openUri`로 로그인 주소를 연다. FC-026의 HTML 복귀 페이지는 Android 수동 복귀를 위한 것이며 iOS의 외부 브라우저 전환 자체를 해결하지 않는다.
+ 
+@@ -14,7 +14,9 @@
+ 4. no-store/no-referrer·상관 쿠키 만료, Apple POST CORS·SameSite=None/Secure, state·nonce·PKCE·티켓300초·일회용 잠금은 유지한다. WEB 쿠키를 앱에 발급하지 않는다.
+ 5. 웹·기존 Android/이전 iOS 앱은 기존 계약을 유지한다. 스키마는020/changeSet030의 표식 테이블이며 적용된 changelog는 고치지 않는다. 기존 바이너리가 auth_challenges에 컬럼 목록 없는 INSERT를 하므로 부모 컬럼 추가 대신 FK CASCADE 표식 테이블을 사용해 롤백 호환성을 유지한다.
+ 
+-### 앱 담당자 전달 사항 — 구현 필요
++### 앱 담당자 전달 사항 — 앱 PR1에 구현, CI·기기 확인 필요
++
++CTO가 앱 담당자 휴가로 Codex에 앱 구현도 요청했다. [앱 PR1](https://github.com/owencity/jungsan_app/pull/1)에 Swift 인증 세션과 공개 데모를 구현했다. 아래 계약은 이 PR의 검증 기준이며 실제 iPhone 성공은 아직 확인하지 않았다.
+ 
+ - iOS 로그인 진입을 `ASWebAuthenticationSession`으로 분리하고 공통 `openUri`를 그대로 쓰지 않는다. Apple이 안내한 `SFSafariViewController`도 선택지지만 인증·콜백 처리는 인증 세션 API를 우선 검토한다.
+ - 기존 로그인 시작 URL에 `appReturn=session`을 추가한다. callback scheme은 `jeongsan`, 기대 host는 `auth`다. completion의 callback URL을 기존 AppAuth 티켓 교환 흐름으로 한 번만 전달한다.
+@@ -28,9 +30,9 @@ CTO는 iOS에서 어떻게 계정을 준비할지 문의했다. **소셜 계정
+ 
+ - 앱 로그인 화면에 별도 데모 진입을 두고 샘플 데이터와 역할 전환을 제공하는 앱 측 작업이 필요하다. 실제 계정·토큰과 분리하고 데모임을 표시한다.
+ - 총무·참여자2명 이상의 예시, 응답·명단·차수·정산·입금 상태·메시지·신고·차단을 조작할 수 있어야 한다. 단순 읽기 화면·영상만으로 완료 처리하지 않는다.
+-- 메일이 요청한 데모 링크는 실제 접근 가능한 초대 링크 또는 구현된 데모 진입 링크로 준비해야 한다. 아직 존재하지 않는 URL이나 동작하지 않는 커스텀 스킴을 제출하지 않는다.
++- 메일이 요청한 데모 링크는 `GET /api/v1/review/demo`의 공개200 HTML 안내와 고정 `jeongsan://demo` 버튼으로 준비한다. 새 앱은 정확한 데모 스킴만 받아 가상 상태를 연다. query는 안내에 반영하지 않고 인증·계정·티켓을 발급하지 않는다. 운영 주소는 `https://jungsan-api.devkdk.com/api/v1/review/demo`이며 백엔드 배포와 새 앱 설치·기기 확인 전에는 준비됐다고 제출하지 않는다.
+ - 데모만으로 제공하지 못하는 기능은 실제 계정으로 접근 가능한 방법을 함께 제공한다. 계정 삭제는 별도 실제 계정의 생성·삭제 경로를 안내한다.
+-- 이 서버 PR은 데모 로그인 API·고정 비밀번호·임의 JWT 발급·운영 인증 우회를 추가하지 않는다. 기존 앱 mock store가 전 기능을 지원하는지 앱 담당자의 확인이 필요하다.
++- 이 서버 PR은 데모 로그인 API·고정 비밀번호·임의 JWT 발급·운영 인증 우회를 추가하지 않는다. 앱 PR1은 가상3명·응답/입금/완료 예시·역할 전환·초기화·체험 종료를 구현하고, 실제 API 클라이언트 금지·미출시 스푼 제한·신고/차단/금칙어 테스트를 추가했다. 로컬 데모가 서버 동시성·실제 제공자 인증까지 증명하지는 않는다.
+ 
+ 자세한 제출·검증 절차는 [운영 준비](../operations/app-review-access.md)를 따른다. 코드 검증·운영 배포·앱 빌드·실기기 성공·심사 승인은 각각 구분한다.
+ 
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index 8be4b51..41a0897 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -60,7 +60,7 @@
+ 
+ | 번호 | 제목 | 상태 | 백엔드 반영·근거 | 파일 |
+ |---|---|---|---|---|
+-| FC-027 | iOS 시스템 인증 세션과 심사 다중 사용자 접근 | 열림 (백엔드 구현·검증 중, iOS 앱·데모 후속) | API v16·020/030·선택형303 계약, 앱은ASWebAuthenticationSession·데모 진입 필요 | [2026-10-28-ios-review-access.md](2026-10-28-ios-review-access.md) |
++| FC-027 | iOS 시스템 인증 세션과 심사 다중 사용자 접근 | 열림 (백엔드 PR48·앱 PR1 구현, CI·배포·실기기 후속) | API v17·020/030·선택형303·공개 데모 안내, 앱 인증 세션·역할 전환 구현 | [2026-10-28-ios-review-access.md](2026-10-28-ios-review-access.md) |
+ | FC-001 | 내 술자리 목록 — 탭·뱃지에 필요한 요약 데이터 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-001-내-술자리-목록--탭뱃지에-필요한-요약-데이터) |
+ | FC-002 | 정산 미리보기 응답 모양 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-002-정산-미리보기-응답-모양) |
+ | FC-003 | 송금 근거(차수별 금액) — P3 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-003-송금-근거차수별-금액--p3) |
+diff --git a/docs/operations/app-review-access.md b/docs/operations/app-review-access.md
+index 6295fd0..2b011a4 100644
+--- a/docs/operations/app-review-access.md
++++ b/docs/operations/app-review-access.md
+@@ -1,6 +1,6 @@
+ # App Review 접근 준비 (2026-10-28)
+ 
+-기준: [FC-027](../flow-changes/2026-10-28-ios-review-access.md). 심사자가 로그인과 다중 사용자 기능을 직접 조작할 수 있도록 준비한다. 현재 실제 데모 URL·계정은 발급되지 않았다.
++기준: [FC-027](../flow-changes/2026-10-28-ios-review-access.md). 앱 담당자 부재로 CTO가 Codex에 앱 구현까지 요청했다. [앱 PR1](https://github.com/owencity/jungsan_app/pull/1)과 백엔드 PR48을 함께 검증한다. 공개 진입 URL은 `https://jungsan-api.devkdk.com/api/v1/review/demo`로 구현했으며 **아직 운영 배포·새 앱 배포·실기기 검증 전**이다. 비밀번호를 가진 데모 계정은 만들지 않는다.
+ 
+ ## 담당과 완료 기준
+ 
+@@ -24,7 +24,9 @@
+ 5. 상태를 초기화해 재실행할 수 있어야 한다. 목데이터 화면 캡처만 제공하는 것은 충분하지 않다.
+ 6. 리뷰어가 요청한 링크가 어떤 화면으로 들어가는지 실제 기기에서 시험한다. 링크가 아직 구현되지 않았다면 Notes에 존재하는 것처럼 적지 않는다.
+ 
+-기존 mock store의 전 기능 충족 여부는 미확인이다. 충족하지 못하면 해당 기능 구현 또는 실제 테스트 계정 접근을 보완한다. 소셜 비밀번호·JWT·서버 키는 저장소나 공개 문서에 적지 않는다.
++앱 PR1은 별도 가상3명과 응답 중/입금 중/완료 상태, 역할 전환·초기화·체험 종료를 제공한다. 실제 토큰·API를 사용하지 않고 데모에서 실제 API 연결을 금지한다. 실제 기능과 다른 스푼 지급은 제한했다. 앱 공통 단위 테스트는210건 통과했으나 기기에서 전 흐름을 조작하는 검증은 후속이다. 소셜 비밀번호·JWT·서버 키는 저장소나 공개 문서에 적지 않는다.
++
++백엔드 공개 페이지는 고정 링크와 설치/체험 안내만 반환한다. query·헤더 입력을 HTML에 반영하지 않고 인증 정보를 발급하지 않는다. 배포 후200 HTML·개인정보 없는 응답·새 앱의 데모 열기와 로그인 화면 진입을 확인한다. 기존 일반 공유 링크와 실제 로그인은 유지한다.
+ 
+ ## 실제 계정·탈퇴 확인
+ 
+diff --git a/docs/pr-reviews/2026-10-28-ios-review/demo-entry-followup.md b/docs/pr-reviews/2026-10-28-ios-review/demo-entry-followup.md
+new file mode 100644
+index 0000000..27c6d87
+--- /dev/null
++++ b/docs/pr-reviews/2026-10-28-ios-review/demo-entry-followup.md
+@@ -0,0 +1,21 @@
++# FC-027 앱 인수·데모 안내 후속 자체 점검
++
++이전 고정 보존 자료 `ios-review-v1`과 자체 점검을 덮어쓰지 않는다. 비교 시작점은1198a49, 이번 변경은 공개 안내 HTTP와 앱 PR1 연결이다. 자동 외부 리뷰 승인과 자체 점검을 구분한다.
++
++- **문제·해결:** CTO가 앱 담당자의 휴가로 앱 구현을 요청했다. 앱 PR1은 시스템 인증 세션·공개 체험을 구현하며, 서버는 배포할 수 있는 고정 HTTPS 안내와 앱 딥링크를 제공한다.
++- **공개 범위:** `ReviewDemoController#demo` 한 메서드만 인증 가드 허용 목록에 추가했다. DB·사용자·비밀 값·임의 목적지를 받지 않는 공유 HTTP 표시 코드이므로 별도 Java 업무 정책 모델을 만들지 않았다. 기존 Java/Kotlin 인증 정책의 독립 구현은 유지한다.
++- **입력·노출:** query/UA를 반영하지 않는다. 고정HTML·고정 앱 스킴·UTF-8·no-store/no-referrer/nosniff·script-src none을 검증한다. 토큰·쿠키·티켓을 발급하지 않는다.
++- **영향 없음:** DB 쓰기·외부 요청·목록 조회·트랜잭션·금액 계산이 없어 동시성/멱등성/N+1/스키마 변경은 해당 없다. 기존 auth020/030과 checksum은 수정하지 않았다. 새 라이브러리·prod 기본값 없음.
++- **기능·호환:** 앱 PR1의 가상 상태는 운영 API 연결을 금지한다. 공유는 운영에 없는 가상 방 토큰 대신 안내 링크를 쓴다. Android의 기존 인증 복귀는 유지하고 iOS의 선택적303만 사용한다.
++- **검증:** 서버204건 실패/오류/건너뜀0, compileKotlin/bootJar 성공, 인증 가드 통과. 신규2건은 공개200·보안 헤더와 공격 query/UA 미반영을 확인한다. 실제HTTP 회귀에 안내200/쿠키 미발급2검사를 추가했다. 실제HTTP 최신 결과는 CI 완료 후 기록한다.
++- **남은 범위:** 앱의 iOS Kotlin/Swift 빌드·시뮬레이터, 양쪽 PR 리뷰·병합·배포, iPhone의 카카오/Apple 로그인·데모·실제 탈퇴, App Store Connect 제출. 기기와 운영 성공을 단위 테스트로 대체하지 않는다.
++
++## 후속 학습 위치 · UNRECORDED
++
++이 후속 HTTP 표시에는 Java 기본기·Effective Java·함수형 Java·Kotlin 기본/고급의 새 핵심 항목을 억지로 매핑하지 않는다. 기술별 항목은 Catalog 미등록인 UNMATCHED이며 직접 구현 diff를 기준으로 본다.
++
++- 기술별 학습 포인트 · UNMATCHED · HTTP CSP — `ReviewDemoController.kt#demo`: 외부 리소스·스크립트·폼·frame을 막는 정책과 고정 커스텀 스킴 링크의 브라우저 동작을 함께 보기 위해.
++- 기술별 학습 포인트 · UNMATCHED · 인증 가드 — `AuthenticationGuardSpec.kt#publicMethods`: 로그인 이전 안내만 공개하면서 다른 컨트롤러의 인증 누락을 계속 차단하는 허용 목록 검증을 보기 위해.
++- 기술별 학습 포인트 · UNMATCHED · 네이티브 인증 수명 — 앱 PR1 `AuthenticationBrowser.start/cancel`: 인증 세션 객체·presentation anchor·취소 후 늦은 callback이 새 로그인에 영향을 주는 경계를 보기 위해.
++
++학습 완료 기록은 없다. 확정 소스 commit과 diff는 같은 폴더의 후속 보존 파일에 별도로 기록한다.
+diff --git a/scripts/verify-auth-release.py b/scripts/verify-auth-release.py
+index 47fea43..16bf08c 100644
+--- a/scripts/verify-auth-release.py
++++ b/scripts/verify-auth-release.py
+@@ -33,6 +33,16 @@ def call(verb,path,token=None,client="WEB",body=None,status=200):
+     decoded=json.loads(data) if data else None
+     if status is not None: assert actual==status,(path,actual,status,decoded)
+     return actual,decoded,rh
++# 공개 데모는 인증 토큰을 만들지 않고 고정 앱 안내만 반환한다.
++with urlopen(BASE + "/review/demo", timeout=20) as demo_reply:
++    demo_html = demo_reply.read().decode("utf-8")
++    check(demo_reply.status == 200 and 'href="jeongsan://demo"' in demo_html
++          and "가상 데이터" in demo_html, "실제 HTTP 공개 데모 안내는200·고정앱링크·가상데이터 표시")
++    check(demo_reply.headers.get("Cache-Control") == "no-store"
++          and demo_reply.headers.get("Referrer-Policy") == "no-referrer"
++          and demo_reply.headers.get("Set-Cookie") is None
++          and "script-src 'none'" in demo_reply.headers.get("Content-Security-Policy", ""),
++          "공개 안내는 인증 쿠키 발급 없이 캐시·참조자·스크립트를 제한")
+ key=str(uuid.uuid4())
+ challenge_count = sql("SELECT COUNT(*) FROM auth_challenges")
+ for invalid_path in (
+diff --git a/server/src/main/kotlin/app/jeongsan/server/review/ReviewDemoController.kt b/server/src/main/kotlin/app/jeongsan/server/review/ReviewDemoController.kt
+new file mode 100644
+index 0000000..e303bca
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/review/ReviewDemoController.kt
+@@ -0,0 +1,28 @@
++package app.jeongsan.server.review
++
++import org.springframework.http.MediaType
++import org.springframework.http.ResponseEntity
++import org.springframework.web.bind.annotation.GetMapping
++import org.springframework.web.bind.annotation.RestController
++
++/** 심사자가 공유받을 수 있는 고정 진입 안내다. 인증 정보를 만들거나 사용자 입력을 반영하지 않는다. */
++@RestController
++class ReviewDemoController {
++    @GetMapping("/api/v1/review/demo", produces = [MediaType.TEXT_HTML_VALUE])
++    fun demo(): ResponseEntity<String> = ResponseEntity.ok()
++        .contentType(MediaType("text", "html", Charsets.UTF_8))
++        .header("Cache-Control", "no-store")
++        .header("Referrer-Policy", "no-referrer")
++        .header("X-Content-Type-Options", "nosniff")
++        .header("Content-Security-Policy", "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; style-src 'unsafe-inline'; script-src 'none'")
++        .body("""<!doctype html>
++<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
++<title>정산어택 데모 · Jeongsan Demo</title>
++<style>body{font-family:system-ui,sans-serif;max-width:40rem;margin:3rem auto;padding:1.5rem;line-height:1.7;color:#171717;background:#fff}a{display:inline-block;background:#4f46e5;color:#fff;padding:.8rem 1.2rem;border-radius:.5rem}h1{font-size:1.6rem}</style></head>
++<body><main><h1>정산어택 데모 체험</h1>
++<p>새 정산어택 앱을 설치한 뒤 아래 버튼을 눌러주세요. 로그인 없이 가상 데이터로 체험할 수 있어요. 실제 송금은 발생하지 않아요.</p>
++<p><a href="jeongsan://demo">앱에서 데모 열기 · Open demo in app</a></p>
++<p>열리지 않으면 앱 로그인 화면에서 ‘로그인 없이 데모 체험’을 눌러주세요. 총무·참여자A·참여자B를 전환해 응답, 정산, 입금 확인, 메시지 신고·차단을 확인할 수 있어요. ‘처음부터’로 초기화하고 ‘체험 종료’로 나갈 수 있어요.</p>
++<h2>App Review</h2><p>Install the updated app first. No credentials are required for the demo. You can also tap ‘로그인 없이 데모 체험’ on the login screen. Switch between the organizer and two participants using the top bar. All demo data is fictional; no real bank transfer is made. Use ‘처음부터’ to reset or ‘체험 종료’ to exit.</p>
++</main></body></html>""")
++}
+diff --git a/server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt b/server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt
+index b873716..b6b4821 100644
+--- a/server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt
++++ b/server/src/test/kotlin/app/jeongsan/server/common/AuthenticationGuardSpec.kt
+@@ -18,6 +18,8 @@ class AuthenticationGuardSpec : StringSpec({
+             "app.jeongsan.server.user.AuthController#appleCallback",
+             "app.jeongsan.server.user.AuthController#exchange",
+             "app.jeongsan.server.gathering.JoinController#preview",
++            // 로그인 이전의 고정 앱 데모 안내만 공개한다. 인증·사용자 데이터를 발급하지 않는다.
++            "app.jeongsan.server.review.ReviewDemoController#demo",
+         )
+         val scanner = ClassPathScanningCandidateComponentProvider(false)
+         scanner.addIncludeFilter(AnnotationTypeFilter(RestController::class.java))
+diff --git a/server/src/test/kotlin/app/jeongsan/server/review/ReviewDemoSpec.kt b/server/src/test/kotlin/app/jeongsan/server/review/ReviewDemoSpec.kt
+new file mode 100644
+index 0000000..ca36e7e
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/review/ReviewDemoSpec.kt
+@@ -0,0 +1,38 @@
++package app.jeongsan.server.review
++
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++import org.springframework.http.MediaType
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
++import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
++import org.springframework.test.web.servlet.setup.MockMvcBuilders
++
++class ReviewDemoSpec : StringSpec({
++    val mvc = MockMvcBuilders.standaloneSetup(ReviewDemoController()).build()
++
++    "로그인 없이 고정 데모 링크와 설치·가상 데이터 안내를 반환한다" {
++        val response = mvc.perform(get("/api/v1/review/demo"))
++            .andExpect(status().isOk).andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
++            .andExpect(header().string("Cache-Control", "no-store"))
++            .andExpect(header().string("Referrer-Policy", "no-referrer"))
++            .andExpect(header().string("X-Content-Type-Options", "nosniff"))
++            .andExpect(header().doesNotExist("Set-Cookie")).andReturn().response
++        response.characterEncoding shouldBe "UTF-8"
++        response.contentAsString.contains("href=\"jeongsan://demo\"") shouldBe true
++        response.contentAsString.contains("가상 데이터") shouldBe true
++        response.contentAsString.contains("Install the updated app first") shouldBe true
++        response.getHeader("Content-Security-Policy") shouldBe
++            "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; style-src 'unsafe-inline'; script-src 'none'"
++    }
++
++    "공격 query·헤더는 본문·목적지에 반영되지 않고 인증 값도 발급하지 않는다" {
++        val clean = mvc.perform(get("/api/v1/review/demo")).andReturn().response.contentAsString
++        val response = mvc.perform(get("/api/v1/review/demo").param("returnTo", "https://evil.test/<script>")
++            .param("ticket", "private-ticket").header("User-Agent", "<img src=https://evil.test>"))
++            .andExpect(status().isOk).andExpect(header().doesNotExist("Location"))
++            .andExpect(header().doesNotExist("Set-Cookie")).andReturn().response
++        response.contentAsString shouldBe clean
++        response.contentAsString.contains("<script") shouldBe false
++        response.contentAsString.contains("private-ticket") shouldBe false
++    }
++})
