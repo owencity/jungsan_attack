@@ -1,0 +1,543 @@
+diff --git a/DEVLOG.md b/DEVLOG.md
+index 501be91..718dfe5 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,11 @@
+ # 개발 결정 로그
+ 
++## [2026-10-28] FC-027 iOS 시스템 인증 세션의 직접 복귀를 선택한다
++- 문제: App Review가 외부 기본 브라우저 로그인과 다중 사용자 기능의 접근 부족을 지적했다. FC-026 HTML만으로 iOS 앱 내부 인증 화면 전환은 해결되지 않는다.
++- 고려한 대안: 앱 콜백을 전부303으로 되돌리기, UA로 iOS를 추정하기, 시작state에 인증 세션 복귀 선택을 저장하기.
++- 선택 이유·트레이드오프: 선택 파라미터 appReturn=session을 state의 별도 FK 표식에 묶고 고정 스킴303을 반환한다. 기존앱200·WEB303·PKCE는 유지하며 부모컬럼 추가를 피해서 이전8개 VALUES INSERT의 롤백 호환성을 보존한다. 정책은 Java/Kotlin 독립 구현한다.
++- 아쉬운 점: 앱의 ASWebAuthenticationSession·콜백 처리와 iPhone 실기기 검증은 프론트 후속이며, 데모 전 기능·실제 접근 링크도 준비해야 심사를 다시 요청할 수 있다. 진행 중 탈퇴409의 심사 수용 여부는 기존 미결로 남긴다.
++
+ ## [2026-10-22] FC-026 앱 로그인 완료 뒤 수동 복귀 경로를 남긴다
+ - 문제: 프론트가 Android 카카오톡 동의 뒤 크롬 빈 화면과 재시도 성공을 FC-026에 기록했으나 백엔드는 앞서 진단 준비에 머물렀다.
+ - 고려한 대안: 기존303 직접 스킴 이동 유지, 완료 HTML의 자동 시도·수동 링크, 새 중계 URL과 App Links/Universal Links.
+diff --git a/docs/API.md b/docs/API.md
+index 5e4f7bb..4b4507f 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1,4 +1,13 @@
+-# 정산어택 — API 계약 · v15
++# 정산어택 — API 계약 · v16
++
++> **v16 변경(2026-10-28)** — FC-027 iOS 시스템 인증 세션의 선택적 직접 복귀.
++>
++> | 절 | 변경 |
++> |---|---|
++> | AUTH_RELEASE 로그인 시작 | 앱의 선택 파라미터 appReturn=page 또는 session, 생략은 기존page |
++> | AUTH_RELEASE 앱 콜백 | session 선택state만303 jeongsan://auth?ticket=..., 기존앱200·WEB303 유지 |
++> | 스키마·운영 | 020/030 표식과 state CASCADE, 심사 데모·앱 변경 담당은FC-027·운영 절차 참조 |
++>
+ 
+ > **v15 변경(2026-10-22)** — FC-026 앱 로그인 완료 페이지·5분 티켓과 로그아웃 연결 계약.
+ >
+diff --git a/docs/AUTH_RELEASE.md b/docs/AUTH_RELEASE.md
+index 37a6b13..8046f6f 100644
+--- a/docs/AUTH_RELEASE.md
++++ b/docs/AUTH_RELEASE.md
+@@ -5,6 +5,17 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
+ 
+ ## 로그인
+ 
++### FC-027 iOS 인증 세션 직접 복귀 (2026-10-28)
++
++- 앱이 `GET /api/v1/auth/{kakao|apple}/login?client=app&appReturn=session&codeChallenge=...`으로 시작하면, 성공 콜백은 **303·빈 본문·고정 `Location: jeongsan://auth?ticket=<43자 티켓>`**이다. ASWebAuthenticationSession의 callback scheme은jeongsan이다. 기존 exchange·PKCE·300초/일회용 정책을 유지한다.
++- appReturn 생략 또는page는 기존 FC-026의200 HTML이다. 웹은page만 허용하고 기존303·WEB 쿠키를 유지한다. session은앱만, 알 수 없는 값·웹session은400 MALFORMED_REQUEST다.
++- 선택한state의 해시만 `auth_session_returns`에 저장하며 auth_challenges 삭제·만료 정리와 함께CASCADE로 제거한다. 콜백query·User-Agent·returnTo로 이 선택이나 고정 네이티브 복귀 주소를 바꾸지 않는다. returnTo에는 기존 웹 상대경로 검증을 그대로 적용한다.
++- session도 no-store/no-referrer·상관 쿠키 만료·Apple POST CORS/쿠키 속성을 유지하고 WEB JWT를 발급하지 않는다. JWT·code·state·티켓을 로그에 남기지 않는다.
++- 020/030은별도표식 테이블만 추가한다. 기존 서버가 auth_challenges에8개 VALUES INSERT를 하므로 부모컬럼 추가로 운영롤백을 깨지 않도록 했다. 기존 앱/웹과 이전 바이너리는 표식 없이page 흐름을 유지한다. 배포 중 새session 시작 후 이전 서버로 롤백되면 기존HTML로 완료될 수 있으므로 앱이 재로그인을 안내한다.
++- 서버303 검증은 앱 내부 로그인·실기기 성공·심사 승인과 다르다. [FC-027](flow-changes/2026-10-28-ios-review-access.md)와 [심사 준비](operations/app-review-access.md)를 따른다.
++
++### 기존 로그인 공통 계약
++
+ - **FC-025 CORS:** `/api/v1/auth/apple/callback`만 `Origin: https://appleid.apple.com`의 POST와 credentials를 허용한다. 구체 경로를 `/api/**`보다 먼저 등록하며 다른 API는 기존 프론트 출처만 허용한다. 상태·브라우저 상관 쿠키·nonce 검증은 그대로다. 잘못된 `state=y`는 401 `UNAUTHENTICATED`다. 정상 완료는 FC-026에 따라 웹303·앱200 HTML이다.
+ - Apple 상태 쿠키는 운영에서 `HttpOnly; Secure; SameSite=None; Path=/api/v1/auth; Max-Age=300`이다. WEB JWT는 `SameSite=Lax`를 유지한다. 발급 속성과 서버의 쿠키 수신 테스트는 실제 Safari·TestFlight 브라우저 전달·실계정 로그인 완료와 구분한다.
+ 
+diff --git a/docs/ERD.md b/docs/ERD.md
+index 3ac4106..7a47382 100644
+--- a/docs/ERD.md
++++ b/docs/ERD.md
+@@ -287,6 +287,16 @@ docker rm -f jeongsan-mysql-test && docker network rm jeongsan-test-net
+       갱신 — 엑셀은 이 문서와 달리 손으로 열어 고쳐야 한다, 아직 안 함
+ 
+ 
++## 2026-10-28 iOS 인증 세션 복귀 선택
++
++진실은 `020-auth-session-return.yaml`의 changeSet030이다. 기존 auth_challenges의 컬럼과 적용 changelog는 변경하지 않는다.
++
++| 테이블 | 키·참조·역할 |
++|---|---|
++| auth_session_returns | state_hash CHAR(64) PK, auth_challenges.state_hash FK ON DELETE CASCADE. 행 존재=session303, 부재=기존page. 원문state·티켓·개인정보는 저장하지 않음 |
++
++기존 바이너리의 auth_challenges8개 VALUES INSERT와 롤백을 지원하려고 부모에 컬럼을 늘리지 않는다. state 소비·기존 만료 정리 시 표식도 함께 제거한다. 엔티티 대신 AuthFlowService/GatheringStore가 같은 DataSource의 트랜잭션으로 접근한다.
++
+ ## 2026-10-07 v4 구현 스키마
+ 
+ 진실은 `016-independent-settlement-units.yaml`의 새 changeSet 024~026이다. 기존 changelog는 수정하지 않았다.
+diff --git a/docs/flow-changes/2026-10-28-ios-review-access.md b/docs/flow-changes/2026-10-28-ios-review-access.md
+new file mode 100644
+index 0000000..e95fb7f
+--- /dev/null
++++ b/docs/flow-changes/2026-10-28-ios-review-access.md
+@@ -0,0 +1,41 @@
++# 2026-10-28 — iOS 로그인 화면과 App Review 기능 접근
++
++## FC-027 iOS 인증 세션 복귀·다중 사용자 데모
++
++- **상태:** 열림 — 백엔드 구현 중, 앱 수정·iPhone 실기기·심사 제출은 후속.
++- **근거:** CTO가 전달한 App Review Guideline 4와 2.1(a) 피드백. 기본 브라우저로 로그인하는 UX를 수정하고 다른 사용자와 기능을 확인할 데모 링크·접근 방법이 필요하다.
++- **기존 흐름:** 앱 main `95c4985`의 App.kt는 `LocalUriHandler.openUri`로 로그인 주소를 연다. FC-026의 HTML 복귀 페이지는 Android 수동 복귀를 위한 것이며 iOS의 외부 브라우저 전환 자체를 해결하지 않는다.
++
++### 백엔드 계약
++
++1. 기존 `client=web|app`를 유지한다. iOS 인증 세션은 인가 시작에 **`client=app&appReturn=session&codeChallenge=...`**을 보낸다. 생략 또는 `appReturn=page`는 기존 앱200 HTML이다.
++2. `appReturn=session`은 앱만 허용하며 잘못된 값·웹과의 조합은 400이다. 선택한 state에만 `auth_session_returns` 표식을 저장하고 부모 state 삭제 시 함께 제거한다. 콜백 query·UA로 모드를 변경하지 않는다.
++3. session 성공 콜백은 **303 `Location: jeongsan://auth?ticket=<43자 일회용 티켓>`**과 빈 본문을 반환한다. URL·스킴·host는 고정이며 JWT를 URL에 넣지 않는다. `returnTo`로 네이티브 복귀 주소를 지정하지 않는다.
++4. no-store/no-referrer·상관 쿠키 만료, Apple POST CORS·SameSite=None/Secure, state·nonce·PKCE·티켓300초·일회용 잠금은 유지한다. WEB 쿠키를 앱에 발급하지 않는다.
++5. 웹·기존 Android/이전 iOS 앱은 기존 계약을 유지한다. 스키마는020/changeSet030의 표식 테이블이며 적용된 changelog는 고치지 않는다. 기존 바이너리가 auth_challenges에 컬럼 목록 없는 INSERT를 하므로 부모 컬럼 추가 대신 FK CASCADE 표식 테이블을 사용해 롤백 호환성을 유지한다.
++
++### 앱 담당자 전달 사항 — 구현 필요
++
++- iOS 로그인 진입을 `ASWebAuthenticationSession`으로 분리하고 공통 `openUri`를 그대로 쓰지 않는다. Apple이 안내한 `SFSafariViewController`도 선택지지만 인증·콜백 처리는 인증 세션 API를 우선 검토한다.
++- 기존 로그인 시작 URL에 `appReturn=session`을 추가한다. callback scheme은 `jeongsan`, 기대 host는 `auth`다. completion의 callback URL을 기존 AppAuth 티켓 교환 흐름으로 한 번만 전달한다.
++- 세션 객체 수명·presentation anchor·취소·중복 클릭·completion과 onOpenURL 중복 전달을 관리한다. verifier는 세션 시작부터 교환까지 유지하며 서버로 원문을 보내는 단계는 기존 exchange뿐이다.
++- 카카오·Apple 양쪽에서 외부 Safari가 열리지 않는지, 취소 후 재시작·첫 가입 실명 입력·기존 로그인·로그아웃·탈퇴를 iPhone에서 확인한다.
++- Android는 이번 iOS 변경을 이유로 FC-026의200 HTML·Intent 수동 복귀를 바꾸지 않는다.
++
++### 심사용 접근 준비
++
++CTO는 iOS에서 어떻게 계정을 준비할지 문의했다. **소셜 계정 비밀번호 공유 없이 명시적인 데모 체험 모드를 제공하는 방향을 제안**하며, 앱 구현·완전한 기능 지원 여부를 확인한 뒤 심사 정보에 실제 진입 절차를 적는다. 기존 `apiBaseUrl` 공백 목데이터 모드를 배포 설정 전체에 적용하거나 로그인 보호를 끄지 않는다.
++
++- 앱 로그인 화면에 별도 데모 진입을 두고 샘플 데이터와 역할 전환을 제공하는 앱 측 작업이 필요하다. 실제 계정·토큰과 분리하고 데모임을 표시한다.
++- 총무·참여자2명 이상의 예시, 응답·명단·차수·정산·입금 상태·메시지·신고·차단을 조작할 수 있어야 한다. 단순 읽기 화면·영상만으로 완료 처리하지 않는다.
++- 메일이 요청한 데모 링크는 실제 접근 가능한 초대 링크 또는 구현된 데모 진입 링크로 준비해야 한다. 아직 존재하지 않는 URL이나 동작하지 않는 커스텀 스킴을 제출하지 않는다.
++- 데모만으로 제공하지 못하는 기능은 실제 계정으로 접근 가능한 방법을 함께 제공한다. 계정 삭제는 별도 실제 계정의 생성·삭제 경로를 안내한다.
++- 이 서버 PR은 데모 로그인 API·고정 비밀번호·임의 JWT 발급·운영 인증 우회를 추가하지 않는다. 기존 앱 mock store가 전 기능을 지원하는지 앱 담당자의 확인이 필요하다.
++
++자세한 제출·검증 절차는 [운영 준비](../operations/app-review-access.md)를 따른다. 코드 검증·운영 배포·앱 빌드·실기기 성공·심사 승인은 각각 구분한다.
++
++### 근거 문서
++
++- [Apple 인증 세션](https://developer.apple.com/documentation/authenticationservices/authenticating-a-user-through-a-web-service)
++- [심사 접근 정보](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information#app-review-information)
++- [계정 삭제 안내](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion)
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index a1e390a..8be4b51 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -60,6 +60,7 @@
+ 
+ | 번호 | 제목 | 상태 | 백엔드 반영·근거 | 파일 |
+ |---|---|---|---|---|
++| FC-027 | iOS 시스템 인증 세션과 심사 다중 사용자 접근 | 열림 (백엔드 구현·검증 중, iOS 앱·데모 후속) | API v16·020/030·선택형303 계약, 앱은ASWebAuthenticationSession·데모 진입 필요 | [2026-10-28-ios-review-access.md](2026-10-28-ios-review-access.md) |
+ | FC-001 | 내 술자리 목록 — 탭·뱃지에 필요한 요약 데이터 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-001-내-술자리-목록--탭뱃지에-필요한-요약-데이터) |
+ | FC-002 | 정산 미리보기 응답 모양 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-002-정산-미리보기-응답-모양) |
+ | FC-003 | 송금 근거(차수별 금액) — P3 | 반영됨 (API v6 · feat/backend-v4) | PR #27 · 기존 #18/#20 구현·가드·HTTP 검증 포함 | [2026-10-01-v3-front-flow.md](2026-10-01-v3-front-flow.md#fc-003-송금-근거차수별-금액--p3) |
+diff --git a/docs/operations/app-review-access.md b/docs/operations/app-review-access.md
+new file mode 100644
+index 0000000..6295fd0
+--- /dev/null
++++ b/docs/operations/app-review-access.md
+@@ -0,0 +1,43 @@
++# App Review 접근 준비 (2026-10-28)
++
++기준: [FC-027](../flow-changes/2026-10-28-ios-review-access.md). 심사자가 로그인과 다중 사용자 기능을 직접 조작할 수 있도록 준비한다. 현재 실제 데모 URL·계정은 발급되지 않았다.
++
++## 담당과 완료 기준
++
++| 담당 | 작업 | 완료 근거 |
++|---|---|---|
++| 백엔드 | 인증 세션용303 복귀·기존200 페이지 호환 | MVC·실제 DB·CI·운영 배포 결과 |
++| iOS 앱 | ASWebAuthenticationSession, callback 티켓 교환 | iPhone에서 카카오·Apple 로그인·취소·재시도 |
++| 앱 | 명시적 데모 진입·샘플 역할 전환·전 기능 확인 | 제출 빌드에서 실제 조작 가능한 단계별 결과 |
++| CTO | 심사 정보에 실제 접근 방법·데모 링크·절차 등록 | App Store Connect 입력값 확인 |
++
++## iOS 로그인 확인
++
++카카오·Apple 각각: 앱에서 로그인 시작 → 앱 위 시스템 인증 화면 → 동의 → 자동으로 앱 복귀 → 일회용 티켓 교환 → 내 술자리. 웹은 기존 흐름, Android는 기존 HTML 수동 복귀도 확인한다. 백엔드303 테스트만으로 iOS 성공이라고 보고하지 않는다.
++
++## 데모 시나리오
++
++1. 로그인 화면에서 공개된 데모 진입점을 누른다. 데모임을 명시하고 실제 계정 상태와 분리한다.
++2. 총무·참여자 A·참여자 B가 있는 샘플을 연다. 미응답 또는 OPEN 시나리오와 정산 이후 시나리오를 각각 준비한다.
++3. 역할을 전환해 참석·음주 응답, 총무의 차수 입력, 정산 금액·근거, 보냈어요·입금 확인을 조작한다. 실제 은행 송금이 발생하는 기능이라고 설명하지 않는다.
++4. 메시지 작성·신고·차단·차단 해제를 확인한다. 신고자 개인 숨김과 다른2명 신고 전체 숨김 등 실제 계약과 차이가 없는지 확인한다.
++5. 상태를 초기화해 재실행할 수 있어야 한다. 목데이터 화면 캡처만 제공하는 것은 충분하지 않다.
++6. 리뷰어가 요청한 링크가 어떤 화면으로 들어가는지 실제 기기에서 시험한다. 링크가 아직 구현되지 않았다면 Notes에 존재하는 것처럼 적지 않는다.
++
++기존 mock store의 전 기능 충족 여부는 미확인이다. 충족하지 못하면 해당 기능 구현 또는 실제 테스트 계정 접근을 보완한다. 소셜 비밀번호·JWT·서버 키는 저장소나 공개 문서에 적지 않는다.
++
++## 실제 계정·탈퇴 확인
++
++- 실제 로그인으로 생성한 별도 계정에서 설정/계좌 화면의 회원 탈퇴 진입을 확인한다.
++- 서버 `DELETE /api/v1/users/me`의204와 이후 인증401, Apple 연결 해제는 실제 제공자 시험과 구분한다.
++- 진행 중 술자리의409 `ACTIVE_GATHERING_EXISTS`는 기존 CTO 결정이다. 이를 숨기거나 임의 해제하지 않는다. App Review 수용 여부는 미확인이므로 심사 설명과 정책 검토 후속으로 남긴다.
++
++## App Store Connect 입력 항목
++
++- 새 빌드 번호와 로그인 전환 수정 설명.
++- 실제 구현된 데모 진입 위치, 데모 링크와 사용 순서.
++- 총무·참여자 역할 확인 방법, 제공되는 기능·제한의 정확한 설명.
++- 실제 계정이 필요하면 사용할 수 있는 로그인 정보·추가 계정 정보를 비공개 심사 정보에 입력한다. 데모 지원이 미완료인데 로그인이 불필요하다고 표시하지 않는다.
++- 계정 삭제 메뉴 위치와 확인 절차.
++
++심사팀 회신은 실제 앱 빌드·기기 결과와 링크가 준비된 뒤 작성한다. 동영상은 보조 자료이며 기능 접근을 대체하지 않는다.
+diff --git a/scripts/verify-auth-release.py b/scripts/verify-auth-release.py
+index 510b452..47fea43 100644
+--- a/scripts/verify-auth-release.py
++++ b/scripts/verify-auth-release.py
+@@ -34,6 +34,15 @@ def call(verb,path,token=None,client="WEB",body=None,status=200):
+     if status is not None: assert actual==status,(path,actual,status,decoded)
+     return actual,decoded,rh
+ key=str(uuid.uuid4())
++challenge_count = sql("SELECT COUNT(*) FROM auth_challenges")
++for invalid_path in (
++    "/auth/kakao/login?client=web&appReturn=session",
++    "/auth/apple/login?client=app&appReturn=unknown&codeChallenge=" + "c" * 43,
++):
++    invalid_reply = call("GET", invalid_path, status=400)[1]
++    assert invalid_reply["code"] == "MALFORMED_REQUEST"
++check(sql("SELECT COUNT(*) FROM auth_challenges") == challenge_count,
++      "인증 세션 모드 오류는 실제 HTTP400이며 OAuth state를 만들지 않음")
+ sql(f"INSERT INTO users(provider,provider_id,nickname,display_name,created_at) VALUES('AUTH_TEST','{key}','로그인검증','김검증',UTC_TIMESTAMP());")
+ uid=int(sql(f"SELECT id FROM users WHERE provider_id='{key}'"))
+ web=jwt(uid);app=jwt(uid,"APP")
+diff --git a/scripts/verify-boot-upgrade.py b/scripts/verify-boot-upgrade.py
+index b250f63..d6b0bfb 100644
+--- a/scripts/verify-boot-upgrade.py
++++ b/scripts/verify-boot-upgrade.py
+@@ -157,10 +157,11 @@ def verify():
+     check(current_history[:len(previous_history)] == previous_history,
+           "Boot 4 기동 뒤 기존 changeSet·체크섬·실행 시각 불변")
+     added_history = [row.split("\t") for row in current_history[len(previous_history):]]
+-    check(len(added_history) == 1 and added_history[0][0:3] ==
+-          ["029-ugc-safety", "jeongsan", "db/changelog/019-ugc-safety.yaml"]
+-          and added_history[0][3].startswith("9:") and added_history[0][5] == "EXECUTED",
+-          "신고·차단 신규 changeSet 029만 정확히 한 번 추가 적용")
++    check([row[0:3] for row in added_history] == [
++          ["029-ugc-safety", "jeongsan", "db/changelog/019-ugc-safety.yaml"],
++          ["030-auth-session-return", "jeongsan", "db/changelog/020-auth-session-return.yaml"],
++          ] and all(row[3].startswith("9:") and row[5] == "EXECUTED" for row in added_history),
++          "신고·차단029와 인증 세션030만 순서대로 정확히 한 번 추가 적용")
+     check(sql(f"SELECT HEX(payout_encrypted) FROM users WHERE id={state['host_id']}") == state["payout_hex"],
+           "구버전 계좌 암호문을 변경·재암호화하지 않음")
+     me = call("GET", "/auth/me", state["host"])
+diff --git a/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java b/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java
+index 32d401b..75e3b7e 100644
+--- a/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java
++++ b/server/src/main/java/app/jeongsan/server/user/javaimpl/AuthPolicy.java
+@@ -14,6 +14,19 @@ import java.util.HexFormat;
+ 
+ /** Java 학습 구현. Kotlin 정책으로 위임하지 않는다. */
+ public final class AuthPolicy {
++    public static String appReturnMode(String client, String value) {
++        String mode = value == null ? "page" : value;
++        if ((!"page".equals(mode) && !"session".equals(mode)) ||
++                (!"app".equals(client) && !"page".equals(mode)))
++            throw new MalformedRequestException("appReturn은 앱에서 page 또는 session으로 지정합니다.");
++        return mode;
++    }
++
++    public static String appSessionReturnLink(String ticket) {
++        if (!ticket.matches("[A-Za-z0-9_-]{43}")) throw new UnauthenticatedException();
++        return "jeongsan://auth?ticket=" + ticket;
++    }
++
+     public static Instant appTicketExpiresAt(Instant now) { return now.plusSeconds(300); }
+ 
+     public static String appReturnLink(String ticket, String userAgent) {
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt b/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt
+index f47cb4d..7f4ce4e 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/AuthController.kt
+@@ -24,12 +24,12 @@ class AuthController(private val flow: AuthFlowService, private val userService:
+     @param:Value("\${jwt.expiration-days}") private val expiryDays: Long) {
+     @GetMapping("/api/v1/auth/kakao/login")
+     fun login(@RequestParam(defaultValue="web") client: String, @RequestParam(required=false) returnTo: String?,
+-        @RequestParam(required=false) codeChallenge: String?) = start("KAKAO",client,returnTo,codeChallenge)
++        @RequestParam(required=false) codeChallenge: String?, @RequestParam(required=false) appReturn: String?) = start("KAKAO",client,returnTo,codeChallenge,appReturn)
+     @GetMapping("/api/v1/auth/apple/login")
+     fun appleLogin(@RequestParam(defaultValue="web") client: String, @RequestParam(required=false) returnTo: String?,
+-        @RequestParam(required=false) codeChallenge: String?) = start("APPLE",client,returnTo,codeChallenge)
+-    private fun start(provider: String,client: String,path: String?,challenge: String?): ResponseEntity<Unit> {
+-        val result=flow.start(provider,client,path,challenge)
++        @RequestParam(required=false) codeChallenge: String?, @RequestParam(required=false) appReturn: String?) = start("APPLE",client,returnTo,codeChallenge,appReturn)
++    private fun start(provider: String,client: String,path: String?,challenge: String?,appReturn: String?): ResponseEntity<Unit> {
++        val result=flow.start(provider,client,path,challenge,appReturn)
+         val binding=ResponseCookie.from(bindingName(result.state),result.browser).httpOnly(true).secure(secure)
+             .sameSite(if(provider=="APPLE"&&secure) "None" else "Lax").path("/api/v1/auth").maxAge(Duration.ofMinutes(5)).build()
+         AuthCallbackLog.started(provider, client)
+@@ -47,7 +47,10 @@ class AuthController(private val flow: AuthFlowService, private val userService:
+         }
+         val browser=request.cookies?.firstOrNull { it.name==bindingName(state) }?.value
+         val result=flow.finish(provider,state,browser,code)
+-        val response=if(result.client=="app") ResponseEntity.ok() else {
++        val authSession = result.client == "app" && result.appReturnMode == "session"
++        val response=if(authSession) ResponseEntity.status(HttpStatus.SEE_OTHER)
++            .location(URI.create(AuthPolicy.appSessionReturnLink(result.credential)))
++        else if(result.client=="app") ResponseEntity.ok() else {
+             val target=if(result.returnTo=="/jungsan/") loginSuccessUrl else frontendOrigin.trimEnd('/')+result.returnTo
+             ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(target))
+         }
+@@ -58,7 +61,8 @@ class AuthController(private val flow: AuthFlowService, private val userService:
+         if(result.client=="web") response.header(HttpHeaders.SET_COOKIE,cookie(result.credential,secure,expiryDays).toString())
+         // 서비스의 트랜잭션이 커밋된 뒤다. 브라우저가 실제로 앱을 열었다는 의미는 아니다.
+         AuthCallbackLog.completed(provider, result.client)
+-        return if(result.client=="app") response.contentType(MediaType("text", "html", Charsets.UTF_8))
++        return if(authSession) response.build()
++        else if(result.client=="app") response.contentType(MediaType("text", "html", Charsets.UTF_8))
+             .header("Content-Security-Policy",AppReturnPage.contentSecurityPolicy)
+             .header("X-Content-Type-Options","nosniff")
+             .body(AppReturnPage.html(result.credential,request.getHeader(HttpHeaders.USER_AGENT)))
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt b/server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt
+index 54b627b..b398138 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/AuthFlowService.kt
+@@ -15,7 +15,7 @@ import java.time.Instant
+ import java.util.Base64
+ 
+ data class AuthStart(val state: String, val browser: String, val location: String)
+-data class AuthFinish(val client: String, val returnTo: String, val credential: String)
++data class AuthFinish(val client: String, val returnTo: String, val credential: String, val appReturnMode: String = "page")
+ data class AppExchangeRequest(val ticket: String, val codeVerifier: String)
+ data class AppExchangeResponse(val token: String, val expiresAt: Instant)
+ 
+@@ -26,13 +26,17 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
+     // 계좌 암호화와 키는 분리하되 AES GCM 형식은 공용 인프라로 사용한다.
+     private val cipher = PayoutCipher(key)
+     private fun random() = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32).also { SecureRandom().nextBytes(it) })
+-    fun start(provider: String, client: String, returnTo: String?, challenge: String?): AuthStart {
++    fun start(provider: String, client: String, returnTo: String?, challenge: String?, appReturn: String? = null): AuthStart {
+         AuthPolicy.client(client)
++        val appReturnMode = AuthPolicy.appReturnMode(client, appReturn)
+         val path=AuthPolicy.returnTo(returnTo); val app=AuthPolicy.challenge(client,challenge)
+         val state=random(); val browser=random(); val nonce=random()
+         val location=gateway.authorize(provider,state,nonce)
+-        db.update("INSERT INTO auth_challenges VALUES(:s,:p,:c,:r,:n,:b,:a,:e)","s" to AuthPolicy.hash(state),"p" to provider,
++        // 기존 바이너리는 VALUES 전체 INSERT이므로 부모 컬럼을 추가하면 운영 롤백이 깨진다.
++        db.update("INSERT INTO auth_challenges(state_hash,provider,client,return_to,nonce,browser_hash,app_challenge,expires_at) VALUES(:s,:p,:c,:r,:n,:b,:a,:e)","s" to AuthPolicy.hash(state),"p" to provider,
+             "c" to client,"r" to path,"n" to nonce,"b" to AuthPolicy.hash(browser),"a" to app,"e" to Instant.now().plusSeconds(300))
++        if (appReturnMode == "session") db.update("INSERT INTO auth_session_returns(state_hash) VALUES(:stateHash)",
++            "stateHash" to AuthPolicy.hash(state))
+         return AuthStart(state,browser,location)
+     }
+     fun finish(provider: String, state: String, browser: String?, code: String): AuthFinish {
+@@ -63,11 +67,13 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
+                 "u" to uid,"c" to identity.clientId,"t" to cipher.encrypt(identity.refreshToken))
+             else if(db.rows("SELECT user_id FROM auth_credentials WHERE user_id=:u","u" to uid).isEmpty()) throw UnauthenticatedException()
+         }
++        val appReturnMode = if (row.text("client") == "app" && db.rows(
++            "SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to AuthPolicy.hash(state)).isNotEmpty()) "session" else "page"
+         db.update("DELETE FROM auth_challenges WHERE state_hash=:s","s" to AuthPolicy.hash(state))
+         if(row.text("client")=="web") return AuthFinish("web",row.text("return_to"),jwt.issue(uid))
+         val ticket=random()
+         db.update("INSERT INTO auth_tickets VALUES(:t,:u,:a,:e)","t" to AuthPolicy.hash(ticket),"u" to uid,"a" to row.text("app_challenge"),"e" to AuthPolicy.appTicketExpiresAt(Instant.now()))
+-        return AuthFinish("app",row.text("return_to"),ticket)
++        return AuthFinish("app",row.text("return_to"),ticket,appReturnMode)
+     }
+     fun exchange(request: AppExchangeRequest): AppExchangeResponse {
+         if(!Regex("[A-Za-z0-9_-]{43}").matches(request.ticket)) throw UnauthenticatedException()
+diff --git a/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt b/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt
+index 2e83bfb..eb748c5 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/user/AuthPolicy.kt
+@@ -10,6 +10,18 @@ import java.util.Locale
+ 
+ /** 같은 리다이렉트·티켓 규칙을 Java와 독립 비교한다. 시계·DB·HTTP는 호출부에서 제공한다. */
+ object AuthPolicy {
++    fun appReturnMode(client: String, value: String?): String {
++        val mode = value ?: "page"
++        if (mode !in setOf("page", "session") || (client != "app" && mode != "page"))
++            throw MalformedRequestException("appReturn은 앱에서 page 또는 session으로 지정합니다.")
++        return mode
++    }
++
++    fun appSessionReturnLink(ticket: String): String {
++        if (!Regex("[A-Za-z0-9_-]{43}").matches(ticket)) throw UnauthenticatedException()
++        return "jeongsan://auth?ticket=$ticket"
++    }
++
+     fun appTicketExpiresAt(now: Instant): Instant = now.plusSeconds(300)
+ 
+     fun appReturnLink(ticket: String, userAgent: String?): String {
+diff --git a/server/src/main/resources/db/changelog/020-auth-session-return.yaml b/server/src/main/resources/db/changelog/020-auth-session-return.yaml
+new file mode 100644
+index 0000000..58b3471
+--- /dev/null
++++ b/server/src/main/resources/db/changelog/020-auth-session-return.yaml
+@@ -0,0 +1,25 @@
++databaseChangeLog:
++  - changeSet:
++      id: 030-auth-session-return
++      author: jeongsan
++      comment: "FC-027. iOS 인증 세션의 고정 스킴303 복귀와 기존 앱 HTML 복귀를 인가 시작 state에 묶는다."
++      changes:
++        - createTable:
++            tableName: auth_session_returns
++            remarks: "기존 auth_challenges INSERT와 롤백 바이너리를 깨지 않고 인증 세션303 복귀 선택만 state에 연결"
++            columns:
++              - column:
++                  name: state_hash
++                  type: CHAR(64)
++                  remarks: "session을 선택한 인가 state의 SHA256, 원문·사용자 정보 없이 부모 만료와 함께 제거"
++                  constraints:
++                    nullable: false
++                    primaryKey: true
++                    primaryKeyName: pk_auth_session_returns
++        - addForeignKeyConstraint:
++            baseTableName: auth_session_returns
++            baseColumnNames: state_hash
++            referencedTableName: auth_challenges
++            referencedColumnNames: state_hash
++            constraintName: fk_auth_session_state
++            onDelete: CASCADE
+diff --git a/server/src/main/resources/db/changelog/db.changelog-master.yaml b/server/src/main/resources/db/changelog/db.changelog-master.yaml
+index 724c714..e6bd5b9 100644
+--- a/server/src/main/resources/db/changelog/db.changelog-master.yaml
++++ b/server/src/main/resources/db/changelog/db.changelog-master.yaml
+@@ -34,3 +34,5 @@ databaseChangeLog:
+       file: db/changelog/018-auto-settlement.yaml
+   - include:
+       file: db/changelog/019-ugc-safety.yaml
++  - include:
++      file: db/changelog/020-auth-session-return.yaml
+diff --git a/server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt b/server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt
+index 0027bdc..a018c24 100644
+--- a/server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt
++++ b/server/src/test/kotlin/app/jeongsan/server/user/AuthDatabaseProbe.kt
+@@ -57,6 +57,34 @@ fun main() {
+         fun rejects(code: String,action: ()->Unit) { try { action(); error("expected $code") } catch(e: ApiException) { check(e.code==code) {e.code} } }
+         val verifier="a".repeat(43)
+         val challenge=Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray()))
++        val challengeCount = db.rows("SELECT state_hash FROM auth_challenges").size
++        listOf("", "SESSION", "https://evil.test").forEach { invalidMode ->
++            rejects("MALFORMED_REQUEST") { flow.start("KAKAO", "app", null, challenge, invalidMode) }
++        }
++        rejects("MALFORMED_REQUEST") { flow.start("KAKAO", "web", null, null, "session") }
++        check(db.rows("SELECT state_hash FROM auth_challenges").size == challengeCount)
++        check(gateway.calls == 0)
++        passed("잘못된 복귀 모드는 state 기록·제공자 교환 전에 거절")
++        val sessionStart = flow.start("KAKAO", "app", null, challenge, "session")
++        val sessionHash = AuthPolicy.hash(sessionStart.state)
++        check(db.rows("SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to sessionHash).size == 1)
++        val sessionFinish = flow.finish("KAKAO", sessionStart.state, sessionStart.browser, "good")
++        check(sessionFinish.appReturnMode == "session")
++        check(db.rows("SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to sessionHash).isEmpty())
++        rejects("UNAUTHENTICATED") { flow.finish("KAKAO", sessionStart.state, sessionStart.browser, "good") }
++        flow.exchange(AppExchangeRequest(sessionFinish.credential, verifier))
++        passed("인증 세션 선택 저장·콜백 소비·표식CASCADE·PKCE 교환·재사용 거절")
++        val staleSession = flow.start("KAKAO", "app", null, challenge, "session")
++        db.update("DELETE FROM auth_challenges WHERE state_hash=:stateHash", "stateHash" to AuthPolicy.hash(staleSession.state))
++        check(db.rows("SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to AuthPolicy.hash(staleSession.state)).isEmpty())
++        passed("기존 state 정리 경로도 인증 세션 표식을 함께 제거")
++        // 이전 운영 바이너리의8개 VALUES INSERT를 새 스키마에서도 그대로 실행한다.
++        val legacyHash = AuthPolicy.hash(UUID.randomUUID().toString())
++        db.update("INSERT INTO auth_challenges VALUES(:stateHash,'KAKAO','web','/jungsan/',:nonce,:browser,NULL,:expiry)",
++            "stateHash" to legacyHash, "nonce" to "n".repeat(43), "browser" to "b".repeat(64), "expiry" to Instant.now().plusSeconds(300))
++        db.update("DELETE FROM auth_challenges WHERE state_hash=:stateHash", "stateHash" to legacyHash)
++        passed("이전 운영 바이너리의 컬럼 목록 없는INSERT도 새 스키마에서 성공")
++        gateway.calls = 0
+         val start=flow.start("KAKAO","app",null,challenge)
+         rejects("UNAUTHENTICATED") { flow.finish("KAKAO",start.state,null,"good") }
+         rejects("UNAUTHENTICATED") { flow.finish("APPLE",start.state,start.browser,"good") }
+@@ -65,6 +93,7 @@ fun main() {
+         check(db.rows("SELECT state_hash FROM auth_challenges WHERE state_hash=:h","h" to AuthPolicy.hash(start.state)).size==1)
+         passed("외부 인가 실패 시 상태 소비·가입을 rollback")
+         val finish=flow.finish("KAKAO",start.state,start.browser,"good")
++        check(finish.appReturnMode == "page")
+         val persistedExpiry=checkNotNull(db.rows("SELECT expires_at FROM auth_tickets WHERE ticket_hash=:h",
+             "h" to AuthPolicy.hash(finish.credential)).single().instant("expires_at"))
+         check(java.time.Duration.between(Instant.now(),persistedExpiry).seconds in 295L..300L)
+diff --git a/server/src/test/kotlin/app/jeongsan/server/user/AuthSessionReturnSpec.kt b/server/src/test/kotlin/app/jeongsan/server/user/AuthSessionReturnSpec.kt
+new file mode 100644
+index 0000000..bd5a0c5
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/user/AuthSessionReturnSpec.kt
+@@ -0,0 +1,85 @@
++package app.jeongsan.server.user
++
++import app.jeongsan.server.common.GlobalExceptionHandler
++import app.jeongsan.server.common.MalformedRequestException
++import app.jeongsan.server.common.UnauthenticatedException
++import app.jeongsan.server.user.javaimpl.AuthPolicy as JavaPolicy
++import io.kotest.assertions.throwables.shouldThrow
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++import jakarta.servlet.http.Cookie
++import org.mockito.Mockito
++import org.springframework.http.MediaType
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
++import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
++import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
++import org.springframework.test.web.servlet.setup.MockMvcBuilders
++
++class AuthSessionReturnSpec : StringSpec({
++    val ticket = "t".repeat(43)
++    val state = "s".repeat(43)
++    val challenge = "c".repeat(43)
++    val flow = Mockito.mock(AuthFlowService::class.java)
++    val mvc = MockMvcBuilders.standaloneSetup(AuthController(flow, Mockito.mock(UserService::class.java),
++        "https://web.test/jungsan", "https://web.test", true, 30))
++        .setControllerAdvice(GlobalExceptionHandler()).build()
++    beforeTest { Mockito.reset(flow) }
++
++    "기존page가 기본이며session은app만 선택한다" {
++        listOf(Triple("app", null, "page"), Triple("web", null, "page"),
++            Triple("app", "page", "page"), Triple("web", "page", "page"), Triple("app", "session", "session"))
++            .forEach { (client, input, expected) ->
++                AuthPolicy.appReturnMode(client, input) shouldBe expected
++                JavaPolicy.appReturnMode(client, input) shouldBe expected
++            }
++    }
++    "잘못된 모드와 웹 session 조합은 양쪽 언어에서400 정책으로 거절한다" {
++        listOf("", "SESSION", "https://evil.test", "session\n").forEach { input ->
++            shouldThrow<MalformedRequestException> { AuthPolicy.appReturnMode("app", input) }
++            shouldThrow<MalformedRequestException> { JavaPolicy.appReturnMode("app", input) }
++        }
++        shouldThrow<MalformedRequestException> { AuthPolicy.appReturnMode("web", "session") }
++        shouldThrow<MalformedRequestException> { JavaPolicy.appReturnMode("web", "session") }
++    }
++    "session 복귀는 고정 스킴과43자 티켓만 허용한다" {
++        AuthPolicy.appSessionReturnLink(ticket) shouldBe "jeongsan://auth?ticket=$ticket"
++        JavaPolicy.appSessionReturnLink(ticket) shouldBe "jeongsan://auth?ticket=$ticket"
++        listOf("", "x".repeat(42), "x".repeat(44), "x\r\nLocation:https://evil.test", "x&ticket=evil").forEach { input ->
++            shouldThrow<UnauthenticatedException> { AuthPolicy.appSessionReturnLink(input) }
++            shouldThrow<UnauthenticatedException> { JavaPolicy.appSessionReturnLink(input) }
++        }
++    }
++    listOf("KAKAO", "APPLE").forEach { provider ->
++        "$provider 로그인 시작은 선택한 session을 서비스에 전달한다" {
++            Mockito.`when`(flow.start(provider, "app", null, challenge, "session"))
++                .thenReturn(AuthStart(state, "browser", "https://provider.test/authorize"))
++            mvc.perform(get("/api/v1/auth/${provider.lowercase()}/login").param("client", "app")
++                .param("codeChallenge", challenge).param("appReturn", "session"))
++                .andExpect(status().isFound).andExpect(header().string("Cache-Control", "no-store"))
++                .andExpect(header().string("Location", "https://provider.test/authorize"))
++            Mockito.verify(flow).start(provider, "app", null, challenge, "session")
++        }
++        "$provider 인증 세션은 저장된 선택으로303을 반환하고 query와UA로 바꾸지 않는다" {
++            Mockito.`when`(flow.finish(provider, state, "browser", "code"))
++                .thenReturn(AuthFinish("app", "/jungsan/j/ignored", ticket, "session"))
++            val request = if (provider == "APPLE") post("/api/v1/auth/apple/callback")
++                .contentType(MediaType.APPLICATION_FORM_URLENCODED) else get("/api/v1/auth/kakao/callback")
++            val response = mvc.perform(request.param("code", "code").param("state", state).param("appReturn", "page")
++                .header("User-Agent", "Android").cookie(Cookie(AuthController.bindingName(state), "browser")))
++                .andExpect(status().isSeeOther).andExpect(header().string("Location", "jeongsan://auth?ticket=$ticket"))
++                .andExpect(header().string("Cache-Control", "no-store")).andExpect(header().string("Referrer-Policy", "no-referrer"))
++                .andExpect(content().string("")).andReturn().response
++            response.getHeaders("Set-Cookie").any { it.startsWith("jeongsan_token=") } shouldBe false
++            response.getHeaders("Set-Cookie").any { it.contains("Max-Age=0") && it.contains("Secure") &&
++                it.contains("HttpOnly") && it.contains("SameSite=${if (provider == "APPLE") "None" else "Lax"}") } shouldBe true
++        }
++    }
++    "콜백 query에session을 붙여도 기존page 응답은303으로 바뀌지 않는다" {
++        Mockito.`when`(flow.finish("KAKAO", state, "browser", "code"))
++            .thenReturn(AuthFinish("app", "/jungsan/", ticket))
++        mvc.perform(get("/api/v1/auth/kakao/callback").param("code", "code").param("state", state)
++            .param("appReturn", "session").cookie(Cookie(AuthController.bindingName(state), "browser")))
++            .andExpect(status().isOk).andExpect(header().doesNotExist("Location"))
++            .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
++    }
++})
