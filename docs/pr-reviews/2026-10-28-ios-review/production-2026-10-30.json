@@ -1,0 +1,112 @@
+{
+  "client_date": "2026-10-30",
+  "deployed_sha": "0d0df31860328af31a772cd98ac119a38e92fd7f",
+  "jar_sha256": "f6574716116bb12fc20ce452fde8cf8c0d6a207e2417bfa31272bac3b572f928",
+  "previous_image_sha": "8d27496270e6c8adcb78b4580d68c150f9c3cce6",
+  "health": "healthy",
+  "migration": "030-auth-session-return",
+  "http_checks": [
+    {
+      "Path": "/api/v1/review/demo",
+      "Status": 200,
+      "CacheControl": "no-store",
+      "ContentType": "text/html; charset=UTF-8"
+    },
+    {
+      "Path": "/api/v1/auth/me",
+      "Status": 401,
+      "CacheControl": "",
+      "ContentType": "application/json"
+    },
+    {
+      "Path": "/api/v1/me/gatherings",
+      "Status": 401,
+      "CacheControl": "",
+      "ContentType": "application/json"
+    },
+    {
+      "Path": "/api/v1/auth/kakao/login?client=web&appReturn=session",
+      "Status": 400,
+      "CacheControl": "",
+      "ContentType": "application/json"
+    },
+    {
+      "Path": "demo query invariant",
+      "Status": 200
+    },
+    {
+      "Path": "Apple callback invalid state",
+      "Status": 401
+    },
+    {
+      "Path": "Apple origin other API",
+      "Status": 403
+    }
+  ],
+  "pr_kept_open": true,
+  "iphone_provider_login": "not performed",
+  "oauth_start_checks": [
+    {
+      "provider": "kakao",
+      "status": 302,
+      "provider_host": "kauth.kakao.com",
+      "http_only_secure_cookie": true,
+      "same_site": "Lax",
+      "session_marker_count": 1
+    },
+    {
+      "provider": "apple",
+      "status": 302,
+      "provider_host": "appleid.apple.com",
+      "http_only_secure_cookie": true,
+      "same_site": "None",
+      "session_marker_count": 1
+    }
+  ],
+  "oauth_state_scope": "Two self-generated authorization starts only; no provider consent/account creation/token exchange. Temporary states expire normally.",
+  "testflight": {
+    "head": "2ed252332dbbce55ed4022b04d14e8c4570d4b9d",
+    "branch": "fix/ios-review-login-demo",
+    "run_id": 40902702047,
+    "build": 9,
+    "latest_attempt": 2,
+    "app_store_uploaded": true,
+    "apple_processing": "Uploaded package is processing; completion not verified",
+    "testflight_installability": "not verified",
+    "agreement_acceptance": "User confirmed personally accepting updated agreement before attempt 2",
+    "app_store_review_submitted": false,
+    "attempts": [
+      {
+        "attempt": 1,
+        "job_id": 123549036416,
+        "archive": "success",
+        "export_upload": "failure",
+        "errors": [
+          "PLA Update available",
+          "No profiles for app.jeongsan were found"
+        ],
+        "key_cleanup": "success",
+        "app_store_uploaded": false
+      },
+      {
+        "attempt": 2,
+        "job_id": 123568902593,
+        "started_at": "2026-10-29T16:06:25Z",
+        "completed_at": "2026-10-29T16:23:55Z",
+        "conclusion": "success",
+        "archive": "success",
+        "export_upload": "success",
+        "key_cleanup": "success",
+        "app_store_uploaded": true,
+        "log_evidence": [
+          "** ARCHIVE SUCCEEDED **",
+          "Uploaded package is processing.",
+          "Upload succeeded.",
+          "Uploaded iosApp",
+          "** EXPORT SUCCEEDED **"
+        ],
+        "previous_errors_recurred": false
+      }
+    ]
+  }
+}

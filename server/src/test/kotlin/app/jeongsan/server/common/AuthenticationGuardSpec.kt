@@ -18,6 +18,8 @@ class AuthenticationGuardSpec : StringSpec({
             "app.jeongsan.server.user.AuthController#appleCallback",
             "app.jeongsan.server.user.AuthController#exchange",
             "app.jeongsan.server.gathering.JoinController#preview",
+            // 로그인 이전의 고정 앱 데모 안내만 공개한다. 인증·사용자 데이터를 발급하지 않는다.
+            "app.jeongsan.server.review.ReviewDemoController#demo",
         )
         val scanner = ClassPathScanningCandidateComponentProvider(false)
         scanner.addIncludeFilter(AnnotationTypeFilter(RestController::class.java))

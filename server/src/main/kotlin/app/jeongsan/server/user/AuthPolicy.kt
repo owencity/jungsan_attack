@@ -10,6 +10,18 @@ import java.util.Locale
 
 /** 같은 리다이렉트·티켓 규칙을 Java와 독립 비교한다. 시계·DB·HTTP는 호출부에서 제공한다. */
 object AuthPolicy {
+    fun appReturnMode(client: String, value: String?): String {
+        val mode = value ?: "page"
+        if (mode !in setOf("page", "session") || (client != "app" && mode != "page"))
+            throw MalformedRequestException("appReturn은 앱에서 page 또는 session으로 지정합니다.")
+        return mode
+    }
+
+    fun appSessionReturnLink(ticket: String): String {
+        if (!Regex("[A-Za-z0-9_-]{43}").matches(ticket)) throw UnauthenticatedException()
+        return "jeongsan://auth?ticket=$ticket"
+    }
+
     fun appTicketExpiresAt(now: Instant): Instant = now.plusSeconds(300)
 
     fun appReturnLink(ticket: String, userAgent: String?): String {

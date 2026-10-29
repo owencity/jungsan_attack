@@ -1,0 +1,1087 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index a22b48b..b0cbc23 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -19,7 +19,7 @@ on:
+ # 같은 브랜치에 연달아 푸시하면 앞선 실행은 취소한다.
+ # macOS 러너 분은 공개 저장소라도 무한정은 아니라서, 낭비를 줄인다.
+ concurrency:
+-  group: ci-${{ github.workflow }}-${{ github.ref }}
++  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+   cancel-in-progress: true
+ 
+ jobs:
+@@ -88,6 +88,7 @@ jobs:
+             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+             -derivedDataPath build/dd ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+             CODE_SIGNING_ALLOWED=NO \
++            JS_API_BASE_URL=https://jungsan-api.devkdk.com \
+             build > xcodebuild.log 2>&1 || {
+               # 로그는 인증 없이 못 읽는다 — 오류 줄을 annotation 으로 올려 공개 API 로 읽히게 한다
+               grep -E "error:|^e: |FAILED|ld: |Undefined symbol|^ +\"_|referenced from" xcodebuild.log | head -n 40 \
+@@ -111,6 +112,11 @@ jobs:
+           # 실행 직후 죽었으면 여기서 실패한다
+           xcrun simctl spawn "$UDID" launchctl list | grep -q "app.jeongsan" || { echo "app not running"; exit 1; }
+           mkdir -p shots && xcrun simctl io "$UDID" screenshot shots/ios-launch.png
++          # 심사 체험 진입은 실제 앱 URL 처리부터 확인한다. 데모를 열어도 프로세스가 유지돼야 한다.
++          xcrun simctl openurl "$UDID" 'jeongsan://demo'
++          sleep 5
++          xcrun simctl spawn "$UDID" launchctl list | grep -q "app.jeongsan" || { echo "demo crashed"; exit 1; }
++          xcrun simctl io "$UDID" screenshot shots/ios-demo.png
+ 
+       - name: upload screenshot
+         if: always()
+diff --git a/DEVLOG.md b/DEVLOG.md
+index d29d466..81d3922 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -5,6 +5,13 @@ jungsan_attack의 `docs/생각하고-개발하기.md` 규칙에 따라, 반문
+ 
+ ---
+ 
++## [2026-10-28] iOS 인증 세션과 공개 체험을 실제 로그인에서 분리한다
++
++- **문제:** App Review가 외부 브라우저 로그인과 다중 사용자 기능 접근 부족을 지적했다. 앱 담당자 부재로 CTO가 Codex에 앱 구현을 요청했다.
++- **고려한 대안:** 외부 브라우저 유지, SFSafariViewController, ASWebAuthenticationSession을 비교했다. 심사 접근은 소셜 비밀번호 공유 대신 별도 공개 체험을 선택했다.
++- **선택 이유 / 트레이드오프:** 인증 전용 시스템 세션으로 기존 PKCE 교환을 연결한다. 체험은 같은 화면·로컬 스토어에 가상3명·역할 전환·초기화·데모 배너를 제공하고 실제 클라이언트를 금지한다. 네이티브 복귀는 백엔드 PR48의 선택적303 계약에 의존한다.
++- **아쉬운 점:** 로컬 체험은 서버 동시성과 제공자 인증을 증명하지 못한다. macOS CI와 별도로 실제 iPhone의 로그인·취소·회원 탈퇴·공유 링크 검증이 필요하고, 서버와 체험 메시지 정책이 바뀌면 함께 맞춰야 한다.
++
+ ## [2026-09-13] 강변 배경 스크림을 없애고 로그인과 같은 굵기로 맞춘다
+ 
+ - **문제:** 로그인 화면(석양 도시뷰)은 화면 전체를 선명하게 채우는데, 그 외 화면
+diff --git a/composeApp/src/androidMain/AndroidManifest.xml b/composeApp/src/androidMain/AndroidManifest.xml
+index f4fad9f..16e4fde 100644
+--- a/composeApp/src/androidMain/AndroidManifest.xml
++++ b/composeApp/src/androidMain/AndroidManifest.xml
+@@ -28,6 +28,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.BROWSABLE" />
+                 <data android:scheme="jeongsan" android:host="auth" />
++                <data android:scheme="jeongsan" android:host="demo" />
+             </intent-filter>
+         </activity>
+     </application>
+diff --git a/composeApp/src/androidMain/kotlin/app/jeongsan/MainActivity.kt b/composeApp/src/androidMain/kotlin/app/jeongsan/MainActivity.kt
+index 2b94d34..3673110 100644
+--- a/composeApp/src/androidMain/kotlin/app/jeongsan/MainActivity.kt
++++ b/composeApp/src/androidMain/kotlin/app/jeongsan/MainActivity.kt
+@@ -8,22 +8,25 @@ import androidx.activity.enableEdgeToEdge
+ import app.jeongsan.v3.LaunchOptions
+ import app.jeongsan.v3.api.AndroidAppContext
+ import app.jeongsan.v3.api.AppAuth
++import app.jeongsan.v3.api.AppLinks
++import app.jeongsan.v3.api.platformVerifierStore
+ 
+ class MainActivity : ComponentActivity() {
+     override fun onCreate(savedInstanceState: Bundle?) {
+         enableEdgeToEdge()
+         super.onCreate(savedInstanceState)
+         AndroidAppContext.context = applicationContext
++        AppAuth.store = platformVerifierStore()
+         // 스토어 스크린샷: adb shell am start -n app.jeongsan/.MainActivity -e jsScreen room
+         LaunchOptions.screenshot = intent?.getStringExtra("jsScreen")
+         // 앱이 꺼져 있다가 로그인 복귀 주소로 열린 경우
+-        intent?.dataString?.let(AppAuth::handle)
++        intent?.dataString?.let(AppLinks::handle)
+         setContent { App() }
+     }
+ 
+     /** 로그인 복귀(jeongsan://auth?ticket=…) — 앱이 떠 있는 동안 브라우저에서 돌아온 경우 */
+     override fun onNewIntent(intent: Intent) {
+         super.onNewIntent(intent)
+-        intent.dataString?.let(AppAuth::handle)
++        intent.dataString?.let(AppLinks::handle)
+     }
+ }
+diff --git a/composeApp/src/androidMain/kotlin/app/jeongsan/v3/api/AuthBrowser.android.kt b/composeApp/src/androidMain/kotlin/app/jeongsan/v3/api/AuthBrowser.android.kt
+new file mode 100644
+index 0000000..c9b8149
+--- /dev/null
++++ b/composeApp/src/androidMain/kotlin/app/jeongsan/v3/api/AuthBrowser.android.kt
+@@ -0,0 +1,7 @@
++package app.jeongsan.v3.api
++
++actual fun platformAuthenticate(url: String, onResult: (AuthBrowserResult) -> Unit) {
++    onResult(AuthBrowserResult.Failed)
++}
++
++actual fun cancelPlatformAuthentication() = Unit
+diff --git a/composeApp/src/androidMain/kotlin/app/jeongsan/v3/api/DemoMessagePolicy.android.kt b/composeApp/src/androidMain/kotlin/app/jeongsan/v3/api/DemoMessagePolicy.android.kt
+new file mode 100644
+index 0000000..ae0945e
+--- /dev/null
++++ b/composeApp/src/androidMain/kotlin/app/jeongsan/v3/api/DemoMessagePolicy.android.kt
+@@ -0,0 +1,5 @@
++package app.jeongsan.v3.api
++
++import java.text.Normalizer
++
++internal actual fun compatibilityNormalize(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFKC)
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/App.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/App.kt
+index 2cf98b3..a4d1429 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/App.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/App.kt
+@@ -8,6 +8,11 @@ import app.jeongsan.v3.api.AppAuth
+ import androidx.compose.runtime.Composable
+ import androidx.compose.runtime.LaunchedEffect
+ import androidx.compose.runtime.remember
++import androidx.compose.runtime.key
++import androidx.compose.foundation.layout.Box
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.fillMaxSize
++import androidx.compose.ui.Modifier
+ import androidx.compose.ui.platform.LocalUriHandler
+ import androidx.navigation.compose.NavHost
+ import androidx.navigation.compose.composable
+@@ -19,6 +24,12 @@ import app.jeongsan.v3.LaunchOptions
+ import app.jeongsan.v3.SCREENSHOT_SCREENS
+ import app.jeongsan.v3.V3State
+ import app.jeongsan.v3.V3Store
++import app.jeongsan.v3.DemoFixtures
++import app.jeongsan.v3.api.AppLinks
++import app.jeongsan.v3.api.AuthBrowserResult
++import app.jeongsan.v3.api.platformAuthenticate
++import app.jeongsan.v3.api.cancelPlatformAuthentication
++import app.jeongsan.v3.ui.DemoControls
+ import app.jeongsan.v3.api.ApiClient
+ import app.jeongsan.v3.api.V3Gateway
+ import app.jeongsan.v3.api.apiBaseUrl
+@@ -37,20 +48,46 @@ import app.jeongsan.v3.ui.v3Graph
+  */
+ @Composable
+ fun App() {
++    val realClient = remember {
++        if (apiBaseUrl.isEmpty() || LaunchOptions.screenshot != null) null
++        else ApiClient(apiBaseUrl, platformTokenStore()).also { AppAuth.store = platformVerifierStore() }
++    }
++    var demo by remember { mutableStateOf(AppLinks.demoRequest > 0) }
++    var demoGeneration by remember { mutableStateOf(0) }
++    fun enterDemo() {
++        if (platformIsIos) cancelPlatformAuthentication()
++        AppAuth.cancel()
++        demoGeneration++
++        demo = true
++    }
++    LaunchedEffect(AppLinks.demoRequest) {
++        if (AppLinks.demoRequest > 0) enterDemo()
++    }
++    key(demo, demoGeneration) {
++        AppSession(realClient, demo, onEnterDemo = { enterDemo() }, onResetDemo = { demoGeneration++ },
++            onExitDemo = { demo = false })
++    }
++}
++
++@Composable
++private fun AppSession(realClient: ApiClient?, demo: Boolean, onEnterDemo: () -> Unit,
++    onResetDemo: () -> Unit, onExitDemo: () -> Unit) {
+     JeongsanTheme {
+         // 서버 주소가 없으면 목데이터 모드 — 웹과 같은 스위치(`apiBaseUrl`)
+         // 스크린샷 모드는 서버 주소가 있어도 목데이터로 찍는다(LaunchOptions)
+         val shot = LaunchOptions.screenshot
+-        val client = remember {
+-            if (apiBaseUrl.isEmpty() || shot != null) null
+-            else ApiClient(apiBaseUrl, platformTokenStore()).also { AppAuth.store = platformVerifierStore() }
+-        }
+-        val v3 = remember { V3Store(if (client == null) V3State.initial() else V3State.empty()) }
+-        val gateway = remember { V3Gateway(v3, client) }
++        val client = if (demo) null else realClient
++        val v3 = remember { V3Store(if (demo) DemoFixtures.state() else if (client == null) V3State.initial() else V3State.empty(),
++            awardSpoons = !demo) }
++        val gateway = remember { V3Gateway(v3, client, isDemoMode = demo) }
+         val navController = rememberNavController()
+         val uri = LocalUriHandler.current
+ 
+         LaunchedEffect(Unit) {
++            if (demo) {
++                navController.navigate(V3Routes.Home) { popUpTo(Routes.Login) { inclusive = true } }
++                return@LaunchedEffect
++            }
+             // 스크린샷 모드: 이름 확인을 끝낸 상태에서 그 화면의 보는 사람으로 바꾸고 바로 띄운다
+             val target = shot?.let { SCREENSHOT_SCREENS[it] }
+             if (target != null) {
+@@ -79,6 +116,7 @@ fun App() {
+ 
+         // 브라우저 로그인에서 jeongsan://auth?ticket=… 으로 돌아오면 토큰으로 바꾸고 내 술자리로(AppAuth)
+         var loginError by remember { mutableStateOf<String?>(null) }
++        var loginBusy by remember { mutableStateOf(false) }
+         val returned = AppAuth.returned
+         LaunchedEffect(returned) {
+             val url = returned ?: return@LaunchedEffect
+@@ -87,20 +125,50 @@ fun App() {
+             if (loginError == null && !gateway.loadMe()) loginError = "로그인하지 못했어요. 다시 시도해주세요"
+             // 다 끝난 뒤에 지운다 — 지우는 순간 이 효과가 다시 시작돼 진행 중인 작업이 취소되기 때문(AppAuth.finish)
+             AppAuth.consumed(url)
++            loginBusy = false
+             if (loginError == null) navController.navigate(V3Routes.Home) { popUpTo(Routes.Login) { inclusive = true } }
+         }
+ 
+-        NavHost(navController = navController, startDestination = Routes.Login) {
++        Column(Modifier.fillMaxSize()) {
++            if (demo) DemoControls(v3.state.users, v3.state.me.id,
++                onPick = { userId ->
++                    v3.actAs(userId)
++                    navController.navigate(V3Routes.Home) { popUpTo(V3Routes.Home) { inclusive = true } }
++                }, onReset = onResetDemo, onExit = onExitDemo)
++            Box(Modifier.weight(1f).fillMaxSize()) {
++              NavHost(navController = navController, startDestination = Routes.Login, modifier = Modifier.fillMaxSize()) {
+             composable(Routes.Login) {
+                 LoginScreen(
+                     showApple = platformIsIos && client != null,
+                     error = loginError,
++                    busy = loginBusy,
++                    onDemo = if (shot == null) onEnterDemo else null,
+                     onLogin = { provider ->
+-                        if (client != null) {
++                        if (client != null && !loginBusy) {
+                             // API 모드: SDK 없이 서버 OAuth 를 브라우저로 연다(FC-014 1-1) — PKCE 로 시작해 앱 스킴으로 돌아온다
+                             loginError = null
+-                            uri.openUri(AppAuth.start(client, provider))
+-                        } else {
++                            val address = AppAuth.start(client, provider, authSession = platformIsIos)
++                            if (platformIsIos) {
++                                loginBusy = true
++                                platformAuthenticate(address) { result ->
++                                    when (result) {
++                                        is AuthBrowserResult.Completed -> {
++                                            if (AppAuth.ticketOf(result.url) == null) {
++                                                AppAuth.cancel()
++                                                loginBusy = false
++                                                loginError = "로그인 주소가 올바르지 않아요. 다시 시도해주세요"
++                                            } else AppAuth.handle(result.url)
++                                        }
++                                        AuthBrowserResult.Cancelled -> { AppAuth.cancel(); loginBusy = false }
++                                        AuthBrowserResult.Failed -> {
++                                            AppAuth.cancel()
++                                            loginBusy = false
++                                            loginError = "로그인 화면을 열지 못했어요. 다시 시도해주세요"
++                                        }
++                                    }
++                                }
++                            } else uri.openUri(address)
++                        } else if (client == null) {
+                             navController.navigate(V3Routes.Home) {
+                                 popUpTo(Routes.Login) { inclusive = true }
+                             }
+@@ -115,11 +183,13 @@ fun App() {
+                 gateway = gateway,
+                 // 내 술자리(첫 화면)의 뒤로가기·로그아웃·탈퇴 뒤 — 로그인 화면으로
+                 onLeave = {
+-                    navController.navigate(Routes.Login) {
++                    if (demo) onExitDemo() else navController.navigate(Routes.Login) {
+                         popUpTo(V3Routes.Home) { inclusive = true }
+                     }
+                 },
+             )
++              }
++            }
+         }
+     }
+ }
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/screens/LoginScreen.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/screens/LoginScreen.kt
+index 5af662d..ef2d454 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/screens/LoginScreen.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/screens/LoginScreen.kt
+@@ -52,6 +52,8 @@ fun LoginScreen(
+     showApple: Boolean = false,
+     /** 로그인이 실패했을 때 문구 */
+     error: String? = null,
++    busy: Boolean = false,
++    onDemo: (() -> Unit)? = null,
+ ) {
+     val textShadow = Shadow(color = Color.Black.copy(alpha = 0.45f), offset = Offset(0f, 2f), blurRadius = 10f)
+ 
+@@ -93,16 +95,23 @@ fun LoginScreen(
+ 
+                 Spacer(Modifier.height(28.dp))
+ 
+-                PrimaryButton("카카오로 3초만에 시작하기", onClick = { onLogin(AppAuth.Provider.KAKAO) })
++                PrimaryButton(if (busy) "로그인 중이에요" else "카카오로 3초만에 시작하기", enabled = !busy,
++                    onClick = { onLogin(AppAuth.Provider.KAKAO) })
+                 if (showApple) {
+                     Spacer(Modifier.height(10.dp))
+                     // Apple 가이드 — 검은 바탕·흰 글자·로고. 다른 로그인 버튼과 같은 크기
+                     Box(
+-                        Modifier.fillMaxWidth().height(52.dp).background(Color.Black).clickable { onLogin(AppAuth.Provider.APPLE) }
++                        Modifier.fillMaxWidth().height(52.dp).background(Color.Black).clickable(enabled = !busy) { onLogin(AppAuth.Provider.APPLE) }
+                             .semantics { role = Role.Button },
+                         contentAlignment = Alignment.Center,
+                     ) { Text("\uF8FF  Apple로 계속하기", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                 }
++                if (onDemo != null) {
++                    Spacer(Modifier.height(14.dp))
++                    PrimaryButton("로그인 없이 데모 체험", enabled = !busy, onClick = onDemo)
++                    Text("가상 총무·참여자로 정산을 체험해보세요", color = Color.White,
++                        style = TextStyle(shadow = textShadow), modifier = Modifier.padding(top = 8.dp))
++                }
+                 if (error != null) {
+                     Text(
+                         error, Modifier.padding(top = 12.dp), style = TextStyle(shadow = textShadow),
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/DemoFixtures.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/DemoFixtures.kt
+new file mode 100644
+index 0000000..987e4bd
+--- /dev/null
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/DemoFixtures.kt
+@@ -0,0 +1,47 @@
++package app.jeongsan.v3
++
++import kotlinx.datetime.Clock
++import kotlinx.datetime.Instant
++
++/** 실제 계정·계좌·API를 사용하지 않는 공개 체험 데이터. 상태 전이는 기존 스토어를 그대로 거친다. */
++object DemoFixtures {
++    fun state(now: Instant = Clock.System.now()): V3State {
++        val users = listOf(
++            User(1, "체험총무", 0, Payout("카카오뱅크", "0000000000", "체험총무"), nickname = "총무"),
++            User(2, "참여자A", 0, nickname = "참여자A"),
++            User(3, "참여자B", 0, nickname = "참여자B"),
++        )
++        fun room(id: Long, title: String, automatic: Boolean): Gathering {
++            val participants = users.map { user ->
++                Participant(id * 10 + user.id, user.id, user.displayName, 0, user.payout, user.nickname)
++            }
++            val roundId = id * 10
++            return Gathering(
++                id = id, title = title, date = now, hostUserId = 1, status = GatheringStatus.OPEN,
++                shareToken = "demo$id", inputRevision = 0, participants = participants,
++                rounds = listOf(Round(roundId, 1, "1차", 30_000, participants[0].id, emptyList())),
++                responses = participants.take(2).map { RoundResponse(it.id, roundId, ResponseType.SOBER, ResponseSource.SELF) },
++                transfers = emptyList(), spoonGivers = emptyList(), headcount = if (automatic) 3 else null,
++                timeline = listOf(
++                    TimelineEntry(1, TimelineType.SYSTEM, "체험용 술자리를 만들었어요", now),
++                    TimelineEntry(2, TimelineType.MESSAGE, "참여자 역할을 바꿔 응답과 정산을 체험해보세요", now, participants[1].id),
++                    TimelineEntry(3, TimelineType.MESSAGE, "이 연습 메시지로 신고와 차단을 확인할 수 있어요", now, participants[2].id),
++                ),
++            )
++        }
++        val rooms = listOf(room(101, "체험 · 응답 중", true), room(102, "체험 · 입금 확인 중", false),
++            room(103, "체험 · 정산 완료", false)).associateBy { it.id }
++        val store = V3Store(V3State(users[0], rooms, emptyList(), emptySet(), users), clock = { now }, awardSpoons = false)
++        store.settle(102, 0)
++        store.settle(103, 0)
++        store.state.rooms.getValue(103).transfers.forEach { transfer ->
++            val sender = store.state.rooms.getValue(103).participants.first { it.id == transfer.fromParticipantId }
++            store.actAs(sender.userId)
++            store.markSent(103, transfer.id)
++            store.actAs(1)
++            store.confirmIncoming(103, transfer.id)
++        }
++        return store.state.copy(me = users[0].copy(needsName = true),
++            users = users.map { if (it.id == 1L) it.copy(needsName = true) else it })
++    }
++}
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/V3Store.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/V3Store.kt
+index 14b1e9b..9d8d4b6 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/V3Store.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/V3Store.kt
+@@ -58,6 +58,7 @@ enum class SettleResult { OK, STALE, DENIED }
+ class V3Store(
+     initial: V3State = V3State.initial(),
+     private val clock: () -> Instant = { Clock.System.now() },
++    private val awardSpoons: Boolean = true,
+ ) {
+     var state by mutableStateOf(initial)
+         private set
+@@ -75,7 +76,7 @@ class V3Store(
+     private fun Gathering.completeIfDone(): Gathering {
+         if (status != GatheringStatus.SETTLING || !transfers.all { it.status == TransferStatus.CONFIRMED }) return this
+         val hostId = host().id
+-        val bonus = if (participants.size >= 2) 1 else 0
++        val bonus = if (awardSpoons && participants.size >= 2) 1 else 0
+         return copy(
+             status = GatheringStatus.COMPLETED,
+             completedAt = clock(),
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/ApiClient.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/ApiClient.kt
+index 561a904..2b387ab 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/ApiClient.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/ApiClient.kt
+@@ -84,8 +84,9 @@ class ApiClient(
+         call<TokenResponse>(HttpMethod.Post, "/api/v1/auth/app/exchange", TicketRequest(ticket, codeVerifier)).also { tokens.set(it.token) }
+ 
+     /** 브라우저로 여는 로그인 주소(FC-014 1-1). 서버가 `jeongsan://auth?ticket=…`으로 돌려보낸다 — [AppAuth] */
+-    fun loginUrl(provider: AppAuth.Provider, codeChallenge: String): String =
+-        "$baseUrl/api/v1/auth/${provider.path}/login?client=app&codeChallenge=$codeChallenge"
++    fun loginUrl(provider: AppAuth.Provider, codeChallenge: String, authSession: Boolean = false): String =
++        "$baseUrl/api/v1/auth/${provider.path}/login?client=app&codeChallenge=$codeChallenge" +
++            if (authSession) "&appReturn=session" else ""
+ 
+     /** 이 기기의 토큰만 버린다(서버를 부르지 않음) — 만료된 토큰 정리용 */
+     fun logout() = tokens.set(null)
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/AppAuth.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/AppAuth.kt
+index f55ea2d..de503d1 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/AppAuth.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/AppAuth.kt
+@@ -29,11 +29,12 @@ object AppAuth {
+         set(v) = store.set(v)
+ 
+     /** 로그인을 시작한다 — 브라우저로 열 주소를 돌려준다 */
+-    fun start(client: ApiClient, provider: Provider): String {
++    fun start(client: ApiClient, provider: Provider, authSession: Boolean = false): String {
+         // generateNonce 는 플랫폼 보안 난수(JVM SecureRandom 등) 16바이트의 hex — 두 번 이어 64자. RFC 7636 허용 문자 안이다
+         val v = generateNonce() + generateNonce()
+         verifier = v
+-        return client.loginUrl(provider, Pkce.challenge(v))
++        returned = null
++        return client.loginUrl(provider, Pkce.challenge(v), authSession)
+     }
+ 
+     /** 브라우저에서 돌아온 주소. 화면(App)이 지켜보다가 [finish]로 처리한다 */
+@@ -42,7 +43,12 @@ object AppAuth {
+ 
+     /** 플랫폼(Android onNewIntent·iOS onOpenURL)이 부른다. 로그인 주소가 아니면 무시 */
+     fun handle(url: String) {
+-        if (ticketOf(url) != null) returned = url
++        if (ticketOf(url) != null && verifier != null && returned == null) returned = url
++    }
++
++    fun cancel() {
++        verifier = null
++        returned = null
+     }
+ 
+     /**
+@@ -74,7 +80,7 @@ object AppAuth {
+ 
+     /** `jeongsan://auth?ticket=…` 에서 티켓만 */
+     fun ticketOf(url: String): String? {
+-        if (!url.startsWith("jeongsan://auth")) return null
++        if (!url.startsWith("jeongsan://auth?")) return null
+         return url.substringAfter('?', "").split('&')
+             .firstOrNull { it.startsWith("ticket=") }?.substringAfter('=')?.takeIf { it.isNotBlank() }
+     }
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/AppLinks.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/AppLinks.kt
+new file mode 100644
+index 0000000..fa1566c
+--- /dev/null
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/AppLinks.kt
+@@ -0,0 +1,17 @@
++package app.jeongsan.v3.api
++
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableIntStateOf
++import androidx.compose.runtime.setValue
++
++/** 인증과 데모 진입을 구분해 데모URL을 로그인 티켓으로 처리하지 않는다. */
++object AppLinks {
++    var demoRequest by mutableIntStateOf(0)
++        private set
++
++    fun isDemoLink(url: String): Boolean = url == "jeongsan://demo" || url == "jeongsan://demo/"
++
++    fun handle(url: String) {
++        if (isDemoLink(url)) demoRequest++ else AppAuth.handle(url)
++    }
++}
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/AuthBrowser.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/AuthBrowser.kt
+new file mode 100644
+index 0000000..6ab928e
+--- /dev/null
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/AuthBrowser.kt
+@@ -0,0 +1,11 @@
++package app.jeongsan.v3.api
++
++sealed interface AuthBrowserResult {
++    data class Completed(val url: String) : AuthBrowserResult
++    data object Cancelled : AuthBrowserResult
++    data object Failed : AuthBrowserResult
++}
++
++/** iOS 시스템 인증 화면만 사용한다. Android의 기존 브라우저 복귀는 App에서 유지한다. */
++expect fun platformAuthenticate(url: String, onResult: (AuthBrowserResult) -> Unit)
++expect fun cancelPlatformAuthentication()
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/DemoMessagePolicy.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/DemoMessagePolicy.kt
+new file mode 100644
+index 0000000..7fce507
+--- /dev/null
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/DemoMessagePolicy.kt
+@@ -0,0 +1,15 @@
++package app.jeongsan.v3.api
++
++/** FC-024 서버 목록과 2026-10-28 기준으로 맞춘 체험 필터. 운영 판정은 계속 서버가 담당한다. */
++internal object DemoMessagePolicy {
++    private val words = listOf("씨발", "시발", "개새끼", "병신", "좆", "지랄", "섹스", "강간", "fuck", "motherfucker")
++    private fun normalized(text: String) = compatibilityNormalize(text).lowercase().filter { it.isLetterOrDigit() }
++
++    fun violation(text: String): String? = when {
++        text.trim().isEmpty() || text.trim().length > 200 -> "메시지는 1~200자까지 입력해주세요"
++        words.any { normalized(text).contains(normalized(it)) } -> "부적절한 표현이 있어요"
++        else -> null
++    }
++}
++
++internal expect fun compatibilityNormalize(text: String): String
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/V3Gateway.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/V3Gateway.kt
+index 8bf1ada..fd99fd5 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/V3Gateway.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/V3Gateway.kt
+@@ -40,7 +40,8 @@ sealed interface Settled {
+  *
+  * 반환값 규칙: 성공이면 null(또는 결과 값), 실패면 **사용자에게 보여줄 문구**.
+  */
+-class V3Gateway(private val store: V3Store, private val client: ApiClient?) {
++class V3Gateway(private val store: V3Store, private val client: ApiClient?, val isDemoMode: Boolean = false) {
++    init { require(!isDemoMode || client == null) { "체험에는 실제 API 클라이언트를 연결하지 않습니다." } }
+     val isApiMode get() = client != null
+ 
+     // ── 도우미 ──
+@@ -115,6 +116,10 @@ class V3Gateway(private val store: V3Store, private val client: ApiClient?) {
+ 
+     /** 회원 탈퇴(App Store 5.1.1(v)) — 성공하면 null. 서버가 계정·연결을 지우고, 기기의 토큰·화면 데이터도 지운다 */
+     suspend fun deleteAccount(): String? {
++        if (isDemoMode) {
++            store.reset(app.jeongsan.v3.V3State.empty())
++            return null
++        }
+         val c = client ?: return "목데이터 모드에서는 탈퇴할 수 없어요"
+         return try {
+             c.deleteAccount()
+@@ -307,6 +312,7 @@ class V3Gateway(private val store: V3Store, private val client: ApiClient?) {
+ 
+     /** 타임라인 메시지 — 술자리 하나에 하나라 어느 정산방에서 써도 같은 곳에 남는다 */
+     suspend fun sendMessage(roomId: Id, text: String): String? {
++        if (isDemoMode) DemoMessagePolicy.violation(text)?.let { return it }
+         val c = client ?: run { store.sendMessage(roomId, text); return null }
+         val (gid, _) = ctx(roomId)
+         return mutate(c, gid) { c.sendMessage(gid, text) }
+@@ -362,7 +368,7 @@ class V3Gateway(private val store: V3Store, private val client: ApiClient?) {
+ 
+     /** 스푼(🥄) — 복수 총무 지급 규칙이 서버에서 미결(SETTLEMENT_UNITS §7)이라 API 모드에선 아직 열지 않는다 */
+     fun giveSpoon(roomId: Id): String? {
+-        if (client == null) { store.giveSpoon(roomId); return null }
++        if (client == null && !isDemoMode) { store.giveSpoon(roomId); return null }
+         return "스푼은 곧 열려요"
+     }
+ 
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/AccountScreen.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/AccountScreen.kt
+index 9d1629a..40574bb 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/AccountScreen.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/AccountScreen.kt
+@@ -63,6 +63,7 @@ fun AccountScreen(
+     /** 내가 차단한 사람(FC-024) — 내 술자리에서 연 경우만. (계정 id, 이름) */
+     blocks: List<Pair<Id, String>>? = null,
+     onUnblock: (Id) -> Unit = {},
++    isDemo: Boolean = false,
+ ) {
+     var bank by remember(me.id) { mutableStateOf(me.payout?.bank.orEmpty()) }
+     var accountNo by remember(me.id) { mutableStateOf(me.payout?.accountNo.orEmpty()) }
+@@ -118,7 +119,7 @@ fun AccountScreen(
+         Field(holder, { if (it.length <= 20) holder = it }, "", "예금주", KeyboardType.Text, 14.sp)
+ 
+         if (blocks != null) BlockedList(blocks, onUnblock)
+-        if (onLogout != null || onDeleteAccount != null) AccountMenu(onLogout, onDeleteAccount)
++        if (onLogout != null || onDeleteAccount != null) AccountMenu(onLogout, onDeleteAccount, isDemo)
+     }
+ }
+ 
+@@ -149,20 +150,22 @@ private fun BlockedList(blocks: List<Pair<Id, String>>, onUnblock: (Id) -> Unit)
+ }
+ 
+ @Composable
+-private fun AccountMenu(onLogout: (() -> Unit)?, onDeleteAccount: (() -> Unit)?) {
++private fun AccountMenu(onLogout: (() -> Unit)?, onDeleteAccount: (() -> Unit)?, isDemo: Boolean) {
+     var armed by remember { mutableStateOf(false) }
+     Column(Modifier.fillMaxWidth().padding(top = 28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+         Label("계정")
+-        if (onLogout != null) SubButton("로그아웃", onLogout)
++        if (onLogout != null) SubButton(if (isDemo) "체험 종료" else "로그아웃", onLogout)
+         if (onDeleteAccount != null) {
+             if (armed) {
+                 Text(
+-                    "탈퇴하면 계정과 등록한 계좌가 지워지고 되돌릴 수 없어요. 지난 정산 기록에는 ‘탈퇴한 사용자’로 남아요. 진행 중인 정산이 있으면 끝난 뒤에 탈퇴할 수 있어요.",
++                    if (isDemo) "이 기기의 체험 데이터만 지우고 체험을 종료해요. 실제 계정과 서버 데이터는 바뀌지 않아요."
++                    else "탈퇴하면 계정과 등록한 계좌가 지워지고 되돌릴 수 없어요. 지난 정산 기록에는 ‘탈퇴한 사용자’로 남아요. 진행 중인 정산이 있으면 끝난 뒤에 탈퇴할 수 있어요.",
+                     color = JsColor.warn, fontSize = 13.sp, lineHeight = 19.sp,
+                 )
+             }
+             Text(
+-                if (armed) "한 번 더 누르면 탈퇴해요" else "회원 탈퇴",
++                if (isDemo) { if (armed) "한 번 더 누르면 체험 데이터를 지워요" else "체험 데이터 삭제" }
++                else if (armed) "한 번 더 누르면 탈퇴해요" else "회원 탈퇴",
+                 Modifier.fillMaxWidth().clickable { if (armed) onDeleteAccount() else armed = true }
+                     .semantics { role = Role.Button }.padding(vertical = 8.dp),
+                 color = if (armed) JsColor.warn else JsColor.ink3, fontSize = 13.5.sp,
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/DemoControls.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/DemoControls.kt
+new file mode 100644
+index 0000000..ee99868
+--- /dev/null
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/DemoControls.kt
+@@ -0,0 +1,33 @@
++package app.jeongsan.v3.ui
++
++import androidx.compose.foundation.background
++import androidx.compose.foundation.horizontalScroll
++import androidx.compose.foundation.layout.*
++import androidx.compose.foundation.rememberScrollState
++import androidx.compose.material3.Text
++import androidx.compose.material3.TextButton
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.unit.dp
++import app.jeongsan.domain.Id
++import app.jeongsan.ui.JsColor
++import app.jeongsan.v3.User
++
++@Composable
++fun DemoControls(users: List<User>, current: Id, onPick: (Id) -> Unit, onReset: () -> Unit, onExit: () -> Unit) {
++    Column(Modifier.fillMaxWidth().background(JsColor.surface)
++        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(horizontal = 10.dp)) {
++        Text("데모 체험 · 가상 데이터 · 실제 송금 없음", color = JsColor.ink)
++        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
++            users.forEach { user ->
++                TextButton(onClick = { onPick(user.id) }) {
++                    Text((if (current == user.id) "✓ " else "") + user.displayName, color = JsColor.ink)
++                }
++            }
++        }
++        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
++            TextButton(onClick = onReset) { Text("처음부터", color = JsColor.ink) }
++            TextButton(onClick = onExit) { Text("체험 종료", color = JsColor.ink) }
++        }
++    }
++}
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/V3Nav.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/V3Nav.kt
+index 64a55cb..e1a9e62 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/V3Nav.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/V3Nav.kt
+@@ -133,7 +133,7 @@ fun NavGraphBuilder.v3Graph(nav: NavHostController, store: V3Store, gateway: V3G
+     // 개발용 바 — 지금 보는 술자리(있으면)에서 각 사람의 역할을 같이 보여준다. 릴리스 빌드·API 모드에는 없다
+     val devBar: (Id?) -> @Composable () -> Unit = { roomId ->
+         // 스크린샷 모드(스토어 사진)에는 개발용 바를 그리지 않는다
+-        { if (isDebugBuild && LaunchOptions.screenshot == null && !gateway.isApiMode) {
++        { if (isDebugBuild && LaunchOptions.screenshot == null && !gateway.isApiMode && !gateway.isDemoMode) {
+             val s = store.state
+             val room = roomId?.let { s.rooms[it] }
+             DevBar(
+@@ -196,7 +196,7 @@ fun NavGraphBuilder.v3Graph(nav: NavHostController, store: V3Store, gateway: V3G
+             onOpenAlerts = { nav.navigate(V3Routes.Notifications) },
+             onEditAccount = { nav.navigate(V3Routes.MyAccount) },
+             // 계정 메뉴는 계좌 화면 맨 아래에 있다 — 같은 화면으로 간다
+-            onOpenAccount = if (gateway.isApiMode) ({ nav.navigate(V3Routes.MyAccount) }) else null,
++            onOpenAccount = if (gateway.isApiMode || gateway.isDemoMode) ({ nav.navigate(V3Routes.MyAccount) }) else null,
+         )
+     }
+ 
+@@ -260,6 +260,8 @@ fun NavGraphBuilder.v3Graph(nav: NavHostController, store: V3Store, gateway: V3G
+         val s = store.state
+         val scope = rememberCoroutineScope()
+         val share = rememberShareSheet()
++        // 가상 방의 토큰을 운영 초대 링크로 내보내면 받는 사람이 열 수 없다.
++        val demoShare = "정산어택 데모 체험 (가상 데이터, 실제 송금 없음)\nhttps://jungsan-api.devkdk.com/api/v1/review/demo\n앱에서 총무·참여자 역할을 전환해보세요."
+         val loaded = rememberLoaded(gateway, id) { id?.let { gateway.loadRoom(it) } }
+         val g = id?.let { s.rooms[it] } ?: return@composable Missing(loaded)
+         // 같은 술자리에 내가 총무인 정산방이 이미 있으면(다음 차를 이미 맡음) 새로 만들지 않고 그리로
+@@ -287,9 +289,9 @@ fun NavGraphBuilder.v3Graph(nav: NavHostController, store: V3Store, gateway: V3G
+                     ActionKind.RESPOND, ActionKind.EDIT_RESPONSE -> nav.navigate(V3Routes.respond(g.id))
+                     ActionKind.VIEW_PAY, ActionKind.RESEND -> nav.navigate(V3Routes.pay(g.id))
+                     ActionKind.REGISTER_ACCOUNT -> nav.navigate(V3Routes.account(g.id))
+-                    ActionKind.SHARE -> share(shareMessage(g, shareUrl(SHARE_BASE, g.shareToken)))
++                    ActionKind.SHARE -> share(if (gateway.isDemoMode) demoShare else shareMessage(g, shareUrl(SHARE_BASE, g.shareToken)))
+                     // 계산이 끝나면 단톡방에 사람별 금액·계좌(FC-020)
+-                    ActionKind.REQUEST_PAYMENT -> share(paymentRequestMessage(g, shareUrl(SHARE_BASE, g.shareToken)))
++                    ActionKind.REQUEST_PAYMENT -> share(if (gateway.isDemoMode) demoShare else paymentRequestMessage(g, shareUrl(SHARE_BASE, g.shareToken)))
+                     // 인원을 들어온 사람 수로 — 모두 응답했으면 이 순간 자동 정산된다
+                     ActionKind.INCLUDE_EXTRA -> scope.fire { gateway.setHeadcount(g.id, g.participants.size) }
+                     // 받을 돈 목록이 화면 안에 있다
+@@ -304,7 +306,7 @@ fun NavGraphBuilder.v3Graph(nav: NavHostController, store: V3Store, gateway: V3G
+             // 면제는 서버 API 보류(SETTLEMENT_UNITS §4.2) — 화면에서도 꺼져 있다(Features.SHOW_EXEMPT)
+             onExempt = { pid, rid, ex -> store.setExempt(g.id, pid, rid, ex) },
+             onRemove = { pid -> scope.fire { gateway.removeParticipant(g.id, pid) } },
+-            onShare = { share(shareMessage(g, shareUrl(SHARE_BASE, g.shareToken))) },
++            onShare = { share(if (gateway.isDemoMode) demoShare else shareMessage(g, shareUrl(SHARE_BASE, g.shareToken))) },
+             onStartNext = { ids ->
+                 // 같은 술자리 안에 내가 총무인 정산 단위 → 바로 다음 차 금액 입력(FC-015)
+                 scope.launch {
+@@ -424,8 +426,9 @@ fun NavGraphBuilder.v3Graph(nav: NavHostController, store: V3Store, gateway: V3G
+             onUnblock = { uid -> scope.launch { gateway.unblock(uid)?.let(V3Toast::show) ?: V3Toast.show("차단을 풀었어요") } },
+             onBack = { nav.popBackStack() },
+             // 계정 메뉴는 서버 계정이 있을 때만(목데이터에는 로그아웃할 계정이 없다)
+-            onLogout = if (gateway.isApiMode) ({ scope.launch { gateway.logout(); onLeave() } }) else null,
+-            onDeleteAccount = if (gateway.isApiMode) ({
++            isDemo = gateway.isDemoMode,
++            onLogout = if (gateway.isApiMode || gateway.isDemoMode) ({ scope.launch { gateway.logout(); onLeave() } }) else null,
++            onDeleteAccount = if (gateway.isApiMode || gateway.isDemoMode) ({
+                 scope.launch { gateway.deleteAccount()?.let(V3Toast::show) ?: onLeave() }
+             }) else null,
+             onSave = { p ->
+diff --git a/composeApp/src/commonTest/kotlin/app/jeongsan/v3/AppAuthTest.kt b/composeApp/src/commonTest/kotlin/app/jeongsan/v3/AppAuthTest.kt
+index 4958445..9f69dc5 100644
+--- a/composeApp/src/commonTest/kotlin/app/jeongsan/v3/AppAuthTest.kt
++++ b/composeApp/src/commonTest/kotlin/app/jeongsan/v3/AppAuthTest.kt
+@@ -14,6 +14,7 @@ import io.ktor.http.content.OutgoingContent
+ import io.ktor.http.headersOf
+ import kotlinx.coroutines.test.runTest
+ import kotlin.test.Test
++import kotlin.test.BeforeTest
+ import kotlin.test.assertEquals
+ import kotlin.test.assertNotNull
+ import kotlin.test.assertNull
+@@ -21,6 +22,46 @@ import kotlin.test.assertTrue
+ 
+ /** 앱 로그인(PKCE + 앱 스킴 복귀 + 티켓 교환) — 서버 `feat/auth-release` 계약 */
+ class AppAuthTest {
++    @BeforeTest fun resetPendingLogin() {
++        AppAuth.cancel()
++        AppAuth.store = MemoryTokenStore()
++    }
++
++    @Test fun iOS세션은_양쪽제공자에_session옵션을_붙이고_취소하면_verifier를_제거한다() {
++        val client = ApiClient("https://api.test", MemoryTokenStore(), MockEngine { error("인가시작URL은HTTP를보내지않음") })
++        AppAuth.Provider.entries.forEach { provider ->
++            val url = AppAuth.start(client, provider, authSession = true)
++            assertTrue(url.contains("/auth/${provider.path}/login?client=app&codeChallenge="))
++            assertTrue(url.endsWith("&appReturn=session"))
++            assertNotNull(AppAuth.store.get())
++            AppAuth.cancel()
++            assertNull(AppAuth.store.get())
++            assertNull(AppAuth.returned)
++        }
++    }
++
++    @Test fun 완료주소_중복전달과_취소뒤_지연전달은_재교환하지않는다() = runTest {
++        var calls = 0
++        val client = ApiClient("https://api.test", MemoryTokenStore(), MockEngine {
++            calls++
++            respond("""{"token":"t","expiresAt":"2026-11-09T00:00:00Z"}""", HttpStatusCode.OK,
++                headersOf(HttpHeaders.ContentType, "application/json"))
++        })
++        AppAuth.start(client, AppAuth.Provider.APPLE, authSession = true)
++        val url = "jeongsan://auth?ticket=T1"
++        AppAuth.handle(url)
++        AppAuth.handle(url)
++        assertNull(AppAuth.finish(client, assertNotNull(AppAuth.returned)))
++        AppAuth.consumed(url)
++        AppAuth.handle(url)
++        assertNull(AppAuth.returned)
++        assertEquals(1, calls)
++        AppAuth.start(client, AppAuth.Provider.APPLE, authSession = true)
++        AppAuth.cancel()
++        AppAuth.handle("jeongsan://auth?ticket=late")
++        assertNull(AppAuth.returned)
++        assertNull(AppAuth.ticketOf("jeongsan://auth.evil?ticket=T1"))
++    }
+     @Test fun SHA_256은_NIST_시험값과_같다() {
+         // FIPS 180-2 부록 B.1 — "abc"
+         assertEquals(
+diff --git a/composeApp/src/commonTest/kotlin/app/jeongsan/v3/DemoReviewTest.kt b/composeApp/src/commonTest/kotlin/app/jeongsan/v3/DemoReviewTest.kt
+new file mode 100644
+index 0000000..043a7ff
+--- /dev/null
++++ b/composeApp/src/commonTest/kotlin/app/jeongsan/v3/DemoReviewTest.kt
+@@ -0,0 +1,104 @@
++package app.jeongsan.v3
++
++import app.jeongsan.v3.api.ApiClient
++import app.jeongsan.v3.api.AppAuth
++import app.jeongsan.v3.api.AppLinks
++import app.jeongsan.v3.api.MemoryTokenStore
++import app.jeongsan.v3.api.V3Gateway
++import io.ktor.client.engine.mock.MockEngine
++import kotlinx.coroutines.test.runTest
++import kotlin.test.*
++
++class DemoReviewTest {
++    private fun store() = V3Store(DemoFixtures.state(), awardSpoons = false)
++
++    @Test fun 체험은_가상3명과_응답중_입금중_완료_시나리오를_제공한다() {
++        val state = DemoFixtures.state()
++        assertEquals(3, state.users.size)
++        assertTrue(state.me.needsName)
++        assertEquals(listOf(GatheringStatus.OPEN, GatheringStatus.SETTLING, GatheringStatus.COMPLETED),
++            state.rooms.values.map { it.status })
++        assertTrue(state.users.all { it.spoonCount == 0 })
++        assertEquals("0000000000", state.users.first().payout?.accountNo)
++        assertTrue(state.rooms.values.all { it.participants.size == 3 })
++    }
++
++    @Test fun 실명입력과_참여자응답으로_정산한뒤_입금을_확인할수있다() = runTest {
++        val store = store()
++        val gateway = V3Gateway(store, null, isDemoMode = true)
++        assertNull(gateway.confirmName("체험총무"))
++        assertFalse(store.state.me.needsName)
++        store.actAs(3)
++        assertNull(gateway.respond(101, mapOf(1010L to ResponseType.SOBER)))
++        val settled = store.state.rooms.getValue(101)
++        assertEquals(GatheringStatus.SETTLING, settled.status)
++        assertEquals(listOf(10_000L, 10_000L), settled.transfers.map { it.amount })
++        for (transfer in settled.transfers) {
++            val sender = settled.participants.first { it.id == transfer.fromParticipantId }
++            store.actAs(sender.userId)
++            assertNull(gateway.markSent(101, transfer.id))
++            store.actAs(1)
++            assertNull(gateway.confirmIncoming(101, transfer.id))
++        }
++        assertEquals(GatheringStatus.COMPLETED, store.state.rooms.getValue(101).status)
++        assertTrue(store.state.rooms.getValue(101).participants.all { it.spoonCount == 0 })
++    }
++
++    @Test fun 체험에서도_신고자개인숨김과_서로다른2명신고_전체숨김을_확인한다() = runTest {
++        val store = store()
++        val gateway = V3Gateway(store, null, isDemoMode = true)
++        assertNull(gateway.reportMessage(101, 3, ReportReason.SPAM))
++        fun visible(userId: Long) = store.state.rooms.getValue(101).visibleTimeline(userId, store.state.moderation).any { it.id == 3L }
++        assertFalse(visible(1))
++        assertTrue(visible(2))
++        store.actAs(2)
++        assertNull(gateway.reportMessage(101, 3, ReportReason.SPAM))
++        assertFalse(visible(3))
++    }
++
++    @Test fun 차단은_메시지만_숨기며_명단과금액을_유지하고_해제할수있다() = runTest {
++        val store = store()
++        val gateway = V3Gateway(store, null, isDemoMode = true)
++        val before = store.state.rooms.getValue(101)
++        assertNull(gateway.blockParticipant(101, 1013))
++        assertFalse(before.visibleTimeline(1, store.state.moderation).any { it.id == 3L })
++        assertEquals(before.participants, store.state.rooms.getValue(101).participants)
++        assertEquals(before.rounds, store.state.rooms.getValue(101).rounds)
++        assertNull(gateway.unblock(3))
++        assertTrue(before.visibleTimeline(1, store.state.moderation).any { it.id == 3L })
++    }
++
++    @Test fun 체험메시지도_빈값_길이_금칙어와_정규화를_검사한다() = runTest {
++        val store = store()
++        val gateway = V3Gateway(store, null, isDemoMode = true)
++        val before = store.state.rooms.getValue(101).timeline.size
++        listOf(" ", "a".repeat(201), "f.u.c.k", "ＦＵＣＫ").forEach { assertNotNull(gateway.sendMessage(101, it)) }
++        assertEquals(before, store.state.rooms.getValue(101).timeline.size)
++        assertNull(gateway.sendMessage(101, "안녕하세요"))
++        assertEquals(before + 1, store.state.rooms.getValue(101).timeline.size)
++    }
++
++    @Test fun 데모를_실제API에_연결할수없고_체험자료삭제는_실제토큰을_건드리지않는다() = runTest {
++        val tokens = MemoryTokenStore("real-session-token")
++        val client = ApiClient("https://api.test", tokens, MockEngine { error("데모에서 실제 요청 금지") })
++        val store = store()
++        assertFailsWith<IllegalArgumentException> { V3Gateway(store, client, isDemoMode = true) }
++        val gateway = V3Gateway(store, null, isDemoMode = true)
++        assertNotNull(gateway.giveSpoon(102))
++        assertNull(gateway.deleteAccount())
++        assertTrue(store.state.rooms.isEmpty())
++        assertEquals("real-session-token", tokens.get())
++        assertEquals(3, DemoFixtures.state().rooms.size)
++    }
++
++    @Test fun 데모링크는_정확한주소만_허용하고_로그인티켓으로_취급하지않는다() {
++        assertTrue(AppLinks.isDemoLink("jeongsan://demo"))
++        assertTrue(AppLinks.isDemoLink("jeongsan://demo/"))
++        listOf("jeongsan://demo.evil", "jeongsan://demo?ticket=x", "https://demo", "jeongsan://auth?ticket=x")
++            .forEach { assertFalse(AppLinks.isDemoLink(it)) }
++        val before = AppLinks.demoRequest
++        AppLinks.handle("jeongsan://demo")
++        assertEquals(before + 1, AppLinks.demoRequest)
++        assertNull(AppAuth.ticketOf("jeongsan://demo"))
++    }
++}
+diff --git a/composeApp/src/iosMain/kotlin/app/jeongsan/MainViewController.kt b/composeApp/src/iosMain/kotlin/app/jeongsan/MainViewController.kt
+index 10ff34e..98bd26a 100644
+--- a/composeApp/src/iosMain/kotlin/app/jeongsan/MainViewController.kt
++++ b/composeApp/src/iosMain/kotlin/app/jeongsan/MainViewController.kt
+@@ -2,6 +2,8 @@ package app.jeongsan
+ 
+ import androidx.compose.ui.window.ComposeUIViewController
+ import app.jeongsan.v3.LaunchOptions
++import app.jeongsan.v3.api.AppAuth
++import app.jeongsan.v3.api.platformVerifierStore
+ import platform.Foundation.NSProcessInfo
+ import platform.UIKit.UIViewController
+ 
+@@ -12,6 +14,7 @@ import platform.UIKit.UIViewController
+  * 이 파일이 있어야 commonMain 에 iOS 불가 코드가 들어왔을 때 바로 잡힌다.
+  */
+ fun MainViewController(): UIViewController {
++    AppAuth.store = platformVerifierStore()
+     // 스토어 스크린샷: xcrun simctl launch <기기> app.jeongsan -jsScreen room — 화면을 만들기 전에 한 번 읽는다
+     val args = NSProcessInfo.processInfo.arguments.map { it.toString() }
+     LaunchOptions.screenshot = args.indexOf("-jsScreen").takeIf { it >= 0 }?.let { args.getOrNull(it + 1) }
+diff --git a/composeApp/src/iosMain/kotlin/app/jeongsan/v3/api/AuthBrowser.ios.kt b/composeApp/src/iosMain/kotlin/app/jeongsan/v3/api/AuthBrowser.ios.kt
+new file mode 100644
+index 0000000..89c713a
+--- /dev/null
++++ b/composeApp/src/iosMain/kotlin/app/jeongsan/v3/api/AuthBrowser.ios.kt
+@@ -0,0 +1,38 @@
++package app.jeongsan.v3.api
++
++/** Swift의 ASWebAuthenticationSession과 연결한다. 화면·콜백 모두 main thread에서 호출한다. */
++object IosAuthSessionBridge {
++    var launcher: ((String) -> Unit)? = null
++    var cancel: (() -> Unit)? = null
++    private var completion: ((AuthBrowserResult) -> Unit)? = null
++
++    fun start(url: String, onResult: (AuthBrowserResult) -> Unit) {
++        val launch = launcher
++        if (launch == null || completion != null) {
++            onResult(AuthBrowserResult.Failed)
++            return
++        }
++        completion = onResult
++        launch(url)
++    }
++
++    fun complete(url: String?, cancelled: Boolean) {
++        val callback = completion ?: return
++        completion = null
++        callback(when {
++            cancelled -> AuthBrowserResult.Cancelled
++            url != null -> AuthBrowserResult.Completed(url)
++            else -> AuthBrowserResult.Failed
++        })
++    }
++
++    fun cancelPending() {
++        cancel?.invoke()
++        complete(null, true)
++    }
++}
++
++actual fun platformAuthenticate(url: String, onResult: (AuthBrowserResult) -> Unit) =
++    IosAuthSessionBridge.start(url, onResult)
++
++actual fun cancelPlatformAuthentication() = IosAuthSessionBridge.cancelPending()
+diff --git a/composeApp/src/iosMain/kotlin/app/jeongsan/v3/api/DemoMessagePolicy.ios.kt b/composeApp/src/iosMain/kotlin/app/jeongsan/v3/api/DemoMessagePolicy.ios.kt
+new file mode 100644
+index 0000000..ee27613
+--- /dev/null
++++ b/composeApp/src/iosMain/kotlin/app/jeongsan/v3/api/DemoMessagePolicy.ios.kt
+@@ -0,0 +1,10 @@
++@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
++
++package app.jeongsan.v3.api
++
++import platform.Foundation.NSString
++import platform.Foundation.create
++import platform.Foundation.precomposedStringWithCompatibilityMapping
++
++internal actual fun compatibilityNormalize(text: String): String =
++    NSString.create(string = text).precomposedStringWithCompatibilityMapping
+diff --git a/docs/APP_REVIEW.md b/docs/APP_REVIEW.md
+new file mode 100644
+index 0000000..4d066b2
+--- /dev/null
++++ b/docs/APP_REVIEW.md
+@@ -0,0 +1,38 @@
++# FC-027 · iOS 로그인과 공개 데모 (2026-10-28)
++
++App Review의 외부 브라우저 로그인(Guideline 4)과 다중 사용자 기능 접근(2.1a) 피드백에 대응한다. CTO 요청으로 Codex가 앱 구현도 담당한다. 백엔드 의존 PR: https://github.com/owencity/jungsan_attack/pull/48
++
++## 로그인
++
++- iOS는 `ASWebAuthenticationSession`으로 카카오·Apple 인가를 시작한다. 세션 객체와 presentation anchor를 완료까지 유지한다.
++- 시작 URL은 `client=app&appReturn=session&codeChallenge=...`. 서버는 선택한 state의 성공 콜백만303 `jeongsan://auth?ticket=...`로 돌려준다. 기존 PKCE 교환·토큰 저장을 사용한다.
++- 중복 시작은 막고, 취소·시작 실패는 verifier를 지운다. completion/onOpenURL 중복 전달은 한 번만 소비한다. Android의 외부 브라우저·HTML 수동 복귀 계약은 유지한다.
++- 백엔드 PR48 배포 전에 새 iOS 로그인을 출시하지 않는다. 이전 서버는 appReturn을 무시해 HTML로 돌아오므로 인증 세션이 완료되지 않는다.
++
++## 데모 진입과 조작
++
++1. 로그인 화면의 **로그인 없이 데모 체험**을 누른다. 별도 계정·비밀번호는 필요 없다.
++2. 이름 확인 화면에서 2~10자 이름을 입력한다. 화면 상단에는 **데모 체험 · 가상 데이터 · 실제 송금 없음**이 계속 표시된다.
++3. 상단에서 총무·참여자A·참여자B를 전환한다. `체험 · 응답 중`, `체험 · 입금 확인 중`, `체험 · 정산 완료` 세 예시를 제공한다.
++4. 참여자B에서 응답 중 술자리에 응답한다. 총무로 돌아와 정산 근거를 확인한다. 참여자는 보냈어요, 총무는 입금 확인을 조작한다. 실제 은행 이체를 실행하는 앱이 아니다.
++5. 총무는 새 술자리 생성·차수 입력도 시험할 수 있다. 정산방 메시지 작성, 다른 사람 메시지의 신고·차단, 내 계정의 차단 해제를 조작한다. 다른2명의 신고는 전체 숨김으로 반영된다.
++6. **처음부터**는 새 가상 데이터로 초기화한다. **체험 종료**는 기존 실제 로그인 상태로 복귀한다. 내 계정의 **체험 데이터 삭제**는 이 가상 상태만 비운다.
++
++공개 HTTPS 진입 페이지 계약은 `https://jungsan-api.devkdk.com/api/v1/review/demo`이며 버튼이 `jeongsan://demo`를 연다. 앱 설치가 필요하다. 백엔드 PR48 운영 배포·새 앱 설치 전에는 이 URL이 준비됐다고 심사팀에 안내하지 않는다. 데모 공유는 이 진입 링크만 사용하고, 운영에 존재하지 않는 가상 방의 토큰은 공유하지 않는다.
++
++## 실제 기능과의 구분
++
++- 데모에는 API 클라이언트를 연결하지 못하도록 생성자에서 검사한다. 실제 계정의 토큰·서버 데이터는 쓰거나 지우지 않는다. 데이터는 메모리에만 있고 앱 종료/초기화로 없어진다.
++- 기존 로컬 스토어의 계산·상태 전이를 사용한다. 서버의 권한·동시성·Liquibase·OAuth 제공자 동작을 검증하는 시험 환경은 아니다. 실제 사용자 간 네트워크 동기화는 실제 로그인으로 별도 확인한다.
++- 미출시 스푼 동작은 실제 API와 동일하게 제한하며 정산 완료 보상도 추가하지 않는다. 메시지 금칙어 목록은 FC-024의 현재 기본값을 체험에 반영하되 운영의 판정은 서버가 담당한다.
++- 실제 회원 탈퇴는 실제 로그인 후 내 계정 → 회원 탈퇴에서 한다. 기존 진행 중 정산의409 제한은 유지한다. 데모 데이터 삭제를 실제 회원 탈퇴 검증이라고 보고하지 않는다.
++
++## 출시 검증
++
++- 로컬 Android debug APK 빌드와 공통 단위 테스트210건 통과(실패·건너뜀0). 마지막 변경 후 재검증 결과는 PR에 기록한다.
++- macOS CI에서 실기기 타깃 Kotlin 컴파일, Swift/시뮬레이터 앱 빌드, 실행·데모 딥링크와 스크린샷을 확인한다. CI 성공을 실제 iPhone 로그인 성공으로 간주하지 않는다.
++- 새 TestFlight 빌드는 실제 API 주소 `https://jungsan-api.devkdk.com`를 지정한다. API 주소 공백은 기존 전체 목데이터 모드이므로 출시 설정으로 사용하지 않는다.
++- 제출 전 실제 iPhone에서 양쪽 제공자 로그인·취소·재시도, 데모 역할 전환/초기화/공유 링크, 실제 계정 로그아웃·탈퇴를 확인한다.
++- App Store Connect에는 새 빌드 번호, 위 진입·역할 전환 절차와 실제로 제공되는 기능/제한을 적는다. 제출·심사 통과는 빌드 성공과 별개다.
++
++근거: [Apple 인증 세션](https://developer.apple.com/documentation/authenticationservices/authenticating-a-user-through-a-web-service), [심사 정보](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information#app-review-information).
+diff --git a/iosApp/iosApp/AuthenticationBrowser.swift b/iosApp/iosApp/AuthenticationBrowser.swift
+new file mode 100644
+index 0000000..583e6ba
+--- /dev/null
++++ b/iosApp/iosApp/AuthenticationBrowser.swift
+@@ -0,0 +1,56 @@
++import AuthenticationServices
++import ComposeApp
++import SwiftUI
++import UIKit
++
++/// 인증 화면을 앱에 표시하고 완료 URL을 기존 PKCE 교환으로 넘긴다.
++@MainActor
++final class AuthenticationBrowser: NSObject, ObservableObject, ASWebAuthenticationPresentationContextProviding {
++    private var session: ASWebAuthenticationSession?
++    private var anchor: ASPresentationAnchor?
++    private var requestID: UUID?
++
++    func start(_ address: String) {
++        guard session == nil,
++              let url = URL(string: address), url.scheme == "https",
++              let window = UIApplication.shared.connectedScenes
++                .compactMap({ $0 as? UIWindowScene })
++                .flatMap({ $0.windows }).first(where: { $0.isKeyWindow }) else {
++            IosAuthSessionBridge.shared.complete(url: nil, cancelled: false)
++            return
++        }
++        let identifier = UUID()
++        requestID = identifier
++        anchor = window
++        let authentication = ASWebAuthenticationSession(url: url, callbackURLScheme: "jeongsan") { [weak self] callback, error in
++            DispatchQueue.main.async {
++                guard let self, self.requestID == identifier else { return }
++                self.session = nil
++                self.anchor = nil
++                self.requestID = nil
++                let cancelled = (error as? ASWebAuthenticationSessionError)?.code == .canceledLogin
++                IosAuthSessionBridge.shared.complete(url: error == nil ? callback?.absoluteString : nil,
++                                                     cancelled: cancelled)
++            }
++        }
++        authentication.presentationContextProvider = self
++        session = authentication
++        if !authentication.start() {
++            session = nil
++            anchor = nil
++            requestID = nil
++            IosAuthSessionBridge.shared.complete(url: nil, cancelled: false)
++        }
++    }
++
++    func cancel() {
++        requestID = nil
++        session?.cancel()
++        session = nil
++        anchor = nil
++    }
++
++    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
++        anchor ?? ASPresentationAnchor()
++    }
++}
+diff --git a/iosApp/iosApp/iOSApp.swift b/iosApp/iosApp/iOSApp.swift
+index 71e4202..875f8c5 100644
+--- a/iosApp/iosApp/iOSApp.swift
++++ b/iosApp/iosApp/iOSApp.swift
+@@ -4,11 +4,21 @@ import ComposeApp
+ /// iOS 진입점. 화면은 전부 Kotlin(Compose Multiplatform)에 있다 — 여기서는 띄우기만 한다.
+ @main
+ struct iOSApp: App {
++    @StateObject private var authenticationBrowser = AuthenticationBrowser()
+     var body: some Scene {
+         WindowGroup {
+             ContentView()
++                .onAppear {
++                    let browser = authenticationBrowser
++                    IosAuthSessionBridge.shared.launcher = { [weak browser] address in
++                        browser?.start(address)
++                    }
++                    IosAuthSessionBridge.shared.cancel = { [weak browser] in
++                        browser?.cancel()
++                    }
++                }
+                 // 로그인 복귀(jeongsan://auth?ticket=…) — Kotlin 쪽 AppAuth 가 티켓을 받아 토큰으로 바꾼다
+-                .onOpenURL { url in AppAuth.shared.handle(url: url.absoluteString) }
++                .onOpenURL { url in AppLinks.shared.handle(url: url.absoluteString) }
+         }
+     }
+ }

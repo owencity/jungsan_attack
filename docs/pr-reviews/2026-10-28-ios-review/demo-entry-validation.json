@@ -1,0 +1,13 @@
+{
+  "backend_code": "b753586b014f02e7fbd8fef4fcab4ee0663f0f2a",
+  "app_code": "98d9877e8c0a6eadb1620ea943a6beba24848397",
+  "backend_ci": {"run_id": 40685346008, "conclusion": "success", "core_tests": 54, "server_tests": 204, "failures": 0, "errors": 0, "skipped": 0, "real_auth_http_checks": 26, "real_auth_database_checks": 20},
+  "app_local": {"android_debug_build": "success", "common_tests_on_android": 210, "failures": 0, "errors": 0, "skipped": 0},
+  "android_emulator": {"device": "Medium_Phone_API_36.0", "observed": ["demo deep link", "first-name screen", "role A and B home lists", "participant B response", "automatic settlement", "10000 won fictional transfer", "mark sent waiting", "host name registration", "host payment confirmation", "demo reset"]},
+  "ios_ci": "pending for app_code; Kotlin device compile passed at a1ab9d8; Swift Void correction awaits new build",
+  "iphone_oauth_e2e": "not performed",
+  "production_deployed": false,
+  "app_store_resubmitted": false,
+  "review": "self review; external approval not recorded",
+  "learning": "UNRECORDED"
+}

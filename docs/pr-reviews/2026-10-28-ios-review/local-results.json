@@ -1,0 +1,15 @@
+{
+  "base": "8d27496270e6c8adcb78b4580d68c150f9c3cce6",
+  "code_head": "a31bb2007bd795c04395ff6e5c318c9979047923",
+  "local_server": {
+    "tests": 202,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "build": "BUILD SUCCESSFUL",
+  "real_database_http": "CI pending",
+  "production_deployed": false,
+  "ios_device_e2e": "not performed",
+  "app_demo": "frontend follow-up"
+}

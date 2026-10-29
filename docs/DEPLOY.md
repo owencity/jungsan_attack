@@ -2,6 +2,17 @@
 
 `ADR-006`(단일 VM + docker compose)을 따른다. K8s·ArgoCD·Jenkins를 쓰지 않는다.
 
+**CTO Git·스터디 PR 운영 정정 (2026-10-30):** Git와 배포 실행은 Codex가 담당한다. 이번 FC-027은
+백엔드 PR #48·앱 PR #1을 스터디용으로 열어두고, 검증한 SHA를 배포한다. 이 명시 승인 범위에서는
+아래 과거 ‘사용자 병합 전 배포하지 않는다’ 순서를 선행 조건으로 요구하지 않는다. main-only 자동
+배포 workflow의 조건은 유지하고, 기존 수동 `scripts/deploy/deploy.sh`의 잠금·헬스체크·실패 복원을
+사용한다. SHA 태그만으로 main 포함을 증명하지 않으므로 커밋·CI·실제 jar SHA256을 함께 기록한다.
+운영 버전은 PR 병합 표시가 아니라 컨테이너 이미지·실제 HTTP로 확인한다.
+
+다음 main 자동 배포나 앱 업로드가 이번 변경을 포함하지 않으면 기능이 빠질 수 있다. 이후 배포 담당은
+운영 SHA와 대상 소스를 먼저 대조하고, 운영에 없는 과거 코드를 새 배포로 올리지 않는다. PR을 유지한다는
+이유로 검증·백업·복구 절차를 생략하지 않는다. 실행 기록은 [FC-027 출시 기록](operations/fc027-release-2026-10-30.md)을 따른다.
+
 **Caddy 직접 연결 결정 (2026-10-12):** CTO가 Cloudflare LAX 경유 지연을 줄이기 위해 OCI 호스트에
 Caddy 설치를 승인했다. Spring·MySQL·기존 Tunnel은 유지하고 `jungsan-api.devkdk.com`만
 DNS only A 레코드로 OCI에 직접 연결한다. 설치·OCI 인바운드·DNS·공인 인증서·실측을 구분한다.

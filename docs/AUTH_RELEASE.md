@@ -5,6 +5,17 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
 
 ## 로그인
 
+### FC-027 iOS 인증 세션 직접 복귀 (2026-10-28)
+
+- 앱이 `GET /api/v1/auth/{kakao|apple}/login?client=app&appReturn=session&codeChallenge=...`으로 시작하면, 성공 콜백은 **303·빈 본문·고정 `Location: jeongsan://auth?ticket=<43자 티켓>`**이다. ASWebAuthenticationSession의 callback scheme은jeongsan이다. 기존 exchange·PKCE·300초/일회용 정책을 유지한다.
+- appReturn 생략 또는page는 기존 FC-026의200 HTML이다. 웹은page만 허용하고 기존303·WEB 쿠키를 유지한다. session은앱만, 알 수 없는 값·웹session은400 MALFORMED_REQUEST다.
+- 선택한state의 해시만 `auth_session_returns`에 저장하며 auth_challenges 삭제·만료 정리와 함께CASCADE로 제거한다. 콜백query·User-Agent·returnTo로 이 선택이나 고정 네이티브 복귀 주소를 바꾸지 않는다. returnTo에는 기존 웹 상대경로 검증을 그대로 적용한다.
+- session도 no-store/no-referrer·상관 쿠키 만료·Apple POST CORS/쿠키 속성을 유지하고 WEB JWT를 발급하지 않는다. JWT·code·state·티켓을 로그에 남기지 않는다.
+- 020/030은별도표식 테이블만 추가한다. 기존 서버가 auth_challenges에8개 VALUES INSERT를 하므로 부모컬럼 추가로 운영롤백을 깨지 않도록 했다. 기존 앱/웹과 이전 바이너리는 표식 없이page 흐름을 유지한다. 배포 중 새session 시작 후 이전 서버로 롤백되면 기존HTML로 완료될 수 있으므로 앱이 재로그인을 안내한다.
+- 서버303 검증은 앱 내부 로그인·실기기 성공·심사 승인과 다르다. [FC-027](flow-changes/2026-10-28-ios-review-access.md)와 [심사 준비](operations/app-review-access.md)를 따른다.
+
+### 기존 로그인 공통 계약
+
 - **FC-025 CORS:** `/api/v1/auth/apple/callback`만 `Origin: https://appleid.apple.com`의 POST와 credentials를 허용한다. 구체 경로를 `/api/**`보다 먼저 등록하며 다른 API는 기존 프론트 출처만 허용한다. 상태·브라우저 상관 쿠키·nonce 검증은 그대로다. 잘못된 `state=y`는 401 `UNAUTHENTICATED`다. 정상 완료는 FC-026에 따라 웹303·앱200 HTML이다.
 - Apple 상태 쿠키는 운영에서 `HttpOnly; Secure; SameSite=None; Path=/api/v1/auth; Max-Age=300`이다. WEB JWT는 `SameSite=Lax`를 유지한다. 발급 속성과 서버의 쿠키 수신 테스트는 실제 Safari·TestFlight 브라우저 전달·실계정 로그인 완료와 구분한다.
 

@@ -1,4 +1,21 @@
-# 정산어택 — API 계약 · v15
+# 정산어택 — API 계약 · v17
+
+> **v17 변경(2026-10-28)** — FC-027 공개 데모 진입 안내 페이지.
+>
+> | 절 | 변경 |
+> |---|---|
+> | §0.8 데모 안내 | GET /api/v1/review/demo 공개200 HTML, 고정 jeongsan://demo 버튼. 계정·티켓·JWT 발급 없음 |
+> | FC-027 운영 | 앱 PR과 백엔드 배포 후 링크·제출 빌드 검증, 실제 로그인과 분리 |
+>
+
+> **v16 변경(2026-10-28)** — FC-027 iOS 시스템 인증 세션의 선택적 직접 복귀.
+>
+> | 절 | 변경 |
+> |---|---|
+> | AUTH_RELEASE 로그인 시작 | 앱의 선택 파라미터 appReturn=page 또는 session, 생략은 기존page |
+> | AUTH_RELEASE 앱 콜백 | session 선택state만303 jeongsan://auth?ticket=..., 기존앱200·WEB303 유지 |
+> | 스키마·운영 | 020/030 표식과 state CASCADE, 심사 데모·앱 변경 담당은FC-027·운영 절차 참조 |
+>
 
 > **v15 변경(2026-10-22)** — FC-026 앱 로그인 완료 페이지·5분 티켓과 로그아웃 연결 계약.
 >
@@ -1499,3 +1516,11 @@ SYSTEM·SPOON·참여자·응답·정산·송금은 유지한다. 처리 완료�
 신규 신고 커밋 뒤 `MESSAGE_REPORTED entryId=… gatheringId=… reason=…`만 로그에 남긴다.
 본문·이름·계좌·신고자 ID는 로그에 포함하지 않는다. n8n 없이 운영자가 매일 DB 미처리를 조회한다.
 약관 동의 체크·지원 연락처·실기기 재심사 녹화는 프론트/CTO 범위며 termsVersion 저장은 이번에 추가하지 않는다.
+
+## 0.8 공개 데모 진입 안내 (FC-027 · v17)
+
+`GET /api/v1/review/demo`는 로그인 없이200 `text/html;charset=UTF-8` 안내를 반환한다. 설치된 새 앱의 `jeongsan://demo`를 여는 고정 버튼과 로그인 화면의 데모 체험 진입 방법을 제공한다. query를 본문·링크에 반영하지 않는다.
+
+가상 데이터·역할 전환·초기화·실제 송금 없음·앱 설치 필요를 명시한다. 이 페이지는 데모 계정 생성이나 인증 우회가 아니며 JWT·로그인 티켓·쿠키를 발급하지 않는다. `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, 스크립트·외부 리소스·frame·form을 막는CSP를 적용한다.
+
+운영 주소는 `https://jungsan-api.devkdk.com/api/v1/review/demo`. 페이지 배포와 새 앱 빌드 설치를 모두 확인한 뒤 심사 정보에 적는다. 실제 소셜 로그인·탈퇴 검증은 데모와 별도다. [앱 구현 PR](https://github.com/owencity/jungsan_app/pull/1), [운영 준비](operations/app-review-access.md).

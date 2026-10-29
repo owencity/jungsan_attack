@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 030-auth-session-return
+      author: jeongsan
+      comment: "FC-027. iOS 인증 세션의 고정 스킴303 복귀와 기존 앱 HTML 복귀를 인가 시작 state에 묶는다."
+      changes:
+        - createTable:
+            tableName: auth_session_returns
+            remarks: "기존 auth_challenges INSERT와 롤백 바이너리를 깨지 않고 인증 세션303 복귀 선택만 state에 연결"
+            columns:
+              - column:
+                  name: state_hash
+                  type: CHAR(64)
+                  remarks: "session을 선택한 인가 state의 SHA256, 원문·사용자 정보 없이 부모 만료와 함께 제거"
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_auth_session_returns
+        - addForeignKeyConstraint:
+            baseTableName: auth_session_returns
+            baseColumnNames: state_hash
+            referencedTableName: auth_challenges
+            referencedColumnNames: state_hash
+            constraintName: fk_auth_session_state
+            onDelete: CASCADE
