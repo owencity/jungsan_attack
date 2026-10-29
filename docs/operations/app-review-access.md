@@ -1,6 +1,6 @@
 # App Review 접근 준비 (2026-10-28)
 
-기준: [FC-027](../flow-changes/2026-10-28-ios-review-access.md). 앱 담당자 부재로 CTO가 Codex에 앱 구현까지 요청했고 Git·배포 전담을 재확인했다. [앱 PR1](https://github.com/owencity/jungsan_app/pull/1)과 백엔드 PR48은 스터디용으로 보존한다. 공개 진입 URL `https://jungsan-api.devkdk.com/api/v1/review/demo`는 2026-10-30 서버0d0df31에 적용해 운영200을 확인했다. **앱 빌드9는 아카이브 성공 후 Apple PLA 갱신 요구로 업로드가 차단됐다.** 계정소유자 동의 후 재실행·실기기 검증이 남아 있다. 비밀번호를 가진 데모 계정은 만들지 않는다. [실행 기록](fc027-release-2026-10-30.md)을 따른다.
+기준: [FC-027](../flow-changes/2026-10-28-ios-review-access.md). 앱 담당자 부재로 CTO가 Codex에 앱 구현까지 요청했고 Git·배포 전담을 재확인했다. [앱 PR1](https://github.com/owencity/jungsan_app/pull/1)과 백엔드 PR48은 스터디용으로 보존한다. 공개 진입 URL `https://jungsan-api.devkdk.com/api/v1/review/demo`는 2026-10-30 서버0d0df31에 적용해 운영200을 확인했다. **앱 빌드9는 CTO의 Apple 약관 동의 후 attempt2에서 서명·업로드와 키 정리를 완료했다.** Apple 처리 완료·TestFlight 설치와 실제 iPhone 검증은 아직 확인 전이다. 비밀번호를 가진 데모 계정은 만들지 않는다. [실행 기록](fc027-release-2026-10-30.md)을 따른다.
 
 ## 담당과 완료 기준
 

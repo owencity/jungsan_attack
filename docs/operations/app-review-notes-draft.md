@@ -29,8 +29,10 @@ The demo does not require a username/password. It exposes the organizer and part
 
 ## 제출 기록
 
-- 제출 빌드 번호: 미확정 — 실제 App Store Connect에서 선택한 번호를 기록한다.
-- 운영 링크200·앱 데모 진입: 아직 운영 확인 전.
+- 업로드 빌드: 0.1.0 (9), 앱2ed2523, 운영 API 연결. 약관 동의 후 attempt2에서 Apple 업로드 성공. Apple 처리 완료·TestFlight 설치 확인은 남아 있다.
+- 제출 빌드 번호: 아직 선택하지 않았다 — 실제 App Store Connect에서 선택한 번호를 기록한다.
+- 운영 링크: 서버0d0df31에서200·고정 데모 링크·보안 헤더 확인 완료.
+- 앱 데모: iOS 시뮬레이터 화면 테스트 통과. TestFlight 설치 빌드의 실제 iPhone 진입은 확인 전.
 - iPhone 카카오/Apple 로그인·취소·재시도: 아직 실기기 확인 전.
 - 실제 회원 탈퇴: 별도 실계정 확인 필요. 진행 중409 정책의 심사 수용 여부는 기존 후속이며 이 작업에서 임의 변경하지 않았다.
 - App Review 재제출·승인: 미실행.

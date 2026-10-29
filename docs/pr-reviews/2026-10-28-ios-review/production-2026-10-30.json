@@ -69,15 +69,44 @@
     "branch": "fix/ios-review-login-demo",
     "run_id": 40902702047,
     "build": 9,
-    "attempt": 1,
-    "archive": "success",
-    "export_upload": "failure",
-    "errors": [
-      "PLA Update available",
-      "No profiles for app.jeongsan were found"
-    ],
-    "app_store_uploaded": false,
-    "account_holder_action_required": "Review updated Apple Developer Program License Agreement",
-    "retry_owner": "Codex after account holder confirmation"
+    "latest_attempt": 2,
+    "app_store_uploaded": true,
+    "apple_processing": "Uploaded package is processing; completion not verified",
+    "testflight_installability": "not verified",
+    "agreement_acceptance": "User confirmed personally accepting updated agreement before attempt 2",
+    "app_store_review_submitted": false,
+    "attempts": [
+      {
+        "attempt": 1,
+        "job_id": 123549036416,
+        "archive": "success",
+        "export_upload": "failure",
+        "errors": [
+          "PLA Update available",
+          "No profiles for app.jeongsan were found"
+        ],
+        "key_cleanup": "success",
+        "app_store_uploaded": false
+      },
+      {
+        "attempt": 2,
+        "job_id": 123568902593,
+        "started_at": "2026-10-29T16:06:25Z",
+        "completed_at": "2026-10-29T16:23:55Z",
+        "conclusion": "success",
+        "archive": "success",
+        "export_upload": "success",
+        "key_cleanup": "success",
+        "app_store_uploaded": true,
+        "log_evidence": [
+          "** ARCHIVE SUCCEEDED **",
+          "Uploaded package is processing.",
+          "Upload succeeded.",
+          "Uploaded iosApp",
+          "** EXPORT SUCCEEDED **"
+        ],
+        "previous_errors_recurred": false
+      }
+    ]
   }
 }
