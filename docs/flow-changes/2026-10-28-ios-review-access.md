@@ -2,7 +2,7 @@
 
 ## FC-027 iOS 인증 세션 복귀·다중 사용자 데모
 
-- **상태:** 열림 — 백엔드 PR48 구현·검증, 앱 PR1 구현·CI 확인 중. 운영 배포·iPhone 실기기·심사 제출은 후속.
+- **상태:** 열림 — 백엔드 PR48·앱 PR1 구현·CI 통과. iOS 시뮬레이터의 데모 진입·역할·초기화·종료 조작도 통과했다. 운영 배포·iPhone 제공자 로그인·외부 데모 링크 확인·심사 제출은 후속.
 - **근거:** CTO가 전달한 App Review Guideline 4와 2.1(a) 피드백. 기본 브라우저로 로그인하는 UX를 수정하고 다른 사용자와 기능을 확인할 데모 링크·접근 방법이 필요하다.
 - **기존 흐름:** 앱 main `95c4985`의 App.kt는 `LocalUriHandler.openUri`로 로그인 주소를 연다. FC-026의 HTML 복귀 페이지는 Android 수동 복귀를 위한 것이며 iOS의 외부 브라우저 전환 자체를 해결하지 않는다.
 
@@ -16,7 +16,7 @@
 
 ### 앱 담당자 전달 사항 — 앱 PR1에 구현, CI·기기 확인 필요
 
-CTO가 앱 담당자 휴가로 Codex에 앱 구현도 요청했다. [앱 PR1](https://github.com/owencity/jungsan_app/pull/1)에 Swift 인증 세션과 공개 데모를 구현했다. 아래 계약은 이 PR의 검증 기준이며 실제 iPhone 성공은 아직 확인하지 않았다.
+CTO가 앱 담당자 휴가로 Codex에 앱 구현도 요청했다. [앱 PR1](https://github.com/owencity/jungsan_app/pull/1)에 Swift 인증 세션과 공개 데모를 구현했다. 앱 head2ed2523의 Android·iOS CI와 XCTest 화면 조작1건이 통과했다. 아래 계약은 이 PR의 검증 기준이며 실제 iPhone 제공자 로그인 성공은 아직 확인하지 않았다.
 
 - iOS 로그인 진입을 `ASWebAuthenticationSession`으로 분리하고 공통 `openUri`를 그대로 쓰지 않는다. Apple이 안내한 `SFSafariViewController`도 선택지지만 인증·콜백 처리는 인증 세션 API를 우선 검토한다.
 - 기존 로그인 시작 URL에 `appReturn=session`을 추가한다. callback scheme은 `jeongsan`, 기대 host는 `auth`다. completion의 callback URL을 기존 AppAuth 티켓 교환 흐름으로 한 번만 전달한다.

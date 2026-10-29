@@ -9,6 +9,8 @@ The app provides an interactive demo without requiring social account credential
 Demo entry link (install the updated review build first):
 https://jungsan-api.devkdk.com/api/v1/review/demo
 
+Tap **Open** if iOS asks whether to open the link in Jeongsan.
+
 You can also enter directly from the app:
 
 1. On the login screen, tap **로그인 없이 데모 체험** (Try demo without signing in).
