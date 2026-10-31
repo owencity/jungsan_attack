@@ -254,11 +254,84 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
             "rounds" to rounds.map{mapOf("id" to it["id"],"settlementUnitId" to it["settlement_unit_id"],"seq" to it["seq"],"total" to it["total_amount"])},
             "responses" to responses.map{mapOf("roundId" to it["round_id"],"type" to it["type"],"source" to it["source"])})
     }
+    @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
+    fun guestSettlement(gatheringId: Long, settlementUnitId: Long, browserHash: String): Map<String,Any?> {
+        val participant=guestPerson(gatheringId,browserHash)
+        val settlementUnit=unit(gatheringId,settlementUnitId,false)
+        SettlementWorkflow.member(settlementUnit,participant.id)
+        val metadata=mapOf("gatheringId" to gatheringId,"settlementUnitId" to settlementUnitId,"status" to settlementUnit.state,
+            "isEstimate" to (settlementUnit.state=="OPEN"),"participantId" to participant.id)
+        if(settlementUnit.state=="OPEN") {
+            val loaded=data(gatheringId)
+            val preview=try { SettlementWorkflow.preview(settlementUnit,loaded.first,loaded.second,loaded.third) }
+            catch(validation: SettlementValidationException) {
+                return metadata + mapOf("available" to false,"errorCode" to validation.details.first().code.name,"total" to null,"settledAt" to null,"transfers" to emptyList<Any>())
+            } catch(error: app.jeongsan.server.common.ApiException) {
+                if(error.code!="NO_ROUNDS") throw error
+                return metadata + mapOf("available" to false,"errorCode" to error.code,"total" to null,"settledAt" to null,"transfers" to emptyList<Any>())
+            }
+            val names=loaded.first.associateBy { it.id }
+            return metadata + mapOf("available" to true,"errorCode" to null,"total" to preview.lines.first { it.participantId==participant.id }.total,
+                "settledAt" to null,"transfers" to preview.transfers.filter { it.from==participant.id }.map { transfer ->
+                    mapOf("id" to null,"toParticipantId" to transfer.to,"toDisplayName" to names.getValue(transfer.to).name,
+                        "amount" to transfer.amount,"status" to "PREVIEW","payout" to null,"basis" to transfer.basis)
+                })
+        }
+        val snapshot=db.rows("SELECT id,settled_at FROM settlements WHERE settlement_unit_id=:unit","unit" to settlementUnitId)
+            .singleOrNull() ?: fail("SETTLEMENT_VIEW_UNAVAILABLE")
+        val transfers=db.rows("SELECT * FROM settlement_transfers WHERE settlement_id=:settlement AND sender_participant_id=:participant ORDER BY recipient_participant_id,id",
+            "settlement" to snapshot.long("id"),"participant" to participant.id)
+        val recipientIds=transfers.map { it.long("recipient_participant_id") }.distinct()
+        val recipients=if(recipientIds.isEmpty()) emptyMap() else db.rows("""
+            SELECT participant.id,COALESCE(account.display_name,participant.name) display_name,account.payout_encrypted
+            FROM participants participant LEFT JOIN users account ON account.id=participant.user_id WHERE participant.id IN (:ids)
+        """.trimIndent(),"ids" to recipientIds).associateBy { it.long("id") }
+        val basis=if(transfers.isEmpty()) emptyMap() else db.rows("SELECT * FROM settlement_transfer_items WHERE transfer_id IN (:ids) ORDER BY round_id",
+            "ids" to transfers.map { it.long("id") }).groupBy { it.long("transfer_id") }
+        val outgoing=transfers.map { app.jeongsan.core.Transfer(participant.id,it.long("recipient_participant_id"),it.long("amount")) }
+        return metadata + mapOf("available" to true,"errorCode" to null,"total" to app.jeongsan.core.SettlementTable.transferTotal(outgoing),
+            "settledAt" to snapshot.instant("settled_at"),"transfers" to transfers.map { transfer ->
+                val recipient=recipients.getValue(transfer.long("recipient_participant_id"))
+                mapOf("id" to transfer["id"],"toParticipantId" to recipient["id"],"toDisplayName" to recipient["display_name"],
+                    "amount" to transfer["amount"],"status" to transfer["status"],"payout" to payoutValue(recipient["payout_encrypted"]),
+                    "basis" to basis[transfer.long("id")].orEmpty().map { item -> mapOf("roundId" to item["round_id"],"type" to item["type"],"amount" to item["amount"]) })
+            })
+    }
+    @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
+    fun settlementTable(gatheringId: Long, settlementUnitId: Long, userId: Long): Map<String,Any?> {
+        val actor=person(gatheringId,userId)
+        val settlementUnit=unit(gatheringId,settlementUnitId,false)
+        SettlementWorkflow.host(settlementUnit,actor)
+        val loaded=data(gatheringId)
+        val input=SettlementWorkflow.input(settlementUnit,loaded.first,loaded.second,loaded.third)
+        val result=when(val outcome=app.jeongsan.core.Settlement.settle(input)) {
+            is app.jeongsan.core.SettlementOutcome.Success -> outcome.result
+            is app.jeongsan.core.SettlementOutcome.Failure -> throw SettlementValidationException(outcome.errors)
+        }
+        if(settlementUnit.state!="OPEN") {
+            val snapshot=db.rows("SELECT id,grand_total FROM settlements WHERE settlement_unit_id=:unit","unit" to settlementUnitId)
+                .singleOrNull() ?: fail("SETTLEMENT_VIEW_UNAVAILABLE")
+            val stored=db.rows("SELECT sender_participant_id,recipient_participant_id,amount FROM settlement_transfers WHERE settlement_id=:settlement",
+                "settlement" to snapshot.long("id")).map { app.jeongsan.core.Transfer(it.long("sender_participant_id"),it.long("recipient_participant_id"),it.long("amount")) }
+            if(snapshot.long("grand_total")!=result.grandTotal || !app.jeongsan.core.SettlementTable.matches(result.transfers,stored)) fail("SETTLEMENT_VIEW_UNAVAILABLE")
+        }
+        val table=app.jeongsan.core.SettlementTable.present(input,result)
+        val responses=loaded.third.associateBy { it.participantId to it.roundId }
+        return mapOf("gatheringId" to gatheringId,"settlementUnitId" to settlementUnitId,"title" to room(gatheringId)["name"],
+            "status" to settlementUnit.state,"isEstimate" to (settlementUnit.state=="OPEN"),"generatedAt" to Instant.now(),
+            "inputRevision" to settlementUnit.revision,"inputHash" to SettlementWorkflow.hash(settlementUnit,input),
+            "table" to mapOf("lines" to table.lines,"adjustments" to table.adjustments,"grandTotal" to table.grandTotal,
+                "transfers" to result.transfers.map { transfer -> mapOf("fromParticipantId" to transfer.fromId,"toParticipantId" to transfer.toId,"amount" to transfer.amount) },
+                "rounds" to table.rounds.map { row -> mapOf("roundId" to row.roundId,"seq" to row.seq,"payerParticipantId" to row.payerParticipantId,
+                    "total" to row.total,"foodTotal" to row.foodTotal,"alcoholTotal" to row.alcoholTotal,"displayTotal" to row.displayTotal,
+                    "cells" to row.cells.map { cell -> mapOf("participantId" to cell.participantId,"type" to cell.type,"food" to cell.food,"alcohol" to cell.alcohol,
+                        "amount" to cell.amount,"source" to (responses[cell.participantId to row.roundId]?.source ?: "UNANSWERED")) }) }))
+    }
     @Transactional(readOnly=true,isolation=Isolation.READ_COMMITTED)
     fun joinPreview(token: String): Map<String,Any?> {
         val row=db.rows("SELECT * FROM gatherings WHERE share_token=:t","t" to token).singleOrNull() ?: fail("GATHERING_NOT_FOUND",status=HttpStatus.NOT_FOUND)
         val gid=row.long("id");val all=data(gid)
-        return mapOf("title" to row["name"],"date" to (row["gathering_date"] as java.sql.Date).toLocalDate(),"status" to row["status"],"participantCount" to all.first.size,
+        return mapOf("gatheringId" to gid,"title" to row["name"],"date" to (row["gathering_date"] as java.sql.Date).toLocalDate(),"status" to row["status"],"participantCount" to all.first.size,
             "settlementUnits" to db.rows("SELECT s.*,COALESCE(u.display_name,p.name) display_name,COALESCE(u.spoon_count,0) spoon_count FROM settlement_units s JOIN participants p ON p.id=s.host_participant_id LEFT JOIN users u ON u.id=p.user_id WHERE s.gathering_id=:g ORDER BY s.id","g" to gid).map{s->
                 mapOf("id" to s["id"],"status" to s["status"],"headcount" to s["headcount"],"host" to mapOf("displayName" to s["display_name"],"spoonCount" to s["spoon_count"]),"rounds" to all.second.filter{it.unitId==s.long("id")}.map{mapOf("id" to it.id,"seq" to it.seq,"total" to it.total)})})
     }
@@ -422,19 +495,31 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         user(uid)
         val row=db.rows("SELECT t.*,s.gathering_id,s.settlement_unit_id FROM settlement_transfers t JOIN settlements s ON s.id=t.settlement_id WHERE t.id=:t","t" to tid).singleOrNull() ?: fail("TRANSFER_NOT_FOUND",status=HttpStatus.NOT_FOUND)
         val gid=row.long("gathering_id");val u=unit(gid,row.long("settlement_unit_id"));val p=person(gid,uid)
-        val fresh=db.rows("SELECT * FROM settlement_transfers WHERE id=:t","t" to tid).singleOrNull() ?: fail("TRANSFER_NOT_FOUND",status=HttpStatus.NOT_FOUND)
+        transferAs(tid,gid,u,p,action)
+    }
+    fun guestSent(transferId: Long, browserHash: String) {
+        val snapshot=db.rows("SELECT settlement.gathering_id,settlement.settlement_unit_id FROM settlement_transfers transfer_entry JOIN settlements settlement ON settlement.id=transfer_entry.settlement_id WHERE transfer_entry.id=:transfer",
+            "transfer" to transferId).singleOrNull() ?: fail("TRANSFER_NOT_FOUND",status=HttpStatus.NOT_FOUND)
+        val gatheringId=snapshot.long("gathering_id")
+        val settlementUnit=unit(gatheringId,snapshot.long("settlement_unit_id"))
+        val participant=guestPerson(gatheringId,browserHash)
+        SettlementWorkflow.member(settlementUnit,participant.id)
+        transferAs(transferId,gatheringId,settlementUnit,participant,"sent")
+    }
+    private fun transferAs(transferId: Long, gatheringId: Long, settlementUnit: UnitInput, actor: PersonInput, action: String) {
+        val fresh=db.rows("SELECT * FROM settlement_transfers WHERE id=:t","t" to transferId).singleOrNull() ?: fail("TRANSFER_NOT_FOUND",status=HttpStatus.NOT_FOUND)
         val account=db.rows("SELECT u.payout_encrypted FROM participants p LEFT JOIN users u ON u.id=p.user_id WHERE p.id=:p","p" to fresh.long("recipient_participant_id")).single()["payout_encrypted"]!=null
-        val state=SettlementWorkflow.transfer(fresh.text("status"),action,p.id,fresh.long("sender_participant_id"),fresh.long("recipient_participant_id"),u.state,account)
+        val state=SettlementWorkflow.transfer(fresh.text("status"),action,actor.id,fresh.long("sender_participant_id"),fresh.long("recipient_participant_id"),settlementUnit.state,account)
         if(state==fresh.text("status")) return
-        room(gid,true)
+        room(gatheringId,true)
         val column=when(action){"sent"->"sent_at";"confirm"->"confirmed_at";else->"not_received_at"}
         val stamp=if(action=="not-received") ":n" else "COALESCE($column,:n)"
-        db.update("UPDATE settlement_transfers SET status=:s,$column=$stamp WHERE id=:t","s" to state,"n" to Instant.now(),"t" to tid)
+        db.update("UPDATE settlement_transfers SET status=:s,$column=$stamp WHERE id=:t","s" to state,"n" to Instant.now(),"t" to transferId)
         val code=when(action){"sent"->"SENT";"confirm"->"CONFIRMED";else->"NOT_RECEIVED"}
-        event(gid,u.id,code,"${p.name}님이 ${when(action){"sent"->"보냈어요";"confirm"->"입금을 확인했어요";else->"아직 입금을 확인하지 못했어요"}}")
+        event(gatheringId,settlementUnit.id,code,"${actor.name}님이 ${when(action){"sent"->"보냈어요";"confirm"->"입금을 확인했어요";else->"아직 입금을 확인하지 못했어요"}}")
         val target=if(action=="sent") fresh.long("recipient_participant_id") else fresh.long("sender_participant_id")
-        notify(gid,u.id,code,NotificationText.transfer(code,p.name),data(gid).first.filter{it.id==target}.map{it.userId},uid)
-        if(action=="confirm"&&db.rows("SELECT id FROM settlement_transfers WHERE settlement_id=:s AND status<>'CONFIRMED'","s" to fresh.long("settlement_id")).isEmpty()) markComplete(gid,u.id,uid) else touch(gid)
+        notify(gatheringId,settlementUnit.id,code,NotificationText.transfer(code,actor.name),data(gatheringId).first.filter{it.id==target}.map{it.userId},actor.userId)
+        if(action=="confirm"&&db.rows("SELECT id FROM settlement_transfers WHERE settlement_id=:s AND status<>'CONFIRMED'","s" to fresh.long("settlement_id")).isEmpty()) markComplete(gatheringId,settlementUnit.id,actor.userId) else touch(gatheringId)
     }
     private fun roundView(r: RoundInput)=mapOf("id" to r.id,"settlementUnitId" to r.unitId,"seq" to r.seq,"total" to r.total,"payerParticipantId" to r.payerId,"drinks" to r.drinks)
     private fun unitView(gid: Long,id: Long,pid: Long): Map<String,Any?> {

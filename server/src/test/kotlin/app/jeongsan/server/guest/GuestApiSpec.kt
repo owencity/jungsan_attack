@@ -87,4 +87,18 @@ class GuestApiSpec : StringSpec({
             .andExpect(status().isUnauthorized)
         Mockito.verifyNoInteractions(service)
     }
+    "개인 금액 조회와 보냈어요는 인증한 브라우저를 전달한다" {
+        mvc.perform(get("/api/v1/guest/gatherings/1/settlement-units/10/settlement").cookie(cookie))
+            .andExpect(status().isOk).andExpect(header().string("Cache-Control","no-store"))
+        Mockito.verify(service).guestSettlement(1,10,browserHash)
+        mvc.perform(post("/api/v1/guest/transfers/9/sent").cookie(cookie).header("Origin","https://web.test"))
+            .andExpect(status().isNoContent)
+        Mockito.verify(service).guestSent(9,browserHash)
+    }
+    "개인 금액과 보냈어요도 무인증과 다른 출처를 거절한다" {
+        mvc.perform(get("/api/v1/guest/gatherings/1/settlement-units/10/settlement")).andExpect(status().isUnauthorized)
+        mvc.perform(post("/api/v1/guest/transfers/9/sent").header("Origin","https://web.test")).andExpect(status().isUnauthorized)
+        mvc.perform(post("/api/v1/guest/transfers/9/sent").cookie(cookie).header("Origin","https://evil.test")).andExpect(status().isForbidden)
+        Mockito.verifyNoInteractions(service)
+    }
 })

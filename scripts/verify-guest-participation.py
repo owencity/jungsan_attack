@@ -219,4 +219,73 @@ check(sql(f"SELECT COUNT(*) FROM guest_participations WHERE participant_id={clea
 call("GET", f"/guest/gatherings/{cleanup_gathering['id']}/me", cleanup_browser, expected=403)
 check(True, "서명된 쿠키가 남아도 삭제된 참여자 권한은 복구되지 않음")
 check(sql("SELECT COUNT(*) FROM INFORMATION_SCHEMA.KEYWORDS WHERE WORD='GUEST_PARTICIPATIONS' AND RESERVED=1") == "0", "새 테이블 이름의 MySQL 예약어 검사")
+
+# FC-028 2차: 개인 확정 금액은 표 재계산과 무관하게 기존 송금 스냅샷을 따른다.
+money_path = f"/guest/gatherings/{automatic_gathering['id']}/settlement-units/{automatic_unit['id']}/settlement"
+money = call("GET", money_path, automatic_browser)[0]
+transfer_id = money["transfers"][0]["id"]
+check(money["total"] == 5000 and money["isEstimate"] is False and money["transfers"][0]["payout"] is None,
+      "개인 확정 금액과 계좌 미등록 상태 조회")
+check(sum(item["amount"] for item in money["transfers"][0]["basis"]) == 5000 and money["settledAt"].endswith("Z"),
+      "개인 근거 합계는 송금액과 같고 확정 시각은 UTC")
+call("POST", f"/guest/transfers/{transfer_id}/sent", automatic_browser, expected=409)
+call("GET", money_path, browser, expected=403)
+call("POST", f"/guest/transfers/{transfer_id}/sent", browser, expected=403)
+check(True, "계좌 미등록 보냈어요와 타방 개인 금액·송금 변경 거절")
+call("PUT", "/users/me/payout", host_cookie, {"bank": "국민", "accountNo": "001234567890", "holder": "검증총무"})
+money = call("GET", money_path, automatic_browser)[0]
+check(money["transfers"][0]["payout"] == {"bank": "국민", "accountNo": "001234567890", "holder": "검증총무"},
+      "확정 송금의 수취인 계좌만 선행 0을 보존해 조회")
+estimated_path = f"/guest/gatherings/{gathering['id']}/settlement-units/{settlement_unit['id']}/settlement"
+estimated = call("GET", estimated_path, browser)[0]
+check(estimated["available"] and estimated["isEstimate"] and all(item["payout"] is None and item["id"] is None for item in estimated["transfers"]),
+      "예상 금액에는 계좌·실제 송금 ID를 주지 않음")
+table_path = automatic_root + "/settlement/table"
+table = call("GET", table_path, host_cookie)[0]
+check(table["isEstimate"] is False and table["table"]["grandTotal"] == 10000 and table["generatedAt"].endswith("Z"),
+      "총무 확정 표의 상태·총액·기준 시각 조회")
+check(table["table"]["transfers"] == [{"fromParticipantId": money["participantId"],
+      "toParticipantId": money["transfers"][0]["toParticipantId"], "amount": 5000}], "캡처용 송금 안내도 확정 스냅샷과 같은 송금자·수취인·금액")
+call("GET", table_path, automatic_browser, expected=401)
+check("payout" not in json.dumps(table) and "numerator" not in json.dumps(table), "총무 표에는 계좌·유리수 내부 표현 없음")
+open_table = call("GET", root + "/settlement/table", host_cookie)[0]["table"]
+check(any(cell["source"] == "UNANSWERED" for row in open_table["rounds"] for cell in row["cells"]), "예상 표에서 미응답을 불참과 구분")
+for line in open_table["lines"]:
+    displayed = sum(cell["amount"] for row in open_table["rounds"] for cell in row["cells"] if cell["participantId"] == line["participantId"])
+    adjustment = sum(row["cells"][str(line["participantId"])] for row in open_table["adjustments"])
+    assert displayed + adjustment == line["total"]
+check(sum(line["total"] for line in open_table["lines"]) == open_table["grandTotal"], "표 셀·조정·최종 개인합계와 전체 원금 일치")
+manual_preview = call("GET", root + "/settlement/preview", host_cookie)[0]
+call("POST", root + "/settlement", host_cookie, {"inputRevision": manual_preview["inputRevision"], "inputHash": manual_preview["inputHash"]})
+my_transfer = call("GET", estimated_path, browser)[0]["transfers"][0]["id"]
+call("POST", f"/guest/transfers/{my_transfer}/sent", second_browser, expected=403)
+check(sql(f"SELECT status FROM settlement_transfers WHERE id={my_transfer}") == "WAITING", "같은 술자리의 다른 참여자도 내 송금을 보냈다고 표시할 수 없음")
+with ThreadPoolExecutor(2) as executor:
+    sent = list(executor.map(lambda _: call("POST", f"/guest/transfers/{transfer_id}/sent", automatic_browser, expected=204), range(2)))
+sent_at = sql(f"SELECT sent_at FROM settlement_transfers WHERE id={transfer_id}")
+call("POST", f"/guest/transfers/{transfer_id}/sent", automatic_browser, expected=204)
+check(sent_at and sql(f"SELECT sent_at FROM settlement_transfers WHERE id={transfer_id}") == sent_at and
+      sql(f"SELECT COUNT(*) FROM notifications WHERE gathering_id={automatic_gathering['id']} AND type='SENT'") == "1",
+      "보냈어요 동시·반복 요청은 최초 시각과 알림 한 건을 보존")
+call("DELETE", automatic_root + "/settlement", host_cookie, expected=409)
+call("POST", f"/transfers/{transfer_id}/confirm", host_cookie, expected=204)
+confirmed = call("GET", money_path, automatic_browser)[0]
+check(confirmed["status"] == "COMPLETED" and confirmed["total"] == 5000 and confirmed["transfers"][0]["status"] == "CONFIRMED",
+      "총무 확인 뒤에도 개인 총부담은 유지하고 송금 상태만 확인됨으로 표시")
+call("POST", f"/guest/transfers/{transfer_id}/sent", automatic_browser, expected=204)
+check(call("GET", money_path, automatic_browser)[0]["transfers"][0]["status"] == "CONFIRMED", "확인된 송금의 늦은 재시도는 상태를 되돌리지 않음")
+sql(f"UPDATE rounds SET total_amount=11000 WHERE id={automatic_round}")
+try:
+    rejected = call("GET", table_path, host_cookie, expected=409)[0]
+    check(rejected["code"] == "SETTLEMENT_VIEW_UNAVAILABLE" and call("GET", money_path, automatic_browser)[0]["total"] == 5000,
+          "확정 입력·스냅샷 불일치는 표를 거절하고 개인 확정 송금은 변경하지 않음")
+finally:
+    sql(f"UPDATE rounds SET total_amount=10000 WHERE id={automatic_round}")
+empty_room = call("POST", "/gatherings", host_cookie, expected=201)[0]
+empty_unit = empty_room["settlementUnits"][0]
+empty_browser = session()
+join(empty_room, empty_unit, empty_browser)
+unavailable = call("GET", f"/guest/gatherings/{empty_room['id']}/settlement-units/{empty_unit['id']}/settlement", empty_browser)[0]
+check(unavailable["available"] is False and unavailable["errorCode"] == "NO_ROUNDS" and unavailable["total"] is None,
+      "아직 차수 없는 술자리는 개인 금액 준비 중으로 표시")
 print(f"GUEST-PARTICIPATION: {checks} checks passed", flush=True)

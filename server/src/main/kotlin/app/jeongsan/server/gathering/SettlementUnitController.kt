@@ -47,6 +47,10 @@ class SettlementUnitController(private val service: GatheringService) {
     @GetMapping("/{id}/settlement/preview")
     fun preview(@PathVariable gid: Long, @PathVariable id: Long, @LoginUser userId: Long) = service.preview(gid,id,userId)
 
+    @GetMapping("/{id}/settlement/table")
+    fun table(@PathVariable gid: Long, @PathVariable id: Long, @LoginUser userId: Long) = org.springframework.http.ResponseEntity.ok()
+        .header("Cache-Control","no-store").body(service.settlementTable(gid,id,userId))
+
     @PostMapping("/{id}/settlement")
     fun settle(@PathVariable gid: Long, @PathVariable id: Long, @LoginUser userId: Long, @Valid @RequestBody request: SettleRequest) = service.settle(gid,id,userId,request)
 
