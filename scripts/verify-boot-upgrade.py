@@ -160,8 +160,9 @@ def verify():
     check([row[0:3] for row in added_history] == [
           ["029-ugc-safety", "jeongsan", "db/changelog/019-ugc-safety.yaml"],
           ["030-auth-session-return", "jeongsan", "db/changelog/020-auth-session-return.yaml"],
+          ["031-guest-participations", "jeongsan", "db/changelog/021-guest-participations.yaml"],
           ] and all(row[3].startswith("9:") and row[5] == "EXECUTED" for row in added_history),
-          "신고·차단029와 인증 세션030만 순서대로 정확히 한 번 추가 적용")
+          "신고·차단029·인증 세션030·비회원031이 순서대로 정확히 한 번 추가 적용")
     check(sql(f"SELECT HEX(payout_encrypted) FROM users WHERE id={state['host_id']}") == state["payout_hex"],
           "구버전 계좌 암호문을 변경·재암호화하지 않음")
     me = call("GET", "/auth/me", state["host"])

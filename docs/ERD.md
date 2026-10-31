@@ -1,5 +1,12 @@
 # 정산어택 — ERD
 
+> **2026-10-31 FC-028:** 신규 `021-guest-participations.yaml` / changeSet `031-guest-participations`.
+> guest_participations의 gathering_id BIGINT·browser_hash CHAR(64)가 복합 PK다.
+> participant_id BIGINT·created_at DATETIME(6) NOT NULL을 두며 (participant_id,gathering_id) UNIQUE 및
+> participants(id,gathering_id) FK CASCADE다. 중복 참여를 막고 참여자 삭제 시 권한도 지운다.
+> nullable participants.user_id는 유지하고 별도 표식으로 비회원과 탈퇴 좌석을 구분한다.
+> 컬럼·테이블의 이유는 신규 changelog가 기준이다. 운영 적용 결과는 별도다.
+
 > **제품 v4 설계와 구분(2026-10-06):** 총무별 단위·명단·snapshot의 논리 스키마는
 > [SETTLEMENT_UNITS §3](SETTLEMENT_UNITS.md#3-논리-스키마--아직-적용되지-않음)에 있다.
 > 이번 계약 PR에는 migration이 없으므로 아래 실제 ERD에 미래 테이블을 적용된 것처럼 추가하지 않는다.

@@ -91,7 +91,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         val hash=MessageDigest.getInstance("SHA-256").digest(payload.toByteArray()).joinToString(""){"%02x".format(it)}
         val previous=db.rows("SELECT * FROM settlement_unit_requests WHERE gathering_id=:g AND user_id=:u AND request_id=:r","g" to gid,"u" to uid,"r" to request.requestId.toString()).singleOrNull()
         if(previous!=null) { if(previous.text("payload_hash")!=hash) fail("IDEMPOTENCY_KEY_REUSED");return unitView(gid,previous.long("settlement_unit_id"),p.id) }
-        val valid=db.rows("SELECT id FROM participants WHERE gathering_id=:g AND status='ACTIVE' AND user_id IS NOT NULL","g" to gid).map{it.long("id")}.toSet()
+        val valid=db.rows("SELECT id FROM participants WHERE gathering_id=:g AND status='ACTIVE' AND (user_id IS NOT NULL OR EXISTS(SELECT 1 FROM guest_participations guest WHERE guest.participant_id=participants.id))","g" to gid).map{it.long("id")}.toSet()
         if(!valid.containsAll(ids)) fail("NOT_PARTICIPANT",status=HttpStatus.FORBIDDEN)
         val id=db.insert("INSERT INTO settlement_units(gathering_id,host_participant_id,headcount,created_at) VALUES(:g,:p,:hc,:n)","g" to gid,"p" to p.id,"hc" to request.headcount,"n" to Instant.now())
         ids.forEach{addMember(gid,id,it)}
@@ -106,7 +106,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
     }
     fun member(gid: Long,id: Long,uid: Long,pid: Long,remove: Boolean) {
         val u=authorize(gid,id,uid)
-        if(db.rows("SELECT id FROM participants WHERE id=:p AND gathering_id=:g AND status='ACTIVE' AND user_id IS NOT NULL","p" to pid,"g" to gid).isEmpty()) fail("NOT_PARTICIPANT",status=HttpStatus.FORBIDDEN)
+        if(db.rows("SELECT id FROM participants WHERE id=:p AND gathering_id=:g AND status='ACTIVE' AND (user_id IS NOT NULL OR EXISTS(SELECT 1 FROM guest_participations guest WHERE guest.participant_id=participants.id))","p" to pid,"g" to gid).isEmpty()) fail("NOT_PARTICIPANT",status=HttpStatus.FORBIDDEN)
         if((pid in u.participantIds) == !remove) return
         room(gid,true)
         if(remove) {
@@ -121,6 +121,9 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
     }
     fun saveRound(gid: Long,id: Long,uid: Long,rid: Long?,request: RoundRequest): Map<String,Any?> {
         val u=authorize(gid,id,uid);SettlementWorkflow.member(u,request.payerParticipantId)
+        // 비회원 계좌·수취 권한은 후속이다. 응답 참여만 가능한 사람을 수취인으로 고정하지 않는다.
+        if(db.rows("SELECT participant_id FROM guest_participations WHERE gathering_id=:g AND participant_id=:p",
+                "g" to gid,"p" to request.payerParticipantId).isNotEmpty()) fail("PAYER_LOGIN_REQUIRED")
         val loaded=data(gid)
         if(rid!=null && loaded.second.none{it.id==rid&&it.unitId==id}) fail("ROUND_NOT_FOUND",status=HttpStatus.NOT_FOUND)
         room(gid,true)
@@ -150,22 +153,106 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
     fun respond(gid: Long,id: Long,uid: Long,pid: Long?,request: ResponseRequest) {
         val u=unit(gid,id);val actor=person(gid,uid);val target=pid ?: actor.id
         if(pid!=null) SettlementWorkflow.host(u,actor)
-        SettlementWorkflow.open(u);SettlementWorkflow.member(u,target);room(gid,true)
-        val loaded=data(gid);val rounds=loaded.second
-        val previous=loaded.third.filter{it.participantId==target}.associateBy{it.roundId}
+        respondAs(gid,u,actor,target,request,if(pid==null) "SELF" else "HOST")
+    }
+    private fun respondAs(gatheringId: Long, settlementUnit: UnitInput, actor: PersonInput,
+        targetParticipantId: Long, request: ResponseRequest, source: String) {
+        SettlementWorkflow.open(settlementUnit);SettlementWorkflow.member(settlementUnit,targetParticipantId);room(gatheringId,true)
+        val loaded=data(gatheringId);val rounds=loaded.second
+        val previous=loaded.third.filter{it.participantId==targetParticipantId}.associateBy{it.roundId}
         if(request.answers.map{it.roundId}.distinct().size!=request.answers.size) fail("MALFORMED_REQUEST",status=HttpStatus.BAD_REQUEST)
         var changed=false
-        request.answers.forEach { a -> SettlementWorkflow.response(u,target,a.roundId,a.type,rounds)
-            val old=previous[a.roundId]
-            if(pid==null && old?.type=="EXEMPT" && old.source=="HOST") return@forEach
-            val source=if(pid==null) "SELF" else "HOST"
-            if(old?.type==a.type && old.source==source) return@forEach
+        request.answers.forEach { answer -> SettlementWorkflow.response(settlementUnit,targetParticipantId,answer.roundId,answer.type,rounds)
+            val old=previous[answer.roundId]
+            if(source=="SELF" && old?.type=="EXEMPT" && old.source=="HOST") return@forEach
+            if(old?.type==answer.type && old.source==source) return@forEach
             changed=true
-            db.update("INSERT INTO round_responses(participant_id,round_id,type,source) VALUES(:p,:r,:t,:src) ON DUPLICATE KEY UPDATE type=VALUES(type),source=VALUES(source)","p" to target,"r" to a.roundId,"t" to a.type,"src" to if(pid==null) "SELF" else "HOST") }
+            db.update("INSERT INTO round_responses(participant_id,round_id,type,source) VALUES(:p,:r,:t,:src) ON DUPLICATE KEY UPDATE type=VALUES(type),source=VALUES(source)","p" to targetParticipantId,"r" to answer.roundId,"t" to answer.type,"src" to source) }
         if(!changed) return
-        bump(gid,id);event(gid,id,"RESPONDED","${actor.name}님이 응답했어요")
-        notify(gid,id,"RESPONDED","${actor.name}님이 응답했어요",loaded.first.filter{it.id==u.hostId}.map{it.userId},uid)
-        autoSettle(gid,id)
+        bump(gatheringId,settlementUnit.id);event(gatheringId,settlementUnit.id,"RESPONDED","${actor.name}님이 응답했어요")
+        notify(gatheringId,settlementUnit.id,"RESPONDED","${actor.name}님이 응답했어요",loaded.first.filter{it.id==settlementUnit.hostId}.map{it.userId},actor.userId)
+        autoSettle(gatheringId,settlementUnit.id)
+    }
+    // 회원·탈퇴 좌석과 다르게 별도 표식이 있는 비회원만 브라우저 권한으로 찾는다.
+    private fun guestPerson(gatheringId: Long, browserHash: String): PersonInput {
+        val participant=db.rows("""
+            SELECT participant.id,participant.name FROM guest_participations guest
+            JOIN participants participant ON participant.id=guest.participant_id AND participant.gathering_id=guest.gathering_id
+            WHERE guest.gathering_id=:gathering AND guest.browser_hash=:browser
+              AND participant.user_id IS NULL AND participant.status='ACTIVE'
+        """.trimIndent(),"gathering" to gatheringId,"browser" to browserHash).singleOrNull()
+            ?: fail("NOT_PARTICIPANT",status=HttpStatus.FORBIDDEN)
+        return PersonInput(participant.long("id"),0,participant.text("name"))
+    }
+    fun guestJoin(token: String, browserHash: String, request: app.jeongsan.server.guest.GuestJoinRequest): Map<String,Any?> {
+        val displayName=app.jeongsan.server.guest.GuestPolicy.displayName(request.displayName)
+        val gatheringId=db.rows("SELECT id FROM gatherings WHERE share_token=:token","token" to token)
+            .singleOrNull()?.long("id") ?: fail("GATHERING_NOT_FOUND",status=HttpStatus.NOT_FOUND)
+        val settlementUnit=unit(gatheringId,request.settlementUnitId)
+        // 서로 다른 단위로 동시에 참여해도 공유 신원은 하나다. 단위→술자리 순서는 기존과 같다.
+        room(gatheringId,true)
+        val previous=db.rows("SELECT participant_id FROM guest_participations WHERE gathering_id=:gathering AND browser_hash=:browser",
+            "gathering" to gatheringId,"browser" to browserHash).singleOrNull()
+        val participant=if(previous!=null) guestPerson(gatheringId,browserHash).also {
+            app.jeongsan.server.guest.GuestPolicy.requireSameName(it.name,displayName)
+        } else null
+        if(participant!=null) {
+            val membership=db.rows("SELECT status FROM settlement_unit_members WHERE settlement_unit_id=:unit AND participant_id=:participant",
+                "unit" to settlementUnit.id,"participant" to participant.id).singleOrNull()
+            if(membership?.text("status")=="REMOVED") fail("NOT_SETTLEMENT_UNIT_MEMBER",status=HttpStatus.FORBIDDEN)
+            // 마지막 응답으로 자동 정산된 후 네트워크 재시도도 성공하며 새 응답으로 덮지 않는다.
+            if(membership!=null) return guestMe(gatheringId,browserHash)
+        }
+        SettlementWorkflow.open(settlementUnit)
+        val joined=participant ?: run {
+            val participantId=db.insert("INSERT INTO participants(gathering_id,user_id,name,status,created_at) VALUES(:gathering,NULL,:name,'ACTIVE',:now)",
+                "gathering" to gatheringId,"name" to displayName,"now" to Instant.now())
+            db.update("INSERT INTO guest_participations(gathering_id,browser_hash,participant_id,created_at) VALUES(:gathering,:browser,:participant,:now)",
+                "gathering" to gatheringId,"browser" to browserHash,"participant" to participantId,"now" to Instant.now())
+            PersonInput(participantId,0,displayName)
+        }
+        addMember(gatheringId,settlementUnit.id,joined.id)
+        bump(gatheringId,settlementUnit.id);notifyExcess(gatheringId,settlementUnit.id)
+        event(gatheringId,settlementUnit.id,"JOINED","${joined.name}님이 들어왔어요")
+        val hostUsers=db.rows("SELECT user_id FROM participants WHERE id=:host","host" to settlementUnit.hostId)
+            .mapNotNull{(it["user_id"] as? Number)?.toLong()}
+        notify(gatheringId,settlementUnit.id,"JOINED","${joined.name}님이 들어왔어요",hostUsers,0)
+        // unit의 명단을 갱신한 뒤 같은 트랜잭션에서 초기 응답과 자동 정산까지 처리한다.
+        respondAs(gatheringId,unit(gatheringId,settlementUnit.id),joined,joined.id,ResponseRequest(request.responses),"SELF")
+        return guestMe(gatheringId,browserHash)
+    }
+    fun guestRespond(gatheringId: Long, settlementUnitId: Long, browserHash: String, request: ResponseRequest) {
+        val settlementUnit=unit(gatheringId,settlementUnitId)
+        room(gatheringId,true)
+        val participant=guestPerson(gatheringId,browserHash)
+        respondAs(gatheringId,settlementUnit,participant,participant.id,request,"SELF")
+    }
+    @Transactional(readOnly=true,isolation=Isolation.READ_COMMITTED)
+    fun guestMe(gatheringId: Long, browserHash: String): Map<String,Any?> {
+        val participant=guestPerson(gatheringId,browserHash)
+        val gathering=room(gatheringId)
+        val units=db.rows("""
+            SELECT settlement_unit.id,settlement_unit.status,settlement_unit.input_revision,membership.status member_status
+            FROM settlement_units settlement_unit JOIN settlement_unit_members membership ON membership.settlement_unit_id=settlement_unit.id
+            WHERE settlement_unit.gathering_id=:gathering AND membership.participant_id=:participant ORDER BY settlement_unit.id
+        """.trimIndent(),"gathering" to gatheringId,"participant" to participant.id)
+        val rounds=db.rows("""
+            SELECT round_entry.id,round_entry.settlement_unit_id,round_entry.seq,round_entry.total_amount
+            FROM rounds round_entry JOIN settlement_unit_members membership ON membership.settlement_unit_id=round_entry.settlement_unit_id
+            WHERE round_entry.gathering_id=:gathering AND membership.participant_id=:participant AND membership.status='ACTIVE'
+            ORDER BY round_entry.seq
+        """.trimIndent(),"gathering" to gatheringId,"participant" to participant.id)
+        val responses=db.rows("""
+            SELECT response.round_id,response.type,response.source FROM round_responses response
+            JOIN rounds round_entry ON round_entry.id=response.round_id
+            JOIN settlement_unit_members membership ON membership.settlement_unit_id=round_entry.settlement_unit_id AND membership.participant_id=response.participant_id
+            WHERE round_entry.gathering_id=:gathering AND response.participant_id=:participant AND membership.status='ACTIVE'
+            ORDER BY round_entry.seq
+        """.trimIndent(),"gathering" to gatheringId,"participant" to participant.id)
+        return mapOf("gatheringId" to gatheringId,"title" to gathering["name"],"participantId" to participant.id,"displayName" to participant.name,
+            "settlementUnits" to units.map{mapOf("id" to it["id"],"status" to it["status"],"inputRevision" to it["input_revision"],"included" to (it.text("member_status")=="ACTIVE"))},
+            "rounds" to rounds.map{mapOf("id" to it["id"],"settlementUnitId" to it["settlement_unit_id"],"seq" to it["seq"],"total" to it["total_amount"])},
+            "responses" to responses.map{mapOf("roundId" to it["round_id"],"type" to it["type"],"source" to it["source"])})
     }
     @Transactional(readOnly=true,isolation=Isolation.READ_COMMITTED)
     fun joinPreview(token: String): Map<String,Any?> {

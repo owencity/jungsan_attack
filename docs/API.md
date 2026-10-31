@@ -1,4 +1,14 @@
-# 정산어택 — API 계약 · v17
+# 정산어택 — API 계약 · v18
+
+> **v18 변경(2026-10-31)** — FC-028 비회원 참여·본인 응답 1차.
+>
+> | 절 | 변경 |
+> |---|---|
+> | [비회원 참여](GUEST_PARTICIPATION.md) | POST guest/session 204, POST guest/join/{token} 200, GET guest/gatherings/{id}/me 200, PUT guest/.../responses/me 204 |
+> | 권한·재시도 | 별도 httpOnly JWT 쿠키·Origin 검사·브라우저/술자리 유일 신원, 회원 API 유지 |
+> | §1.4 오류 | GUEST_ORIGIN_NOT_ALLOWED(403), GUEST_NAME_MISMATCH(409), PAYER_LOGIN_REQUIRED(409) |
+> | 스키마·범위 | 021/031 guest_participations, 비회원 송금·계좌·메시지·정산표·캡처 후속 |
+>
 
 > **v17 변경(2026-10-28)** — FC-027 공개 데모 진입 안내 페이지.
 >
@@ -1504,6 +1514,17 @@ Core v2 코드: `TOTAL_NOT_POSITIVE`, `ALCOHOL_NEGATIVE`, `ALCOHOL_EXCEEDS_TOTAL
 SYSTEM·SPOON·참여자·응답·정산·송금은 유지한다. 처리 완료·차단 해제는 신고 숨김을 풀지 않는다.
 신고는 본인 글·SYSTEM·SPOON이면 400, 차단은 본인·탈퇴 계정이면 400, 비참여자는 403 NOT_PARTICIPANT다.
 다른 방의 메시지 ID는 404 NOT_FOUND다. 기존 POST messages의 201 DTO는 유지한다.
+
+### 1.4 추가 — v18 비회원 오류
+
+| HTTP | code | message |
+|---|---|---|
+| 403 | GUEST_ORIGIN_NOT_ALLOWED | 허용되지 않은 요청 출처입니다. |
+| 409 | GUEST_NAME_MISMATCH | 이 브라우저에서 이미 참여한 이름과 달라요 |
+| 409 | PAYER_LOGIN_REQUIRED | PAYER_LOGIN_REQUIRED |
+
+비회원 쿠키가 없거나 무효면 기존 UNAUTHENTICATED(401), 이름·응답 형식은 MALFORMED_REQUEST(400)다.
+회원용 경로·오류는 유지한다. 전체 요청·응답과 권한 범위는 [비회원 참여](GUEST_PARTICIPATION.md)를 따른다.
 
 ### 1.4 추가 — v13 메시지 오류
 
