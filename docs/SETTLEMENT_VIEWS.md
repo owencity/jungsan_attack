@@ -27,7 +27,8 @@ GET `/api/v1/gatherings/{gatheringId}/settlement-units/{settlementUnitId}/settle
 REPEATABLE_READ 조회 안에서 입력과 상태를 일관되게 읽고 Core의 표시 변환을 사용한다.
 
 gatheringId, settlementUnitId, title, status, isEstimate, generatedAt, inputRevision, inputHash와
-table{lines,rounds,adjustments,grandTotal}을 반환한다. lines는 참여자 id·이름·최종 부담액·결제액이다.
+table{lines,rounds,adjustments,transfers,grandTotal}을 반환한다. lines는 참여자 id·이름·최종 부담액·결제액이다.
+transfers는 fromParticipantId,toParticipantId,amount이며 최종 송금 안내용이다. 계좌나 입금 상태는 포함하지 않는다.
 rounds는 차수 id·순서·결제자 id·결제액·비주류/주류 총액·displayTotal·참여자별 셀이다.
 셀은 participantId,type,food,alcohol,amount,source이며, 미응답 source는 UNANSWERED다.
 현재 비주류는 안주·음료 합계이므로 음료를 별도 분배한 것처럼 표시하지 않는다.

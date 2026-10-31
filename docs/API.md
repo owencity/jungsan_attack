@@ -8,6 +8,7 @@
 > | 공개 링크 미리보기 | 기존 필드 유지, gatheringId 추가로 비회원 브라우저 재방문 연결 |
 > | §1.4 오류 | SETTLEMENT_VIEW_UNAVAILABLE(409), 확정 표와 스냅샷 불일치·누락 |
 > | 표시 규칙 | 차수별 정수 셀 + 수취인별 조정 = 개인 최종 부담액, 확정 송금은 기존 스냅샷 |
+> | 캡처용 송금 안내 | table.transfers에 fromParticipantId,toParticipantId,amount 포함, 계좌·입금 상태 제외 |
 >
 
 > **v18 변경(2026-10-31)** — FC-028 비회원 참여·본인 응답 1차.

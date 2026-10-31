@@ -244,6 +244,8 @@ table_path = automatic_root + "/settlement/table"
 table = call("GET", table_path, host_cookie)[0]
 check(table["isEstimate"] is False and table["table"]["grandTotal"] == 10000 and table["generatedAt"].endswith("Z"),
       "총무 확정 표의 상태·총액·기준 시각 조회")
+check(table["table"]["transfers"] == [{"fromParticipantId": money["participantId"],
+      "toParticipantId": money["transfers"][0]["toParticipantId"], "amount": 5000}], "캡처용 송금 안내도 확정 스냅샷과 같은 송금자·수취인·금액")
 call("GET", table_path, automatic_browser, expected=401)
 check("payout" not in json.dumps(table) and "numerator" not in json.dumps(table), "총무 표에는 계좌·유리수 내부 표현 없음")
 open_table = call("GET", root + "/settlement/table", host_cookie)[0]["table"]

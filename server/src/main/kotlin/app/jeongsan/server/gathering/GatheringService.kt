@@ -321,6 +321,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
             "status" to settlementUnit.state,"isEstimate" to (settlementUnit.state=="OPEN"),"generatedAt" to Instant.now(),
             "inputRevision" to settlementUnit.revision,"inputHash" to SettlementWorkflow.hash(settlementUnit,input),
             "table" to mapOf("lines" to table.lines,"adjustments" to table.adjustments,"grandTotal" to table.grandTotal,
+                "transfers" to result.transfers.map { transfer -> mapOf("fromParticipantId" to transfer.fromId,"toParticipantId" to transfer.toId,"amount" to transfer.amount) },
                 "rounds" to table.rounds.map { row -> mapOf("roundId" to row.roundId,"seq" to row.seq,"payerParticipantId" to row.payerParticipantId,
                     "total" to row.total,"foodTotal" to row.foodTotal,"alcoholTotal" to row.alcoholTotal,"displayTotal" to row.displayTotal,
                     "cells" to row.cells.map { cell -> mapOf("participantId" to cell.participantId,"type" to cell.type,"food" to cell.food,"alcohol" to cell.alcohol,
