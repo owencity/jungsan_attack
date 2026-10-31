@@ -117,7 +117,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         else addMember(gid,id,pid)
         bump(gid,id)
         notifyExcess(gid,id)
-        autoSettle(gid,id)
+        refreshCalculationError(gid,id)
     }
     fun saveRound(gid: Long,id: Long,uid: Long,rid: Long?,request: RoundRequest): Map<String,Any?> {
         val u=authorize(gid,id,uid);SettlementWorkflow.member(u,request.payerParticipantId)
@@ -139,7 +139,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         db.update("DELETE FROM drink_items WHERE round_id=:r","r" to roundId)
         request.drinks.forEach{db.insert("INSERT INTO drink_items(round_id,name,bottle_count,unit_price) VALUES(:r,:name,:q,:price)","r" to roundId,"name" to it.name.trim(),"q" to it.quantity,"price" to it.unitPrice)}
         bump(gid,id);event(gid,id,"ROUND_SAVED","${seq}차 ${NotificationText.money(request.total)}원을 넣었어요")
-        if(rid!=null) autoSettle(gid,id)
+        refreshCalculationError(gid,id)
         return roundView(data(gid).second.first{it.id==roundId})
     }
     fun deleteRound(gid: Long,id: Long,uid: Long,rid: Long) {
@@ -148,7 +148,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         if(db.rows("SELECT id FROM rounds WHERE id=:r AND settlement_unit_id=:s","r" to rid,"s" to id).isEmpty()) fail("ROUND_NOT_FOUND",status=HttpStatus.NOT_FOUND)
         db.update("DELETE FROM drink_items WHERE round_id=:r","r" to rid);db.update("DELETE FROM attendances WHERE round_id=:r","r" to rid)
         db.update("DELETE FROM rounds WHERE id=:r","r" to rid);bump(gid,id);event(gid,id,"ROUND_DELETED","차수를 지웠어요")
-        autoSettle(gid,id)
+        refreshCalculationError(gid,id)
     }
     fun respond(gid: Long,id: Long,uid: Long,pid: Long?,request: ResponseRequest) {
         val u=unit(gid,id);val actor=person(gid,uid);val target=pid ?: actor.id
@@ -171,7 +171,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         if(!changed) return
         bump(gatheringId,settlementUnit.id);event(gatheringId,settlementUnit.id,"RESPONDED","${actor.name}님이 응답했어요")
         notify(gatheringId,settlementUnit.id,"RESPONDED","${actor.name}님이 응답했어요",loaded.first.filter{it.id==settlementUnit.hostId}.map{it.userId},actor.userId)
-        autoSettle(gatheringId,settlementUnit.id)
+        refreshCalculationError(gatheringId,settlementUnit.id)
     }
     // 회원·탈퇴 좌석과 다르게 별도 표식이 있는 비회원만 브라우저 권한으로 찾는다.
     private fun guestPerson(gatheringId: Long, browserHash: String): PersonInput {
@@ -358,11 +358,11 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
     fun settle(gid: Long,id: Long,uid: Long,request: SettleRequest): Map<String,Any?> {
         val u=authorize(gid,id,uid);val d=data(gid);val preview=SettlementWorkflow.preview(u,d.first,d.second,d.third)
         if(preview.inputRevision!=request.inputRevision||preview.inputHash!=request.inputHash) fail("SETTLEMENT_INPUT_CHANGED")
-        persistSettlement(gid,u,d,preview,uid,false)
+        persistSettlement(gid,u,d,preview,uid)
         return detail(gid,uid)
     }
     private fun persistSettlement(gid: Long,u: UnitInput,d: Triple<List<PersonInput>,List<RoundInput>,List<ResponseInput>>,
-        preview: Preview,actor: Long,automatic: Boolean) {
+        preview: Preview,actor: Long) {
         val id=u.id
         // 타임라인·알림 FK가 Gathering 공유 잠금을 먼저 잡으면 두 unit이 X 잠금으로 승격할 때 교착한다.
         // Core 검증 뒤, FK를 포함한 쓰기 전에 unit→Gathering 순서로 배타 잠금을 얻는다.
@@ -377,7 +377,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         val state=if(preview.transfers.isEmpty()) "COMPLETED" else "SETTLING"
         db.update("UPDATE settlement_units SET status=:state,completed_at=:n,auto_settlement_error=NULL WHERE id=:id","state" to state,"n" to if(state=="COMPLETED") Instant.now() else null,"id" to id)
         val host=d.first.first{it.id==u.hostId}
-        event(gid,id,"SETTLED",if(automatic) "모두 응답해서 자동으로 계산했어요" else "${host.name}님이 담당 차수를 정산했어요")
+        event(gid,id,"SETTLED","${host.name}님이 담당 차수를 정산했어요")
         val transfersBySender=preview.transfers.groupBy{transfer->transfer.from}
         d.first.filter{participant->participant.id in u.participantIds && participant.id!=u.hostId}.forEach{participant->
             val transfers=transfersBySender[participant.id].orEmpty()
@@ -386,7 +386,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
                 val recipient=d.first.first{person->person.id==first.to}
                 "${recipient.name}님께 ${NotificationText.money(first.amount)}원" + if(transfers.size>1) " 외 ${transfers.size-1}건" else " 보내주세요"
             }
-            notify(gid,id,"SETTLED",body,listOf(participant.userId),if(automatic) 0 else actor)
+            notify(gid,id,"SETTLED",body,listOf(participant.userId),actor)
         }
         notify(gid,id,"SETTLED_HOST","계산이 끝났어요. 단톡방에 입금 요청을 보내주세요",listOf(host.userId),0)
         val autoParticipantIds=preview.lines.filter{line->line.auto}.map{line->line.participantId}.toSet()
@@ -414,7 +414,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
             db.update("UPDATE settlement_units SET headcount=:hc WHERE id=:s","hc" to headcount,"s" to id)
             bump(gid,id)
         }
-        notifyExcess(gid,id);autoSettle(gid,id)
+        notifyExcess(gid,id);refreshCalculationError(gid,id)
     }
     // 호출자가 단위→술자리 순으로 잠근 같은 트랜잭션 안에서만 호출한다.
     private fun notifyExcess(gid: Long,id: Long) {
@@ -425,7 +425,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         val exceeded=count>headcount
         if(exceeded && !notified) {
             val host=db.rows("SELECT user_id FROM participants WHERE id=:p","p" to row.long("host_participant_id")).single()["user_id"] as? Number
-            notify(gid,id,"HEADCOUNT_EXCEEDED","현재 ${count}명이 참여했어요. 그대로면 ${headcount}명으로 계산되고 마지막에 들어온 사람은 빠져요",listOfNotNull(host?.toLong()),0)
+            notify(gid,id,"HEADCOUNT_EXCEEDED","예상 ${headcount}명보다 많은 ${count}명이 응답 명단에 있어요. 명단을 확인한 뒤 정산을 확정해주세요",listOfNotNull(host?.toLong()),0)
         }
         if(exceeded!=notified) db.update("UPDATE settlement_units SET headcount_exceeded_notified=:flag WHERE id=:s","flag" to exceeded,"s" to id)
     }
@@ -436,32 +436,23 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         event(gid,id,"REMOVED","${participant.name}님은 $reason")
         notify(gid,id,notificationType,if(notificationType=="REMOVED") NotificationText.removed(title) else "$title: $reason",listOf(participant.userId),actor)
     }
-    private fun autoSettle(gid: Long,id: Long) {
+    private fun refreshCalculationError(gid: Long,id: Long) {
         val original=unit(gid,id)
         if(original.state!="OPEN") return
         val headcount=(db.rows("SELECT headcount FROM settlement_units WHERE id=:s","s" to id).single()["headcount"] as? Number)?.toInt()
-        if(headcount==null) return
         val loaded=data(gid)
         val seats=db.rows("SELECT participant_id,joined_at FROM settlement_unit_members WHERE settlement_unit_id=:s AND status='ACTIVE'","s" to id)
             .map{MemberSeat(it.long("participant_id"),checkNotNull(it.instant("joined_at")))}
         val plan=AutoSettlementPolicy.plan(original,headcount,seats,loaded.second,loaded.third)
-        var error=plan?.error
-        var preview: Preview?=null
-        val selected=original.copy(participantIds=plan?.includedIds ?: original.participantIds,
-            revision=original.revision + if(plan?.excludedIds?.isNotEmpty()==true) 1 else 0)
-        if(plan!=null && error==null) {
-            try { preview=SettlementWorkflow.preview(selected,loaded.first,loaded.second,loaded.third) }
+        var error: String?=null
+        if(plan!=null) {
+            try { SettlementWorkflow.preview(original,loaded.first,loaded.second,loaded.third) }
             catch(validation: SettlementValidationException) { error=validation.details.first().code.name }
         }
+        // 응답 저장은 계산 오류여도 유지한다. 명단 검토 전에는 스냅샷·AUTO 응답·확정 알림을 만들지 않는다.
         db.update("UPDATE settlement_units SET auto_settlement_error=:error WHERE id=:s","error" to error,"s" to id)
-        if(preview==null || plan==null) return
-        room(gid,true)
-        val title=room(gid).text("name")
-        val peopleById=loaded.first.associateBy{it.id}
-        plan.excludedIds.forEach{excludeMember(gid,id,peopleById.getValue(it),title,"인원(${headcount}명) 밖이라 이번 정산에서 빠졌어요",0)}
-        if(plan.excludedIds.isNotEmpty()) bump(gid,id)
-        persistSettlement(gid,selected,loaded,preview,0,true)
     }
+
     fun reopen(gid: Long,id: Long,uid: Long) {
         val u=authorize(gid,id,uid,false);if(u.state!="SETTLING") fail("SETTLEMENT_UNIT_NOT_SETTLING")
         val sent=db.rows("SELECT t.id FROM settlement_transfers t JOIN settlements s ON s.id=t.settlement_id WHERE s.settlement_unit_id=:s AND (t.sent_at IS NOT NULL OR t.confirmed_at IS NOT NULL)","s" to id)
