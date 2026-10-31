@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 031-guest-participations
+      author: jeongsan
+      comment: "FC-028/ADR-023. 회원과 탈퇴 좌석은 그대로 두고 비회원 브라우저의 술자리별 응답 권한을 구분한다."
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              ALTER TABLE participants MODIFY user_id BIGINT NULL COMMENT '회원 계정 연결, 비회원 권한은 guest_participations로 구분하고 탈퇴 좌석에는 권한 없음';
+              CREATE TABLE guest_participations (
+                gathering_id BIGINT NOT NULL COMMENT '브라우저 신원을 이 술자리로만 제한',
+                browser_hash CHAR(64) NOT NULL COMMENT '서명된 비회원 subject의 SHA256, 토큰 원문은 보존하지 않음',
+                participant_id BIGINT NOT NULL COMMENT '회원 연결 없이도 응답과 계산에서 사용하는 공유 참여자',
+                created_at DATETIME(6) NOT NULL COMMENT '비회원이 처음 실제 참여를 제출한 UTC 시각',
+                PRIMARY KEY (gathering_id,browser_hash),
+                UNIQUE KEY uq_guest_participant_room (participant_id,gathering_id),
+                CONSTRAINT fk_guest_participant_room FOREIGN KEY (participant_id,gathering_id)
+                  REFERENCES participants(id,gathering_id) ON DELETE CASCADE
+              ) COMMENT='동명이인과 탈퇴 좌석을 구분하고 동일 브라우저의 중복 참여를 방지';

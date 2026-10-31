@@ -1,5 +1,9 @@
 # 정산어택 — 도메인·DB 설계 (Core v2 · 제품 v4 연결)
 
+> **2026-10-31 FC-028:** 비회원 참여·응답은 [GUEST_PARTICIPATION](GUEST_PARTICIPATION.md)과
+> [ADR-023](ADR/023-guest-response-cookie.md)을 따른다. 단위→술자리 잠금 아래 브라우저별 신원을
+> 재사용하고 참여·초기 응답·자동 정산을 한 트랜잭션에 둔다. 회원 인증·Core·단위 명단 규칙은 유지한다.
+
 > **2026-10-06 개정:** 총무별 독립 정산의 현재 계약은 [SETTLEMENT_UNITS](SETTLEMENT_UNITS.md) §1·§3·§5다.
 > 아래 본문은 **제품 v3 당시의 설계 기록**이다. 전역 host·OPEN 검사·input_revision·
 > `settlements.gathering_id UNIQUE`·전역 참가자 제외·잠금 순서·삭제 SQL은 현재 구현 근거로 쓰지 않는다.

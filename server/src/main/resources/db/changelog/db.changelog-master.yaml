@@ -36,3 +36,5 @@ databaseChangeLog:
       file: db/changelog/019-ugc-safety.yaml
   - include:
       file: db/changelog/020-auth-session-return.yaml
+  - include:
+      file: db/changelog/021-guest-participations.yaml

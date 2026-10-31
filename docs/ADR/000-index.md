@@ -27,6 +27,7 @@
 | [020](020-independent-settlement-units.md) | 같은 술자리의 참여자는 공유하고 총무별 담당 차수·명단·정산을 독립시킨다 | 확정 방향 · 구현 전 |
 | [021](021-caddy-direct-api-ingress.md) | 정산 API에 OCI Caddy를 설치하고 같은 도메인을 직접 HTTPS로 연결한다 | 설치 승인 · DNS/TLS/성능 운영 확인 별도 |
 | [022](022-spring-boot-4.md) | Boot 4.1.1·Jackson 3로 올리고 사용하지 않는 Cloud·QueryDSL 빌드 설정을 제거한다 | CTO 선택 · 이 PR에서 검증 |
+| [023](023-guest-response-cookie.md) | 비회원 응답을 별도 httpOnly JWT 쿠키·브라우저별 술자리 신원으로 제한한다 | FC-028 백엔드 1차, 운영·웹 연결 후속 |
 
 > **`006` → `013` → `014` 이력.** `013`이 한때 `006`을 대체했으나, 그 근거가
 > "실제 필요"가 아니라 **"학습 목적"** 이었다. `014`가 이를 뒤집어 MVP를 모놀리스로
