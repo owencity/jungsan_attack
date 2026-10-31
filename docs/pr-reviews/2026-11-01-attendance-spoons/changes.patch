@@ -1,0 +1,580 @@
+diff --git a/DEVLOG.md b/DEVLOG.md
+index b4310c8..ad45797 100644
+--- a/DEVLOG.md
++++ b/DEVLOG.md
+@@ -1,5 +1,11 @@
+ # 개발 결정 로그
+ 
++## [2026-11-01] 참석 응답마다 총무 스푼을 한 번 자동 적립한다
++- 문제: 참여자는 웹 응답만 하므로 앱에서 별도로 감사 버튼을 눌러주는 보상 흐름이 맞지 않는다.
++- 고려한 대안: 앱에서 숫자만 증가, 정산 완료 시 일괄 보상, 참석 응답과 같은 트랜잭션의 지급 이력·누적 증가.
++- 선택 이유·트레이드오프: CTO가 참여자당 +10과 제외 후 유지로 결정했다. 한 차수 이상 실제 응답한 참석자, 총무 제외, 술자리·총무·참여자별 1회로 해석한다. 유일 이력과 사용자 잠금·원자 증가로 중복/동시 요청을 처리한다.
++- 아쉬운 점: 비회원 쿠키 삭제는 다른 신원으로 취급되므로 실명만으로 중복 사람을 판별할 수 없다. 현금성 없는 보상이며 이미 지급한 스푼은 유지한다. 기존 명단 일괄 소급·실시간 푸시는 하지 않는다.
++
+ ## [2026-11-01] 운영 앱을 총무의 정산·이미지 전달 도구로 좁힌다
+ - 문제: 참여자가 응답만 보내면 되는데 앱의 방·송금·대화 동선이 참여 부담을 늘렸다.
+ - 고려한 대안: 앱/웹 양쪽의 참여자 기능 유지, 앱 전용 가입 유도, 총무 앱과 응답 웹 분리.
+diff --git a/docs/API.md b/docs/API.md
+index 8c605e3..337debb 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -1,4 +1,15 @@
+-# 정산어택 — API 계약 · v20
++# 정산어택 — API 계약 · v21
++
++> **v21 변경(2026-11-01)** — [FC-031 참석자 스푼](flow-changes/2026-11-01-attendance-spoons.md).
++>
++> | 절 | 변경 |
++> |---|---|
++> | 회원/비회원 참여·응답, 총무 대리 응답 | 한 차수 이상 SELF/HOST SOBER/DRANK 참석 응답 저장 시 총무에게 10스푼 자동 지급 |
++> | 중복·명단 제외 | 술자리·총무 계정·참여자별 1회. 수정·재시도·재추가·같은 총무 단위 추가는 중복 지급하지 않으며 제외 후에도 유지 |
++> | GET /auth/me · 술자리 조회 | 기존 spoonCount에 누적 반영. DTO/URL/인증 변경·별도 지급 API 없음 |
++> | 보존 | 총무 본인·빈 응답·모두 불참·AUTO 기본 응답은 지급하지 않음. 기존 응답 일괄 소급 지급 없음. 술자리 만료 후 누적 유지 |
++>
++> 022/032 지급 이력과 users.spoon_count는 응답 트랜잭션에서 함께 커밋한다. 이전 수동 감사/완료 보상 설계보다 FC-031을 우선한다.
+ 
+ > **v20 변경(2026-11-01)** — FC-029 자동 계산·총무 확인 후 확정.
+ >
+diff --git a/docs/DOMAIN_DB_DESIGN_V2.md b/docs/DOMAIN_DB_DESIGN_V2.md
+index 71b232a..872885c 100644
+--- a/docs/DOMAIN_DB_DESIGN_V2.md
++++ b/docs/DOMAIN_DB_DESIGN_V2.md
+@@ -1,5 +1,8 @@
+ # 정산어택 — 도메인·DB 설계 (Core v2 · 제품 v4 연결)
+ 
++> **2026-11-01 FC-031:** 스푼은 [참석자 자동 적립](flow-changes/2026-11-01-attendance-spoons.md)으로 결정했다.
++> 단위→술자리→수혜 사용자 잠금과 복합 유일 지급 이력으로 응답·잔액을 함께 커밋한다. 과거 스푼 미결/수동 지급 설명을 대체한다.
++
+ > **2026-10-31 FC-028:** 비회원 참여·응답은 [GUEST_PARTICIPATION](GUEST_PARTICIPATION.md)과
+ > [ADR-023](ADR/023-guest-response-cookie.md)을 따른다. 단위→술자리 잠금 아래 브라우저별 신원을
+ > 재사용하고 참여·초기 응답·자동 정산을 한 트랜잭션에 둔다. 회원 인증·Core·단위 명단 규칙은 유지한다.
+diff --git a/docs/ERD.md b/docs/ERD.md
+index c335eb0..85837af 100644
+--- a/docs/ERD.md
++++ b/docs/ERD.md
+@@ -1,5 +1,12 @@
+ # 정산어택 — ERD
+ 
++> **2026-11-01 FC-031:** `022-attendance-spoons.yaml` / `032-attendance-spoons`가 추가된다.
++> `spoon_attendance_rewards(gathering_id BIGINT,host_user_id BIGINT,participant_id BIGINT)` 복합 PK로 중복을 막는다.
++> `amount INT NOT NULL`, `awarded_at DATETIME(6) NOT NULL`은 지급 당시 수량과 UTC 시각이다.
++> `(participant_id,gathering_id)` → participants와 host_user_id → users의 FK는 ON DELETE CASCADE다.
++> 명단 제외는 이력을 지우지 않으며 술자리 삭제는 이력을 지워도 users.spoon_count를 감소시키지 않는다.
++> 회원 탈퇴는 수혜 계정의 이력을 삭제한다. 새 엔티티 없이 기존 JDBC 저장소로 접근한다. 운영 적용 상태는 PR에 별도 기록한다.
++
+ > **2026-10-31 FC-028:** 신규 `021-guest-participations.yaml` / changeSet `031-guest-participations`.
+ > guest_participations의 gathering_id BIGINT·browser_hash CHAR(64)가 복합 PK다.
+ > participant_id BIGINT·created_at DATETIME(6) NOT NULL을 두며 (participant_id,gathering_id) UNIQUE 및
+diff --git a/docs/REQUIREMENTS.md b/docs/REQUIREMENTS.md
+index 7e73a3c..e6c91af 100644
+--- a/docs/REQUIREMENTS.md
++++ b/docs/REQUIREMENTS.md
+@@ -1,4 +1,9 @@
+-# 정산어택 — 제품 요구사항 정의서 · v7
++# 정산어택 — 제품 요구사항 정의서 · v8
++
++> **v8 변경(2026-11-01):** [FC-031](flow-changes/2026-11-01-attendance-spoons.md)에 따라 참석자 1명당 총무에게 10스푼을 자동 지급한다.
++> 총무 본인은 제외하고 같은 술자리·총무·참여자 조합에는 한 번만 지급한다. 지급 후 제외·불참 변경에도 유지한다.
++> 최소 한 차수의 SELF/HOST 참석 응답이 기준이며 AUTO 기본값은 제외한다. 수동 감사 1스푼·완료 기본 1스푼은 대체한다.
++> 아래 v4의 복수 총무 미결과 과거 §8.2/§13 보상 수치는 이 결정으로 대체한다. 칭호 구간·금전 가치 없음 원칙은 유지한다.
+ 
+ > **v7 변경(2026-11-01):** [FC-030](flow-changes/2026-11-01-host-only-app.md)에 따라 운영 앱은 총무 전용으로 정리한다.
+ > 참여자는 가입 없이 웹에서 이름·차수별 참석/음주만 제출하고 총무가 공유한 이미지로 송금 대상과 금액을 확인한다.
+diff --git a/docs/SETTLEMENT_UNITS.md b/docs/SETTLEMENT_UNITS.md
+index 2aba567..add5b01 100644
+--- a/docs/SETTLEMENT_UNITS.md
++++ b/docs/SETTLEMENT_UNITS.md
+@@ -336,9 +336,9 @@ hash는 unit ID, ACTIVE 명단의 participant ID, 소속 round ID, 금액·payer
+ 
+ 1. **전체 완료 후 삭제까지 7일간 추가 차수를 시작할 수 있다**고 해석했다.
+    금지한다면 단위 생성 인가 조건만 바꾸면 된다. 허용하면 전체 삭제 예정일이 연장될 수 있다.
+-2. **복수 총무의 스푼 회수·받는 사람·기본 한 개의 지급 시점은 미결이다.**
+-   기존 보상 규칙을 단위별로 기계적으로 복제하지 않는다. 단위를 늘려 보상을 늘리는 구조를 만들지 않는다.
+-   금융 기능과 분리하여 CTO 결정 후 스푼 API를 구현한다.
++2. **2026-11-01 FC-031:** 각 총무는 자기 단위에서 참석 응답한 참여자당 10스푼을 받는다.
++   같은 술자리·총무·참여자는 단위를 늘려도 한 번만 지급하며 제외 후에도 회수하지 않는다.
++   별도 스푼 지급 API 없이 응답 트랜잭션에서 처리한다. 상세 가정·검증은 [FC-031](flow-changes/2026-11-01-attendance-spoons.md).
+ 
+ ## 8. 구현과 PR의 순서
+ 
+diff --git a/docs/flow-changes/2026-11-01-attendance-spoons.md b/docs/flow-changes/2026-11-01-attendance-spoons.md
+new file mode 100644
+index 0000000..492adae
+--- /dev/null
++++ b/docs/flow-changes/2026-11-01-attendance-spoons.md
+@@ -0,0 +1,12 @@
++# FC-031 참석자당 총무 스푼 자동 적립
++
++- 상태: 열림 — CTO 결정 2026-11-01, 구현·검증 진행.
++- 결정: 총무 본인을 제외한 참여자 1명당 총무에게 10스푼을 자동 지급한다. 지급 뒤 명단 제외·응답 변경에도 회수하지 않는다. 별도 감사 버튼·완료 보너스는 지급하지 않는다.
++- 참석 기준: 해당 총무 단위에서 한 차수 이상 SOBER/DRANK로 직접 또는 총무 대리 응답한 참여자. 모두 ABSENT·빈 응답·확정 시 AUTO 기본 응답만 있는 사람은 지급 대상이 아니다. 이 해석은 PR 가정으로 명시한다.
++- 중복 기준: `(gatheringId, hostUserId, participantId)`에 한 번. 같은 술자리에서 같은 총무의 단위/차수를 늘려도 같은 사람은 중복 지급하지 않는다. 다른 총무에게도 참석 응답했다면 그 총무는 별도로 받는다. 다른 술자리는 새 지급이다.
++- 시점: 참석 응답 변경 저장과 같은 트랜잭션. 공개 링크 열기·예상 인원 입력·술자리 생성만으로 지급하지 않는다. 기존 응답 일괄 소급 지급은 하지 않는다.
++- 보존: 완료 후 술자리 삭제로 지급 내역은 함께 삭제되지만 users.spoon_count는 유지한다. 계정 탈퇴 시 해당 계정의 지급 내역은 삭제된다. 비회원은 기존 브라우저 신원을 사용하며 이름으로 중복 여부를 판단하지 않는다.
++- DB/API: 022/032 spoon_attendance_rewards 유일 키와 기존 users.spoon_count 원자 증가. 새로운 지급 API는 만들지 않고 기존 응답·내 정보·술자리 조회 API를 사용한다. API v21, REQUIREMENTS v8, ERD에 반영한다.
++- 동시성: 기존 단위 → 술자리 잠금 이후 수혜 사용자 행을 잠그고 지급 이력/잔액을 함께 커밋한다. 회원 가입은 좌석 INSERT 전 가입자·수혜 계정을 ID 순서로 잠가 서로의 술자리 가입 시 FK 공유 잠금 승격 교착을 막는다. 서로 다른 술자리의 동시 지급도 이전 잔액 덮어쓰기 없이 누적한다.
++- 한계: 비회원 쿠키를 지우면 다른 참여자가 될 수 있다. 실명은 본인 인증 수단이 아니며 스푼은 금전 가치 없는 표시용이다. 한 번 지급 후 유지한다는 CTO 결정을 적용한다.
++- 검증: Java/Kotlin 독립 정책 기대값·비교, 실제 MySQL/HTTP 중복·동시 지급·실패 롤백·제외 후 유지·총무/불참 제외·조회·삭제 보존을 확인한다.
+diff --git a/docs/flow-changes/README.md b/docs/flow-changes/README.md
+index f9df7c0..09de375 100644
+--- a/docs/flow-changes/README.md
++++ b/docs/flow-changes/README.md
+@@ -60,6 +60,7 @@
+ 
+ | 번호 | 제목 | 상태 | 백엔드 반영·근거 | 파일 |
+ |---|---|---|---|---|
++| FC-031 | 참석자당 총무 10스푼 자동 적립·회수 없음 | 열림 (구현·실제 DB 검증 중) | API v21·022/032, 같은 술자리/총무/참여자 1회 | [2026-11-01-attendance-spoons.md](2026-11-01-attendance-spoons.md) |
+ | FC-030 | 운영 앱 총무 전용·참여자는 응답 웹·이미지 전달 | 프론트만 | 기존 API·DB·core 유지, 앱 PR4 / 웹 PR1, 운영·실기기 검증 별도 | [2026-11-01-host-only-app.md](2026-11-01-host-only-app.md) |
+ | FC-029 | 참여자 응답 전용·총무 명단 확인 후 확정 | 열림 (PR52 CI 통과·웹/앱 구현, iOS·운영 후속) | API v20, FC-020 자동 확정·선착순 제외 대체, 운영 미적용 | [2026-11-01-host-review.md](2026-11-01-host-review.md) |
+ | FC-028 | 총무 앱 유지·참여자 비회원 웹·캡처용 자동 정산표 | 열림 (참여·개인 금액·보냈어요·총무 표 데이터, 웹·운영 검증 후속) | API v18/19·ADR-023·021/031 · 기존 회원 API 유지, 비회원 계좌/메시지·웹·캡처 검증 후속 · 다운로드 제외 | [2026-10-31-guest-web-capture.md](2026-10-31-guest-web-capture.md) |
+diff --git a/scripts/verify-attendance-spoons.py b/scripts/verify-attendance-spoons.py
+new file mode 100644
+index 0000000..a43fd6a
+--- /dev/null
++++ b/scripts/verify-attendance-spoons.py
+@@ -0,0 +1,216 @@
++"""FC-031: 폐기 가능한 CI MySQL/HTTP에서 보상 중복·경합·롤백을 검증한다."""
++import base64
++import hashlib
++import hmac
++import json
++import subprocess
++import time
++import uuid
++from concurrent.futures import ThreadPoolExecutor
++from http.cookies import SimpleCookie
++from urllib.error import HTTPError
++from urllib.request import Request, urlopen
++
++BASE = "http://127.0.0.1:18081/api/v1"
++checks = 0
++
++
++def sql(query):
++    result = subprocess.run(["docker", "exec", "jeongsan-v4-verification", "mysql", "--default-character-set=utf8mb4",
++        "-uroot", "-plocal-v4-test", "-N", "-s", "jeongsan_auth_test", "-e", query],
++        capture_output=True, text=True, encoding="utf-8", timeout=20)
++    assert result.returncode == 0, result.stderr
++    return result.stdout.strip()
++
++
++assert sql("SELECT DATABASE()") == "jeongsan_auth_test"
++
++
++def check(condition, label):
++    global checks
++    assert condition, label
++    checks += 1
++    print(f"PASS {checks}: {label}", flush=True)
++
++
++def call(method, path, cookie=None, body=None, expected=200):
++    headers = {"Content-Type": "application/json", "Origin": "http://localhost:5173"}
++    if cookie:
++        headers["Cookie"] = cookie
++    request = Request(BASE + path, method=method, headers=headers,
++        data=json.dumps(body).encode() if body is not None else None)
++    try:
++        with urlopen(request, timeout=30) as response:
++            status, raw, response_headers = response.status, response.read(), response.headers
++    except HTTPError as error:
++        status, raw, response_headers = error.code, error.read(), error.headers
++    assert status == expected, (method, path, status, raw)
++    return json.loads(raw) if raw else None, response_headers
++
++
++def member_cookie(user_id):
++    def encode(value):
++        return base64.urlsafe_b64encode(value).rstrip(b"=").decode()
++    signed = encode(b'{"alg":"HS256"}') + "." + encode(json.dumps({"sub": str(user_id), "client": "WEB",
++        "jti": str(uuid.uuid4()), "exp": int(time.time()) + 3600}).encode())
++    return "jeongsan_token=" + signed + "." + encode(hmac.new(b"local-only-dev-secret-please-change-32b", signed.encode(), hashlib.sha256).digest())
++
++
++def session():
++    parsed = SimpleCookie()
++    parsed.load(call("POST", "/guest/session", expected=204)[1]["Set-Cookie"])
++    return "jeongsan_guest=" + parsed["jeongsan_guest"].value
++
++
++def make_user():
++    provider_id = str(uuid.uuid4())
++    sql(f"INSERT INTO users(provider,provider_id,nickname,display_name,tier,created_at) VALUES('SPOON_TEST','{provider_id}','검증','검증총무','FREE',UTC_TIMESTAMP())")
++    return int(sql(f"SELECT id FROM users WHERE provider_id='{provider_id}'"))
++
++
++host_id = make_user()
++host_cookie = member_cookie(host_id)
++
++
++def balance():
++    return int(sql(f"SELECT spoon_count FROM users WHERE id={host_id}"))
++
++
++def create(cookie=host_cookie):
++    gathering = call("POST", "/gatherings", cookie, expected=201)[0]
++    unit = gathering["settlementUnits"][0]
++    root = f"/gatherings/{gathering['id']}/settlement-units/{unit['id']}"
++    round_entry = call("POST", root + "/rounds", cookie,
++        {"total": 10000, "payerParticipantId": gathering["me"]["participantId"]}, 201)[0]
++    return gathering, unit, root, round_entry["id"]
++
++
++def join(room, browser, kind="SOBER", expected=200):
++    gathering, unit, _, round_id = room
++    return call("POST", "/guest/join/" + gathering["shareToken"], browser,
++        {"displayName": "김참석", "settlementUnitId": unit["id"],
++         "responses": [{"roundId": round_id, "type": kind}] if kind else []}, expected)[0]
++
++
++def respond(room, browser, kind):
++    gathering, unit, _, round_id = room
++    call("PUT", f"/guest/gatherings/{gathering['id']}/settlement-units/{unit['id']}/responses/me", browser,
++        {"answers": [{"roundId": round_id, "type": kind}]}, 204)
++
++
++room = create()
++gathering, unit, root, round_id = room
++call("PUT", root + "/responses/me", host_cookie, {"answers": [{"roundId": round_id, "type": "DRANK"}]}, 204)
++check(balance() == 0, "술자리 생성·총무 본인 참석은 0개")
++browser = session()
++with ThreadPoolExecutor(2) as executor:
++    joined = list(executor.map(lambda _: join(room, browser), range(2)))
++participant = joined[0]["participantId"]
++check(balance() == 10 and joined[1]["participantId"] == participant, "동일 브라우저 동시 참여는 한 번 +10")
++check(sql(f"SELECT COUNT(*) FROM spoon_attendance_rewards WHERE gathering_id={gathering['id']}") == "1", "지급 유일 이력 한 건")
++respond(room, browser, "DRANK")
++respond(room, browser, "ABSENT")
++respond(room, browser, "SOBER")
++check(balance() == 10, "음주 변경·불참 전환·재참석에도 회수/추가 적립 없음")
++call("DELETE", root + f"/participants/{participant}", host_cookie, expected=204)
++call("DELETE", root + f"/participants/{participant}", host_cookie, expected=204)
++check(balance() == 10, "명단 제외와 반복 제외 뒤에도 이미 지급한 스푼 유지")
++call("PUT", root + f"/participants/{participant}", host_cookie, expected=204)
++respond(room, browser, "SOBER")
++check(balance() == 10, "총무 재추가 뒤 새 응답에도 중복 지급 없음")
++
++absent_browser = session()
++join(room, absent_browser, "ABSENT")
++check(balance() == 10, "전부 불참 응답은 지급하지 않음")
++respond(room, absent_browser, "DRANK")
++check(balance() == 20, "불참자가 처음 참석으로 변경하면 +10")
++blank_browser = session()
++blank = join(room, blank_browser, None)
++check(balance() == 20, "빈 응답·링크 접속만으로는 지급하지 않음")
++call("PUT", root + f"/participants/{blank['participantId']}/responses", host_cookie,
++    {"answers": [{"roundId": round_id, "type": "SOBER"}]}, 204)
++check(balance() == 30, "총무 대리 참석 응답도 한 번 지급")
++
++second_unit = call("POST", f"/gatherings/{gathering['id']}/settlement-units", host_cookie,
++    {"requestId": str(uuid.uuid4()), "participantIds": [gathering['me']['participantId'], participant]}, 201)[0]
++second_root = f"/gatherings/{gathering['id']}/settlement-units/{second_unit['id']}"
++second_round = call("POST", second_root + "/rounds", host_cookie,
++    {"total": 10000, "payerParticipantId": gathering['me']['participantId']}, 201)[0]
++respond((gathering, second_unit, second_root, second_round['id']), browser, "SOBER")
++check(balance() == 30, "같은 술자리·총무의 단위를 추가해도 같은 사람 중복 지급 없음")
++
++concurrent_rooms = [create(), create()]
++concurrent_browsers = [session(), session()]
++with ThreadPoolExecutor(2) as executor:
++    list(executor.map(lambda pair: join(*pair), zip(concurrent_rooms, concurrent_browsers)))
++check(balance() == 50, "서로 다른 술자리 동시 응답도 잔액 덮어쓰기 없이 +20")
++same_room_browsers = [session(), session()]
++with ThreadPoolExecutor(2) as executor:
++    list(executor.map(lambda visitor: join(room, visitor), same_room_browsers))
++check(balance() == 70, "같은 술자리의 동명이인 두 신원은 각각 +10")
++
++new_room = create()
++join(new_room, browser)
++check(balance() == 80, "같은 브라우저라도 다른 술자리 참석은 새 지급")
++before = balance()
++overflow_room, overflow_browser = create(), session()
++sql(f"UPDATE users SET spoon_count=9223372036854775807 WHERE id={host_id}")
++try:
++    join(overflow_room, overflow_browser, expected=500)
++    check(sql(f"SELECT COUNT(*) FROM spoon_attendance_rewards WHERE gathering_id={overflow_room[0]['id']}") == "0"
++        and sql(f"SELECT COUNT(*) FROM guest_participations WHERE gathering_id={overflow_room[0]['id']}") == "0",
++        "잔액 증가 실패 시 지급 이력·비회원 참여·응답 전체 롤백")
++finally:
++    sql(f"UPDATE users SET spoon_count={before} WHERE id={host_id}")
++join(overflow_room, overflow_browser)
++check(balance() == before + 10, "실패한 동일 참여 재시도는 정상 1회 적립")
++check(call("GET", "/auth/me", host_cookie)[0]["spoonCount"] == balance(), "내 정보 API에 실제 누적 스푼 반영")
++detail = call("GET", f"/gatherings/{gathering['id']}", host_cookie)[0]
++check(next(person for person in detail["participants"] if person["userId"] == host_id)["spoonCount"] == balance(),
++    "술자리 명단의 총무 스푼도 같은 값")
++check(sql("SELECT COUNT(*) FROM INFORMATION_SCHEMA.KEYWORDS WHERE WORD='SPOON_ATTENDANCE_REWARDS' AND RESERVED=1") == "0",
++    "신규 테이블명 예약어 충돌 없음")
++
++other_host_id = make_user()
++other_host_cookie = member_cookie(other_host_id)
++other_host = call("POST", "/join/" + gathering["shareToken"], other_host_cookie,
++    {"settlementUnitId": unit['id'], "responses": [{"roundId": round_id, "type": "SOBER"}]})[0]
++other_unit = call("POST", f"/gatherings/{gathering['id']}/settlement-units", other_host_cookie,
++    {"requestId": str(uuid.uuid4()), "participantIds": [other_host['participantId'], participant]}, 201)[0]
++other_root = f"/gatherings/{gathering['id']}/settlement-units/{other_unit['id']}"
++other_round = call("POST", other_root + "/rounds", other_host_cookie,
++    {"total": 10000, "payerParticipantId": other_host['participantId']}, 201)[0]
++respond((gathering, other_unit, other_root, other_round['id']), browser, "SOBER")
++check(sql(f"SELECT spoon_count FROM users WHERE id={other_host_id}") == "10", "복수 총무는 본인 단위 참석에 대해서만 각각 지급")
++
++host_before = balance()
++other_before = int(sql(f"SELECT spoon_count FROM users WHERE id={other_host_id}"))
++for attempt in range(3):
++    first_room, second_room = create(), create(other_host_cookie)
++    def cross_join(arguments):
++        target_room, visitor_cookie = arguments
++        return call("POST", "/join/" + target_room[0]['shareToken'], visitor_cookie,
++            {"settlementUnitId": target_room[1]['id'], "responses": [{"roundId": target_room[3], "type": "SOBER"}]})
++    with ThreadPoolExecutor(2) as executor:
++        list(executor.map(cross_join, [(first_room, other_host_cookie), (second_room, host_cookie)]))
++check(balance() == host_before + 30 and int(sql(f"SELECT spoon_count FROM users WHERE id={other_host_id}")) == other_before + 30,
++    "두 총무가 서로의 방에 동시에 가입해도 FK/보상 잠금 교착 없이 각각 +30")
++
++before = balance()
++automatic_room = create()
++join(automatic_room, session(), None)
++automatic_root = automatic_room[2]
++preview = call("GET", automatic_root + "/settlement/preview", host_cookie)[0]
++call("POST", automatic_root + "/settlement", host_cookie,
++    {"inputRevision": preview['inputRevision'], "inputHash": preview['inputHash']})
++check(balance() == before, "확정 시 AUTO 기본 참석만으로는 스푼을 지급하지 않음")
++
++expired_gathering_id = new_room[0]['id']
++sql(f"UPDATE gatherings SET last_activity_at=UTC_TIMESTAMP()-INTERVAL 31 DAY WHERE id={expired_gathering_id}")
++deadline = time.monotonic() + 90
++while time.monotonic() < deadline and sql(f"SELECT COUNT(*) FROM gatherings WHERE id={expired_gathering_id}") != "0":
++    time.sleep(2)
++check(sql(f"SELECT COUNT(*) FROM gatherings WHERE id={expired_gathering_id}") == "0"
++    and sql(f"SELECT COUNT(*) FROM spoon_attendance_rewards WHERE gathering_id={expired_gathering_id}") == "0"
++    and balance() == before, "실제 만료 배치가 술자리·지급 이력을 지워도 누적 스푼은 유지")
++print(f"ATTENDANCE-SPOONS: {checks} checks passed", flush=True)
+diff --git a/scripts/verify-boot-upgrade.py b/scripts/verify-boot-upgrade.py
+index 4b83ed1..458f052 100644
+--- a/scripts/verify-boot-upgrade.py
++++ b/scripts/verify-boot-upgrade.py
+@@ -161,8 +161,9 @@ def verify():
+           ["029-ugc-safety", "jeongsan", "db/changelog/019-ugc-safety.yaml"],
+           ["030-auth-session-return", "jeongsan", "db/changelog/020-auth-session-return.yaml"],
+           ["031-guest-participations", "jeongsan", "db/changelog/021-guest-participations.yaml"],
++          ["032-attendance-spoons", "jeongsan", "db/changelog/022-attendance-spoons.yaml"],
+           ] and all(row[3].startswith("9:") and row[5] == "EXECUTED" for row in added_history),
+-          "신고·차단029·인증 세션030·비회원031이 순서대로 정확히 한 번 추가 적용")
++          "신고·차단029·인증 세션030·비회원031·스푼032가 순서대로 정확히 한 번 추가 적용")
+     check(sql(f"SELECT HEX(payout_encrypted) FROM users WHERE id={state['host_id']}") == state["payout_hex"],
+           "구버전 계좌 암호문을 변경·재암호화하지 않음")
+     me = call("GET", "/auth/me", state["host"])
+diff --git a/scripts/verify-release.sh b/scripts/verify-release.sh
+index 3e096c3..df975de 100644
+--- a/scripts/verify-release.sh
++++ b/scripts/verify-release.sh
+@@ -63,6 +63,7 @@ python3 scripts/verify-notifications.py
+ python3 scripts/verify-ugc-safety.py
+ python3 scripts/verify-auth-release.py
+ python3 scripts/verify-guest-participation.py
++python3 scripts/verify-attendance-spoons.py
+ ./gradlew :server:authDatabaseProbe --no-daemon
+ python3 scripts/verify-deploy.py
+ 
+diff --git a/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AttendanceSpoonPolicy.java b/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AttendanceSpoonPolicy.java
+new file mode 100644
+index 0000000..fe1f366
+--- /dev/null
++++ b/server/src/main/java/app/jeongsan/server/gathering/javaimpl/AttendanceSpoonPolicy.java
+@@ -0,0 +1,16 @@
++package app.jeongsan.server.gathering.javaimpl;
++
++/** Kotlin 정책을 호출하지 않는 학습용 독립 구현. JDBC/트랜잭션 인프라는 운영 서비스에서 공유한다. */
++public final class AttendanceSpoonPolicy {
++    private AttendanceSpoonPolicy() {}
++
++    public static boolean isAttendance(String type, String source) {
++        return ("SOBER".equals(type) || "DRANK".equals(type))
++            && ("SELF".equals(source) || "HOST".equals(source));
++    }
++
++    public static int amount(long hostParticipantId, long participantId, boolean hasAttendance, boolean alreadyAwarded) {
++        if (hostParticipantId == participantId || !hasAttendance || alreadyAwarded) return 0;
++        return 10;
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/AttendanceSpoonPolicy.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/AttendanceSpoonPolicy.kt
+new file mode 100644
+index 0000000..14e6d0f
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/AttendanceSpoonPolicy.kt
+@@ -0,0 +1,12 @@
++package app.jeongsan.server.gathering
++
++/** 회수하지 않는 표시용 보상. 응답 재시도와 차수/단위 추가는 지급 사건을 새로 만들지 않는다. */
++object AttendanceSpoonPolicy {
++    const val AMOUNT = 10
++
++    fun isAttendance(type: String, source: String): Boolean =
++        type in setOf("SOBER", "DRANK") && source in setOf("SELF", "HOST")
++
++    fun amount(hostParticipantId: Long, participantId: Long, hasAttendance: Boolean, alreadyAwarded: Boolean): Int =
++        if (hostParticipantId != participantId && hasAttendance && !alreadyAwarded) AMOUNT else 0
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/AttendanceSpoonService.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/AttendanceSpoonService.kt
+new file mode 100644
+index 0000000..f2feadb
+--- /dev/null
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/AttendanceSpoonService.kt
+@@ -0,0 +1,48 @@
++package app.jeongsan.server.gathering
++
++import org.springframework.stereotype.Service
++import org.springframework.transaction.annotation.Propagation
++import org.springframework.transaction.annotation.Transactional
++import java.time.Instant
++
++/** 스키마의 진실은 022-attendance-spoons.yaml. 응답을 롤백하면 보상도 함께 롤백해야 한다. */
++@Service
++class AttendanceSpoonService(private val db: GatheringStore) {
++    @Transactional(propagation = Propagation.MANDATORY)
++    fun award(gatheringId: Long, unitId: Long, participantId: Long) {
++        // 호출부가 단위→술자리를 잠근 뒤 호출한다. 수혜 계정 잠금은 가장 마지막이다.
++        val host = db.rows("""
++            SELECT host.id participant_id,host.user_id FROM settlement_units unit_entry
++            JOIN participants host ON host.id=unit_entry.host_participant_id
++            WHERE unit_entry.id=:unit AND unit_entry.gathering_id=:gathering
++        """.trimIndent(), "unit" to unitId, "gathering" to gatheringId).single()
++        val hostUserId = (host["user_id"] as? Number)?.toLong() ?: return
++        if (host.long("participant_id") == participantId) return
++        val hasAttendance = db.rows("""
++            SELECT DISTINCT response_entry.type,response_entry.source FROM round_responses response_entry
++            JOIN rounds round_entry ON round_entry.id=response_entry.round_id
++            JOIN settlement_unit_members membership ON membership.settlement_unit_id=round_entry.settlement_unit_id
++              AND membership.participant_id=response_entry.participant_id
++            WHERE round_entry.settlement_unit_id=:unit AND membership.status='ACTIVE'
++              AND response_entry.participant_id=:participant
++        """.trimIndent(), "unit" to unitId, "participant" to participantId)
++            .any { AttendanceSpoonPolicy.isAttendance(it.text("type"), it.text("source")) }
++        if (!hasAttendance) return
++
++        // 서로 다른 술자리도 같은 총무에게 동시에 지급할 수 있다. FK 공유 잠금보다 먼저 X 잠금을 잡는다.
++        check(db.rows("SELECT id FROM users WHERE id=:host FOR UPDATE", "host" to hostUserId).size == 1)
++        val alreadyAwarded = db.rows("""
++            SELECT 1 FROM spoon_attendance_rewards
++            WHERE gathering_id=:gathering AND host_user_id=:host AND participant_id=:participant
++        """.trimIndent(), "gathering" to gatheringId, "host" to hostUserId, "participant" to participantId).isNotEmpty()
++        val amount = AttendanceSpoonPolicy.amount(host.long("participant_id"), participantId, hasAttendance, alreadyAwarded)
++        if (amount == 0) return
++        db.update("""
++            INSERT INTO spoon_attendance_rewards(gathering_id,host_user_id,participant_id,amount,awarded_at)
++            VALUES(:gathering,:host,:participant,:amount,:now)
++        """.trimIndent(), "gathering" to gatheringId, "host" to hostUserId, "participant" to participantId,
++            "amount" to amount, "now" to Instant.now())
++        check(db.update("UPDATE users SET spoon_count=spoon_count+:amount WHERE id=:host",
++            "amount" to amount, "host" to hostUserId) == 1)
++    }
++}
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
+index f7fd6d3..70433fe 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
+@@ -17,7 +17,8 @@ import java.security.MessageDigest
+ @Service
+ @Transactional(isolation = Isolation.READ_COMMITTED)
+ class GatheringService(private val db: GatheringStore, private val mapper: ObjectMapper, private val cipher: PayoutCipher,
+-    private val moderation: app.jeongsan.server.moderation.ModerationService) {
++    private val moderation: app.jeongsan.server.moderation.ModerationService,
++    private val attendanceSpoons: AttendanceSpoonService) {
+     private fun user(uid: Long): Map<String, Any?> = db.rows("SELECT * FROM users WHERE id=:id", "id" to uid).singleOrNull()
+         ?: fail("UNAUTHENTICATED", status=HttpStatus.UNAUTHORIZED)
+     private fun named(uid: Long): Map<String, Any?> = user(uid).also { if (it["display_name"] == null) fail("DISPLAY_NAME_REQUIRED") }
+@@ -169,6 +170,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+             changed=true
+             db.update("INSERT INTO round_responses(participant_id,round_id,type,source) VALUES(:p,:r,:t,:src) ON DUPLICATE KEY UPDATE type=VALUES(type),source=VALUES(source)","p" to targetParticipantId,"r" to answer.roundId,"t" to answer.type,"src" to source) }
+         if(!changed) return
++        attendanceSpoons.award(gatheringId,settlementUnit.id,targetParticipantId)
+         bump(gatheringId,settlementUnit.id);event(gatheringId,settlementUnit.id,"RESPONDED","${actor.name}님이 응답했어요")
+         notify(gatheringId,settlementUnit.id,"RESPONDED","${actor.name}님이 응답했어요",loaded.first.filter{it.id==settlementUnit.hostId}.map{it.userId},actor.userId)
+         refreshCalculationError(gatheringId,settlementUnit.id)
+@@ -338,6 +340,12 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+     fun join(token: String,uid: Long,request: JoinRequest): Map<String,Long> {
+         val usr=named(uid);val gid=db.rows("SELECT id FROM gatherings WHERE share_token=:t","t" to token).singleOrNull()?.long("id") ?: fail("GATHERING_NOT_FOUND",status=HttpStatus.NOT_FOUND)
+         val u=unit(gid,request.settlementUnitId);SettlementWorkflow.open(u);room(gid,true);named(uid)
++        // 두 총무가 서로의 방에 가입하면 각자의 participants.user_id FK 공유 잠금과 상대방 보상 X 잠금이 교차할 수 있다.
++        // 좌석 INSERT 전에 가입자·수혜자를 같은 ID 순서로 잠가 FK 잠금 승격 순환을 막는다.
++        val hostUserId = (db.rows("SELECT user_id FROM participants WHERE id=:host", "host" to u.hostId).single()["user_id"] as? Number)?.toLong()
++        val rewardAccounts = listOfNotNull(uid, hostUserId).distinct().sorted()
++        val lockedAccounts = db.rows("SELECT id FROM users WHERE id IN (:accounts) ORDER BY id FOR UPDATE", "accounts" to rewardAccounts)
++        if (lockedAccounts.none { it.long("id") == uid }) fail("UNAUTHENTICATED",status=HttpStatus.UNAUTHORIZED)
+         val old=db.rows("SELECT * FROM participants WHERE gathering_id=:g AND user_id=:u","g" to gid,"u" to uid).singleOrNull()
+         val pid=old?.long("id") ?: db.insert("INSERT INTO participants(gathering_id,user_id,name,status,created_at) VALUES(:g,:u,:name,'ACTIVE',:n)","g" to gid,"u" to uid,"name" to usr.text("display_name"),"n" to Instant.now())
+         val membership=db.rows("SELECT status FROM settlement_unit_members WHERE settlement_unit_id=:s AND participant_id=:p","s" to u.id,"p" to pid).singleOrNull()
+diff --git a/server/src/main/resources/db/changelog/022-attendance-spoons.yaml b/server/src/main/resources/db/changelog/022-attendance-spoons.yaml
+new file mode 100644
+index 0000000..0b6ca44
+--- /dev/null
++++ b/server/src/main/resources/db/changelog/022-attendance-spoons.yaml
+@@ -0,0 +1,21 @@
++databaseChangeLog:
++  - changeSet:
++      id: 032-attendance-spoons
++      author: jeongsan
++      comment: "FC-031. 같은 술자리·총무·참여자의 참석 보상을 한 번만 지급하고 재시도/단위 추가 중복을 막는다."
++      changes:
++        - sql:
++            splitStatements: true
++            sql: |
++              CREATE TABLE spoon_attendance_rewards (
++                gathering_id BIGINT NOT NULL COMMENT '동일 술자리 재지급 방지, 만료 삭제 시 이력도 제거',
++                host_user_id BIGINT NOT NULL COMMENT '이 참석 응답의 보상을 받는 총무 계정',
++                participant_id BIGINT NOT NULL COMMENT '동명이인도 구분하는 실제 참석 응답 신원',
++                amount INT NOT NULL COMMENT '지급 당시 보상 수량, FC-031은 10개이며 이후 회수하지 않음',
++                awarded_at DATETIME(6) NOT NULL COMMENT '응답과 잔액 증가를 함께 커밋한 UTC 시각',
++                PRIMARY KEY (gathering_id,host_user_id,participant_id),
++                CONSTRAINT fk_spoon_attendance_person FOREIGN KEY (participant_id,gathering_id)
++                  REFERENCES participants(id,gathering_id) ON DELETE CASCADE,
++                CONSTRAINT fk_spoon_attendance_host FOREIGN KEY (host_user_id)
++                  REFERENCES users(id) ON DELETE CASCADE
++              ) COMMENT='참석자당 총무 10스푼 지급 이력, 명단 제외 이후에도 재지급 방지';
+diff --git a/server/src/main/resources/db/changelog/db.changelog-master.yaml b/server/src/main/resources/db/changelog/db.changelog-master.yaml
+index e043e87..df720c4 100644
+--- a/server/src/main/resources/db/changelog/db.changelog-master.yaml
++++ b/server/src/main/resources/db/changelog/db.changelog-master.yaml
+@@ -38,3 +38,5 @@ databaseChangeLog:
+       file: db/changelog/020-auth-session-return.yaml
+   - include:
+       file: db/changelog/021-guest-participations.yaml
++  - include:
++      file: db/changelog/022-attendance-spoons.yaml
+diff --git a/server/src/test/kotlin/app/jeongsan/server/gathering/AttendanceSpoonPolicySpec.kt b/server/src/test/kotlin/app/jeongsan/server/gathering/AttendanceSpoonPolicySpec.kt
+new file mode 100644
+index 0000000..96b08b2
+--- /dev/null
++++ b/server/src/test/kotlin/app/jeongsan/server/gathering/AttendanceSpoonPolicySpec.kt
+@@ -0,0 +1,30 @@
++package app.jeongsan.server.gathering
++
++import app.jeongsan.server.gathering.javaimpl.AttendanceSpoonPolicy as JavaPolicy
++import io.kotest.core.spec.style.StringSpec
++import io.kotest.matchers.shouldBe
++
++class AttendanceSpoonPolicySpec : StringSpec({
++    "참석 직접 응답과 총무 대리 응답만 인정하며 불참 면제 AUTO는 지급하지 않는다" {
++        for (type in listOf("SOBER", "DRANK", "ABSENT", "EXEMPT", "UNKNOWN")) {
++            for (source in listOf("SELF", "HOST", "AUTO", "UNKNOWN")) {
++                val expected = (type == "SOBER" || type == "DRANK") && (source == "SELF" || source == "HOST")
++                AttendanceSpoonPolicy.isAttendance(type, source) shouldBe expected
++                JavaPolicy.isAttendance(type, source) shouldBe expected
++            }
++        }
++    }
++    "총무 본인은 지급 대상이 아니며 최초 참석 응답에만 10개를 지급한다" {
++        for (participant in listOf(10L, 20L)) for (attending in listOf(true, false)) for (awarded in listOf(true, false)) {
++            val expected = if (participant == 20L && attending && !awarded) 10 else 0
++            AttendanceSpoonPolicy.amount(10, participant, attending, awarded) shouldBe expected
++            JavaPolicy.amount(10, participant, attending, awarded) shouldBe expected
++        }
++    }
++    "지급 후 불참 변경과 재참석은 회수하거나 추가 지급하지 않는다" {
++        AttendanceSpoonPolicy.amount(10, 20, false, true) shouldBe 0
++        JavaPolicy.amount(10, 20, false, true) shouldBe 0
++        AttendanceSpoonPolicy.amount(10, 20, true, true) shouldBe 0
++        JavaPolicy.amount(10, 20, true, true) shouldBe 0
++    }
++})

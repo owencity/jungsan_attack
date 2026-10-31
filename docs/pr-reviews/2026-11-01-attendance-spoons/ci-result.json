@@ -1,0 +1,11 @@
+{
+  "head": "56087f03a5b08ea1fdcbb92fcc6ca4a2548fd506",
+  "runId": 41218897939,
+  "url": "https://github.com/owencity/jungsan_attack/actions/runs/41218897939",
+  "conclusion": "success",
+  "localServerTests": 226,
+  "attendanceMysqlHttpChecks": 23,
+  "localAppTests": 230,
+  "appHead": "02699cede5df2a37f2a81e70780a5351e60ef5ad",
+  "operationalDeployment": false
+}
