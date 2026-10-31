@@ -199,11 +199,14 @@ call("PUT", automatic_root + "/responses/me", host_cookie, {"answers": [{"roundI
 automatic_browser = session()
 with ThreadPoolExecutor(2) as executor:
     results = list(executor.map(lambda _: join(automatic_gathering, automatic_unit, automatic_browser, automatic_round), range(2)))
-check(results[0]["participantId"] == results[1]["participantId"] and all(result["settlementUnits"][0]["status"] == "SETTLING" for result in results),
-      "마지막 비회원 참여는 한 번 자동 정산하고 동시 재시도도 200")
-check(sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={automatic_unit['id']}") == "1" and
-      sql(f"SELECT amount FROM settlement_transfers WHERE sender_participant_id={results[0]['participantId']}") == "5000",
-      "자동 정산 스냅샷 한 개와 기존 Core의 5000원 송금")
+check(results[0]["participantId"] == results[1]["participantId"] and all(result["settlementUnits"][0]["status"] == "OPEN" for result in results),
+      "마지막 비회원 동시 참여도 같은 신원으로 OPEN 유지")
+check(sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={automatic_unit['id']}") == "0", "총무 확인 전 송금 스냅샷 없음")
+respond(automatic_gathering["id"], automatic_unit["id"], automatic_browser, automatic_round, expected=204)
+preview = call("GET", automatic_root + "/settlement/preview", host_cookie)[0]
+call("POST", automatic_root + "/settlement", automatic_browser, {"inputRevision": preview["inputRevision"], "inputHash": preview["inputHash"]}, 401)
+call("POST", automatic_root + "/settlement", host_cookie, {"inputRevision": preview["inputRevision"], "inputHash": preview["inputHash"]})
+check(sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={automatic_unit['id']}") == "1", "총무의 명시적 확정으로만 스냅샷 한 개 생성")
 respond(automatic_gathering["id"], automatic_unit["id"], automatic_browser, automatic_round, expected=409)
 check(True, "정산 후 비회원 응답은 잠김")
 check(sql("SELECT COUNT(*) FROM notifications WHERE user_id=0") == "0", "비회원 알림은 가짜 회원 0번에 저장하지 않음")
