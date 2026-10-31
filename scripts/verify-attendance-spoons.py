@@ -76,11 +76,11 @@ def balance():
     return int(sql(f"SELECT spoon_count FROM users WHERE id={host_id}"))
 
 
-def create():
-    gathering = call("POST", "/gatherings", host_cookie, expected=201)[0]
+def create(cookie=host_cookie):
+    gathering = call("POST", "/gatherings", cookie, expected=201)[0]
     unit = gathering["settlementUnits"][0]
     root = f"/gatherings/{gathering['id']}/settlement-units/{unit['id']}"
-    round_entry = call("POST", root + "/rounds", host_cookie,
+    round_entry = call("POST", root + "/rounds", cookie,
         {"total": 10000, "payerParticipantId": gathering["me"]["participantId"]}, 201)[0]
     return gathering, unit, root, round_entry["id"]
 
@@ -182,6 +182,19 @@ other_round = call("POST", other_root + "/rounds", other_host_cookie,
     {"total": 10000, "payerParticipantId": other_host['participantId']}, 201)[0]
 respond((gathering, other_unit, other_root, other_round['id']), browser, "SOBER")
 check(sql(f"SELECT spoon_count FROM users WHERE id={other_host_id}") == "10", "복수 총무는 본인 단위 참석에 대해서만 각각 지급")
+
+host_before = balance()
+other_before = int(sql(f"SELECT spoon_count FROM users WHERE id={other_host_id}"))
+for attempt in range(3):
+    first_room, second_room = create(), create(other_host_cookie)
+    def cross_join(arguments):
+        target_room, visitor_cookie = arguments
+        return call("POST", "/join/" + target_room[0]['shareToken'], visitor_cookie,
+            {"settlementUnitId": target_room[1]['id'], "responses": [{"roundId": target_room[3], "type": "SOBER"}]})
+    with ThreadPoolExecutor(2) as executor:
+        list(executor.map(cross_join, [(first_room, other_host_cookie), (second_room, host_cookie)]))
+check(balance() == host_before + 30 and int(sql(f"SELECT spoon_count FROM users WHERE id={other_host_id}")) == other_before + 30,
+    "두 총무가 서로의 방에 동시에 가입해도 FK/보상 잠금 교착 없이 각각 +30")
 
 before = balance()
 automatic_room = create()
