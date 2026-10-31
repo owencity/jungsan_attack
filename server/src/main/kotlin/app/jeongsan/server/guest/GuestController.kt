@@ -55,5 +55,17 @@ class GuestController(private val service: GatheringService, private val tokens:
         return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "no-store").build()
     }
 
+    @GetMapping("/gatherings/{gatheringId}/settlement-units/{settlementUnitId}/settlement")
+    fun settlement(@PathVariable gatheringId: Long, @PathVariable settlementUnitId: Long,
+        @GuestBrowser browser: GuestIdentity): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok()
+        .header(HttpHeaders.CACHE_CONTROL,"no-store").body(service.guestSettlement(gatheringId,settlementUnitId,browser.browserHash))
+
+    @PostMapping("/transfers/{transferId}/sent")
+    fun sent(@PathVariable transferId: Long, @GuestBrowser browser: GuestIdentity, request: HttpServletRequest): ResponseEntity<Unit> {
+        GuestPolicy.requireOrigin(request.getHeader(HttpHeaders.ORIGIN),frontendOrigin)
+        service.guestSent(transferId,browser.browserHash)
+        return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL,"no-store").build()
+    }
+
     companion object { const val COOKIE_NAME = "jeongsan_guest" }
 }

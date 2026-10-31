@@ -1,4 +1,14 @@
-# 정산어택 — API 계약 · v18
+# 정산어택 — API 계약 · v19
+
+> **v19 변경(2026-10-31)** — FC-028 개인 정산·보냈어요·총무 표 데이터.
+>
+> | 절 | 변경 |
+> |---|---|
+> | [정산 조회](SETTLEMENT_VIEWS.md) | GET guest/.../settlement, POST guest/transfers/{id}/sent 204, GET 회원 단위/settlement/table |
+> | 공개 링크 미리보기 | 기존 필드 유지, gatheringId 추가로 비회원 브라우저 재방문 연결 |
+> | §1.4 오류 | SETTLEMENT_VIEW_UNAVAILABLE(409), 확정 표와 스냅샷 불일치·누락 |
+> | 표시 규칙 | 차수별 정수 셀 + 수취인별 조정 = 개인 최종 부담액, 확정 송금은 기존 스냅샷 |
+>
 
 > **v18 변경(2026-10-31)** — FC-028 비회원 참여·본인 응답 1차.
 >
@@ -1514,6 +1524,14 @@ Core v2 코드: `TOTAL_NOT_POSITIVE`, `ALCOHOL_NEGATIVE`, `ALCOHOL_EXCEEDS_TOTAL
 SYSTEM·SPOON·참여자·응답·정산·송금은 유지한다. 처리 완료·차단 해제는 신고 숨김을 풀지 않는다.
 신고는 본인 글·SYSTEM·SPOON이면 400, 차단은 본인·탈퇴 계정이면 400, 비참여자는 403 NOT_PARTICIPANT다.
 다른 방의 메시지 ID는 404 NOT_FOUND다. 기존 POST messages의 201 DTO는 유지한다.
+
+### 1.4 추가 — v19 정산 표시 오류
+
+| HTTP | code | message |
+|---|---|---|
+| 409 | SETTLEMENT_VIEW_UNAVAILABLE | SETTLEMENT_VIEW_UNAVAILABLE |
+
+현재 Core 표시 결과와 확정 스냅샷이 다르면 표만 거절한다. 개인 확정 송금은 저장된 명세를 따른다.
 
 ### 1.4 추가 — v18 비회원 오류
 

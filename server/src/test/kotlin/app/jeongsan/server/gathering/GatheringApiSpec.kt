@@ -43,7 +43,7 @@ class GatheringApiSpec : StringSpec({
         Case("PUT",root+"/headcount","""{"headcount":3}""",204),
         Case("POST",root+"/rounds",round,201),Case("PUT",root+"/rounds/1",round),Case("DELETE",root+"/rounds/1",code=204),
         Case("PUT",root+"/responses/me",answers,204),Case("PUT",root+"/participants/2/responses",answers,204),
-        Case("GET",root+"/settlement/preview"),Case("POST",root+"/settlement","""{"inputRevision":1,"inputHash":"${"a".repeat(64)}"}"""),
+        Case("GET",root+"/settlement/preview"),Case("GET",root+"/settlement/table"),Case("POST",root+"/settlement","""{"inputRevision":1,"inputHash":"${"a".repeat(64)}"}"""),
         Case("DELETE",root+"/settlement",code=204),Case("POST",root+"/settlement/viewed",code=204),Case("POST",root+"/complete",code=204),
         Case("POST","/api/v1/join/abcdefghijkl","""{"settlementUnitId":10,"responses":[]}"""))
     beforeTest { Mockito.reset(service) }
