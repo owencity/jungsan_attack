@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 032-attendance-spoons
+      author: jeongsan
+      comment: "FC-031. 같은 술자리·총무·참여자의 참석 보상을 한 번만 지급하고 재시도/단위 추가 중복을 막는다."
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              CREATE TABLE spoon_attendance_rewards (
+                gathering_id BIGINT NOT NULL COMMENT '동일 술자리 재지급 방지, 만료 삭제 시 이력도 제거',
+                host_user_id BIGINT NOT NULL COMMENT '이 참석 응답의 보상을 받는 총무 계정',
+                participant_id BIGINT NOT NULL COMMENT '동명이인도 구분하는 실제 참석 응답 신원',
+                amount INT NOT NULL COMMENT '지급 당시 보상 수량, FC-031은 10개이며 이후 회수하지 않음',
+                awarded_at DATETIME(6) NOT NULL COMMENT '응답과 잔액 증가를 함께 커밋한 UTC 시각',
+                PRIMARY KEY (gathering_id,host_user_id,participant_id),
+                CONSTRAINT fk_spoon_attendance_person FOREIGN KEY (participant_id,gathering_id)
+                  REFERENCES participants(id,gathering_id) ON DELETE CASCADE,
+                CONSTRAINT fk_spoon_attendance_host FOREIGN KEY (host_user_id)
+                  REFERENCES users(id) ON DELETE CASCADE
+              ) COMMENT='참석자당 총무 10스푼 지급 이력, 명단 제외 이후에도 재지급 방지';

@@ -1,5 +1,12 @@
 # 정산어택 — ERD
 
+> **2026-11-01 FC-031:** `022-attendance-spoons.yaml` / `032-attendance-spoons`가 추가된다.
+> `spoon_attendance_rewards(gathering_id BIGINT,host_user_id BIGINT,participant_id BIGINT)` 복합 PK로 중복을 막는다.
+> `amount INT NOT NULL`, `awarded_at DATETIME(6) NOT NULL`은 지급 당시 수량과 UTC 시각이다.
+> `(participant_id,gathering_id)` → participants와 host_user_id → users의 FK는 ON DELETE CASCADE다.
+> 명단 제외는 이력을 지우지 않으며 술자리 삭제는 이력을 지워도 users.spoon_count를 감소시키지 않는다.
+> 회원 탈퇴는 수혜 계정의 이력을 삭제한다. 새 엔티티 없이 기존 JDBC 저장소로 접근한다. 운영 적용 상태는 PR에 별도 기록한다.
+
 > **2026-10-31 FC-028:** 신규 `021-guest-participations.yaml` / changeSet `031-guest-participations`.
 > guest_participations의 gathering_id BIGINT·browser_hash CHAR(64)가 복합 PK다.
 > participant_id BIGINT·created_at DATETIME(6) NOT NULL을 두며 (participant_id,gathering_id) UNIQUE 및

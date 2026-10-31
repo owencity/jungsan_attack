@@ -17,7 +17,8 @@ import java.security.MessageDigest
 @Service
 @Transactional(isolation = Isolation.READ_COMMITTED)
 class GatheringService(private val db: GatheringStore, private val mapper: ObjectMapper, private val cipher: PayoutCipher,
-    private val moderation: app.jeongsan.server.moderation.ModerationService) {
+    private val moderation: app.jeongsan.server.moderation.ModerationService,
+    private val attendanceSpoons: AttendanceSpoonService) {
     private fun user(uid: Long): Map<String, Any?> = db.rows("SELECT * FROM users WHERE id=:id", "id" to uid).singleOrNull()
         ?: fail("UNAUTHENTICATED", status=HttpStatus.UNAUTHORIZED)
     private fun named(uid: Long): Map<String, Any?> = user(uid).also { if (it["display_name"] == null) fail("DISPLAY_NAME_REQUIRED") }
@@ -169,6 +170,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
             changed=true
             db.update("INSERT INTO round_responses(participant_id,round_id,type,source) VALUES(:p,:r,:t,:src) ON DUPLICATE KEY UPDATE type=VALUES(type),source=VALUES(source)","p" to targetParticipantId,"r" to answer.roundId,"t" to answer.type,"src" to source) }
         if(!changed) return
+        attendanceSpoons.award(gatheringId,settlementUnit.id,targetParticipantId)
         bump(gatheringId,settlementUnit.id);event(gatheringId,settlementUnit.id,"RESPONDED","${actor.name}님이 응답했어요")
         notify(gatheringId,settlementUnit.id,"RESPONDED","${actor.name}님이 응답했어요",loaded.first.filter{it.id==settlementUnit.hostId}.map{it.userId},actor.userId)
         refreshCalculationError(gatheringId,settlementUnit.id)
