@@ -49,7 +49,8 @@ def call(method, path, cookie=None, body=None, expected=200, origin=ORIGIN):
             actual, raw, response_headers = response.status, response.read(), response.headers
     except HTTPError as error:
         actual, raw, response_headers = error.code, error.read(), error.headers
-    data = json.loads(raw) if raw else None
+    # MVC CORS 차단은 컨트롤러의 JSON 예외 처리 전에 text/plain 403을 반환한다.
+    data = (json.loads(raw) if "json" in response_headers.get("Content-Type", "") else raw.decode("utf-8")) if raw else None
     if expected is not None:
         assert actual == expected, (method, path, actual, expected, data)
     return data, response_headers, actual
@@ -122,6 +123,12 @@ respond(gathering["id"], settlement_unit["id"], browser, round_id)
 current = call("GET", guest_path, browser)[0]
 check(current["responses"][0]["type"] == "DRANK" and call("GET", guest_path, second_browser)[0]["responses"][0]["type"] == "SOBER", "수정은 본인 응답에만 반영")
 check(not {"participants", "transfers", "timeline", "payout", "token", "shareToken"}.intersection(current), "비회원 조회에 전체 명단·계좌·대화·인증 값 없음")
+revision_before = current["settlementUnits"][0]["inputRevision"]
+notifications_before = sql(f"SELECT COUNT(*) FROM notifications WHERE gathering_id={gathering['id']}")
+respond(gathering["id"], settlement_unit["id"], browser, round_id)
+check(call("GET", guest_path, browser)[0]["settlementUnits"][0]["inputRevision"] == revision_before and
+      sql(f"SELECT COUNT(*) FROM notifications WHERE gathering_id={gathering['id']}") == notifications_before,
+      "같은 본인 응답 재시도는 버전·알림을 늘리지 않음")
 check(join(gathering, settlement_unit, browser, round_id)["responses"][0]["type"] == "DRANK", "POST 재시도는 기존 수정 응답을 덮지 않음")
 check(join(gathering, settlement_unit, browser, name="김다름", expected=409)["code"] == "GUEST_NAME_MISMATCH", "다른 이름 재참여로 기존 신원을 바꾸지 않음")
 call("POST", "/gatherings", "jeongsan_token=" + browser.split("=", 1)[1], expected=401)
@@ -134,6 +141,17 @@ check(sql(f"SELECT COUNT(*) FROM participants WHERE gathering_id={gathering['id'
 recovered = join(gathering, settlement_unit, new_browser, round_id)
 check(recovered["participantId"] != participant_id, "실패한 브라우저도 유효 요청으로 다시 참여 가능")
 other_gathering, other_unit, _, other_round = create()
+rollback_browser = session()
+counts_before = sql(f"SELECT (SELECT COUNT(*) FROM participants WHERE gathering_id={gathering['id']}),"
+    f"(SELECT COUNT(*) FROM guest_participations WHERE gathering_id={gathering['id']}),"
+    f"(SELECT COUNT(*) FROM notifications WHERE gathering_id={gathering['id']})")
+call("POST", "/guest/join/" + gathering["shareToken"], rollback_browser,
+     {"displayName": "김롤백", "settlementUnitId": settlement_unit["id"],
+      "responses": [{"roundId": round_id, "type": "SOBER"}, {"roundId": other_round, "type": "SOBER"}]}, 404)
+counts_after = sql(f"SELECT (SELECT COUNT(*) FROM participants WHERE gathering_id={gathering['id']}),"
+    f"(SELECT COUNT(*) FROM guest_participations WHERE gathering_id={gathering['id']}),"
+    f"(SELECT COUNT(*) FROM notifications WHERE gathering_id={gathering['id']})")
+check(counts_after == counts_before, "첫 답변 저장 뒤 다음 답변 실패도 신원·응답·알림 전체 롤백")
 call("GET", f"/guest/gatherings/{other_gathering['id']}/me", browser, expected=403)
 respond(other_gathering["id"], other_unit["id"], browser, other_round, expected=403)
 respond(gathering["id"], settlement_unit["id"], browser, other_round, expected=404)
@@ -147,6 +165,19 @@ extra = call("POST", f"/gatherings/{gathering['id']}/settlement-units", host_coo
     {"requestId": str(uuid.uuid4()), "participantIds": [gathering["me"]["participantId"]]}, 201)[0]
 join(gathering, extra, browser)
 check(sql(f"SELECT COUNT(*) FROM guest_participations WHERE gathering_id={gathering['id']}") == "3", "다른 단위 참여도 공유 비회원 신원 재사용")
+shared_browser = session()
+with ThreadPoolExecutor(2) as executor:
+    two_units = list(executor.map(lambda target_unit: join(gathering, target_unit, shared_browser), [settlement_unit, extra]))
+check(two_units[0]["participantId"] == two_units[1]["participantId"] and
+      sql(f"SELECT COUNT(*) FROM settlement_unit_members WHERE participant_id={two_units[0]['participantId']}") == "2",
+      "서로 다른 단위에 동시에 참여해도 한 신원과 두 명단으로 저장")
+parallel_gathering, parallel_unit, _, parallel_round = create()
+parallel_browsers = [session(), session()]
+with ThreadPoolExecutor(2) as executor:
+    independent = list(executor.map(lambda separate_browser: join(parallel_gathering, parallel_unit, separate_browser, parallel_round), parallel_browsers))
+check(independent[0]["participantId"] != independent[1]["participantId"] and
+      sql(f"SELECT COUNT(*) FROM guest_participations WHERE gathering_id={parallel_gathering['id']}") == "2",
+      "서로 다른 브라우저의 동시 참여는 동명이인이어도 각각 저장")
 with_guest = call("POST", f"/gatherings/{gathering['id']}/settlement-units", host_cookie,
     {"requestId": str(uuid.uuid4()), "participantIds": [gathering["me"]["participantId"], participant_id]}, 201)[0]
 check(participant_id in with_guest["participantIds"], "추가 총무 단위의 명단에서도 비회원 재사용")
