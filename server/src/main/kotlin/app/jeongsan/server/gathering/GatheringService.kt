@@ -17,7 +17,8 @@ import java.security.MessageDigest
 @Service
 @Transactional(isolation = Isolation.READ_COMMITTED)
 class GatheringService(private val db: GatheringStore, private val mapper: ObjectMapper, private val cipher: PayoutCipher,
-    private val moderation: app.jeongsan.server.moderation.ModerationService) {
+    private val moderation: app.jeongsan.server.moderation.ModerationService,
+    private val attendanceSpoons: AttendanceSpoonService) {
     private fun user(uid: Long): Map<String, Any?> = db.rows("SELECT * FROM users WHERE id=:id", "id" to uid).singleOrNull()
         ?: fail("UNAUTHENTICATED", status=HttpStatus.UNAUTHORIZED)
     private fun named(uid: Long): Map<String, Any?> = user(uid).also { if (it["display_name"] == null) fail("DISPLAY_NAME_REQUIRED") }
@@ -169,6 +170,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
             changed=true
             db.update("INSERT INTO round_responses(participant_id,round_id,type,source) VALUES(:p,:r,:t,:src) ON DUPLICATE KEY UPDATE type=VALUES(type),source=VALUES(source)","p" to targetParticipantId,"r" to answer.roundId,"t" to answer.type,"src" to source) }
         if(!changed) return
+        attendanceSpoons.award(gatheringId,settlementUnit.id,targetParticipantId)
         bump(gatheringId,settlementUnit.id);event(gatheringId,settlementUnit.id,"RESPONDED","${actor.name}님이 응답했어요")
         notify(gatheringId,settlementUnit.id,"RESPONDED","${actor.name}님이 응답했어요",loaded.first.filter{it.id==settlementUnit.hostId}.map{it.userId},actor.userId)
         refreshCalculationError(gatheringId,settlementUnit.id)
@@ -338,6 +340,12 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
     fun join(token: String,uid: Long,request: JoinRequest): Map<String,Long> {
         val usr=named(uid);val gid=db.rows("SELECT id FROM gatherings WHERE share_token=:t","t" to token).singleOrNull()?.long("id") ?: fail("GATHERING_NOT_FOUND",status=HttpStatus.NOT_FOUND)
         val u=unit(gid,request.settlementUnitId);SettlementWorkflow.open(u);room(gid,true);named(uid)
+        // 두 총무가 서로의 방에 가입하면 각자의 participants.user_id FK 공유 잠금과 상대방 보상 X 잠금이 교차할 수 있다.
+        // 좌석 INSERT 전에 가입자·수혜자를 같은 ID 순서로 잠가 FK 잠금 승격 순환을 막는다.
+        val hostUserId = (db.rows("SELECT user_id FROM participants WHERE id=:host", "host" to u.hostId).single()["user_id"] as? Number)?.toLong()
+        val rewardAccounts = listOfNotNull(uid, hostUserId).distinct().sorted()
+        val lockedAccounts = db.rows("SELECT id FROM users WHERE id IN (:accounts) ORDER BY id FOR UPDATE", "accounts" to rewardAccounts)
+        if (lockedAccounts.none { it.long("id") == uid }) fail("UNAUTHENTICATED",status=HttpStatus.UNAUTHORIZED)
         val old=db.rows("SELECT * FROM participants WHERE gathering_id=:g AND user_id=:u","g" to gid,"u" to uid).singleOrNull()
         val pid=old?.long("id") ?: db.insert("INSERT INTO participants(gathering_id,user_id,name,status,created_at) VALUES(:g,:u,:name,'ACTIVE',:n)","g" to gid,"u" to uid,"name" to usr.text("display_name"),"n" to Instant.now())
         val membership=db.rows("SELECT status FROM settlement_unit_members WHERE settlement_unit_id=:s AND participant_id=:p","s" to u.id,"p" to pid).singleOrNull()

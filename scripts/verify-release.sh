@@ -63,6 +63,7 @@ python3 scripts/verify-notifications.py
 python3 scripts/verify-ugc-safety.py
 python3 scripts/verify-auth-release.py
 python3 scripts/verify-guest-participation.py
+python3 scripts/verify-attendance-spoons.py
 ./gradlew :server:authDatabaseProbe --no-daemon
 python3 scripts/verify-deploy.py
 
