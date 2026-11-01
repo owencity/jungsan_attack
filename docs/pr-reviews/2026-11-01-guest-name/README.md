@@ -8,6 +8,7 @@
 - 웹 PR2 기준: bef58cefb65ac6dca8cc828ffadb6a1b8b5733f7 → c0f055ead2915b08d397fbddf7cea80b6512708c. web-fixed.patch는 PNG를 제외한 고정 diff다. Vitest 289개·빌드 통과.
 - 앱 PR5 기준: c2f05e4eebac7acb0cc12e10fc5c7b07a145749f → 9c1aba34300689bda76e1b17f06c3e7874dfdf3e. app-fixed.patch에 고정했다. Android 232개·컴파일 통과. 배포/CI 최신 상태는 ../../operations/fc032-release-2026-11-01.md 참조.
 - iOS 테스트 후속: 9c1aba3 → d8e730f2bcf34192fdd306899b3e17b4344277a1, ios-test-followup.patch. 첫 키보드 안내를 닫는 UI 자동화 실패에 대응한다. 이름 입력·저장 검증을 건너뛰지 않는다. 후속 CI 결과가 나오기 전에는 해결됐다고 단정하지 않는다.
+- iOS 이미지 검사 후속: d8e730f → b1d917dea682a69d8cc80c1be6a0221ad1088e16, ios-image-test-followup.patch. 실패 접근성 기록의 실제 PNG/저장 메뉴를 근거로 루트 식별자 대신 파일명과 누를 수 있는 메뉴를 검사한다. iPad의 기존 검사 성공과 새 검사 전체 성공은 구분한다.
 
 ## 검토 결과
 
