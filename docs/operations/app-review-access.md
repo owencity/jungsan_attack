@@ -1,9 +1,9 @@
 # App Review 접근 준비 (2026-10-28)
 
-> **2026-11-01 현재:** 서버·웹 이름 정정 운영 반영, 빌드16 Apple 업로드 및 Android·iPhone·iPad CI 완료.
-> [현재 배포 기록](fc032-release-2026-11-01.md)을 우선한다. CTO는 기능 정상 전제로 다음 작업 진행을 승인했다.
+> **2026-11-01 현재:** 서버·웹 이름 정정 운영 반영, 빌드17 공개 데모 이미지 저장 추가·Apple 업로드 및 Android·iPhone·iPad CI 완료.
+> [현재 앱 배포 기록](fc033-release-2026-11-01.md)과 [서버·웹 기록](fc032-release-2026-11-01.md)을 우선한다. CTO는 기능 정상 전제로 다음 작업 진행을 승인했다.
 > 실제 기기 항목별 결과를 새로 확인한 것으로 처리하지 않는다. 운영 앱은 총무 전용이며 참여자는 비회원 웹으로 응답한다.
-> 공개 데모에는 가상 역할 전환이 남아 있고, 정산표 저장 접근 누락을 [FC-033](../flow-changes/2026-11-01-demo-settlement-image.md)/앱 PR6에서 보완한다.
+> 공개 데모에는 가상 역할 전환이 남아 있고, 정산표 저장 접근 누락을 [FC-033](../flow-changes/2026-11-01-demo-settlement-image.md)/앱 PR6에서 보완했다.
 > 아래 빌드9/자동 정산 등의 기록은 당시 이력이다. 새 제출 문구는 [최신 Notes 초안](app-review-notes-draft.md)을 따른다.
 
 기준: [FC-027](../flow-changes/2026-10-28-ios-review-access.md). 앱 담당자 부재로 CTO가 Codex에 앱 구현까지 요청했고 Git·배포 전담을 재확인했다. [앱 PR1](https://github.com/owencity/jungsan_app/pull/1)과 백엔드 PR48은 스터디용으로 보존한다. 공개 진입 URL `https://jungsan-api.devkdk.com/api/v1/review/demo`는 2026-10-30 서버0d0df31에 적용해 운영200을 확인했다. **앱 빌드9는 CTO의 Apple 약관 동의 후 attempt2에서 서명·업로드와 키 정리를 완료했다.** Apple 처리 완료·TestFlight 설치와 실제 iPhone 검증은 아직 확인 전이다. 비밀번호를 가진 데모 계정은 만들지 않는다. [실행 기록](fc027-release-2026-10-30.md)을 따른다.
