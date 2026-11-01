@@ -60,7 +60,7 @@
 
 | 번호 | 제목 | 상태 | 백엔드 반영·근거 | 파일 |
 |---|---|---|---|---|
-| FC-032 | 비회원 이름 정정·동일 브라우저 재방문 | 열림 (구현·검증 중) | API v22 · 공유 신원/보상 유지 · 총무 웹/앱 연결 | [2026-11-01-guest-name-correction.md](2026-11-01-guest-name-correction.md) |
+| FC-032 | 비회원 이름 정정·동일 브라우저 재방문 | 백엔드·웹 반영됨 · 앱 배포 검증 중 | API v22 · 공유 신원/보상 유지 · 총무 웹/앱 연결 | [2026-11-01-guest-name-correction.md](2026-11-01-guest-name-correction.md) |
 | FC-031 | 참석자당 총무 10스푼 자동 적립·회수 없음 | 반영됨 (운영 적용 후속) | PR #53·API v21·022/032·실제 MySQL/HTTP 검증, 앱 PR #4 조회 갱신 | [2026-11-01-attendance-spoons.md](2026-11-01-attendance-spoons.md) |
 | FC-030 | 운영 앱 총무 전용·참여자는 응답 웹·이미지 전달 | 프론트만 | 기존 API·DB·core 유지, 앱 PR4 / 웹 PR1, 운영·실기기 검증 별도 | [2026-11-01-host-only-app.md](2026-11-01-host-only-app.md) |
 | FC-029 | 참여자 응답 전용·총무 명단 확인 후 확정 | 열림 (PR52 CI 통과·웹/앱 구현, iOS·운영 후속) | API v20, FC-020 자동 확정·선착순 제외 대체, 운영 미적용 | [2026-11-01-host-review.md](2026-11-01-host-review.md) |

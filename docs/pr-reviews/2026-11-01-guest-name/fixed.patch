@@ -1,0 +1,288 @@
+diff --git a/scripts/verify-guest-participation.py b/scripts/verify-guest-participation.py
+index fc85fb0..d9880d0 100644
+--- a/scripts/verify-guest-participation.py
++++ b/scripts/verify-guest-participation.py
+@@ -291,4 +291,65 @@ join(empty_room, empty_unit, empty_browser)
+ unavailable = call("GET", f"/guest/gatherings/{empty_room['id']}/settlement-units/{empty_unit['id']}/settlement", empty_browser)[0]
+ check(unavailable["available"] is False and unavailable["errorCode"] == "NO_ROUNDS" and unavailable["total"] is None,
+       "아직 차수 없는 술자리는 개인 금액 준비 중으로 표시")
++# FC-032: 이름은 표시 정보만 바꾸며 응답/보상/브라우저 신원을 새로 만들지 않는다.
++name_gathering, name_unit, name_root, name_round = create()
++name_browser = session()
++name_me = join(name_gathering, name_unit, name_browser, name_round, "김오타")
++name_pid = name_me["participantId"]
++name_path = f"/guest/gatherings/{name_gathering['id']}/settlement-units/{name_unit['id']}/responses/me"
++name_host_path = name_root + f"/participants/{name_pid}/name"
++name_me_path = f"/guest/gatherings/{name_gathering['id']}/me"
++spoons_before = sql(f"SELECT spoon_count FROM users WHERE id={host_id}")
++preview_before = call("GET", name_root + "/settlement/preview", host_cookie)[0]
++correction = {"answers": [{"roundId": name_round, "type": "DRANK"}], "displayName": "김정정", "expectedDisplayName": "김오타"}
++call("PUT", name_path, name_browser, correction, 204)
++corrected = call("GET", name_me_path, name_browser)[0]
++check(corrected["participantId"] == name_pid and corrected["displayName"] == "김정정" and corrected["canEditName"], "이름과 응답 수정 후 기존 참여자 신원 유지")
++check(corrected["responses"][0]["type"] == "DRANK" and sql(f"SELECT spoon_count FROM users WHERE id={host_id}") == spoons_before, "응답도 함께 저장하고 스푼 추가 없음")
++revision_after = corrected["settlementUnits"][0]["inputRevision"]
++call("PUT", name_path, name_browser, correction, 204)
++check(call("GET", name_me_path, name_browser)[0]["settlementUnits"][0]["inputRevision"] == revision_after, "동일 이름·응답 재시도는 revision도 그대로")
++call("POST", name_root + "/settlement", host_cookie, {"inputRevision": preview_before["inputRevision"], "inputHash": preview_before["inputHash"]}, 409)
++check(True, "이름 수정 전 미리보기로 정산 확정 불가")
++call("PUT", name_path, name_browser, {**correction, "displayName": "김실패", "expectedDisplayName": "김정정", "answers": [{"roundId": 99999999, "type": "SOBER"}]}, 404)
++check(call("GET", name_me_path, name_browser)[0]["displayName"] == "김정정", "응답 실패 시 이름 정정도 롤백")
++call("PUT", name_path, session(), correction, 403)
++call("PUT", name_path, name_browser, correction, 403, origin="https://evil.test")
++call("PUT", name_host_path, name_browser, {"displayName": "김총무", "expectedDisplayName": "김정정"}, 401)
++call("PUT", name_root + f"/participants/{name_gathering['me']['participantId']}/name", host_cookie, {"displayName": "김총무", "expectedDisplayName": "검증총무"}, 403)
++check(True, "다른 브라우저·출처·비회원 총무 사칭·회원 이름 수정 거절")
++call("PUT", name_host_path, host_cookie, {"displayName": "김총무", "expectedDisplayName": "김정정"}, 204)
++stale = call("PUT", name_path, name_browser, {**correction, "displayName": "김옛날", "expectedDisplayName": "김정정"}, 409)[0]
++check(stale["code"] == "GUEST_NAME_STALE" and call("GET", name_me_path, name_browser)[0]["displayName"] == "김총무", "총무 정정 뒤 오래된 참여 화면의 덮어쓰기 방지")
++other_person = join(name_gathering, name_unit, session(), name_round, "김총무")
++check(other_person["participantId"] != name_pid, "같은 이름은 기존 참여자 수정 권한이 아님")
++new_unit = call("POST", f"/gatherings/{name_gathering['id']}/settlement-units", host_cookie,
++    {"requestId": str(uuid.uuid4()), "participantIds": [name_gathering["me"]["participantId"], name_pid]}, 201)[0]
++new_root = f"/gatherings/{name_gathering['id']}/settlement-units/{new_unit['id']}"
++before_units = call("GET", name_me_path, name_browser)[0]["settlementUnits"]
++call("PUT", name_host_path, host_cookie, {"displayName": "김공유", "expectedDisplayName": "김총무"}, 204)
++after_units = call("GET", name_me_path, name_browser)[0]["settlementUnits"]
++check(all(after["inputRevision"] == before["inputRevision"] + 1 for before, after in zip(before_units, after_units)), "공유 이름 정정 시 모든 소속 단위 미리보기 갱신")
++with ThreadPoolExecutor(max_workers=2) as executor:
++    changes = list(executor.map(lambda name: call("PUT", name_host_path, host_cookie,
++        {"displayName": name, "expectedDisplayName": "김공유"}, None)[2], ["김먼저", "김나중"]))
++check(sorted(changes) == [204, 409], "동시 이름 정정 중 하나만 기존 이름을 바꿈")
++call("PUT", name_root + "/responses/me", host_cookie, {"answers": [{"roundId": name_round, "type": "SOBER"}]}, 204)
++final_preview = call("GET", name_root + "/settlement/preview", host_cookie)[0]
++current_name = call("GET", name_me_path, name_browser)[0]["displayName"]
++with ThreadPoolExecutor(max_workers=2) as executor:
++    settle_future = executor.submit(call, "POST", name_root + "/settlement", host_cookie,
++        {"inputRevision": final_preview["inputRevision"], "inputHash": final_preview["inputHash"]}, None)
++    rename_future = executor.submit(call, "PUT", name_host_path, host_cookie,
++        {"displayName": "김경합", "expectedDisplayName": current_name}, None)
++    settle_status, rename_status = settle_future.result()[2], rename_future.result()[2]
++check((settle_status, rename_status) in [(200, 409), (409, 204)], "이름 정정·확정 경합은 하나만 성공하고 교착·500 없음")
++if settle_status == 409:
++    final_preview = call("GET", name_root + "/settlement/preview", host_cookie)[0]
++    call("POST", name_root + "/settlement", host_cookie, {"inputRevision": final_preview["inputRevision"], "inputHash": final_preview["inputHash"]})
++locked_me = call("GET", name_me_path, name_browser)[0]
++locked_error = call("PUT", new_root + f"/participants/{name_pid}/name", host_cookie,
++    {"displayName": "김잠금", "expectedDisplayName": locked_me["displayName"]}, 409)[0]
++check(not locked_me["canEditName"] and locked_error["code"] == "GUEST_NAME_LOCKED", "다른 단위가 OPEN이어도 확정된 이름은 보호")
++check(sql(f"SELECT COUNT(*) FROM guest_participations WHERE participant_id={name_pid}") == "1", "정정·경합 후 비회원 연결 하나 유지")
+ print(f"GUEST-PARTICIPATION: {checks} checks passed", flush=True)
+diff --git a/server/src/main/java/app/jeongsan/server/guest/javaimpl/GuestPolicy.java b/server/src/main/java/app/jeongsan/server/guest/javaimpl/GuestPolicy.java
+index 8a6eb2b..590bb7d 100644
+--- a/server/src/main/java/app/jeongsan/server/guest/javaimpl/GuestPolicy.java
++++ b/server/src/main/java/app/jeongsan/server/guest/javaimpl/GuestPolicy.java
+@@ -8,6 +8,14 @@ import org.springframework.http.HttpStatus;
+ public final class GuestPolicy {
+     private GuestPolicy() {}
+ 
++    public static String correctedName(String current, String submitted, String expected, boolean locked) {
++        String name = displayName(submitted);
++        if (current.equals(name)) return current;
++        if (locked) throw new ApiException("GUEST_NAME_LOCKED", HttpStatus.CONFLICT, "이미 확정된 정산이 있어 이름을 바꿀 수 없어요.");
++        if (!current.equals(expected)) throw new ApiException("GUEST_NAME_STALE", HttpStatus.CONFLICT, "이름이 변경되었어요. 최신 상태를 확인해주세요.");
++        return name;
++    }
++
+     public static String displayName(String value) {
+         int first = 0;
+         int last = value.length();
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt
+index 2587b5d..661d7bb 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringDto.kt
+@@ -14,6 +14,8 @@ data class RoundRequest(@field:Min(1) @field:Max(1_000_000_000_000) val total: L
+     @field:Valid @field:Size(max=100) val drinks: List<DrinkRequest> = emptyList())
+ data class AnswerRequest(val roundId: Long, val type: String)
+ data class ResponseRequest(@field:Size(max=1000) val answers: List<AnswerRequest>)
++data class GuestNameRequest(@field:Size(max=100) val displayName: String,
++    @field:Size(max=100) val expectedDisplayName: String)
+ data class JoinRequest(val settlementUnitId: Long, @field:Size(max=1000) val responses: List<AnswerRequest> = emptyList())
+ data class SettleRequest(val inputRevision: Long, @field:Pattern(regexp="[a-f0-9]{64}") val inputHash: String)
+ data class MessageRequest(@field:Size(min=1,max=200) val text: String)
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
+index 70433fe..4f4c39e 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/GatheringService.kt
+@@ -223,11 +223,57 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+         respondAs(gatheringId,unit(gatheringId,settlementUnit.id),joined,joined.id,ResponseRequest(request.responses),"SELF")
+         return guestMe(gatheringId,browserHash)
+     }
+-    fun guestRespond(gatheringId: Long, settlementUnitId: Long, browserHash: String, request: ResponseRequest) {
++    fun guestRespond(gatheringId: Long, settlementUnitId: Long, browserHash: String, request: ResponseRequest,
++        displayName: String? = null, expectedDisplayName: String? = null) {
++        if (displayName != null) lockNameScope(gatheringId)
+         val settlementUnit=unit(gatheringId,settlementUnitId)
+         room(gatheringId,true)
+         val participant=guestPerson(gatheringId,browserHash)
+-        respondAs(gatheringId,settlementUnit,participant,participant.id,request,"SELF")
++        SettlementWorkflow.open(settlementUnit)
++        SettlementWorkflow.member(settlementUnit,participant.id)
++        if (displayName != null) correctGuestName(gatheringId,participant,displayName,expectedDisplayName)
++        respondAs(gatheringId,settlementUnit,if (displayName != null) guestPerson(gatheringId,browserHash) else participant,participant.id,request,"SELF")
++    }
++
++    // 이름은 단위 간 공유한다. 기존 단위→술자리 잠금 순서를 유지하도록 전체 단위를 먼저 고정한다.
++    private fun lockNameScope(gatheringId: Long) {
++        val lockedIds = db.rows("SELECT id FROM settlement_units WHERE gathering_id=:g ORDER BY id FOR UPDATE",
++            "g" to gatheringId).map { it.long("id") }
++        room(gatheringId,true)
++        val currentIds = db.rows("SELECT id FROM settlement_units WHERE gathering_id=:g ORDER BY id",
++            "g" to gatheringId).map { it.long("id") }
++        // 새 단위를 여기서 추가 잠그면 단위→술자리 순서가 역전된다. 전체 요청을 재시도하게 한다.
++        if (lockedIds != currentIds) fail("SETTLEMENT_INPUT_CHANGED")
++    }
++
++    fun renameGuest(gatheringId: Long, settlementUnitId: Long, userId: Long, participantId: Long, request: GuestNameRequest) {
++        lockNameScope(gatheringId)
++        val settlementUnit = authorize(gatheringId,settlementUnitId,userId)
++        SettlementWorkflow.member(settlementUnit,participantId)
++        val target = db.rows("""
++            SELECT participant.id,participant.name FROM participants participant
++            JOIN guest_participations guest ON guest.participant_id=participant.id AND guest.gathering_id=participant.gathering_id
++            WHERE participant.id=:participant AND participant.gathering_id=:g
++              AND participant.user_id IS NULL AND participant.status='ACTIVE'
++        """.trimIndent(),"participant" to participantId,"g" to gatheringId).singleOrNull()
++            ?: fail("NOT_PARTICIPANT",status=HttpStatus.FORBIDDEN)
++        correctGuestName(gatheringId,PersonInput(participantId,0,target.text("name")),request.displayName,request.expectedDisplayName)
++    }
++
++    private fun correctGuestName(gatheringId: Long, participant: PersonInput, submitted: String, expected: String?) {
++        val memberships = db.rows("""
++            SELECT settlement_unit.id,settlement_unit.status,membership.status member_status
++            FROM settlement_units settlement_unit JOIN settlement_unit_members membership ON membership.settlement_unit_id=settlement_unit.id
++            WHERE settlement_unit.gathering_id=:g AND membership.participant_id=:participant
++        """.trimIndent(),"g" to gatheringId,"participant" to participant.id)
++        val name = app.jeongsan.server.guest.GuestPolicy.correctedName(participant.name,submitted,expected,
++            memberships.any { it.text("status") != "OPEN" })
++        if (name == participant.name) return
++        db.update("UPDATE participants SET name=:name WHERE id=:participant AND gathering_id=:g",
++            "name" to name,"participant" to participant.id,"g" to gatheringId)
++        val affectedIds = memberships.filter { it.text("member_status") == "ACTIVE" }.map { it.long("id") }
++        if (affectedIds.isNotEmpty()) db.update("UPDATE settlement_units SET input_revision=input_revision+1 WHERE id IN (:ids)","ids" to affectedIds)
++        touch(gatheringId)
+     }
+     @Transactional(readOnly=true,isolation=Isolation.READ_COMMITTED)
+     fun guestMe(gatheringId: Long, browserHash: String): Map<String,Any?> {
+@@ -252,6 +298,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
+             ORDER BY round_entry.seq
+         """.trimIndent(),"gathering" to gatheringId,"participant" to participant.id)
+         return mapOf("gatheringId" to gatheringId,"title" to gathering["name"],"participantId" to participant.id,"displayName" to participant.name,
++            "canEditName" to (units.any { it.text("member_status") == "ACTIVE" } && units.all { it.text("status") == "OPEN" }),
+             "settlementUnits" to units.map{mapOf("id" to it["id"],"status" to it["status"],"inputRevision" to it["input_revision"],"included" to (it.text("member_status")=="ACTIVE"))},
+             "rounds" to rounds.map{mapOf("id" to it["id"],"settlementUnitId" to it["settlement_unit_id"],"seq" to it["seq"],"total" to it["total_amount"])},
+             "responses" to responses.map{mapOf("roundId" to it["round_id"],"type" to it["type"],"source" to it["source"])})
+diff --git a/server/src/main/kotlin/app/jeongsan/server/gathering/SettlementUnitController.kt b/server/src/main/kotlin/app/jeongsan/server/gathering/SettlementUnitController.kt
+index 6111cdd..bb47d3e 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/gathering/SettlementUnitController.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/gathering/SettlementUnitController.kt
+@@ -8,6 +8,12 @@ import org.springframework.web.bind.annotation.*
+ @RestController
+ @RequestMapping("/api/v1/gatherings/{gid}/settlement-units")
+ class SettlementUnitController(private val service: GatheringService) {
++    @PutMapping("/{id}/participants/{pid}/name")
++    @ResponseStatus(HttpStatus.NO_CONTENT)
++    fun renameGuest(@PathVariable gid: Long, @PathVariable id: Long, @PathVariable pid: Long,
++        @LoginUser userId: Long, @Valid @RequestBody request: GuestNameRequest) =
++        service.renameGuest(gid,id,userId,pid,request)
++
+     @PutMapping("/{id}/headcount")
+     @ResponseStatus(HttpStatus.NO_CONTENT)
+     fun headcount(@PathVariable gid: Long, @PathVariable id: Long, @LoginUser userId: Long,
+diff --git a/server/src/main/kotlin/app/jeongsan/server/guest/GuestController.kt b/server/src/main/kotlin/app/jeongsan/server/guest/GuestController.kt
+index ab4af3c..cfe8043 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/guest/GuestController.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/guest/GuestController.kt
+@@ -17,6 +17,10 @@ import java.time.Duration
+ data class GuestJoinRequest(@field:Size(max = 100) val displayName: String, val settlementUnitId: Long,
+     @field:Size(max = 1000) val responses: List<AnswerRequest> = emptyList())
+ 
++data class GuestResponseRequest(@field:Size(max = 1000) val answers: List<AnswerRequest>,
++    @field:Size(max = 100) val displayName: String? = null,
++    @field:Size(max = 100) val expectedDisplayName: String? = null)
++
+ @RestController
+ @RequestMapping("/api/v1/guest")
+ class GuestController(private val service: GatheringService, private val tokens: GuestTokens,
+@@ -49,9 +53,9 @@ class GuestController(private val service: GatheringService, private val tokens:
+ 
+     @PutMapping("/gatherings/{gatheringId}/settlement-units/{settlementUnitId}/responses/me", consumes = ["application/json"])
+     fun respond(@PathVariable gatheringId: Long, @PathVariable settlementUnitId: Long, @GuestBrowser browser: GuestIdentity,
+-        @Valid @RequestBody body: ResponseRequest, request: HttpServletRequest): ResponseEntity<Unit> {
++        @Valid @RequestBody body: GuestResponseRequest, request: HttpServletRequest): ResponseEntity<Unit> {
+         GuestPolicy.requireOrigin(request.getHeader(HttpHeaders.ORIGIN), frontendOrigin)
+-        service.guestRespond(gatheringId, settlementUnitId, browser.browserHash, body)
++        service.guestRespond(gatheringId, settlementUnitId, browser.browserHash, ResponseRequest(body.answers), body.displayName, body.expectedDisplayName)
+         return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "no-store").build()
+     }
+ 
+diff --git a/server/src/main/kotlin/app/jeongsan/server/guest/GuestPolicy.kt b/server/src/main/kotlin/app/jeongsan/server/guest/GuestPolicy.kt
+index cf6b9c0..2ba5ce0 100644
+--- a/server/src/main/kotlin/app/jeongsan/server/guest/GuestPolicy.kt
++++ b/server/src/main/kotlin/app/jeongsan/server/guest/GuestPolicy.kt
+@@ -6,6 +6,14 @@ import org.springframework.http.HttpStatus
+ 
+ /** 이름은 표시 정보이며 본인 확인 수단이 아니다. Java 정책은 별도 구현해 대조한다. */
+ object GuestPolicy {
++    fun correctedName(current: String, submitted: String, expected: String?, locked: Boolean): String {
++        val name = displayName(submitted)
++        if (name == current) return current
++        if (locked) throw ApiException("GUEST_NAME_LOCKED", HttpStatus.CONFLICT, "이미 확정된 정산이 있어 이름을 바꿀 수 없어요.")
++        if (expected != current) throw ApiException("GUEST_NAME_STALE", HttpStatus.CONFLICT, "이름이 변경되었어요. 최신 상태를 확인해주세요.")
++        return name
++    }
++
+     fun displayName(value: String): String {
+         val name = value.trim()
+         if (name.codePointCount(0, name.length) !in 2..10 || name.any { it.isISOControl() })
+diff --git a/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringApiSpec.kt b/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringApiSpec.kt
+index 861e6c9..dc7a47d 100644
+--- a/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringApiSpec.kt
++++ b/server/src/test/kotlin/app/jeongsan/server/gathering/GatheringApiSpec.kt
+@@ -40,6 +40,7 @@ class GatheringApiSpec : StringSpec({
+         Case("POST","/api/v1/transfers/1/sent",code=204),Case("POST","/api/v1/transfers/1/confirm",code=204),Case("POST","/api/v1/transfers/1/not-received",code=204),
+         Case("POST","/api/v1/gatherings/1/settlement-units","""{"requestId":"00000000-0000-0000-0000-000000000001","participantIds":[1,2]}""",201),
+         Case("PUT",root+"/participants/2",code=204),Case("DELETE",root+"/participants/2",code=204),
++        Case("PUT",root+"/participants/2/name","""{"displayName":"김정정","expectedDisplayName":"김하나"}""",204),
+         Case("PUT",root+"/headcount","""{"headcount":3}""",204),
+         Case("POST",root+"/rounds",round,201),Case("PUT",root+"/rounds/1",round),Case("DELETE",root+"/rounds/1",code=204),
+         Case("PUT",root+"/responses/me",answers,204),Case("PUT",root+"/participants/2/responses",answers,204),
+diff --git a/server/src/test/kotlin/app/jeongsan/server/guest/GuestApiSpec.kt b/server/src/test/kotlin/app/jeongsan/server/guest/GuestApiSpec.kt
+index e071e45..0b53ee2 100644
+--- a/server/src/test/kotlin/app/jeongsan/server/guest/GuestApiSpec.kt
++++ b/server/src/test/kotlin/app/jeongsan/server/guest/GuestApiSpec.kt
+@@ -30,6 +30,13 @@ class GuestApiSpec : StringSpec({
+     val responsePath="/api/v1/guest/gatherings/1/settlement-units/10/responses/me"
+     beforeTest { Mockito.reset(service) }
+ 
++    "비회원 이름 정정도 인증한 본인의 응답과 함께 전달한다" {
++        mvc.perform(put(responsePath).cookie(cookie).header("Origin","https://web.test").contentType(MediaType.APPLICATION_JSON)
++            .content("""{"answers":[],"displayName":"김정정","expectedDisplayName":"김하나","participantId":999}"""))
++            .andExpect(status().isNoContent)
++        Mockito.verify(service).guestRespond(1,10,browserHash,ResponseRequest(emptyList()),"김정정","김하나")
++    }
++
+     "세션 초기화는 httpOnly Secure Lax 경로 제한 쿠키만 발급하고 회원을 만들지 않는다" {
+         val response=mvc.perform(post("/api/v1/guest/session").header("Origin","https://web.test"))
+             .andExpect(status().isNoContent).andExpect(header().string("Cache-Control","no-store")).andReturn().response
+diff --git a/server/src/test/kotlin/app/jeongsan/server/guest/GuestPolicySpec.kt b/server/src/test/kotlin/app/jeongsan/server/guest/GuestPolicySpec.kt
+index 62336d2..9efedca 100644
+--- a/server/src/test/kotlin/app/jeongsan/server/guest/GuestPolicySpec.kt
++++ b/server/src/test/kotlin/app/jeongsan/server/guest/GuestPolicySpec.kt
+@@ -7,6 +7,16 @@ import io.kotest.core.spec.style.StringSpec
+ import io.kotest.matchers.shouldBe
+ 
+ class GuestPolicySpec : StringSpec({
++    "이름 정정은 확정·오래된 이름을 거절하고 동일 이름 재시도는 허용한다" {
++        for (policy in listOf(GuestPolicy::correctedName, JavaGuestPolicy::correctedName)) {
++            policy("김하나", " 김둘 ", "김하나", false) shouldBe "김둘"
++            policy("김둘", "김둘", "김하나", true) shouldBe "김둘"
++            shouldThrow<ApiException> { policy("김하나", "김둘", "김하나", true) }.code shouldBe "GUEST_NAME_LOCKED"
++            shouldThrow<ApiException> { policy("김하나", "김둘", null, false) }.code shouldBe "GUEST_NAME_STALE"
++            shouldThrow<ApiException> { policy("김하나", "김둘", "김셋", false) }.code shouldBe "GUEST_NAME_STALE"
++            shouldThrow<ApiException> { policy("김하나", " ", "김하나", false) }.code shouldBe "MALFORMED_REQUEST"
++        }
++    }
+     "성이름은 Unicode 코드포인트로 검증하고 양쪽 구현 모두 주변 공백만 제거한다" {
+         for ((submitted, expected) in listOf(" 김하나 " to "김하나", "\u00a0김하나\u2003" to "김하나", "😀😀" to "😀😀", "가".repeat(10) to "가".repeat(10))) {
+             GuestPolicy.displayName(submitted) shouldBe expected

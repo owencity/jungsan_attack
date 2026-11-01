@@ -1,0 +1,320 @@
+diff --git a/docs/FC032-guest-name-correction.md b/docs/FC032-guest-name-correction.md
+new file mode 100644
+index 0000000..66143d2
+--- /dev/null
++++ b/docs/FC032-guest-name-correction.md
+@@ -0,0 +1,14 @@
++# FC-032 비회원 이름·응답 수정
++
++같은 브라우저로 링크를 다시 열면 기존 쿠키로 본인 응답을 복원한다. 내 응답 수정에서 이름 오타와 응답을 함께 저장한다.
++이름이 바뀐 경우에만 기존 응답 PUT에 displayName/expectedDisplayName을 포함하고 성공 후 다시 읽는다.
++canEditName=false이면 공유 이름을 편집할 수 없으며 참석 응답은 해당 OPEN 단위에서 계속 수정할 수 있다.
++총무 웹도 비회원 참여자 관리에서 이름 정정 API를 호출한다. 실제 비회원 기능과 가상 데모 회원은 구분한다.
++총무·다른 창이 먼저 바꿨으면 안내와 최신 상태 확인을 제공한다. 이름 선택만으로 타인 권한을 복구하지 않는다.
++다른 브라우저·쿠키 삭제 시 새로 제출하기보다 총무에게 이름/수정할 내용을 알리도록 안내한다.
++
++백엔드 PR54/API v22를 먼저 적용해야 한다. participantId·응답·스푼을 새로 만들지 않는다.
++로컬 Vitest 289개 및 production build 통과. 제한된 임시 폴더의 Vite 캐시 읽기 오류 후 정상 환경에서 동일 테스트를 재실행했다.
++화면 검증 fixture는 qa/fc028.tsx이며 운영 index.html이 불러오지 않는다. 운영/실기기 확인은 별도다.
++
++390px 가상 응답 화면에서 최초 제출 → 내 응답 수정 → 빈 이름 오류 → 이름/음주 정정 → 최신 상태 재조회 → 확정 후 잠금을 확인했다. qa/fc032-name-corrected.png는 운영 자료가 아닌 로컬 화면 증거다.
+diff --git a/qa/fc028.tsx b/qa/fc028.tsx
+index 4aa5548..07adc54 100644
+--- a/qa/fc028.tsx
++++ b/qa/fc028.tsx
+@@ -29,10 +29,19 @@ window.fetch = async (input, init) => {
+   if (path === '/api/v1/guest/gatherings/1/me') return me ? json(me) : json({ code: 'NOT_PARTICIPANT' }, 403)
+   if (path === '/api/v1/guest/join/fixture') {
+     const body = JSON.parse(String(init?.body))
+-    me = { gatheringId: 1, title: preview.title, participantId: 2, displayName: body.displayName, settlementUnits: [{ id: 10, status: 'OPEN', inputRevision: 1, included: true }], rounds: preview.settlementUnits[0].rounds.map((round) => ({ ...round, settlementUnitId: 10 })), responses: body.responses.map((answer: { roundId: number; type: string }) => ({ ...answer, source: 'SELF' })) }
++    me = { gatheringId: 1, title: preview.title, participantId: 2, displayName: body.displayName, canEditName: true, settlementUnits: [{ id: 10, status: 'OPEN', inputRevision: 1, included: true }], rounds: preview.settlementUnits[0].rounds.map((round) => ({ ...round, settlementUnitId: 10 })), responses: body.responses.map((answer: { roundId: number; type: string }) => ({ ...answer, source: 'SELF' })) }
+     return json(me)
+   }
+-  if (path.endsWith('/responses/me') && me) { me.responses = JSON.parse(String(init?.body)).answers.map((answer: { roundId: number; type: string }) => ({ ...answer, source: 'SELF' })); return json(null, 204) }
++  if (path.endsWith('/responses/me') && me) {
++    const body = JSON.parse(String(init?.body))
++    if (body.displayName && body.displayName !== me.displayName) {
++      if (!me.canEditName) return json({ code: 'GUEST_NAME_LOCKED' }, 409)
++      if (body.expectedDisplayName !== me.displayName) return json({ code: 'GUEST_NAME_STALE' }, 409)
++      me.displayName = body.displayName
++    }
++    me.responses = body.answers.map((answer: { roundId: number; type: string }) => ({ ...answer, source: 'SELF' }))
++    return json(null, 204)
++  }
+   if (path.endsWith('/settlement')) return json(money)
+   if (path.endsWith('/sent')) { money.transfers[0].status = 'SENT'; return json(null, 204) }
+   return json({ code: 'FIXTURE_NOT_FOUND', message: path }, 404)
+@@ -57,7 +66,7 @@ export function Harness() {
+     link.href = image.src; link.download = 'fc028-capture.png'; link.click()
+   }
+   function settle() {
+-    if (me) me.settlementUnits[0].status = 'SETTLING'
++    if (me) { me.settlementUnits[0].status = 'SETTLING'; me.canEditName = false }
+     money = { ...money, status: 'SETTLING', isEstimate: false, settledAt: table.generatedAt, transfers: money.transfers.map((transfer) => ({ ...transfer, id: 1, status: 'WAITING', payout: { bank: '검증은행', accountNo: '00123456789', holder: '김총무' } })) }
+     setVersion((value) => value + 1)
+   }
+diff --git a/src/jeongsan/v3/AppV3.tsx b/src/jeongsan/v3/AppV3.tsx
+index 2884c87..dddcfdd 100644
+--- a/src/jeongsan/v3/AppV3.tsx
++++ b/src/jeongsan/v3/AppV3.tsx
+@@ -477,6 +477,7 @@ export function AppV3({ route, navigate, onLeave, loggedIn = true, onLogin = ()
+         // 면제는 서버 API 보류(SETTLEMENT_UNITS §4.2) — 화면에서도 꺼져 있다(features.SHOW_EXEMPT)
+         onExempt={(pid, rid, ex) => setExempt(g.id, pid, rid, ex)}
+         onRemove={(pid) => void ok(gateway.removeParticipant(g.id, pid))}
++        onRename={(pid, name, expected) => gateway.renameGuest(g.id, pid, name, expected)}
+         myNextRoomId={myNext?.id}
+         onOpenMyNext={() => myNext && navigate(`/jungsan/r/${myNext.id}`)}
+         onStartNext={async (participantIds) => {
+diff --git a/src/jeongsan/v3/GuestFlow.tsx b/src/jeongsan/v3/GuestFlow.tsx
+index 63d4f5f..e97a79f 100644
+--- a/src/jeongsan/v3/GuestFlow.tsx
++++ b/src/jeongsan/v3/GuestFlow.tsx
+@@ -47,7 +47,7 @@ export function GuestFlow({ token }: { token: string }) {
+       {loaded.preview.settlementUnits.length > 1 && <nav className="js-allsame" aria-label="참여할 정산 선택">{loaded.preview.settlementUnits.map((candidate) => <button className="js-mini" key={candidate.id} aria-pressed={candidate.id === unit?.id} onClick={() => setPicked(candidate.id)}>{candidate.host.displayName} 총무 · {candidate.rounds.map((round) => `${round.seq}차`).join(', ') || '준비 중'}</button>)}</nav>}
+       {unit ? <GuestUnit key={`${unit.id}-${refresh}`} token={token} preview={loaded.preview} unit={unit} me={loaded.me} onRefresh={reload} /> : <p>총무가 아직 차수를 준비하고 있어요.</p>}
+     </>}
+-    <p className="js-hint">참여했던 브라우저에서 같은 링크를 다시 열어주세요. 쿠키를 지우거나 다른 기기로 옮기면 기존 참여 정보를 찾을 수 없어요.</p>
++    <p className="js-hint">다시 수정하려면 참여했던 브라우저에서 같은 링크를 열어주세요. 카카오톡에서 참여했다면 카카오톡에서 다시 열어주세요. 다른 브라우저·기기로 바꾸거나 쿠키를 지웠다면 새로 제출하지 말고 총무에게 이름과 수정할 내용을 알려주세요.</p>
+     <footer><a href="/jungsan/privacy" target="_blank" rel="noreferrer">개인정보 처리방침</a> · <a href="/jungsan/support" target="_blank" rel="noreferrer">문의</a></footer>
+   </main></div>
+ }
+@@ -80,7 +80,8 @@ function GuestUnit({ token, preview, unit, me, onRefresh }: {
+     const payload = rounds.filter((round) => !fixed(round.id)).map((round) => ({ roundId: round.id, type: answers[round.id] }))
+     inFlight.current = true; setBusy(true); setError('')
+     try {
+-      if (included) await guestApi.respond(preview.gatheringId, unit.id, payload)
++      if (included) await guestApi.respond(preview.gatheringId, unit.id, payload,
++        name.trim() !== me!.displayName ? { displayName: name.trim(), expectedDisplayName: me!.displayName } : undefined)
+       else await guestApi.join(token, name.trim(), unit.id, payload)
+       onRefresh()
+     } catch (failure) { setError(guestError(failure)) }
+@@ -94,7 +95,8 @@ function GuestUnit({ token, preview, unit, me, onRefresh }: {
+       {!included && !editable && <p>이미 정산이 시작되어 새로 참여할 수 없어요. 총무에게 확인해주세요.</p>}
+       {(included || editable) && <form onSubmit={(event) => { void submit(event) }} noValidate>
+         <fieldset disabled={busy} className="js-guest-fields">
+-          <label className="js-field" htmlFor="guest-name"><span className="js-lab">성이름</span><span className="js-nameguide">{NAME_GUIDE}</span><input ref={nameInput} id="guest-name" className="js-inp" autoComplete="name" placeholder="예: 김동규" value={name} readOnly={me !== null} onChange={(event) => { setName(event.target.value); setError('') }} aria-describedby="guest-error" /></label>
++          <label className="js-field" htmlFor="guest-name"><span className="js-lab">성이름</span><span className="js-nameguide">{NAME_GUIDE}</span><input ref={nameInput} id="guest-name" className="js-inp" autoComplete="name" placeholder="예: 김동규" value={name} readOnly={!editable || !editing || (me !== null && (!included || !me.canEditName))} onChange={(event) => { setName(event.target.value); setError('') }} aria-describedby="guest-error" /></label>
++          {included && me?.canEditName === false && <p className="js-hint">이미 확정된 정산이 있어 이름은 바꿀 수 없어요. 총무에게 알려주세요.</p>}
+           {editable && editing && rounds.length > 1 && <section><div className="js-lab">전 차수 똑같이</div><div className="js-allsame">{SELF_CHOICES.map((type) => <button type="button" className="js-mini" key={type} onClick={() => setAnswers((previous) => ({ ...previous, ...Object.fromEntries(rounds.filter((round) => !fixed(round.id)).map((round) => [round.id, type])) }))}>{RESPONSE_LABEL[type]}</button>)}</div></section>}
+           <ul className="js-resplist">{rounds.map((round) => <li className="js-respitem" key={round.id}><div className="hd"><b>{round.seq}차</b></div>{editable && editing && !fixed(round.id) ? <ResponseRow label={`${round.seq}차`} value={answers[round.id]} onChange={(type) => setAnswers((previous) => ({ ...previous, [round.id]: type }))} /> : <p>{answers[round.id] ? RESPONSE_LABEL[answers[round.id]] : '미응답'}{fixed(round.id) ? ' · 총무 지정' : ''}</p>}</li>)}</ul>
+           {rounds.length === 0 && <p>총무가 차수를 준비 중이에요. 먼저 참여해둘 수 있어요.</p>}
+diff --git a/src/jeongsan/v3/ParticipantSheet.tsx b/src/jeongsan/v3/ParticipantSheet.tsx
+index 4e3ad7a..e36f5a0 100644
+--- a/src/jeongsan/v3/ParticipantSheet.tsx
++++ b/src/jeongsan/v3/ParticipantSheet.tsx
+@@ -10,6 +10,7 @@ import type { Gathering, Id } from './model'
+ import { RESPONSE_LABEL, nameWithNick, responseOf } from './model'
+ import { removeBlockedReason } from './store'
+ import { SHOW_EXEMPT } from './features'
++import { validateName } from './name'
+ 
+ type Props = {
+   g: Gathering
+@@ -17,11 +18,17 @@ type Props = {
+   onClose: () => void
+   onExempt: (roundId: Id, exempt: boolean) => void
+   onRemove: () => void
++  onRename?: (name: string, expected: string) => Promise<string | null>
+ }
+ 
+-export function ParticipantSheet({ g, participantId, onClose, onExempt, onRemove }: Props) {
++export function ParticipantSheet({ g, participantId, onClose, onExempt, onRemove, onRename }: Props) {
+   const p = g.participants.find((x) => x.id === participantId)
+   const [confirm, setConfirm] = useState(false)
++  const [name, setName] = useState(p?.displayName ?? '')
++  const [expectedName] = useState(p?.displayName ?? '')
++  const [nameError, setNameError] = useState('')
++  const [savingName, setSavingName] = useState(false)
++  const renaming = useRef(false)
+   const sheet = useRef<HTMLDivElement>(null)
+   const open = g.status === 'OPEN'
+ 
+@@ -56,6 +63,23 @@ export function ParticipantSheet({ g, participantId, onClose, onExempt, onRemove
+ 
+         {!open && <p className="js-lead small">정산한 뒤에는 {SHOW_EXEMPT ? '면제·내보내기를 바꿀' : '내보낼'} 수 없어요.</p>}
+ 
++        {open && p.userId === null && onRename && <form onSubmit={(event) => {
++          event.preventDefault()
++          if (renaming.current) return
++          const invalid = validateName(name)[0]
++          if (invalid) { setNameError(invalid); return }
++          renaming.current = true; setSavingName(true); setNameError('')
++          void onRename(name.trim(), expectedName).then((error) => {
++            if (error) setNameError(error); else onClose()
++          }).catch(() => setNameError('저장하지 못했어요. 연결을 확인하고 다시 시도해주세요.'))
++            .finally(() => { renaming.current = false; setSavingName(false) })
++        }}>
++          <label className="js-field"><span className="js-lab">참여자 이름 정정</span><input className="js-inp" value={name} disabled={savingName} onChange={(event) => setName(event.target.value)} /></label>
++          <p className="js-hint">같은 술자리의 이름이 함께 바뀌어요. 이미 확정된 정산이 있으면 변경할 수 없어요.</p>
++          {nameError && <p role="alert">{nameError}</p>}
++          <button className="js-mini" disabled={savingName}>{savingName ? '저장 중…' : '이름 저장'}</button>
++        </form>}
++
+         <ul className="js-exlist">
+           {g.rounds.map((r) => {
+             const cur = responseOf(g, participantId, r.id)
+diff --git a/src/jeongsan/v3/RoomPage.tsx b/src/jeongsan/v3/RoomPage.tsx
+index a5c7d5c..10cff5a 100644
+--- a/src/jeongsan/v3/RoomPage.tsx
++++ b/src/jeongsan/v3/RoomPage.tsx
+@@ -34,6 +34,7 @@ type Props = {
+   onExempt: (participantId: Id, roundId: Id, exempt: boolean) => void
+   /** R4 — 총무가 정산 전 한 사람을 내보낸다 */
+   onRemove: (participantId: Id) => void
++  onRename?: (participantId: Id, name: string, expected: string) => Promise<string | null>
+   /** 참여자가 "다음 차는 내가 계산했어요" — 내가 총무인 새 술자리를 만든다 */
+   /** 다음 차 총무 되기 — 고른 사람(나 빼고)과 함께 이 술자리 안에 내 정산 단위를 만든다(FC-015) */
+   onStartNext: (participantIds: Id[]) => void
+@@ -46,7 +47,7 @@ type Props = {
+   onBlock: (participantId: Id) => void
+ }
+ 
+-export function RoomPage({ g, meUserId, onBack, onAction, onEditRound, onAddRound, onSend, onConfirm, onNotReceived, onExempt, onRemove, onStartNext, myNextRoomId, onOpenMyNext, onReport, onBlock }: Props) {
++export function RoomPage({ g, meUserId, onBack, onAction, onEditRound, onAddRound, onSend, onConfirm, onNotReceived, onExempt, onRemove, onRename, onStartNext, myNextRoomId, onOpenMyNext, onReport, onBlock }: Props) {
+   const [managing, setManaging] = useState<Id | null>(null)
+   const [showTable, setShowTable] = useState(false)
+   const [msgMenu, setMsgMenu] = useState<Id | null>(null)
+@@ -101,11 +102,13 @@ export function RoomPage({ g, meUserId, onBack, onAction, onEditRound, onAddRoun
+       )}
+       {managing !== null && (
+         <ParticipantSheet
++          key={managing}
+           g={g}
+           participantId={managing}
+           onClose={() => setManaging(null)}
+           onExempt={(rid, ex) => onExempt(managing, rid, ex)}
+           onRemove={() => { onRemove(managing); setManaging(null) }}
++          onRename={onRename ? (name, expected) => onRename(managing, name, expected) : undefined}
+         />
+       )}
+       {msgMenu !== null && (() => {
+diff --git a/src/jeongsan/v3/__tests__/api.test.ts b/src/jeongsan/v3/__tests__/api.test.ts
+index b82c33a..fa405be 100644
+--- a/src/jeongsan/v3/__tests__/api.test.ts
++++ b/src/jeongsan/v3/__tests__/api.test.ts
+@@ -28,6 +28,15 @@ async function load(apiBase: string) {
+ 
+ const ME = { id: 7, nickname: '🌸봄이🌸', profileImageUrl: null, displayName: null, needsName: true }
+ 
++it('총무의 비회원 이름 정정은 이름과 기존 값을 같은 요청에 보낸다', async () => {
++  const calls = fakeServer({ status: 204 })
++  const { api } = await load('https://api.test')
++  await api.renameGuest(1, 2, 3, '김정정', '김오타')
++  expect(calls[0].url).toBe('https://api.test/api/v1/gatherings/1/settlement-units/2/participants/3/name')
++  expect(calls[0].init.method).toBe('PUT')
++  expect(JSON.parse(String(calls[0].init.body))).toEqual({ displayName: '김정정', expectedDisplayName: '김오타' })
++})
++
+ afterEach(() => {
+   vi.unstubAllEnvs()
+   vi.unstubAllGlobals()
+diff --git a/src/jeongsan/v3/__tests__/guest.test.ts b/src/jeongsan/v3/__tests__/guest.test.ts
+index 880efa9..b664259 100644
+--- a/src/jeongsan/v3/__tests__/guest.test.ts
++++ b/src/jeongsan/v3/__tests__/guest.test.ts
+@@ -10,6 +10,16 @@ async function load() {
+ }
+ 
+ describe('비회원 쿠키와 API 계약', () => {
++  it('이름 정정은 본인 응답과 함께 보내며 다른 참여자 ID를 받지 않는다', async () => {
++    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
++    vi.stubGlobal('fetch', fetchMock)
++    const { guestApi } = await load()
++    await guestApi.respond(2, 3, [{ roundId: 4, type: 'SOBER' }], { displayName: '김정정', expectedDisplayName: '김오타' })
++    const [url, init] = fetchMock.mock.calls[0]
++    expect(url).toContain('/guest/gatherings/2/settlement-units/3/responses/me')
++    expect(JSON.parse(init.body)).toEqual({ answers: [{ roundId: 4, type: 'SOBER' }], displayName: '김정정', expectedDisplayName: '김오타' })
++    expect(init.credentials).toBe('include')
++  })
+   it('동시 초기화는 한 요청만 보내고 완료를 기다린다', async () => {
+     let finish!: (value: Response) => void
+     const fetchMock = vi.fn(() => new Promise<Response>((resolve) => { finish = resolve }))
+diff --git a/src/jeongsan/v3/__tests__/guestName.test.tsx b/src/jeongsan/v3/__tests__/guestName.test.tsx
+new file mode 100644
+index 0000000..841b274
+--- /dev/null
++++ b/src/jeongsan/v3/__tests__/guestName.test.tsx
+@@ -0,0 +1,21 @@
++import { createElement } from 'react'
++import { renderToStaticMarkup } from 'react-dom/server'
++import { describe, expect, it } from 'vitest'
++import { ParticipantSheet } from '../ParticipantSheet'
++import { useV3 } from '../store'
++
++describe('총무 이름 정정 진입', () => {
++  const original = useV3.getInitialState().rooms[101]
++  const participant = original.participants.find((person) => person.userId !== original.hostUserId)!
++  const render = (guest: boolean, confirmed: boolean) => renderToStaticMarkup(createElement(ParticipantSheet, {
++    g: { ...original, status: confirmed ? 'SETTLING' : 'OPEN', participants: original.participants.map((person) =>
++      person.id === participant.id && guest ? { ...person, userId: null } : person) },
++    participantId: participant.id, onClose: () => {}, onExempt: () => {}, onRemove: () => {}, onRename: async () => null,
++  }))
++  it('OPEN 비회원에게만 이름 입력과 저장을 제공한다', () => {
++    expect(render(true, false)).toContain('참여자 이름 정정')
++    expect(render(true, false)).toContain('이름 저장')
++    expect(render(false, false)).not.toContain('이름 저장')
++    expect(render(true, true)).not.toContain('이름 저장')
++  })
++})
+diff --git a/src/jeongsan/v3/api.ts b/src/jeongsan/v3/api.ts
+index cd8bade..c0aff42 100644
+--- a/src/jeongsan/v3/api.ts
++++ b/src/jeongsan/v3/api.ts
+@@ -135,6 +135,8 @@ export const api = {
+   putHeadcount: (gid: number, uid: number, headcount: number) => request<unknown>('PUT', `${U(gid, uid)}/headcount`, { headcount }),
+   addMember: (gid: number, uid: number, pid: number) => request<unknown>('PUT', `${U(gid, uid)}/participants/${pid}`),
+   removeMember: (gid: number, uid: number, pid: number) => request<unknown>('DELETE', `${U(gid, uid)}/participants/${pid}`),
++  renameGuest: (gid: number, uid: number, pid: number, displayName: string, expectedDisplayName: string) =>
++    request<void>('PUT', `${U(gid, uid)}/participants/${pid}/name`, { displayName, expectedDisplayName }),
+   addRound: (gid: number, uid: number, body: RoundBody) => request<{ id: number }>('POST', `${U(gid, uid)}/rounds`, body),
+   putRound: (gid: number, uid: number, rid: number, body: RoundBody) => request<{ id: number }>('PUT', `${U(gid, uid)}/rounds/${rid}`, body),
+   deleteRound: (gid: number, uid: number, rid: number) => request<unknown>('DELETE', `${U(gid, uid)}/rounds/${rid}`),
+diff --git a/src/jeongsan/v3/gateway.ts b/src/jeongsan/v3/gateway.ts
+index 01d48f2..fee8f01 100644
+--- a/src/jeongsan/v3/gateway.ts
++++ b/src/jeongsan/v3/gateway.ts
+@@ -414,6 +414,12 @@ export const gateway = {
+     return mutate(gid, () => api.removeMember(gid, uid, participantId))
+   },
+ 
++  async renameGuest(roomId: Id, participantId: Id, displayName: string, expectedDisplayName: string): Promise<string | null> {
++    if (!isApiMode()) return '이름 정정은 실제 비회원 참여자에게 사용할 수 있어요.'
++    const { gid, uid } = ctx(roomId)
++    return mutate(gid, () => api.renameGuest(gid, uid, participantId, displayName, expectedDisplayName))
++  },
++
+   /** 스푼(🥄) — 복수 총무 지급 규칙이 서버에서 미결(SETTLEMENT_UNITS §7)이라 API 모드에선 아직 열지 않는다 */
+   async giveSpoon(roomId: Id): Promise<string | null> {
+     if (!isApiMode()) {
+diff --git a/src/jeongsan/v3/guestApi.ts b/src/jeongsan/v3/guestApi.ts
+index dd4db9f..01b3b1c 100644
+--- a/src/jeongsan/v3/guestApi.ts
++++ b/src/jeongsan/v3/guestApi.ts
+@@ -4,7 +4,7 @@ import type { ServerJoinPreview } from './serverModel'
+ 
+ export type GuestPreview = ServerJoinPreview & { gatheringId: number }
+ export type GuestMe = {
+-  gatheringId: number; title: string; participantId: number; displayName: string
++  gatheringId: number; title: string; participantId: number; displayName: string; canEditName?: boolean
+   settlementUnits: { id: number; status: GatheringStatus; inputRevision: number; included: boolean }[]
+   rounds: { id: number; settlementUnitId: number; seq: number; total: number }[]
+   responses: { roundId: number; type: ResponseType; source: ResponseSource }[]
+@@ -35,14 +35,16 @@ export const guestApi = {
+   me: (gatheringId: number) => request<GuestMe>('GET', `/api/v1/guest/gatherings/${gatheringId}/me`),
+   join: (token: string, displayName: string, settlementUnitId: number, responses: GuestAnswer[]) =>
+     request<GuestMe>('POST', `/api/v1/guest/join/${encodeURIComponent(token)}`, { displayName, settlementUnitId, responses }),
+-  respond: (gatheringId: number, unitId: number, answers: GuestAnswer[]) =>
+-    request<void>('PUT', `${unitPath(gatheringId, unitId)}/responses/me`, { answers }),
++  respond: (gatheringId: number, unitId: number, answers: GuestAnswer[], correction?: { displayName: string; expectedDisplayName: string }) =>
++    request<void>('PUT', `${unitPath(gatheringId, unitId)}/responses/me`, { answers, ...correction }),
+   money: (gatheringId: number, unitId: number) => request<GuestMoney>('GET', `${unitPath(gatheringId, unitId)}/settlement`),
+   sent: (transferId: number) => request<void>('POST', `/api/v1/guest/transfers/${transferId}/sent`),
+ }
+ 
+ export function guestError(error: unknown): string {
+   if (error instanceof ApiError) {
++    if (error.code === 'GUEST_NAME_STALE') return '총무가 이름을 정정했거나 다른 창에서 변경했어요. 최신 상태 확인을 눌러 다시 확인해주세요.'
++    if (error.code === 'GUEST_NAME_LOCKED') return '이미 확정된 정산이 있어 이름은 바꿀 수 없어요. 총무에게 알려주세요.'
+     if (error.code === 'GATHERING_NOT_FOUND') return '술자리 링크를 찾을 수 없어요. 만료되었거나 잘못된 링크일 수 있으니 총무에게 새 링크를 요청해주세요.'
+     if (error.status === 401) return '이 브라우저의 참여 정보가 만료되었어요. 기존 참여 내역은 총무에게 확인해주세요. 이름만으로 복구할 수는 없어요.'
+     if (error.code === 'NOT_SETTLEMENT_UNIT_MEMBER') return '이 정산의 참여 대상에서 제외되었어요. 총무에게 확인해주세요.'
