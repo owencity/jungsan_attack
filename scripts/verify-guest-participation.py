@@ -291,4 +291,65 @@ join(empty_room, empty_unit, empty_browser)
 unavailable = call("GET", f"/guest/gatherings/{empty_room['id']}/settlement-units/{empty_unit['id']}/settlement", empty_browser)[0]
 check(unavailable["available"] is False and unavailable["errorCode"] == "NO_ROUNDS" and unavailable["total"] is None,
       "아직 차수 없는 술자리는 개인 금액 준비 중으로 표시")
+# FC-032: 이름은 표시 정보만 바꾸며 응답/보상/브라우저 신원을 새로 만들지 않는다.
+name_gathering, name_unit, name_root, name_round = create()
+name_browser = session()
+name_me = join(name_gathering, name_unit, name_browser, name_round, "김오타")
+name_pid = name_me["participantId"]
+name_path = f"/guest/gatherings/{name_gathering['id']}/settlement-units/{name_unit['id']}/responses/me"
+name_host_path = name_root + f"/participants/{name_pid}/name"
+name_me_path = f"/guest/gatherings/{name_gathering['id']}/me"
+spoons_before = sql(f"SELECT spoon_count FROM users WHERE id={host_id}")
+preview_before = call("GET", name_root + "/settlement/preview", host_cookie)[0]
+correction = {"answers": [{"roundId": name_round, "type": "DRANK"}], "displayName": "김정정", "expectedDisplayName": "김오타"}
+call("PUT", name_path, name_browser, correction, 204)
+corrected = call("GET", name_me_path, name_browser)[0]
+check(corrected["participantId"] == name_pid and corrected["displayName"] == "김정정" and corrected["canEditName"], "이름과 응답 수정 후 기존 참여자 신원 유지")
+check(corrected["responses"][0]["type"] == "DRANK" and sql(f"SELECT spoon_count FROM users WHERE id={host_id}") == spoons_before, "응답도 함께 저장하고 스푼 추가 없음")
+revision_after = corrected["settlementUnits"][0]["inputRevision"]
+call("PUT", name_path, name_browser, correction, 204)
+check(call("GET", name_me_path, name_browser)[0]["settlementUnits"][0]["inputRevision"] == revision_after, "동일 이름·응답 재시도는 revision도 그대로")
+call("POST", name_root + "/settlement", host_cookie, {"inputRevision": preview_before["inputRevision"], "inputHash": preview_before["inputHash"]}, 409)
+check(True, "이름 수정 전 미리보기로 정산 확정 불가")
+call("PUT", name_path, name_browser, {**correction, "displayName": "김실패", "expectedDisplayName": "김정정", "answers": [{"roundId": 99999999, "type": "SOBER"}]}, 404)
+check(call("GET", name_me_path, name_browser)[0]["displayName"] == "김정정", "응답 실패 시 이름 정정도 롤백")
+call("PUT", name_path, session(), correction, 403)
+call("PUT", name_path, name_browser, correction, 403, origin="https://evil.test")
+call("PUT", name_host_path, name_browser, {"displayName": "김총무", "expectedDisplayName": "김정정"}, 401)
+call("PUT", name_root + f"/participants/{name_gathering['me']['participantId']}/name", host_cookie, {"displayName": "김총무", "expectedDisplayName": "검증총무"}, 403)
+check(True, "다른 브라우저·출처·비회원 총무 사칭·회원 이름 수정 거절")
+call("PUT", name_host_path, host_cookie, {"displayName": "김총무", "expectedDisplayName": "김정정"}, 204)
+stale = call("PUT", name_path, name_browser, {**correction, "displayName": "김옛날", "expectedDisplayName": "김정정"}, 409)[0]
+check(stale["code"] == "GUEST_NAME_STALE" and call("GET", name_me_path, name_browser)[0]["displayName"] == "김총무", "총무 정정 뒤 오래된 참여 화면의 덮어쓰기 방지")
+other_person = join(name_gathering, name_unit, session(), name_round, "김총무")
+check(other_person["participantId"] != name_pid, "같은 이름은 기존 참여자 수정 권한이 아님")
+new_unit = call("POST", f"/gatherings/{name_gathering['id']}/settlement-units", host_cookie,
+    {"requestId": str(uuid.uuid4()), "participantIds": [name_gathering["me"]["participantId"], name_pid]}, 201)[0]
+new_root = f"/gatherings/{name_gathering['id']}/settlement-units/{new_unit['id']}"
+before_units = call("GET", name_me_path, name_browser)[0]["settlementUnits"]
+call("PUT", name_host_path, host_cookie, {"displayName": "김공유", "expectedDisplayName": "김총무"}, 204)
+after_units = call("GET", name_me_path, name_browser)[0]["settlementUnits"]
+check(all(after["inputRevision"] == before["inputRevision"] + 1 for before, after in zip(before_units, after_units)), "공유 이름 정정 시 모든 소속 단위 미리보기 갱신")
+with ThreadPoolExecutor(max_workers=2) as executor:
+    changes = list(executor.map(lambda name: call("PUT", name_host_path, host_cookie,
+        {"displayName": name, "expectedDisplayName": "김공유"}, None)[2], ["김먼저", "김나중"]))
+check(sorted(changes) == [204, 409], "동시 이름 정정 중 하나만 기존 이름을 바꿈")
+call("PUT", name_root + "/responses/me", host_cookie, {"answers": [{"roundId": name_round, "type": "SOBER"}]}, 204)
+final_preview = call("GET", name_root + "/settlement/preview", host_cookie)[0]
+current_name = call("GET", name_me_path, name_browser)[0]["displayName"]
+with ThreadPoolExecutor(max_workers=2) as executor:
+    settle_future = executor.submit(call, "POST", name_root + "/settlement", host_cookie,
+        {"inputRevision": final_preview["inputRevision"], "inputHash": final_preview["inputHash"]}, None)
+    rename_future = executor.submit(call, "PUT", name_host_path, host_cookie,
+        {"displayName": "김경합", "expectedDisplayName": current_name}, None)
+    settle_status, rename_status = settle_future.result()[2], rename_future.result()[2]
+check((settle_status, rename_status) in [(200, 409), (409, 204)], "이름 정정·확정 경합은 하나만 성공하고 교착·500 없음")
+if settle_status == 409:
+    final_preview = call("GET", name_root + "/settlement/preview", host_cookie)[0]
+    call("POST", name_root + "/settlement", host_cookie, {"inputRevision": final_preview["inputRevision"], "inputHash": final_preview["inputHash"]})
+locked_me = call("GET", name_me_path, name_browser)[0]
+locked_error = call("PUT", new_root + f"/participants/{name_pid}/name", host_cookie,
+    {"displayName": "김잠금", "expectedDisplayName": locked_me["displayName"]}, 409)[0]
+check(not locked_me["canEditName"] and locked_error["code"] == "GUEST_NAME_LOCKED", "다른 단위가 OPEN이어도 확정된 이름은 보호")
+check(sql(f"SELECT COUNT(*) FROM guest_participations WHERE participant_id={name_pid}") == "1", "정정·경합 후 비회원 연결 하나 유지")
 print(f"GUEST-PARTICIPATION: {checks} checks passed", flush=True)

@@ -223,11 +223,57 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         respondAs(gatheringId,unit(gatheringId,settlementUnit.id),joined,joined.id,ResponseRequest(request.responses),"SELF")
         return guestMe(gatheringId,browserHash)
     }
-    fun guestRespond(gatheringId: Long, settlementUnitId: Long, browserHash: String, request: ResponseRequest) {
+    fun guestRespond(gatheringId: Long, settlementUnitId: Long, browserHash: String, request: ResponseRequest,
+        displayName: String? = null, expectedDisplayName: String? = null) {
+        if (displayName != null) lockNameScope(gatheringId)
         val settlementUnit=unit(gatheringId,settlementUnitId)
         room(gatheringId,true)
         val participant=guestPerson(gatheringId,browserHash)
-        respondAs(gatheringId,settlementUnit,participant,participant.id,request,"SELF")
+        SettlementWorkflow.open(settlementUnit)
+        SettlementWorkflow.member(settlementUnit,participant.id)
+        if (displayName != null) correctGuestName(gatheringId,participant,displayName,expectedDisplayName)
+        respondAs(gatheringId,settlementUnit,if (displayName != null) guestPerson(gatheringId,browserHash) else participant,participant.id,request,"SELF")
+    }
+
+    // 이름은 단위 간 공유한다. 기존 단위→술자리 잠금 순서를 유지하도록 전체 단위를 먼저 고정한다.
+    private fun lockNameScope(gatheringId: Long) {
+        val lockedIds = db.rows("SELECT id FROM settlement_units WHERE gathering_id=:g ORDER BY id FOR UPDATE",
+            "g" to gatheringId).map { it.long("id") }
+        room(gatheringId,true)
+        val currentIds = db.rows("SELECT id FROM settlement_units WHERE gathering_id=:g ORDER BY id",
+            "g" to gatheringId).map { it.long("id") }
+        // 새 단위를 여기서 추가 잠그면 단위→술자리 순서가 역전된다. 전체 요청을 재시도하게 한다.
+        if (lockedIds != currentIds) fail("SETTLEMENT_INPUT_CHANGED")
+    }
+
+    fun renameGuest(gatheringId: Long, settlementUnitId: Long, userId: Long, participantId: Long, request: GuestNameRequest) {
+        lockNameScope(gatheringId)
+        val settlementUnit = authorize(gatheringId,settlementUnitId,userId)
+        SettlementWorkflow.member(settlementUnit,participantId)
+        val target = db.rows("""
+            SELECT participant.id,participant.name FROM participants participant
+            JOIN guest_participations guest ON guest.participant_id=participant.id AND guest.gathering_id=participant.gathering_id
+            WHERE participant.id=:participant AND participant.gathering_id=:g
+              AND participant.user_id IS NULL AND participant.status='ACTIVE'
+        """.trimIndent(),"participant" to participantId,"g" to gatheringId).singleOrNull()
+            ?: fail("NOT_PARTICIPANT",status=HttpStatus.FORBIDDEN)
+        correctGuestName(gatheringId,PersonInput(participantId,0,target.text("name")),request.displayName,request.expectedDisplayName)
+    }
+
+    private fun correctGuestName(gatheringId: Long, participant: PersonInput, submitted: String, expected: String?) {
+        val memberships = db.rows("""
+            SELECT settlement_unit.id,settlement_unit.status,membership.status member_status
+            FROM settlement_units settlement_unit JOIN settlement_unit_members membership ON membership.settlement_unit_id=settlement_unit.id
+            WHERE settlement_unit.gathering_id=:g AND membership.participant_id=:participant
+        """.trimIndent(),"g" to gatheringId,"participant" to participant.id)
+        val name = app.jeongsan.server.guest.GuestPolicy.correctedName(participant.name,submitted,expected,
+            memberships.any { it.text("status") != "OPEN" })
+        if (name == participant.name) return
+        db.update("UPDATE participants SET name=:name WHERE id=:participant AND gathering_id=:g",
+            "name" to name,"participant" to participant.id,"g" to gatheringId)
+        val affectedIds = memberships.filter { it.text("member_status") == "ACTIVE" }.map { it.long("id") }
+        if (affectedIds.isNotEmpty()) db.update("UPDATE settlement_units SET input_revision=input_revision+1 WHERE id IN (:ids)","ids" to affectedIds)
+        touch(gatheringId)
     }
     @Transactional(readOnly=true,isolation=Isolation.READ_COMMITTED)
     fun guestMe(gatheringId: Long, browserHash: String): Map<String,Any?> {
@@ -252,6 +298,7 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
             ORDER BY round_entry.seq
         """.trimIndent(),"gathering" to gatheringId,"participant" to participant.id)
         return mapOf("gatheringId" to gatheringId,"title" to gathering["name"],"participantId" to participant.id,"displayName" to participant.name,
+            "canEditName" to (units.any { it.text("member_status") == "ACTIVE" } && units.all { it.text("status") == "OPEN" }),
             "settlementUnits" to units.map{mapOf("id" to it["id"],"status" to it["status"],"inputRevision" to it["input_revision"],"included" to (it.text("member_status")=="ACTIVE"))},
             "rounds" to rounds.map{mapOf("id" to it["id"],"settlementUnitId" to it["settlement_unit_id"],"seq" to it["seq"],"total" to it["total_amount"])},
             "responses" to responses.map{mapOf("roundId" to it["round_id"],"type" to it["type"],"source" to it["source"])})

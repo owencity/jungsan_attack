@@ -40,6 +40,7 @@ class GatheringApiSpec : StringSpec({
         Case("POST","/api/v1/transfers/1/sent",code=204),Case("POST","/api/v1/transfers/1/confirm",code=204),Case("POST","/api/v1/transfers/1/not-received",code=204),
         Case("POST","/api/v1/gatherings/1/settlement-units","""{"requestId":"00000000-0000-0000-0000-000000000001","participantIds":[1,2]}""",201),
         Case("PUT",root+"/participants/2",code=204),Case("DELETE",root+"/participants/2",code=204),
+        Case("PUT",root+"/participants/2/name","""{"displayName":"김정정","expectedDisplayName":"김하나"}""",204),
         Case("PUT",root+"/headcount","""{"headcount":3}""",204),
         Case("POST",root+"/rounds",round,201),Case("PUT",root+"/rounds/1",round),Case("DELETE",root+"/rounds/1",code=204),
         Case("PUT",root+"/responses/me",answers,204),Case("PUT",root+"/participants/2/responses",answers,204),

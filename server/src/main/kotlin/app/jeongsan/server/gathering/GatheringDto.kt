@@ -14,6 +14,8 @@ data class RoundRequest(@field:Min(1) @field:Max(1_000_000_000_000) val total: L
     @field:Valid @field:Size(max=100) val drinks: List<DrinkRequest> = emptyList())
 data class AnswerRequest(val roundId: Long, val type: String)
 data class ResponseRequest(@field:Size(max=1000) val answers: List<AnswerRequest>)
+data class GuestNameRequest(@field:Size(max=100) val displayName: String,
+    @field:Size(max=100) val expectedDisplayName: String)
 data class JoinRequest(val settlementUnitId: Long, @field:Size(max=1000) val responses: List<AnswerRequest> = emptyList())
 data class SettleRequest(val inputRevision: Long, @field:Pattern(regexp="[a-f0-9]{64}") val inputHash: String)
 data class MessageRequest(@field:Size(min=1,max=200) val text: String)

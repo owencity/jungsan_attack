@@ -8,6 +8,12 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/v1/gatherings/{gid}/settlement-units")
 class SettlementUnitController(private val service: GatheringService) {
+    @PutMapping("/{id}/participants/{pid}/name")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun renameGuest(@PathVariable gid: Long, @PathVariable id: Long, @PathVariable pid: Long,
+        @LoginUser userId: Long, @Valid @RequestBody request: GuestNameRequest) =
+        service.renameGuest(gid,id,userId,pid,request)
+
     @PutMapping("/{id}/headcount")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun headcount(@PathVariable gid: Long, @PathVariable id: Long, @LoginUser userId: Long,
