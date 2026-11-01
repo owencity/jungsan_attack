@@ -1,0 +1,209 @@
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/ApiClient.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/ApiClient.kt
+index a99bb07..0247a6d 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/ApiClient.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/ApiClient.kt
+@@ -132,6 +132,8 @@ class ApiClient(
+     /** 인원(FC-020) — 총무·정산 전. 목표 인원을 바꿔도 확정하지 않는다 */
+     suspend fun putHeadcount(gid: Long, uid: Long, headcount: Int) = exec(HttpMethod.Put, "${u(gid, uid)}/headcount", HeadcountBody(headcount))
+     suspend fun removeMember(gid: Long, uid: Long, pid: Long) = exec(HttpMethod.Delete, "${u(gid, uid)}/participants/$pid")
++    suspend fun renameGuest(gid: Long, uid: Long, pid: Long, name: String, expected: String) =
++        exec(HttpMethod.Put, "${u(gid, uid)}/participants/$pid/name", GuestNameBody(name, expected))
+     suspend fun addRound(gid: Long, uid: Long, body: RoundBody): IdBody = call(HttpMethod.Post, "${u(gid, uid)}/rounds", body)
+     suspend fun putRound(gid: Long, uid: Long, rid: Long, body: RoundBody): IdBody = call(HttpMethod.Put, "${u(gid, uid)}/rounds/$rid", body)
+     suspend fun deleteRound(gid: Long, uid: Long, rid: Long) = exec(HttpMethod.Delete, "${u(gid, uid)}/rounds/$rid")
+@@ -213,6 +215,7 @@ data class MeResponse(
+ @Serializable data class SettleBody(val inputRevision: Int, val inputHash: String)
+ 
+ @Serializable data class DisplayNameRequest(val displayName: String)
++@Serializable data class GuestNameBody(val displayName: String, val expectedDisplayName: String)
+ @Serializable data class TicketRequest(val ticket: String, val codeVerifier: String)
+ @Serializable data class TokenResponse(val token: String, val expiresAt: String)
+ @Serializable internal data class ErrorBody(val code: String? = null, val message: String? = null)
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/V3Gateway.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/V3Gateway.kt
+index 5600800..98d9028 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/V3Gateway.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/api/V3Gateway.kt
+@@ -375,6 +375,13 @@ class V3Gateway(private val store: V3Store, private val client: ApiClient?, val
+         return mutate(c, gid) { c.removeMember(gid, uid, participantId) }
+     }
+ 
++    suspend fun renameGuest(roomId: Id, participantId: Id, name: String, expected: String): String? {
++        validateName(name).firstOrNull()?.let { return it }
++        val client = client ?: return "이름 정정은 실제 비회원 참여자에게 사용할 수 있어요."
++        val (gatheringId, unitId) = ctx(roomId)
++        return mutate(client, gatheringId) { client.renameGuest(gatheringId, unitId, participantId, name.trim(), expected) }
++    }
++
+     /** 스푼(🥄) — 복수 총무 지급 규칙이 서버에서 미결(SETTLEMENT_UNITS §7)이라 API 모드에선 아직 열지 않는다 */
+     fun giveSpoon(roomId: Id): String? {
+         if (client == null && !isDemoMode) { store.giveSpoon(roomId); return null }
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/ParticipantSheet.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/ParticipantSheet.kt
+index f5bcf3a..a3143d6 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/ParticipantSheet.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/ParticipantSheet.kt
+@@ -3,6 +3,8 @@ package app.jeongsan.v3.ui
+ import androidx.compose.foundation.background
+ import androidx.compose.foundation.border
+ import androidx.compose.foundation.clickable
++import androidx.compose.foundation.rememberScrollState
++import androidx.compose.foundation.verticalScroll
+ import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.layout.Column
+ import androidx.compose.foundation.layout.Row
+@@ -14,11 +16,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
+ import androidx.compose.material3.HorizontalDivider
+ import androidx.compose.material3.ModalBottomSheet
+ import androidx.compose.material3.Text
++import androidx.compose.material3.OutlinedTextField
+ import androidx.compose.material3.rememberModalBottomSheetState
+ import androidx.compose.runtime.Composable
+ import androidx.compose.runtime.getValue
+ import androidx.compose.runtime.mutableStateOf
+ import androidx.compose.runtime.remember
++import androidx.compose.runtime.rememberCoroutineScope
+ import androidx.compose.runtime.setValue
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+@@ -44,6 +48,9 @@ import app.jeongsan.v3.label
+ import app.jeongsan.v3.nameWithNick
+ import app.jeongsan.v3.removeBlockedReason
+ import app.jeongsan.v3.responseOf
++import app.jeongsan.v3.validateName
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.CancellationException
+ 
+ /**
+  * R4 참여자 관리 시트(총무) — 웹 `ParticipantSheet.tsx`.
+@@ -61,6 +68,7 @@ fun ParticipantSheet(
+     onClose: () -> Unit,
+     onExempt: (Id, Boolean) -> Unit,
+     onRemove: () -> Unit,
++    onRename: suspend (String, String) -> String?,
+ ) {
+     val p = g.participants.find { it.id == participantId } ?: return
+     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+@@ -68,10 +76,15 @@ fun ParticipantSheet(
+     val open = g.status == GatheringStatus.OPEN
+     val blocked = removeBlockedReason(g, participantId)
+     val paid = g.rounds.filter { it.payerParticipantId == participantId }
++    var name by remember(participantId) { mutableStateOf(p.displayName) }
++    val expectedName = remember(participantId) { p.displayName }
++    var nameError by remember(participantId) { mutableStateOf<String?>(null) }
++    var savingName by remember(participantId) { mutableStateOf(false) }
++    val scope = rememberCoroutineScope()
+ 
+     ModalBottomSheet(onDismissRequest = onClose, sheetState = state, shape = RectangleShape, containerColor = Color.White) {
+         Column(
+-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 18.dp).navigationBarsPadding(),
++            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 18.dp).navigationBarsPadding(),
+             verticalArrangement = Arrangement.spacedBy(10.dp),
+         ) {
+             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+@@ -86,6 +99,29 @@ fun ParticipantSheet(
+                 )
+             }
+ 
++            if (open && p.userId == null) {
++                OutlinedTextField(value = name, onValueChange = { name = it; nameError = null },
++                    label = { Text("참여자 이름 정정") }, singleLine = true, enabled = !savingName,
++                    shape = RectangleShape, modifier = Modifier.fillMaxWidth())
++                Text("같은 술자리의 이름이 함께 바뀌어요. 이미 확정된 정산이 있으면 변경할 수 없어요.", color = JsColor.ink3, fontSize = 12.sp)
++                nameError?.let { Text(it, color = JsColor.warn, fontSize = 13.sp) }
++                CtaButton(if (savingName) "저장 중…" else "이름 저장", enabled = !savingName) {
++                    val invalid = validateName(name).firstOrNull()
++                    if (invalid != null) nameError = invalid
++                    else if (!savingName) {
++                        savingName = true
++                        scope.launch {
++                            try {
++                                nameError = onRename(name.trim(), expectedName)
++                                if (nameError == null) onClose()
++                            } catch (cancelled: CancellationException) { throw cancelled }
++                            catch (_: Exception) { nameError = "저장하지 못했어요. 연결을 확인하고 다시 시도해주세요." }
++                            finally { savingName = false }
++                        }
++                    }
++                }
++            }
++
+             Column(Modifier.fillMaxWidth().border(2.dp, JsColor.line)) {
+                 g.rounds.forEachIndexed { i, r ->
+                     if (i > 0) HorizontalDivider(color = JsColor.line)
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/RoomScreen.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/RoomScreen.kt
+index 70f7e5c..f97db74 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/RoomScreen.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/RoomScreen.kt
+@@ -98,6 +98,7 @@ fun RoomScreen(
+     onExempt: (Id, Id, Boolean) -> Unit,
+     /** R4 — 총무가 정산 전 한 사람을 내보낸다 */
+     onRemove: (Id) -> Unit,
++    onRename: suspend (Id, String, String) -> String? = { _, _, _ -> "이름 정정을 사용할 수 없어요." },
+     /** 안내·링크를 즉시 복사하고 카카오톡을 열지 묻는다 — 총무는 위 바에서 언제든 */
+     onShare: () -> Unit,
+     /** 참여자가 "다음 차는 내가 계산했어요" — 고른 사람(나 빼고)과 이 술자리 안에 내 정산 단위를 만든다(FC-015) */
+@@ -181,6 +182,7 @@ fun RoomScreen(
+             ParticipantSheet(
+                 g = g,
+                 participantId = pid,
++                onRename = { name, expected -> onRename(pid, name, expected) },
+                 onClose = { managing = null },
+                 onExempt = { rid, ex -> onExempt(pid, rid, ex) },
+                 onRemove = {
+diff --git a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/V3Nav.kt b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/V3Nav.kt
+index 253f7d3..4cd7df2 100644
+--- a/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/V3Nav.kt
++++ b/composeApp/src/commonMain/kotlin/app/jeongsan/v3/ui/V3Nav.kt
+@@ -318,6 +318,7 @@ fun NavGraphBuilder.v3Graph(nav: NavHostController, store: V3Store, gateway: V3G
+             // 면제는 서버 API 보류(SETTLEMENT_UNITS §4.2) — 화면에서도 꺼져 있다(Features.SHOW_EXEMPT)
+             onExempt = { pid, rid, ex -> store.setExempt(g.id, pid, rid, ex) },
+             onRemove = { pid -> scope.fire { gateway.removeParticipant(g.id, pid) } },
++            onRename = { pid, name, expected -> gateway.renameGuest(g.id, pid, name, expected) },
+             onShare = { share(if (gateway.isDemoMode) demoShare else shareMessage(g, shareUrl(SHARE_BASE, g.shareToken))) },
+             onStartNext = { ids ->
+                 // 같은 술자리 안에 내가 총무인 정산 단위 → 바로 다음 차 금액 입력(FC-015)
+diff --git a/composeApp/src/commonTest/kotlin/app/jeongsan/v3/ApiTest.kt b/composeApp/src/commonTest/kotlin/app/jeongsan/v3/ApiTest.kt
+index cb066b3..d272b58 100644
+--- a/composeApp/src/commonTest/kotlin/app/jeongsan/v3/ApiTest.kt
++++ b/composeApp/src/commonTest/kotlin/app/jeongsan/v3/ApiTest.kt
+@@ -42,6 +42,21 @@ class ApiTest {
+ 
+     private fun bodyText(req: HttpRequestData) = (req.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()
+ 
++    @Test fun 총무_이름_정정은_신원과_기존_이름을_명시하고_204를_받는다() = runTest {
++        val (engine, calls) = server(HttpStatusCode.NoContent to "")
++        ApiClient("https://api.test", MemoryTokenStore("host"), engine).renameGuest(1, 2, 3, "김정정", "김오타")
++        assertEquals(HttpMethod.Put, calls.single().method)
++        assertEquals("https://api.test/api/v1/gatherings/1/settlement-units/2/participants/3/name", calls.single().url.toString())
++        assertEquals("""{"displayName":"김정정","expectedDisplayName":"김오타"}""", bodyText(calls.single()))
++        assertEquals("Bearer host", calls.single().headers[HttpHeaders.Authorization])
++    }
++
++    @Test fun 확정된_이름의_정정_거절을_성공으로_취급하지_않는다() = runTest {
++        val (engine, _) = server(HttpStatusCode.Conflict to """{"code":"GUEST_NAME_LOCKED","message":"이미 확정된 정산이 있어 이름을 바꿀 수 없어요."}""")
++        val error = assertFailsWith<ApiError> { ApiClient("https://api.test", MemoryTokenStore("host"), engine).renameGuest(1, 2, 3, "김정정", "김오타") }
++        assertEquals("GUEST_NAME_LOCKED", error.code)
++    }
++
+     @Test fun 앱은_쿠키_대신_Bearer_토큰으로_인증한다() = runTest {
+         val (engine, calls) = server(HttpStatusCode.OK to me)
+         ApiClient("https://api.test", MemoryTokenStore("tok-1"), engine).me()
+diff --git a/docs/FC032-guest-name-correction.md b/docs/FC032-guest-name-correction.md
+new file mode 100644
+index 0000000..4499f79
+--- /dev/null
++++ b/docs/FC032-guest-name-correction.md
+@@ -0,0 +1,14 @@
++# FC-032 총무의 비회원 이름 정정
++
++참여자 관리 시트에서 OPEN 비회원 이름을 정정한다. 기존 디자인 안에 이름 입력/저장과 오류 안내를 추가했다.
++회원 이름은 이 기능으로 바꾸지 않는다. 실제 비회원 기능이며 가상 데모의 회원 역할 전환과 구분한다.
++
++`PUT /api/v1/gatherings/{gid}/settlement-units/{id}/participants/{pid}/name`
++본문 displayName/expectedDisplayName, 성공 204. 앱은 기존 Bearer 인증을 유지한다.
++저장 후 술자리를 다시 읽고, 중복 탭을 막으며 실패하면 입력과 안내를 유지한다.
++공유 이름이므로 다른 단위에서 이미 확정됐으면 서버가 GUEST_NAME_LOCKED로 거절한다.
++동시에 먼저 정정된 이름을 덮지 않도록 시트를 열 때의 이름을 expectedDisplayName으로 보낸다.
++participantId·응답·스푼은 서버가 유지하며 앱에서 재계산하지 않는다.
++
++로컬 Android 컴파일 및 단위 테스트 통과. iOS CI·실기기·TestFlight 업로드 상태는 PR에 별도 기록한다.
++백엔드 PR54/API v22가 먼저 배포되어야 한다. 스터디 PR은 병합하지 않는다.

@@ -30,6 +30,13 @@ class GuestApiSpec : StringSpec({
     val responsePath="/api/v1/guest/gatherings/1/settlement-units/10/responses/me"
     beforeTest { Mockito.reset(service) }
 
+    "비회원 이름 정정도 인증한 본인의 응답과 함께 전달한다" {
+        mvc.perform(put(responsePath).cookie(cookie).header("Origin","https://web.test").contentType(MediaType.APPLICATION_JSON)
+            .content("""{"answers":[],"displayName":"김정정","expectedDisplayName":"김하나","participantId":999}"""))
+            .andExpect(status().isNoContent)
+        Mockito.verify(service).guestRespond(1,10,browserHash,ResponseRequest(emptyList()),"김정정","김하나")
+    }
+
     "세션 초기화는 httpOnly Secure Lax 경로 제한 쿠키만 발급하고 회원을 만들지 않는다" {
         val response=mvc.perform(post("/api/v1/guest/session").header("Origin","https://web.test"))
             .andExpect(status().isNoContent).andExpect(header().string("Cache-Control","no-store")).andReturn().response

@@ -8,6 +8,14 @@ import org.springframework.http.HttpStatus;
 public final class GuestPolicy {
     private GuestPolicy() {}
 
+    public static String correctedName(String current, String submitted, String expected, boolean locked) {
+        String name = displayName(submitted);
+        if (current.equals(name)) return current;
+        if (locked) throw new ApiException("GUEST_NAME_LOCKED", HttpStatus.CONFLICT, "이미 확정된 정산이 있어 이름을 바꿀 수 없어요.");
+        if (!current.equals(expected)) throw new ApiException("GUEST_NAME_STALE", HttpStatus.CONFLICT, "이름이 변경되었어요. 최신 상태를 확인해주세요.");
+        return name;
+    }
+
     public static String displayName(String value) {
         int first = 0;
         int last = value.length();

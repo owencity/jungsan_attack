@@ -17,6 +17,10 @@ import java.time.Duration
 data class GuestJoinRequest(@field:Size(max = 100) val displayName: String, val settlementUnitId: Long,
     @field:Size(max = 1000) val responses: List<AnswerRequest> = emptyList())
 
+data class GuestResponseRequest(@field:Size(max = 1000) val answers: List<AnswerRequest>,
+    @field:Size(max = 100) val displayName: String? = null,
+    @field:Size(max = 100) val expectedDisplayName: String? = null)
+
 @RestController
 @RequestMapping("/api/v1/guest")
 class GuestController(private val service: GatheringService, private val tokens: GuestTokens,
@@ -49,9 +53,9 @@ class GuestController(private val service: GatheringService, private val tokens:
 
     @PutMapping("/gatherings/{gatheringId}/settlement-units/{settlementUnitId}/responses/me", consumes = ["application/json"])
     fun respond(@PathVariable gatheringId: Long, @PathVariable settlementUnitId: Long, @GuestBrowser browser: GuestIdentity,
-        @Valid @RequestBody body: ResponseRequest, request: HttpServletRequest): ResponseEntity<Unit> {
+        @Valid @RequestBody body: GuestResponseRequest, request: HttpServletRequest): ResponseEntity<Unit> {
         GuestPolicy.requireOrigin(request.getHeader(HttpHeaders.ORIGIN), frontendOrigin)
-        service.guestRespond(gatheringId, settlementUnitId, browser.browserHash, body)
+        service.guestRespond(gatheringId, settlementUnitId, browser.browserHash, ResponseRequest(body.answers), body.displayName, body.expectedDisplayName)
         return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "no-store").build()
     }
 

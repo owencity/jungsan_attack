@@ -7,6 +7,16 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 
 class GuestPolicySpec : StringSpec({
+    "이름 정정은 확정·오래된 이름을 거절하고 동일 이름 재시도는 허용한다" {
+        for (policy in listOf(GuestPolicy::correctedName, JavaGuestPolicy::correctedName)) {
+            policy("김하나", " 김둘 ", "김하나", false) shouldBe "김둘"
+            policy("김둘", "김둘", "김하나", true) shouldBe "김둘"
+            shouldThrow<ApiException> { policy("김하나", "김둘", "김하나", true) }.code shouldBe "GUEST_NAME_LOCKED"
+            shouldThrow<ApiException> { policy("김하나", "김둘", null, false) }.code shouldBe "GUEST_NAME_STALE"
+            shouldThrow<ApiException> { policy("김하나", "김둘", "김셋", false) }.code shouldBe "GUEST_NAME_STALE"
+            shouldThrow<ApiException> { policy("김하나", " ", "김하나", false) }.code shouldBe "MALFORMED_REQUEST"
+        }
+    }
     "성이름은 Unicode 코드포인트로 검증하고 양쪽 구현 모두 주변 공백만 제거한다" {
         for ((submitted, expected) in listOf(" 김하나 " to "김하나", "\u00a0김하나\u2003" to "김하나", "😀😀" to "😀😀", "가".repeat(10) to "가".repeat(10))) {
             GuestPolicy.displayName(submitted) shouldBe expected

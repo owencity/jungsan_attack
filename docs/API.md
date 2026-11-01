@@ -1,4 +1,15 @@
-# 정산어택 — API 계약 · v21
+# 정산어택 — API 계약 · v22
+
+> **v22 변경(2026-11-01)** — [FC-032 비회원 이름 정정](flow-changes/2026-11-01-guest-name-correction.md).
+>
+> | 절 | 변경 |
+> |---|---|
+> | 비회원 본인 응답 PUT | 선택 displayName/expectedDisplayName, 응답과 이름 원자 저장·204. 생략 시 기존 동작 |
+> | 비회원 본인 GET | canEditName 추가. 소속 이력 전부 OPEN이며 활성 소속이 있을 때 true |
+> | PUT /api/v1/gatherings/{gid}/settlement-units/{id}/participants/{pid}/name | 총무가 자기 OPEN 명단의 비회원 이름 정정. JSON displayName/expectedDisplayName, 성공204 |
+> | 오류 | 409 GUEST_NAME_LOCKED(확정 이력), GUEST_NAME_STALE(기존 이름 불일치). 400 MALFORMED_REQUEST(이름), 403 NOT_PARTICIPANT/NOT_SETTLEMENT_UNIT_MEMBER/NOT_SETTLEMENT_UNIT_HOST, 409 SETTLEMENT_UNIT_NOT_OPEN은 기존 의미 |
+>
+> [상세 요청·권한·재시도 계약](GUEST_PARTICIPATION.md#이름-정정-fc-032). 이름으로 본인 권한을 복구하지 않는다. 회원 프로필·DB 스키마·core 계산은 변경하지 않는다.
 
 > **v21 변경(2026-11-01)** — [FC-031 참석자 스푼](flow-changes/2026-11-01-attendance-spoons.md).
 >
