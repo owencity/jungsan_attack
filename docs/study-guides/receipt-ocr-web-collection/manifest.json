@@ -1,0 +1,39 @@
+{
+  "pullRequest": "https://github.com/owencity/jungsan_attack/pull/34",
+  "base": "b99f7a745aacded10ec01defbd91a55171fa23ed",
+  "sourceHead": "ac71392c26046f30e2fcaa59015f603e87976deb",
+  "policyAndCatalogCommit": "8d27496270e6c8adcb78b4580d68c150f9c3cce6",
+  "files": [
+    "receipt-ocr/examples/manifest.web-pubs.example.json"
+  ],
+  "diffSha256": "858932b94d7bc168257c01487b1734ee3fb1f236da9509637a2fc7d4d3fe4bdc",
+  "validation": {
+    "webOnly": true,
+    "coreReceiptImages": 57,
+    "coreFamilyGroups": 48,
+    "allLogicalCandidateImages": 87,
+    "mixedOriginHfImages": 20,
+    "hfAlcoholImages": 0,
+    "newPrintedAlcoholEvaluationImages": 13,
+    "nativeRequests": 14,
+    "executionFailures": 0,
+    "totalExact": 4,
+    "allSelectedDrinkFieldsExact": 2,
+    "allAnnotatedChecksMatch": 1,
+    "expectedNativeExitCode": 1,
+    "medianSeconds": 9.166,
+    "meanSeconds": 8.979,
+    "minSeconds": 5.013,
+    "maxSeconds": 12.166,
+    "startupSeconds": 4.928,
+    "unitTests": 112,
+    "unitResult": "OK",
+    "unitSeconds": 0.529,
+    "serverCompile": "BUILD SUCCESSFUL in 34s",
+    "ocrRuntimeCodeChanged": false,
+    "independentAccuracyBenchmark": false,
+    "armOrProductionTested": false
+  },
+  "imagesOrRawTokensCommitted": false,
+  "review": "self-review only; draft PR"
+}

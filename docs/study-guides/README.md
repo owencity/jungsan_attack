@@ -1,5 +1,9 @@
 # PR 리뷰·스터디 기록
 
+영수증 웹 전용 수집 후속은 [고정 근거](receipt-ocr-web-collection/guide.md) ·
+[부분 정답 diff](receipt-ocr-web-collection/changes.diff.patch) · [검증 기준](receipt-ocr-web-collection/manifest.json)을 본다.
+후기/리뷰 57개와 주류 부분 정답 13개를 구분하고 1/13의 미해결도 보존한다. 새 업무 구현/교재 학습은 없다.
+
 영수증 촬영 조건·새 원본 대조는 [가이드](receipt-ocr-capture-campaign/guide.md) ·
 [고정 diff](receipt-ocr-capture-campaign/changes.diff.patch) · [검증 기준](receipt-ocr-capture-campaign/manifest.json)을 본다.
 16개/15묶음의 기대 조건 8개 불일치·숫자 총액 5/10과 부분 정답·메뉴판 오인식을 보존한다. 일반 정확도와 구분한다.
