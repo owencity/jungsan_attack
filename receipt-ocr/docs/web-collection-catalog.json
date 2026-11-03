@@ -1,0 +1,2206 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-03",
+  "referenceMain": "8d27496270e6c8adcb78b4580d68c150f9c3cce6",
+  "ocrRuntimeHead": "b99f7a745aacded10ec01defbd91a55171fa23ed",
+  "summary": {
+    "coreReceiptImages": 57,
+    "coreFamilyGroups": 48,
+    "coreExactByteDuplicates": 0,
+    "coreVisuallyReviewed": 57,
+    "coreKinds": {
+      "card-only": 11,
+      "handwritten": 4,
+      "printed-itemized": 5,
+      "printed-multiline-discount": 1,
+      "handwritten-plus-card-composite": 1,
+      "intermediate-bill-version1": 1,
+      "intermediate-bill-version2": 1,
+      "convenience-store-control": 1,
+      "handwritten-note": 3,
+      "menu-with-handwritten-order": 1,
+      "grocery-printed-alcohol-control": 1,
+      "total-only-control": 6,
+      "itemized-alcohol": 4,
+      "discount-service-challenge": 1,
+      "itemized-no-alcohol-control": 1,
+      "total-only": 10,
+      "no-alcohol-itemized": 1,
+      "printed-alcohol": 3,
+      "total-only-digital": 1
+    },
+    "hfMixedOriginImages": 20,
+    "hfAlcoholImages": 0,
+    "articleCandidateImages": 10,
+    "articleReceiptOrCompositeImages": 5,
+    "articleNonReceiptGraphicsExcluded": 5,
+    "pilotPrintedAlcoholImages": 13,
+    "pilotScope": "12 ordinary printed itemized receipts plus 1 intermediate bill; partial field truth",
+    "allAcquiredLogicalImages": 87,
+    "rawImagesCommitted": false,
+    "allSourcesWeb": true,
+    "phoneCameraBenchmark": false,
+    "commercialTrainingRightsEstablished": false
+  },
+  "core": [
+    {
+      "id": "CS-11750861.jpg",
+      "image": "cslee33/11750861.jpg",
+      "source": "https://cslee33.tistory.com/11750861",
+      "sha256": "26b954146831549550b0ce2ef3bfecde1e121ce5b0b9f6effecefd580f31a22a",
+      "family": "choi-hwangi-ssambap",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 181000
+          }
+        ],
+        "drinks": null,
+        "note": "술이 없다는 정답이 아니라 품목 자체가 없는 카드 전표다."
+      },
+      "bytes": 262881
+    },
+    {
+      "id": "CS-11746969.jpg",
+      "image": "cslee33/11746969.jpg",
+      "source": "https://cslee33.tistory.com/11746969",
+      "sha256": "9e26d28692cd0333df0f7c781da57290a8fd1a93d02b2736df7237d98cfff025",
+      "family": "mapo-yeontan-bulgogi",
+      "kind": "handwritten",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": null,
+            "raw": "192.-"
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "소주",
+            "unitPrice": null,
+            "quantity": 21,
+            "lineAmount": null,
+            "rawUnitPrice": "3-",
+            "rawLineAmount": "63-"
+          },
+          {
+            "printedName": "막걸리",
+            "unitPrice": null,
+            "quantity": 1,
+            "lineAmount": null,
+            "rawUnitPrice": "3-",
+            "rawLineAmount": "3-"
+          }
+        ],
+        "note": "천원 단위 생략 기호로 보이나 명시된 정수 원 금액으로 환산하지 않았다. 수기 도전 자료."
+      },
+      "bytes": 426518
+    },
+    {
+      "id": "CS-11747071.jpg",
+      "image": "cslee33/11747071.jpg",
+      "source": "https://cslee33.tistory.com/11747071",
+      "sha256": "ccb97c6b57aa21d7fb5560d33891c41d3fe0a2ca768e9f46ed0237a0684181b8",
+      "family": "mapo-yeontan-bulgogi",
+      "kind": "handwritten",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": null,
+            "raw": "140-"
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "소주",
+            "unitPrice": null,
+            "quantity": 8,
+            "lineAmount": null,
+            "rawUnitPrice": "3-",
+            "rawLineAmount": "24-"
+          },
+          {
+            "printedName": "맥주",
+            "unitPrice": null,
+            "quantity": 3,
+            "lineAmount": null,
+            "rawUnitPrice": "4-",
+            "rawLineAmount": "12-"
+          },
+          {
+            "printedName": "막걸리",
+            "unitPrice": null,
+            "quantity": 2,
+            "lineAmount": null,
+            "rawUnitPrice": "3-",
+            "rawLineAmount": "6-"
+          }
+        ],
+        "note": "11746969와 같은 가게의 다른 날짜 거래다. 독립 매장으로 나누지 않는다. 원 금액 축약은 환산하지 않았다."
+      },
+      "bytes": 376681
+    },
+    {
+      "id": "CS-11748674.jpg",
+      "image": "cslee33/11748674.jpg",
+      "source": "https://cslee33.tistory.com/11748674",
+      "sha256": "6112f8dbb32f1ae5cff0adf540f64c3607b6719703fa6afcb7dac0841eb95c28",
+      "family": "yeojaman-agujjim",
+      "kind": "printed-itemized",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "총계",
+            "amount": 85000
+          },
+          {
+            "label": "받을금액",
+            "amount": 85000
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "소주(후레쉬)",
+            "unitPrice": 3000,
+            "quantity": 6,
+            "lineAmount": 18000
+          }
+        ],
+        "note": "영수증에 병 단위 근거 없음. canonical 이름·용기를 지정하지 않았다."
+      },
+      "bytes": 250462
+    },
+    {
+      "id": "CS-11749859.png",
+      "image": "cslee33/11749859.png",
+      "source": "https://cslee33.tistory.com/11749859",
+      "sha256": "56b454f75ecac413072f036faa38996542c131a29cb7838258d3bfef32589dfe",
+      "family": "hankook-sundae",
+      "kind": "printed-itemized",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "판매금액",
+            "amount": 87300
+          },
+          {
+            "label": "받을금액",
+            "amount": 87300
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "소주",
+            "unitPrice": 4000,
+            "quantity": 5,
+            "lineAmount": 20000
+          }
+        ],
+        "note": "일반적인 인쇄 영수증. 브랜드·용기 추정 없음."
+      },
+      "bytes": 645450
+    },
+    {
+      "id": "CS-11747466.jpg",
+      "image": "cslee33/11747466.jpg",
+      "source": "https://cslee33.tistory.com/11747466",
+      "sha256": "8c71f7f1d61f56965ce6b5e48b3297803c0023fa6c5adc1c4d22f604d84cd71a",
+      "family": "ibadom-daehwa",
+      "kind": "printed-multiline-discount",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 230000
+          },
+          {
+            "label": "할인금액",
+            "amount": 2000
+          },
+          {
+            "label": "받을금액",
+            "amount": 228000
+          },
+          {
+            "label": "받은금액",
+            "amount": 228000
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "참이슬오리지날",
+            "unitPrice": 3000,
+            "quantity": 1,
+            "lineAmount": 3000
+          }
+        ],
+        "note": "수량 1개는 병 수를 뜻한다고 추정하지 않는다. 할인 전후 총액이 함께 있어 정책 대조 필요."
+      },
+      "bytes": 154230
+    },
+    {
+      "id": "CS-11749971.jpg",
+      "image": "cslee33/11749971.jpg",
+      "source": "https://cslee33.tistory.com/11749971",
+      "sha256": "9f16a74e64c2e1b1d8beba99eb970f5c74639da1612b66c20e644b7baddccda7",
+      "family": "gyerim-sikdang",
+      "kind": "handwritten-plus-card-composite",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "공급대가총액(수기)",
+            "amount": 307000
+          },
+          {
+            "label": "합계(카드 전표)",
+            "amount": 296000
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "소주",
+            "unitPrice": null,
+            "quantity": 8,
+            "lineAmount": null
+          },
+          {
+            "printedName": "맥주",
+            "unitPrice": null,
+            "quantity": 6,
+            "lineAmount": null
+          },
+          {
+            "printedName": "막걸리",
+            "unitPrice": null,
+            "quantity": 3,
+            "lineAmount": null
+          }
+        ],
+        "note": "수기 총액/카드 총액이 다르고 아래 추가 행 글씨가 불확실하다. 위 3행은 부분 정답일 뿐 전체 주류 행 목록 아님. 본문 요약 수량과도 달라 인쇄 원본 정확도 자료로 세지 않는다."
+      },
+      "bytes": 283774
+    },
+    {
+      "id": "CS-11749623-1.jpg",
+      "image": "cslee33/11749623-1.jpg",
+      "source": "https://cslee33.tistory.com/11749623",
+      "sha256": "c01d717438392187f3ac4e26e2e6cee5bec7d92761dcc1a63226e43f1b77ba82",
+      "family": "eosa-chultto-isu-20191227",
+      "kind": "intermediate-bill-version1",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "총액",
+            "amount": 394500
+          },
+          {
+            "label": "합계",
+            "amount": 394500
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "(+)소주",
+            "unitPrice": 4500,
+            "quantity": 19,
+            "lineAmount": 85500
+          }
+        ],
+        "note": "같은 모임의 20:48 중간계산서. 21:06 재출력본과 독립 거래/매장이 아니다."
+      },
+      "bytes": 231192
+    },
+    {
+      "id": "CS-11749623-2.jpg",
+      "image": "cslee33/11749623-2.jpg",
+      "source": "https://cslee33.tistory.com/11749623",
+      "sha256": "0cffc5af26767a6cef2aefa1ffbbfee272592d8dbc2843dd365fe7094d709af2",
+      "family": "eosa-chultto-isu-20191227",
+      "kind": "intermediate-bill-version2",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "총액",
+            "amount": 390000
+          },
+          {
+            "label": "합계",
+            "amount": 390000
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "(+)소주",
+            "unitPrice": 4500,
+            "quantity": 18,
+            "lineAmount": 81000
+          }
+        ],
+        "note": "같은 모임의 21:06 중간계산서. 이전본의 소주 19→18 수정으로 보이나 변경 이유 자체는 추정하지 않는다. 같은 family 유지."
+      },
+      "bytes": 220285
+    },
+    {
+      "id": "CS-11749837.png",
+      "image": "cslee33/11749837.png",
+      "source": "https://cslee33.tistory.com/11749837",
+      "sha256": "0dd7f4961b1a1e2f06a17d9df4037e8e9baf37ffd85c43880c619b8062b9d586",
+      "family": "ministop-gangneung-ponam",
+      "kind": "convenience-store-control",
+      "alcoholStatus": "none-visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 9470
+          }
+        ],
+        "drinks": [],
+        "note": "과자/치즈가 있는 편의점 영수증. 실제 주점 주류 양성 표본 수에 포함하지 않는다."
+      },
+      "bytes": 363434
+    },
+    {
+      "id": "CS-extra-11749059-1.jpg",
+      "image": "cslee33/extra-11749059-1.jpg",
+      "source": "https://cslee33.tistory.com/11749059",
+      "sha256": "52e6a017dcd58f7cf829b4f2223b7c0081040ecdc45a15b9b86707bbbdda90f7",
+      "family": "sapdari-sikdang-20181021",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 276000
+          }
+        ],
+        "drinks": null,
+        "note": "같은 거래의 수기 명세는 -2. 독립 거래로 세지 않는다."
+      },
+      "bytes": 179397
+    },
+    {
+      "id": "CS-extra-11749059-2.jpg",
+      "image": "cslee33/extra-11749059-2.jpg",
+      "source": "https://cslee33.tistory.com/11749059",
+      "sha256": "d6cdd028686af0cd9d47b0a1d08d56bbc202190c9782f002e42ca81adc471159",
+      "family": "sapdari-sikdang-20181021",
+      "kind": "handwritten",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "공급대가총액",
+            "amount": 276000
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "소주",
+            "unitPrice": null,
+            "quantity": 4,
+            "lineAmount": 16000
+          },
+          {
+            "printedName": "맥주",
+            "unitPrice": null,
+            "quantity": 5,
+            "lineAmount": 20000
+          },
+          {
+            "printedName": "막걸리",
+            "unitPrice": null,
+            "quantity": 1,
+            "lineAmount": 4000
+          }
+        ],
+        "note": "단가 칸이 비어 있어 금액/수량으로 단가를 역산하지 않았다. -1 카드와 같은 거래."
+      },
+      "bytes": 232892
+    },
+    {
+      "id": "CS-extra-11749059-3.jpg",
+      "image": "cslee33/extra-11749059-3.jpg",
+      "source": "https://cslee33.tistory.com/11749059",
+      "sha256": "c5ba06175f9fcfcf2969fa6e890b5baaa6a811cb891c9f13fdd7bd5ab91b6a70",
+      "family": "soyosanjeongilpum-20181021",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계금액",
+            "amount": 48000
+          }
+        ],
+        "drinks": null,
+        "note": "품목 없는 카드 전표. 술 없음으로 판단할 수 없다."
+      },
+      "bytes": 159252
+    },
+    {
+      "id": "CS-extra-11749059-4.jpg",
+      "image": "cslee33/extra-11749059-4.jpg",
+      "source": "https://cslee33.tistory.com/11749059",
+      "sha256": "c01240b3f7003c830e2cd6f493e4293b41d57e2a91b70ba68f161c5e7b8dc89f",
+      "family": "gopchangga-dongducheon",
+      "kind": "printed-itemized",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계금액",
+            "amount": 54400
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "소주",
+            "unitPrice": 4000,
+            "quantity": 2,
+            "lineAmount": 8000
+          },
+          {
+            "printedName": "맥주",
+            "unitPrice": 4000,
+            "quantity": 2,
+            "lineAmount": 8000
+          }
+        ],
+        "note": "상품명이 두 줄 구조인 인쇄 명세. 병 등 용기는 명시되지 않았다."
+      },
+      "bytes": 174326
+    },
+    {
+      "id": "CS-extra-11749059-5.jpg",
+      "image": "cslee33/extra-11749059-5.jpg",
+      "source": "https://cslee33.tistory.com/11749059",
+      "sha256": "f799e427213209b6aac8dc4591c0387e1d28fb1e5db907c0488e101a54a2db8d",
+      "family": "niagara-noraebang-20181021",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계금액",
+            "amount": 115000
+          }
+        ],
+        "drinks": null,
+        "note": "같은 거래 수기 메모는 -6. 독립 거래로 세지 않는다."
+      },
+      "bytes": 163969
+    },
+    {
+      "id": "CS-extra-11749059-6.jpg",
+      "image": "cslee33/extra-11749059-6.jpg",
+      "source": "https://cslee33.tistory.com/11749059",
+      "sha256": "46f34d47c2cdd1965cfde709282404d12ffa82285485ac8c2d935b25921e9612",
+      "family": "niagara-noraebang-20181021",
+      "kind": "handwritten-note",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계(수기 축약)",
+            "amount": null,
+            "raw": "115,-"
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "맥주",
+            "unitPrice": null,
+            "quantity": 10,
+            "lineAmount": 40000,
+            "rawUnit": "캔"
+          },
+          {
+            "printedName": "소주",
+            "unitPrice": null,
+            "quantity": 4,
+            "lineAmount": 20000,
+            "rawUnit": "병"
+          }
+        ],
+        "note": "수기 메모 하단 115,- 축약은 총액으로 변환하지 않았다. 4만원/2만원은 행 금액이며 단가는 없음. 카드 -5의 총액을 이 사진에 이식하지 않음."
+      },
+      "bytes": 111861
+    },
+    {
+      "id": "CS-extra-11749470-1.jpg",
+      "image": "cslee33/extra-11749470-1.jpg",
+      "source": "https://cslee33.tistory.com/11749470",
+      "sha256": "726cbabc8c50ab2dc7714ccb0dcf755dde59657241eaacacc5b82734015808be",
+      "family": "cheonggyesan-corp",
+      "kind": "printed-itemized",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계금액",
+            "amount": 45000
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "장수막걸리",
+            "unitPrice": 3000,
+            "quantity": 3,
+            "lineAmount": 9000
+          },
+          {
+            "printedName": "참이슬",
+            "unitPrice": 4000,
+            "quantity": 1,
+            "lineAmount": 4000
+          }
+        ],
+        "note": "원문 상품명 유지. 브랜드 세부 유형과 병 단위 추정 없음."
+      },
+      "bytes": 180350
+    },
+    {
+      "id": "CS-extra-11749967-1.jpg",
+      "image": "cslee33/extra-11749967-1.jpg",
+      "source": "https://cslee33.tistory.com/11749967",
+      "sha256": "3cec297a70a8bfd38f94351b6a224bf0276e0db27a76a2ebb9190449c948d5c8",
+      "family": "pungnyeon-sikdang-seocho-20201103",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "총합계",
+            "amount": 94000
+          }
+        ],
+        "drinks": null,
+        "note": "같은 거래 수기 명세는 -2. 독립 거래로 세지 않는다."
+      },
+      "bytes": 334125
+    },
+    {
+      "id": "CS-extra-11749967-2.jpg",
+      "image": "cslee33/extra-11749967-2.jpg",
+      "source": "https://cslee33.tistory.com/11749967",
+      "sha256": "6080806de1ff32fec89a39bd676f448ace2f0f78d987aad6731953a69332bc95",
+      "family": "pungnyeon-sikdang-seocho-20201103",
+      "kind": "handwritten-note",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "계",
+            "amount": 94000
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "소주",
+            "unitPrice": null,
+            "quantity": 3,
+            "lineAmount": 12000
+          },
+          {
+            "printedName": "맥주",
+            "unitPrice": null,
+            "quantity": 1,
+            "lineAmount": 4000
+          }
+        ],
+        "note": "단가 열이 없는 수기 명세여서 단가는 null. 중간 소계 70000과 최종 계 94000을 구분."
+      },
+      "bytes": 156669
+    },
+    {
+      "id": "CS-extra-11748024-1.jpg",
+      "image": "cslee33/extra-11748024-1.jpg",
+      "source": "https://cslee33.tistory.com/11748024",
+      "sha256": "5c8be25cf40b3eb65a087448b36a74246e41b80aff6a22eeffd42e31fecf29c3",
+      "family": "won-daegutang-samgakji-20161003",
+      "kind": "menu-with-handwritten-order",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [],
+        "drinks": [
+          {
+            "printedName": "소주",
+            "unitPrice": 3000,
+            "quantity": null,
+            "lineAmount": null
+          }
+        ],
+        "note": "영수증이 아니라 주문지. 소주 행 근처 정자 tally가 줄 경계에 걸쳐 수량은 미확정. 빈 수량의 다른 주류 메뉴는 주문으로 세지 않았다. 합계 칸 비어 있음."
+      },
+      "bytes": 215348
+    },
+    {
+      "id": "CS-extra-11748024-2.jpg",
+      "image": "cslee33/extra-11748024-2.jpg",
+      "source": "https://cslee33.tistory.com/11748024",
+      "sha256": "72d7e1c4df497a6a9849ae3dfacacf569b53971da4b356d1522fd25f71be4355",
+      "family": "won-daegutang-samgakji-20161003",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 87000
+          }
+        ],
+        "drinks": null,
+        "note": "같은 거래 주문지 -1의 확정 수량/총액 정답으로 이식하지 않는다."
+      },
+      "bytes": 166691
+    },
+    {
+      "id": "CS-extra-11747325-1.jpg",
+      "image": "cslee33/extra-11747325-1.jpg",
+      "source": "https://cslee33.tistory.com/11747325",
+      "sha256": "e44b252e53ad550da34f84d00f97d3a9e469839601d7c4cdcb1e1e2bada4e391",
+      "family": "myeongga-galbi-bupyeong",
+      "kind": "printed-itemized",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "총계",
+            "amount": 84000
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "참이슬빨간것",
+            "unitPrice": 3000,
+            "quantity": 2,
+            "lineAmount": 6000
+          }
+        ],
+        "note": "인쇄 상품명 그대로 유지. 병 단위 추정 없음."
+      },
+      "bytes": 194777
+    },
+    {
+      "id": "CS-extra-11747325-2.jpg",
+      "image": "cslee33/extra-11747325-2.jpg",
+      "source": "https://cslee33.tistory.com/11747325",
+      "sha256": "b1277da300e6d43f45d0cb5b362f1cbc4509544cf2bc1c62dbc925e3057a3a69",
+      "family": "choojonamwon-chueotang-20150209",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 34000
+          }
+        ],
+        "drinks": null,
+        "note": "품목 없는 카드 전표. 술 없음으로 판단할 수 없다."
+      },
+      "bytes": 202745
+    },
+    {
+      "id": "CS-extra-11747325-3.jpg",
+      "image": "cslee33/extra-11747325-3.jpg",
+      "source": "https://cslee33.tistory.com/11747325",
+      "sha256": "eb6154dc4d909b8b36a3aee6e03c36dc0b65a46440aa470ac944f830d071fa91",
+      "family": "the-coffee-story-20150209",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계금액",
+            "amount": 9500
+          }
+        ],
+        "drinks": null,
+        "note": "커피점 카드 전표. 품목 없어 주류 음성 정답으로 사용하지 않는다."
+      },
+      "bytes": 251051
+    },
+    {
+      "id": "CS-extra-11750685-1.jpg",
+      "image": "cslee33/extra-11750685-1.jpg",
+      "source": "https://cslee33.tistory.com/11750685",
+      "sha256": "0a9ea4648e19fdbedcd18873d84f3f81534a91c14e4040cc83a2d75a1eaaf70c",
+      "family": "seogane-sundaeguk-20220702",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 22000
+          }
+        ],
+        "drinks": null,
+        "note": "품목 없는 카드 전표. 술 없음으로 판단할 수 없다."
+      },
+      "bytes": 206879
+    },
+    {
+      "id": "CS-extra-11747992-1.jpg",
+      "image": "cslee33/extra-11747992-1.jpg",
+      "source": "https://cslee33.tistory.com/11747992",
+      "sha256": "7120f28c91a43bef14785f892e8128350375ea1f850628d29997d7877049a2d8",
+      "family": "lotte-super-junggye",
+      "kind": "grocery-printed-alcohol-control",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 32580
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "서울장수생막걸리750ML",
+            "unitPrice": 990,
+            "quantity": 6,
+            "lineAmount": 5940
+          }
+        ],
+        "note": "마트 영수증으로 주점 양성 수에는 포함하지 않는다. 인쇄된 750ML는 보존하며 포장 종류는 추정하지 않는다."
+      },
+      "bytes": 155369
+    },
+    {
+      "id": "CS-extra-11747992-2.jpg",
+      "image": "cslee33/extra-11747992-2.jpg",
+      "source": "https://cslee33.tistory.com/11747992",
+      "sha256": "5117af6c9463b6af4ea9181a3f3b1bf0ac5699aa9cf79198546d76819a7dca32",
+      "family": "auraji-maeuntang-20160910",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 115000
+          }
+        ],
+        "drinks": null,
+        "note": "같은 거래 수기 메모는 -3. 독립 거래로 세지 않는다."
+      },
+      "bytes": 174975
+    },
+    {
+      "id": "CS-extra-11747992-3.jpg",
+      "image": "cslee33/extra-11747992-3.jpg",
+      "source": "https://cslee33.tistory.com/11747992",
+      "sha256": "a0ed59bbc199c396a7097314887b6881e4141aac63bb75facd2b4a38f7f074a4",
+      "family": "auraji-maeuntang-20160910",
+      "kind": "handwritten-note",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 115000
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "소주",
+            "unitPrice": null,
+            "quantity": 2,
+            "lineAmount": 6000
+          }
+        ],
+        "note": "카드 뒷면 수기 품목 메모. 매운탕100000/공기밥8000/소주6000/음료수1000/합계115000. 단가 열 없음."
+      },
+      "bytes": 158546
+    },
+    {
+      "id": "CS-extra-11748542-1.jpg",
+      "image": "cslee33/extra-11748542-1.jpg",
+      "source": "https://cslee33.tistory.com/11748542",
+      "sha256": "ebf7c53ccfccfb70e2ccdfb170435bf66f96ad6a42e3c65e62b6a421c198f1c2",
+      "family": "haneul-arae-cheotdongne-20170924",
+      "kind": "handwritten",
+      "alcoholStatus": "visible",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "공급대가총액",
+            "amount": 187000
+          }
+        ],
+        "drinks": [
+          {
+            "printedName": "맥주",
+            "unitPrice": null,
+            "quantity": 1,
+            "lineAmount": 4000
+          },
+          {
+            "printedName": "소주",
+            "unitPrice": 4000,
+            "quantity": 2,
+            "lineAmount": 8000
+          }
+        ],
+        "note": "기입된 총액187000이나 읽히는 행 금액 합은184000으로 불일치. 총액/행 산술 충돌 도전 자료. 맥주 단가 칸 공란."
+      },
+      "bytes": 228592
+    },
+    {
+      "id": "CS-extra-11748542-2.jpg",
+      "image": "cslee33/extra-11748542-2.jpg",
+      "source": "https://cslee33.tistory.com/11748542",
+      "sha256": "505255dbdfa1fd12260e811eb2bae4ad403514dac8a9d06f5c56c19057df32d1",
+      "family": "haneul-arae-cheotdongne-20170924",
+      "kind": "card-only",
+      "alcoholStatus": "not-observable-no-item-list",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by/4.0/deed.ko"
+      ],
+      "usage": "local comparison candidate; product training and redistribution not authorized by this collection",
+      "annotation": {
+        "printedTotals": [
+          {
+            "label": "합계",
+            "amount": 187000
+          }
+        ],
+        "drinks": null,
+        "note": "-1 수기 명세와 동일 거래. 독립 주류 양성으로 세지 않는다."
+      },
+      "bytes": 171173
+    },
+    {
+      "id": "K-151",
+      "image": "kidm/151-0.jpg",
+      "source": "https://kidm.tistory.com/151",
+      "sha256": "be32b74c7ff57a857214090a9e7ffa7e0b1952daae8e684c05fe48acdb636c85",
+      "family": "kidm-151",
+      "kind": "total-only-control",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 43800,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": false,
+        "cleanAlcoholFieldBaseline": false,
+        "drinks": null
+      },
+      "bytes": 161628
+    },
+    {
+      "id": "K-345",
+      "image": "kidm/345-0.jpg",
+      "source": "https://kidm.tistory.com/345",
+      "sha256": "2a68c66e85f0f11ce8fc251e1da6d3f1d91aa0dbfb96e6b56bc9c5c80c0b0934",
+      "family": "kidm-345",
+      "kind": "itemized-alcohol",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 95600,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": true,
+        "cleanAlcoholFieldBaseline": true,
+        "drinks": [
+          {
+            "rawName": "소주",
+            "category": "SOJU",
+            "unitPrice": 4000,
+            "quantity": 3,
+            "lineAmount": 12000,
+            "unit": "UNKNOWN",
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null,
+            "serviceDiscountRow": false,
+            "evidence": "직접 시각 판독; 용기와 용량은 사진에 명시되지 않음"
+          }
+        ]
+      },
+      "bytes": 191443
+    },
+    {
+      "id": "K-196",
+      "image": "kidm/196-0.jpg",
+      "source": "https://kidm.tistory.com/196",
+      "sha256": "4d36d8c2215f24849a42a36f2e2a662bc8a60ebb32a6f3412e519cc2e7ae11a1",
+      "family": "kidm-196",
+      "kind": "discount-service-challenge",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 57500,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": true,
+        "cleanAlcoholFieldBaseline": false,
+        "drinks": [
+          {
+            "rawName": "소주",
+            "category": "SOJU",
+            "unitPrice": 4000,
+            "quantity": 2,
+            "lineAmount": 8000,
+            "unit": "UNKNOWN",
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null,
+            "serviceDiscountRow": false,
+            "evidence": "직접 시각 판독; 용기와 용량은 사진에 명시되지 않음"
+          },
+          {
+            "rawName": "소주",
+            "category": "SOJU",
+            "unitPrice": 4000,
+            "quantity": 1,
+            "lineAmount": 0,
+            "unit": "UNKNOWN",
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null,
+            "serviceDiscountRow": true,
+            "evidence": "직접 시각 판독; 용기와 용량은 사진에 명시되지 않음"
+          }
+        ],
+        "printedSubtotal": 61500,
+        "discount": 4000
+      },
+      "bytes": 143601
+    },
+    {
+      "id": "K-147",
+      "image": "kidm/147-0.jpg",
+      "source": "https://kidm.tistory.com/147",
+      "sha256": "86f5b7266551f403189942138e0220afa29d8d42b3953d389187df187ded8ace",
+      "family": "merchant-huni-oppa",
+      "kind": "total-only-control",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 62000,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": false,
+        "cleanAlcoholFieldBaseline": false,
+        "drinks": null
+      },
+      "bytes": 98776
+    },
+    {
+      "id": "K-394",
+      "image": "kidm/394-0.jpg",
+      "source": "https://kidm.tistory.com/394",
+      "sha256": "f461831acfaed9f7ee1237ddb506f11287a13d3afc396305d559333eb98518bf",
+      "family": "kidm-394",
+      "kind": "total-only-control",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 47000,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": false,
+        "cleanAlcoholFieldBaseline": false,
+        "drinks": null
+      },
+      "bytes": 191200
+    },
+    {
+      "id": "K-399",
+      "image": "kidm/399-0.jpg",
+      "source": "https://kidm.tistory.com/399",
+      "sha256": "847b8a189b0cc6af60a9ee194bd9fe097ea70ac4484e94e3ee3fb49859f6aa65",
+      "family": "kidm-399",
+      "kind": "itemized-alcohol",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 42000,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": true,
+        "cleanAlcoholFieldBaseline": true,
+        "drinks": [
+          {
+            "rawName": "소주",
+            "category": "SOJU",
+            "unitPrice": 4000,
+            "quantity": 3,
+            "lineAmount": 12000,
+            "unit": "UNKNOWN",
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null,
+            "serviceDiscountRow": false,
+            "evidence": "직접 시각 판독; 용기와 용량은 사진에 명시되지 않음"
+          }
+        ]
+      },
+      "bytes": 153319
+    },
+    {
+      "id": "K-727",
+      "image": "kidm/727-0.jpg",
+      "source": "https://kidm.tistory.com/727",
+      "sha256": "45c2263e004ae3f4ad4f55f79356aaa00f50f7adc6463d1ae9f07be59c15b1fe",
+      "family": "kidm-727",
+      "kind": "total-only-control",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 22000,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": false,
+        "cleanAlcoholFieldBaseline": false,
+        "drinks": null
+      },
+      "bytes": 145872
+    },
+    {
+      "id": "K-353",
+      "image": "kidm/353-0.jpg",
+      "source": "https://kidm.tistory.com/353",
+      "sha256": "258f69f3ff28b626d908bf1123178c7f8f7bcb5432480baa20b1c108e4fad526",
+      "family": "kidm-353",
+      "kind": "total-only-control",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 29000,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": false,
+        "cleanAlcoholFieldBaseline": false,
+        "drinks": null
+      },
+      "bytes": 139643
+    },
+    {
+      "id": "K-131",
+      "image": "kidm/131-0.jpg",
+      "source": "https://kidm.tistory.com/131",
+      "sha256": "4b1f61de9687d832c9db97a22428f10306b023b2d8990359b1e4b48a089e2256",
+      "family": "kidm-131",
+      "kind": "itemized-no-alcohol-control",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 22000,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": true,
+        "cleanAlcoholFieldBaseline": false,
+        "drinks": [],
+        "foodRows": [
+          {
+            "rawName": "낙곱새",
+            "unitPrice": 11000,
+            "quantity": 2,
+            "lineAmount": 22000
+          }
+        ]
+      },
+      "bytes": 132608
+    },
+    {
+      "id": "K-263",
+      "image": "kidm/263-0.jpg",
+      "source": "https://kidm.tistory.com/263",
+      "sha256": "ce9eedc2231b517e83e85fe3c13d610cc12ee276425c9d458b2cdaba66f52339",
+      "family": "kidm-263",
+      "kind": "itemized-alcohol",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 37500,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": true,
+        "cleanAlcoholFieldBaseline": true,
+        "drinks": [
+          {
+            "rawName": "대선",
+            "category": "SOJU",
+            "unitPrice": 4000,
+            "quantity": 2,
+            "lineAmount": 8000,
+            "unit": "UNKNOWN",
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null,
+            "serviceDiscountRow": false,
+            "evidence": "직접 시각 판독; 용기와 용량은 사진에 명시되지 않음"
+          }
+        ]
+      },
+      "bytes": 137962
+    },
+    {
+      "id": "K-479",
+      "image": "kidm/479-0.jpg",
+      "source": "https://kidm.tistory.com/479",
+      "sha256": "e72675a6ffdcb1b2b5ac87c9f680613d889b97b8b38ee43c4256e6d667d9ec67",
+      "family": "kidm-479",
+      "kind": "total-only-control",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 17000,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": false,
+        "cleanAlcoholFieldBaseline": false,
+        "drinks": null
+      },
+      "bytes": 190082
+    },
+    {
+      "id": "K-860",
+      "image": "kidm/860-0.jpg",
+      "source": "https://kidm.tistory.com/860",
+      "sha256": "6292ebc971798c1a82ee2c1e653e0d00d23964633c93371fe332f81b19ebd516",
+      "family": "kidm-860",
+      "kind": "itemized-alcohol",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "개인 로컬 OCR 비교 후보. 원본 공개 재배포 및 제품/학습 사용 채택과 분리.",
+      "annotation": {
+        "total": 124000,
+        "totalMeaning": "최종 청구/결제 금액",
+        "itemsEvaluable": true,
+        "cleanAlcoholFieldBaseline": true,
+        "drinks": [
+          {
+            "rawName": "소주",
+            "category": "SOJU",
+            "unitPrice": 4000,
+            "quantity": 3,
+            "lineAmount": 12000,
+            "unit": "UNKNOWN",
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null,
+            "serviceDiscountRow": false,
+            "evidence": "직접 시각 판독; 용기와 용량은 사진에 명시되지 않음"
+          }
+        ]
+      },
+      "bytes": 152513
+    },
+    {
+      "id": "K-150",
+      "image": "kidm-extra/150.jpg",
+      "source": "https://kidm.tistory.com/150",
+      "sha256": "aca945fd4b9a7149e71e995397498c8dd4cbb0f03a04ead8100a99989de0119e",
+      "family": "kidm-150",
+      "kind": "total-only",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 17000,
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 152472
+    },
+    {
+      "id": "K-163",
+      "image": "kidm-extra/163.jpg",
+      "source": "https://kidm.tistory.com/163",
+      "sha256": "26ad65c827244e824540f188245e54b79ae1874280ed509f629e5887d6481cac",
+      "family": "kidm-163",
+      "kind": "total-only",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 6000,
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 139002
+    },
+    {
+      "id": "K-168",
+      "image": "kidm-extra/168.jpg",
+      "source": "https://kidm.tistory.com/168",
+      "sha256": "3f8c9589176e4dff569b62bff7c95dc20b06e1b976bbd5d419435ed9ae932259",
+      "family": "kidm-168",
+      "kind": "total-only",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 19500,
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 144486
+    },
+    {
+      "id": "K-169",
+      "image": "kidm-extra/169.jpg",
+      "source": "https://kidm.tistory.com/169",
+      "sha256": "52d4db9e4d5feb0f315a81da59f99605b5f5818f6d1a2f097afde30e8d773186",
+      "family": "kidm-169",
+      "kind": "no-alcohol-itemized",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 10000,
+        "drinks": [],
+        "itemsEvaluable": true
+      },
+      "bytes": 1031613
+    },
+    {
+      "id": "K-199",
+      "image": "kidm-extra/199.jpg",
+      "source": "https://kidm.tistory.com/199",
+      "sha256": "00f4b99901299a0261e680340492e3e5c011ba41d0f57f57316d0888f2a77e33",
+      "family": "kidm-199",
+      "kind": "total-only",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 14000,
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 115536
+    },
+    {
+      "id": "K-203",
+      "image": "kidm-extra/203.jpg",
+      "source": "https://kidm.tistory.com/203",
+      "sha256": "98fceaed1c5808313ad373455774079827130757d715fd3194e96e875d3c4551",
+      "family": "kidm-203",
+      "kind": "printed-alcohol",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 52400,
+        "drinks": [
+          {
+            "printedName": "대선",
+            "category": "SOJU",
+            "unitPrice": null,
+            "quantity": 2,
+            "lineAmount": 8000
+          },
+          {
+            "printedName": "진로이즈백",
+            "category": "SOJU",
+            "unitPrice": null,
+            "quantity": 1,
+            "lineAmount": 4000
+          }
+        ],
+        "note": "단가 열 없이 품명/수량/할인/금액을 인쇄. 가격을 수량에서 역산하지 않는다.",
+        "itemsEvaluable": true
+      },
+      "bytes": 153562
+    },
+    {
+      "id": "K-204",
+      "image": "kidm-extra/204.jpg",
+      "source": "https://kidm.tistory.com/204",
+      "sha256": "041503e79490040ebc4f249ac0ae79ca0bac4599f967785b34c7c0a6493412a2",
+      "family": "kidm-204",
+      "kind": "total-only",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 6000,
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 164814
+    },
+    {
+      "id": "K-208",
+      "image": "kidm-extra/208.jpg",
+      "source": "https://kidm.tistory.com/208",
+      "sha256": "2bf3d56498926955bda5285aee2a66357f627afff17be603e7344014567bc3dc",
+      "family": "merchant-huni-oppa",
+      "kind": "total-only",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 52000,
+        "note": "kidm147과 같은 상호. 다른 매장으로 평가 세트를 나누지 않는다.",
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 142950
+    },
+    {
+      "id": "K-213",
+      "image": "kidm-extra/213.jpg",
+      "source": "https://kidm.tistory.com/213",
+      "sha256": "b7b6480e2ceeae56de5192b0786537512f750ff3f46b9a7812904e3b251a4a77",
+      "family": "kidm-213",
+      "kind": "total-only",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 11500,
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 121582
+    },
+    {
+      "id": "K-218",
+      "image": "kidm-extra/218.jpg",
+      "source": "https://kidm.tistory.com/218",
+      "sha256": "bd3cb9272d00a718a32b0bfcb1623266a913d036f0b664995ed073ff72982bef",
+      "family": "kidm-218",
+      "kind": "total-only",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 13000,
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 164625
+    },
+    {
+      "id": "K-231",
+      "image": "kidm-extra/231.jpg",
+      "source": "https://kidm.tistory.com/231",
+      "sha256": "541bba3b412356a3cfe91ab6e32d3cbdc2b3324521a0041671da0133a6210815",
+      "family": "kidm-231",
+      "kind": "total-only-digital",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 22600,
+        "note": "메뉴 상세 대신 매장명 1행인 전자 영수증. 주류 유무를 판단하지 않는다.",
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 186988
+    },
+    {
+      "id": "K-235",
+      "image": "kidm-extra/235.jpg",
+      "source": "https://kidm.tistory.com/235",
+      "sha256": "958c7467259f55fed99793ff0401058abe825e84664e98316a01c0532ebc0cff",
+      "family": "kidm-235",
+      "kind": "printed-alcohol",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 56500,
+        "drinks": [
+          {
+            "printedName": "소주",
+            "category": "SOJU",
+            "unitPrice": 4000,
+            "quantity": 3,
+            "lineAmount": 12000
+          }
+        ],
+        "itemsEvaluable": true
+      },
+      "bytes": 146170
+    },
+    {
+      "id": "K-242",
+      "image": "kidm-extra/242.jpg",
+      "source": "https://kidm.tistory.com/242",
+      "sha256": "c628979f55dff6684ca29b4599066dbcea6187ab2e2e3851452705829b9a3842",
+      "family": "kidm-242",
+      "kind": "total-only",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 44000,
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 93912
+    },
+    {
+      "id": "K-244",
+      "image": "kidm-extra/244.jpg",
+      "source": "https://kidm.tistory.com/244",
+      "sha256": "1472cf578e52403cfb386a833400d775815714a990a218f60066fbc24aae0f3f",
+      "family": "kidm-244",
+      "kind": "total-only",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "CC BY-NC-ND (source footer)"
+      ],
+      "usage": "local comparison candidate; no product training or redistribution permission asserted",
+      "annotation": {
+        "total": 44000,
+        "itemsEvaluable": false,
+        "drinks": null
+      },
+      "bytes": 113951
+    },
+    {
+      "id": "HWARO",
+      "image": "public/hwaro-cheongra.webp",
+      "source": "https://www.diningcode.com/profile.php?rid=xpJZ2hHK8cNY",
+      "sha256": "e8742bc16180accb951f20706303c9c04f3a2e0030bd46654bb0896538997f8d",
+      "family": "hwaro-cheongra",
+      "kind": "printed-alcohol",
+      "visuallyReviewed": true,
+      "licenseEvidence": [
+        "unconfirmed"
+      ],
+      "convertedForOcr": "public/hwaro-cheongra.png",
+      "usage": "publicly visible; product training and redistribution not established",
+      "annotation": {
+        "total": 99520,
+        "drinks": [
+          {
+            "printedName": "소주",
+            "category": "SOJU",
+            "unitPrice": null,
+            "quantity": 1,
+            "lineAmount": 5000
+          }
+        ],
+        "note": "No unit-price column. No bottle/container inference."
+      },
+      "bytes": 95960
+    }
+  ],
+  "mixedOriginAuxiliary": [
+    {
+      "id": "HF-0",
+      "image": "hf/hf-00.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "be60428524fa5a7a246dcd14d01ffd1fad592e3f6e72d1c3bff637f3f7a5f553",
+      "family": "uniqlo-60000",
+      "kind": "clothing",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 538246
+    },
+    {
+      "id": "HF-1",
+      "image": "hf/hf-01.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "a57a9dc7e7f22a13b763b5da7b0b8ce2d03a8a119d31fb30b845cbbbaee6e015",
+      "family": "butter-itemized-3120",
+      "kind": "household-retail",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 508748
+    },
+    {
+      "id": "HF-2",
+      "image": "hf/hf-02.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "be0fa0bd5d013b9895fa079d7ffb9f5fd33759b8376ebe6d4df8181f972902ae",
+      "family": "food-36000",
+      "kind": "restaurant-food",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "no-alcohol-receipt-control",
+      "annotation": {
+        "total": 36000,
+        "drinks": []
+      },
+      "bytes": 572889
+    },
+    {
+      "id": "HF-3",
+      "image": "hf/hf-03.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "c44af548fa9ea0e4ed9f73a77af969c1f686254344d2f298024a11b6514911c9",
+      "family": "poke-30600",
+      "kind": "restaurant-order",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "no-alcohol-receipt-control",
+      "annotation": {
+        "total": 30600,
+        "drinks": []
+      },
+      "bytes": 467098
+    },
+    {
+      "id": "HF-4",
+      "image": "hf/hf-04.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "164b31adfc5e96bdf8694d3618ab8262580a1af018d47c85e714143c0528ae9d",
+      "family": "flowers-100000",
+      "kind": "flowers",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 631699
+    },
+    {
+      "id": "HF-5",
+      "image": "hf/hf-05.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "41ab8b4459f86e6609d86987d1e6e1a268037bf449ed9da3d2ccdbd7b5fcc735",
+      "family": "young-dabang-25500",
+      "kind": "restaurant-food",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "no-alcohol-receipt-control",
+      "annotation": {
+        "total": 25500,
+        "drinks": []
+      },
+      "bytes": 561079
+    },
+    {
+      "id": "HF-6",
+      "image": "hf/hf-06.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "a4351cdf754b71a64cab1dad57d685360c2156273240e11a4272486a540c6114",
+      "family": "gongcha-12000",
+      "kind": "cafe-discount",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 545446
+    },
+    {
+      "id": "HF-7",
+      "image": "hf/hf-07.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "f28e370a9fb439da576f620b05c223407acf48b248a74786db0ba05e05274d87",
+      "family": "gongcha-11700",
+      "kind": "cafe-discount",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 564956
+    },
+    {
+      "id": "HF-8",
+      "image": "hf/hf-08.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "3f53d6a723a0d56768c1b4c61f7238a4975752aefd4ab0dfbb2db1fa7eebd27f",
+      "family": "grocery-7000",
+      "kind": "grocery-food",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 552935
+    },
+    {
+      "id": "HF-9",
+      "image": "hf/hf-09.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "d0b228d2859ee075b2582739aae911050254280396dae4063c55db084e27bf28",
+      "family": "noodle-14500",
+      "kind": "restaurant-food",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "no-alcohol-receipt-control",
+      "annotation": {
+        "total": 14500,
+        "drinks": []
+      },
+      "bytes": 533961
+    },
+    {
+      "id": "HF-10",
+      "image": "hf/hf-10.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "f91a61294cdff559f516f91ffcc3dd590a3df3c86c4e40ba2b301bb10bae79a5",
+      "family": "cosmetics-7500",
+      "kind": "cosmetics",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 552392
+    },
+    {
+      "id": "HF-11",
+      "image": "hf/hf-11.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "0234d9f73060a290e710a7e0cf810dfea0219a6a5a0d3db5dbbfd518314c9fba",
+      "family": "delivery-14000",
+      "kind": "food-delivery",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "no-alcohol-receipt-control",
+      "annotation": {
+        "total": 14000,
+        "drinks": []
+      },
+      "bytes": 531671
+    },
+    {
+      "id": "HF-12",
+      "image": "hf/hf-12.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "975cdb9afaea9048d33d6f886479f029e94ff778e9a7e520f1c160e9132731e6",
+      "family": "medical-excluded",
+      "kind": "medical-excluded",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "exclude-medical",
+      "annotation": null,
+      "bytes": 599473
+    },
+    {
+      "id": "HF-13",
+      "image": "hf/hf-13.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "e238e877e4b172c0b4007fe10bc9309f484ab8b23d846ebd94b22fa36f8a75a3",
+      "family": "cos-157600",
+      "kind": "clothing-card",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 576841
+    },
+    {
+      "id": "HF-14",
+      "image": "hf/hf-14.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "032a84b67572de3e2dca746c20eb147cd354976feba57886bfb009bfddd0fde6",
+      "family": "uniqlo-60000",
+      "kind": "clothing",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 545712
+    },
+    {
+      "id": "HF-15",
+      "image": "hf/hf-15.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "f0e762eae32832d81e9542ab492974201c95247d89ecd86e37a1649622958494",
+      "family": "cos-157600",
+      "kind": "clothing",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 503242
+    },
+    {
+      "id": "HF-16",
+      "image": "hf/hf-16.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "a7b2eb6eaf2bf95cc1f0681fe6c73bec1ab0cfcb95abe41c0d8189675e421bf8",
+      "family": "cafe-31400",
+      "kind": "cafe",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "no-alcohol-receipt-control",
+      "annotation": {
+        "total": 31400,
+        "drinks": []
+      },
+      "bytes": 527123
+    },
+    {
+      "id": "HF-17",
+      "image": "hf/hf-17.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "09b197438a50f83cf611a1af9017c565e3d09764bc691bd4518726c082948445",
+      "family": "food-court-13000",
+      "kind": "food-court",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "no-alcohol-receipt-control",
+      "annotation": {
+        "total": 13000,
+        "drinks": []
+      },
+      "bytes": 599972
+    },
+    {
+      "id": "HF-18",
+      "image": "hf/hf-18.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "28ddb37fdf239b64698c954f2227edef7cb7bd7e63dbe07709e2edd69137671a",
+      "family": "cafe-23200",
+      "kind": "cafe",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "no-alcohol-receipt-control",
+      "annotation": {
+        "total": 23200,
+        "drinks": []
+      },
+      "bytes": 562781
+    },
+    {
+      "id": "HF-19",
+      "image": "hf/hf-19.jpg",
+      "source": "https://huggingface.co/datasets/HumynLabs/Korean_Receipts_Dataset",
+      "sha256": "da16cadc70c06fef961485cf0cfc41b46aedfa27ebb2964fecf7012b731b286e",
+      "family": "butter-starfield-3120",
+      "kind": "household-retail",
+      "licenseEvidence": [
+        "CC BY 4.0 (dataset card)"
+      ],
+      "authenticity": "not established per image; card allows simulated sources",
+      "alcoholVisible": false,
+      "visuallyReviewed": true,
+      "selection": "outside-pub-core-set",
+      "annotation": null,
+      "bytes": 529516
+    }
+  ],
+  "articleCandidates": [
+    {
+      "id": "ntp-00",
+      "image": "public/ntp-00.png",
+      "source": "https://newstapa.org/article/weI72",
+      "sha256": "a492d242e8c7cbb7e5684af81cd57cad75f7e2126ef748220baa1536e9fe64b8",
+      "family": "news-20220628-bucheon",
+      "kind": "receipt-composite-or-same-event-crop",
+      "visuallyReviewed": true,
+      "selection": "challenge-not-in-pub-pilot",
+      "licenseEvidence": [
+        "unconfirmed; not cleared for redistribution/training"
+      ],
+      "bytes": 652400
+    },
+    {
+      "id": "ntp-01",
+      "image": "public/ntp-01.png",
+      "source": "https://newstapa.org/article/weI72",
+      "sha256": "d1d35fe143b5c9927847687598ccdf4f303cb35de59972978997828745c4a2ab",
+      "family": "news-20220628-bucheon",
+      "kind": "receipt-composite-or-same-event-crop",
+      "visuallyReviewed": true,
+      "selection": "challenge-not-in-pub-pilot",
+      "licenseEvidence": [
+        "unconfirmed; not cleared for redistribution/training"
+      ],
+      "bytes": 1033429
+    },
+    {
+      "id": "ntp-02",
+      "image": "public/ntp-02.png",
+      "source": "https://newstapa.org/article/weI72",
+      "sha256": "c59205fe977c0c00b441a3f7b431724a69257ea75f6dfe7e652d9b51e86b2b17",
+      "family": "news-20220628-bucheon",
+      "kind": "non-receipt-graphic-excluded",
+      "visuallyReviewed": true,
+      "selection": "excluded",
+      "licenseEvidence": [
+        "unconfirmed; not cleared for redistribution/training"
+      ],
+      "bytes": 672392
+    },
+    {
+      "id": "ntp-03",
+      "image": "public/ntp-03.png",
+      "source": "https://newstapa.org/article/weI72",
+      "sha256": "97b75639bb277761516f5702e304a9cc18ab7bebf6a7759fdb76c2ed1f30571b",
+      "family": "news-20220628-bucheon",
+      "kind": "receipt-composite-or-same-event-crop",
+      "visuallyReviewed": true,
+      "selection": "challenge-not-in-pub-pilot",
+      "licenseEvidence": [
+        "unconfirmed; not cleared for redistribution/training"
+      ],
+      "bytes": 643791
+    },
+    {
+      "id": "ntp-04",
+      "image": "public/ntp-04.png",
+      "source": "https://newstapa.org/article/weI72",
+      "sha256": "1599e763db7dea401492817e75b3e5c0078416d13274557c5da45fc523018956",
+      "family": "news-20220628-bucheon",
+      "kind": "non-receipt-graphic-excluded",
+      "visuallyReviewed": true,
+      "selection": "excluded",
+      "licenseEvidence": [
+        "unconfirmed; not cleared for redistribution/training"
+      ],
+      "bytes": 647255
+    },
+    {
+      "id": "ntp-05",
+      "image": "public/ntp-05.png",
+      "source": "https://newstapa.org/article/weI72",
+      "sha256": "a746f6d6fbdfcbdc362e43e63bc241d72fc01e2ba49e9da7fe9e6c4b595af167",
+      "family": "news-20220628-bucheon",
+      "kind": "non-receipt-graphic-excluded",
+      "visuallyReviewed": true,
+      "selection": "excluded",
+      "licenseEvidence": [
+        "unconfirmed; not cleared for redistribution/training"
+      ],
+      "bytes": 535638
+    },
+    {
+      "id": "ntp-06",
+      "image": "public/ntp-06.png",
+      "source": "https://newstapa.org/article/weI72",
+      "sha256": "07f48b09b8fd366cd005067fe399f4f393b9df88f2fe3a4a486f0636eea045ae",
+      "family": "news-20220628-bucheon",
+      "kind": "non-receipt-graphic-excluded",
+      "visuallyReviewed": true,
+      "selection": "excluded",
+      "licenseEvidence": [
+        "unconfirmed; not cleared for redistribution/training"
+      ],
+      "bytes": 626413
+    },
+    {
+      "id": "ntp-07",
+      "image": "public/ntp-07.png",
+      "source": "https://newstapa.org/article/weI72",
+      "sha256": "0ace27848259fc1fac01880dbb21968fc5d22cb32f4043bf0de46c2814a92334",
+      "family": "news-20220628-bucheon",
+      "kind": "receipt-composite-or-same-event-crop",
+      "visuallyReviewed": true,
+      "selection": "challenge-not-in-pub-pilot",
+      "licenseEvidence": [
+        "unconfirmed; not cleared for redistribution/training"
+      ],
+      "bytes": 919585
+    },
+    {
+      "id": "ntp-08",
+      "image": "public/ntp-08.png",
+      "source": "https://newstapa.org/article/weI72",
+      "sha256": "d3d0fdb07e4ab98983991f5cb9a9a253157bbd902e0f01b3ff93576953a3a616",
+      "family": "news-20220628-bucheon",
+      "kind": "non-receipt-graphic-excluded",
+      "visuallyReviewed": true,
+      "selection": "excluded",
+      "licenseEvidence": [
+        "unconfirmed; not cleared for redistribution/training"
+      ],
+      "bytes": 633573
+    },
+    {
+      "id": "aju-937000",
+      "image": "public/aju-937000.jpg",
+      "source": "https://www.ajunews.com/view/20220705111706362",
+      "sha256": "3a465a2f9539d1e4b09bc747b565989787e94c118cbd19cdf6a44fb78aaa90d8",
+      "family": "news-20220628-gangnam",
+      "kind": "receipt-composite-or-same-event-crop",
+      "visuallyReviewed": true,
+      "selection": "challenge-not-in-pub-pilot",
+      "licenseEvidence": [
+        "unconfirmed; not cleared for redistribution/training"
+      ],
+      "bytes": 47296
+    }
+  ],
+  "limitations": [
+    "Same authors and repeat merchants; family groups are conservative hypotheses, not verified independent stores.",
+    "Card-only drinks=null means not observable, not zero alcohol.",
+    "No claim that 57 receipts are 57 alcohol itemized examples or that 87 images are independent receipts.",
+    "No photos, OCR raw text, card/approval numbers, or private addresses in this catalog."
+  ]
+}
