@@ -1,0 +1,50 @@
+{
+  "pullRequest": "https://github.com/owencity/jungsan_attack/pull/34",
+  "base": "4e33613454df2afd9407b1bc1fac3622af572683",
+  "sourceHead": "5fa7c8d4dc93305307561ac3c27f5d959838e4a7",
+  "policyAndCatalogCommit": "8d27496270e6c8adcb78b4580d68c150f9c3cce6",
+  "files": [
+    "receipt-ocr/receipt_ocr/extract.py",
+    "receipt-ocr/receipt_ocr/ocr.py",
+    "receipt-ocr/data/drinks.md",
+    "receipt-ocr/tools/benchmark_cpu.py",
+    "receipt-ocr/tests/test_web_layouts.py",
+    "receipt-ocr/tests/test_benchmark.py",
+    "receipt-ocr/tests/test_ocr_adapter.py"
+  ],
+  "diffSha256": "30c19d306d3495342ad149fab47b40c69d8f7b00e302de2450ea9137a42fbd21",
+  "validation": {
+    "unitTests": 137,
+    "unitResult": "OK",
+    "unitSeconds": 0.604,
+    "serverCompile": "BUILD SUCCESSFUL in 14s; 6 up-to-date",
+    "native": {
+      "samples": 29,
+      "families": 28,
+      "executionFailures": 0,
+      "allAnnotatedChecksMatch": 12,
+      "medianSeconds": 11.147,
+      "maxSeconds": 28.342
+    },
+    "all29NativeComplete": true,
+    "parserReplayBefore": {
+      "total": 4,
+      "allDrinks": 2,
+      "allChecks": 1
+    },
+    "parserReplayAfter": {
+      "total": 7,
+      "allDrinks": 5,
+      "allChecks": 4
+    },
+    "resizeControlMedianSeconds": 16.7695,
+    "resize1280MedianSeconds": 13.7315,
+    "resizeOriginals": 4,
+    "resizeRepeats": 2,
+    "resizeAllChecksEach": "6/8",
+    "armOrProductionTested": false,
+    "independentAccuracyBenchmark": false
+  },
+  "imagesOrRawTokensCommitted": false,
+  "review": "self-check and agent review; draft PR"
+}

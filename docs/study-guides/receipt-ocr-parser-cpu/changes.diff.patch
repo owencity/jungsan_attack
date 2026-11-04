@@ -1,0 +1,618 @@
+diff --git a/receipt-ocr/data/drinks.md b/receipt-ocr/data/drinks.md
+index 3ba51be..9685d1d 100644
+--- a/receipt-ocr/data/drinks.md
++++ b/receipt-ocr/data/drinks.md
+@@ -84,0 +85 @@ CTO 제공 문서의 브랜드·표기와 팩트체크 수정 사항을 실행
++| 참이슬빨간것 | 소주 | 참이슬 (세부형 미상) | 미상 | 미상 |
+@@ -100,0 +102 @@ CTO 제공 문서의 브랜드·표기와 팩트체크 수정 사항을 실행
++| 장수막걸리 | 막걸리 | 장수막걸리 (세부형 미상) | 미상 | 미상 |
+diff --git a/receipt-ocr/receipt_ocr/extract.py b/receipt-ocr/receipt_ocr/extract.py
+index 75160e0..8caf395 100644
+--- a/receipt-ocr/receipt_ocr/extract.py
++++ b/receipt-ocr/receipt_ocr/extract.py
+@@ -11 +11,2 @@ VALUES = re.compile(rf"{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?(?:\s+{NUMERIC_T
+-TOTAL = re.compile(rf"^(합계금액|합계|총액|총금액|결제금액|총결제금액|받을금액)\s*[:：]?\s*({INTEGER})\s*원?$")
++TOTAL = re.compile(rf"^(합계금액|합계|총계|총액|총금액|총주문액|결제금액|총결제금액|받을금액)\s*[:：]{{0,2}}\s*({INTEGER})\s*원?$")
++DISCOUNT_TOTAL = re.compile(r"^(?:총할인금액|할인금액|총할인|할인액|할인)[:：]{0,2}(.*?)원?$")
+@@ -13 +14 @@ HEADER_LABELS = re.compile(r"단가|수량|할인|금액")
+-HEADER_TEXT = re.compile(r"^(?:품명|품목|상품명|메뉴명|메뉴|단가|수량|할인|금액)+$")
++HEADER_TEXT = re.compile(r"^(?:품명|품목|상품명|상품|메뉴명|메뉴|단가|수량|할인|금액)+$")
+@@ -47,0 +49,23 @@ def group_rows(tokens: list[Token]) -> list[list[Token]]:
++def _coded_item_continuation(row: list[Token], following: list[Token], columns: list[str],
++                             dictionary: dict[str, Entry]) -> list[Token] | None:
++    # 일부 POS는 상품명 다음 줄에 6자리 코드를 찍는다. 코드가 없거나 열 수가 다르면 연결하지 않는다.
++    if len(row) != 1 or len(following) != len(columns) + 1:
++        return None
++    product, values = split_product_values(row[0].text.strip(), dictionary)
++    if product is None or values or product.entry.category in {"NON_ALCOHOL", "NON_BEVERAGE"}:
++        return None
++    code, *numbers = following
++    if not re.fullmatch(r"[0-9]{6}", code.text.strip()) or code.confidence < MIN_CONFIDENCE:
++        return None
++    if not all(VALUE_WITH_UNIT.fullmatch(token.text.strip()) for token in numbers):
++        return None
++    name = row[0]
++    height = max(name.box[3] - name.box[1], code.box[3] - code.box[1])
++    gap = (code.box[1] + code.box[3] - name.box[1] - name.box[3]) / 2
++    if not (0 < gap <= 1.5 * height and abs(code.box[0] - name.box[0]) <= height / 2
++            and code.box[2] < min(token.box[0] for token in numbers)):
++        return None
++    # 상품명과 숫자 사이에 다른 상품/비알코올 접미사가 있으면 전체 이름을 잘라내지 않는다.
++    return [name, *numbers]
++
++
+@@ -51,0 +76 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
++    gross_total_seen = discount_seen = False
+@@ -56 +81 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-        normalized = re.sub(r"\s+", "", "".join(token.text for token in row))
++        normalized = re.sub(r"\s+", "", "".join(token.text for token in row)).replace("가격", "단가")
+@@ -60 +85,4 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-    for row in rows:
++    consumed_rows = set()
++    for index, row in enumerate(rows):
++        if index in consumed_rows:
++            continue
+@@ -63,0 +92,4 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
++        discount_match = DISCOUNT_TOTAL.fullmatch(normalized_text)
++        if discount_match and (confidence < MIN_CONFIDENCE
++                               or read_integer(discount_match[1], MAX_AMOUNT, allow_zero=True) != 0):
++            discount_seen = True
+@@ -68,0 +101 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
++                gross_total_seen = gross_total_seen or total_match[1] in {"총주문액", "총계"}
+@@ -72,2 +105,3 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-        labels = HEADER_LABELS.findall(normalized_text)
+-        if labels and HEADER_TEXT.fullmatch(normalized_text):
++        header_text = normalized_text.replace("가격", "단가")
++        labels = HEADER_LABELS.findall(header_text)
++        if labels and HEADER_TEXT.fullmatch(header_text):
+@@ -76,0 +111,7 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
++        if columns is not None and index + 1 < len(rows):
++            continued = _coded_item_continuation(row, rows[index + 1], columns, dictionary)
++            if continued is not None:
++                row = continued
++                text = " ".join(token.text.strip() for token in row)
++                confidence = min(token.confidence for token in row)
++                consumed_rows.add(index + 1)
+@@ -178,0 +220,4 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
++    # 새 총계/주문 합계는 할인 전일 수 있다. 할인 여부가 불명확해도 최종 결제액을 만들어내지 않는다.
++    if gross_total_seen and discount_seen:
++        total = None
++        warnings.append("TOTAL_NEEDS_REVIEW")
+diff --git a/receipt-ocr/receipt_ocr/ocr.py b/receipt-ocr/receipt_ocr/ocr.py
+index 828c0a3..3a842f1 100644
+--- a/receipt-ocr/receipt_ocr/ocr.py
++++ b/receipt-ocr/receipt_ocr/ocr.py
+@@ -11 +11,9 @@ class PaddleEngine:
+-    def __init__(self):
++    def __init__(self, *, cpu_threads: int = 2, enable_mkldnn: bool = False,
++                 detection_max_edge: int | None = 1280):
++        if type(cpu_threads) is not int or not 1 <= cpu_threads <= 64:
++            raise ValueError("cpu_threads must be an integer between 1 and 64")
++        if type(enable_mkldnn) is not bool:
++            raise ValueError("enable_mkldnn must be a boolean")
++        if detection_max_edge is not None and (type(detection_max_edge) is not int
++                                                or not 32 <= detection_max_edge <= 4000):
++            raise ValueError("detection_max_edge must be an integer between 32 and 4000")
+@@ -12,0 +21,4 @@ class PaddleEngine:
++        # 검출 크기를 명시해 큰 원본의 CPU 비용을 제한한다. None은 이전 설정과의 대조용이다.
++        detection_options = {} if detection_max_edge is None else {
++            "text_det_limit_side_len": detection_max_edge, "text_det_limit_type": "max",
++        }
+@@ -20 +32,2 @@ class PaddleEngine:
+-            device="cpu", cpu_threads=2, enable_mkldnn=False,
++            device="cpu", cpu_threads=cpu_threads, enable_mkldnn=enable_mkldnn,
++            **detection_options,
+@@ -25 +38,2 @@ class PaddleEngine:
+-            model_name="korean_PP-OCRv5_mobile_rec", device="cpu", cpu_threads=2, enable_mkldnn=False,
++            model_name="korean_PP-OCRv5_mobile_rec", device="cpu", cpu_threads=cpu_threads,
++            enable_mkldnn=enable_mkldnn,
+diff --git a/receipt-ocr/tests/test_benchmark.py b/receipt-ocr/tests/test_benchmark.py
+new file mode 100644
+index 0000000..841aca1
+--- /dev/null
++++ b/receipt-ocr/tests/test_benchmark.py
+@@ -0,0 +1,97 @@
++import hashlib
++import json
++from pathlib import Path
++from types import SimpleNamespace
++import subprocess
++import tempfile
++import unittest
++from unittest.mock import patch
++
++from tools.benchmark_cpu import run_configuration, run_worker, select_cases, summarize
++
++
++class BenchmarkTests(unittest.TestCase):
++    def test_selected_ids_preserve_requested_order_and_reject_unknown_or_duplicate_cases(self):
++        cases = [{"id": "A"}, {"id": "B"}]
++        self.assertEqual([cases[1], cases[0]], select_cases(cases, ["B", "A"]))
++        for source, requested in ((cases, ["A", "A"]), (cases, ["missing"]),
++                                  (cases + [cases[0]], ["A"]), (cases, [])):
++            with self.subTest(requested=requested), self.assertRaises(ValueError):
++                select_cases(source, requested)
++
++    def test_semantic_failure_and_execution_failure_remain_in_denominator(self):
++        observations = [
++            {"repeat": 1, "seconds": 5, "checks": {"total": True, "drinkCount": True,
++                                                   "drink0.quantity": True}},
++            {"repeat": 2, "seconds": 3, "checks": {"total": False, "drinkCount": True,
++                                                   "drink0.quantity": True}},
++            {"repeat": 2, "seconds": None, "errorType": "WorkerTimeout"},
++        ]
++        summary = summarize(observations)
++        self.assertEqual(3, summary["requests"])
++        self.assertEqual(1, summary["executionFailures"])
++        self.assertEqual(1, summary["allAnnotatedChecksMatch"])
++        self.assertEqual(1, summary["totalExactCount"])
++        self.assertEqual(2, summary["allDrinkSelectedFieldsExactCount"])
++        self.assertEqual(4, summary["medianSeconds"])
++        self.assertEqual(3, summary["repeatedMedianSeconds"])
++
++    def test_timeout_retains_completed_partial_result_and_records_unfinished_repeats(self):
++        cases = [{"id": "A", "cohort": "web", "family": "one"}]
++        with tempfile.TemporaryDirectory() as folder:
++            arguments = SimpleNamespace(samples=Path(folder), manifest=Path(folder) / "manifest.json",
++                                        ids=["A"], repeats=2, timeout_seconds=10)
++            def timeout(command, **options):
++                worker_path = Path(command[command.index("--output") + 1])
++                worker_path.write_text(json.dumps({"configuration": "baseline", "status": "started",
++                    "observations": [{"sample": "A", "repeat": 1, "seconds": 5,
++                                      "checks": {"total": True}}]}), encoding="utf-8")
++                self.assertEqual(subprocess.DEVNULL, options["stdout"])
++                self.assertEqual(subprocess.DEVNULL, options["stderr"])
++                self.assertEqual(10, options["timeout"])
++                raise subprocess.TimeoutExpired(command, 10, output=b"private OCR output")
++            with patch("tools.benchmark_cpu.subprocess.run", side_effect=timeout):
++                report = run_configuration(arguments, "baseline", cases)
++        self.assertEqual("timeout", report["status"])
++        self.assertEqual(2, report["summary"]["requests"])
++        self.assertEqual(1, report["summary"]["executionFailures"])
++        self.assertEqual(1, report["summary"]["allAnnotatedChecksMatch"])
++        self.assertEqual("WorkerTimeout", report["observations"][1]["errorType"])
++        self.assertNotIn("private", json.dumps(report))
++
++    def test_native_crash_without_report_keeps_all_requests_and_sanitizes_output(self):
++        cases = [{"id": "A", "cohort": "web", "family": "one"}]
++        with tempfile.TemporaryDirectory() as folder:
++            arguments = SimpleNamespace(samples=Path(folder), manifest=Path(folder) / "manifest.json",
++                                        ids=["A"], repeats=2, timeout_seconds=10)
++            with patch("tools.benchmark_cpu.subprocess.run", return_value=SimpleNamespace(returncode=-1)):
++                report = run_configuration(arguments, "mkldnn", cases)
++        self.assertEqual("worker-failed", report["status"])
++        self.assertEqual(-1, report["workerReturnCode"])
++        self.assertEqual(2, report["summary"]["requests"])
++        self.assertEqual(2, report["summary"]["executionFailures"])
++        self.assertEqual(0, report["summary"]["allAnnotatedChecksMatch"])
++        self.assertIsNone(report["summary"]["medianSeconds"])
++
++    def test_truth_changed_during_worker_cannot_be_reported_as_comparable_measurement(self):
++        with tempfile.TemporaryDirectory() as folder:
++            manifest = Path(folder) / "manifest.json"
++            manifest.write_bytes(b"[]")
++            manifest_hash = hashlib.sha256(manifest.read_bytes()).hexdigest()
++            arguments = SimpleNamespace(worker="baseline", output=Path(folder) / "result.json",
++                                        manifest=manifest, samples=Path(folder), repeats=1)
++            def changed_truth(*values):
++                manifest.write_bytes(b"[1]")
++                return {"sample": "A", "seconds": 1, "checks": {"total": True}}
++            engine = SimpleNamespace(token_sha256="token-hash", token_count=1)
++            with patch("tools.benchmark_cpu.FingerprintedEngine", return_value=engine), \
++                    patch("tools.benchmark_cpu.load_dictionary", return_value={}), \
++                    patch("tools.benchmark_cpu.source_hashes", return_value={"code": "unchanged"}), \
++                    patch("tools.benchmark_cpu.inspect_case", side_effect=changed_truth):
++                exit_code = run_worker(arguments, [{"id": "A"}], manifest_hash)
++            report = json.loads(arguments.output.read_text(encoding="utf-8"))
++        self.assertEqual(1, exit_code)
++        self.assertEqual("source-changed", report["status"])
++        self.assertEqual("ManifestChangedDuringBenchmark", report["errorType"])
++        self.assertEqual(manifest_hash, report["manifestSha256"])
++        self.assertEqual(1, len(report["observations"]))
+diff --git a/receipt-ocr/tests/test_ocr_adapter.py b/receipt-ocr/tests/test_ocr_adapter.py
+index d441f83..41644ce 100644
+--- a/receipt-ocr/tests/test_ocr_adapter.py
++++ b/receipt-ocr/tests/test_ocr_adapter.py
+@@ -25,0 +26,37 @@ class RecognitionAdapterTests(unittest.TestCase):
++        self.assertEqual([False, False], [configuration[1]["enable_mkldnn"] for configuration in configurations])
++        self.assertEqual(1280, configurations[0][1]["text_det_limit_side_len"])
++        self.assertEqual("max", configurations[0][1]["text_det_limit_type"])
++
++    def test_explicit_none_keeps_original_detection_configuration_for_comparison(self):
++        configurations = []
++        def factory(**options):
++            configurations.append(options)
++            return object()
++        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory)}):
++            PaddleEngine(detection_max_edge=None)
++        self.assertNotIn("text_det_limit_side_len", configurations[0])
++        self.assertNotIn("text_det_limit_type", configurations[0])
++
++    def test_experiment_options_apply_cpu_to_both_models_and_resize_to_detection_only(self):
++        configurations = []
++        def factory(**options):
++            configurations.append(options)
++            return object()
++        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory)}):
++            PaddleEngine(cpu_threads=4, enable_mkldnn=True, detection_max_edge=1280)
++        self.assertEqual([4, 4], [options["cpu_threads"] for options in configurations])
++        self.assertEqual([True, True], [options["enable_mkldnn"] for options in configurations])
++        self.assertEqual(1280, configurations[0]["text_det_limit_side_len"])
++        self.assertEqual("max", configurations[0]["text_det_limit_type"])
++        self.assertNotIn("text_det_limit_side_len", configurations[1])
++
++    def test_invalid_experiment_options_fail_before_native_initialization(self):
++        def forbidden(**options):
++            raise AssertionError("invalid options must not initialize native code")
++        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=forbidden, TextRecognition=forbidden)}):
++            for options in ({"cpu_threads": 0}, {"cpu_threads": 65}, {"cpu_threads": True},
++                            {"cpu_threads": 2.5}, {"enable_mkldnn": "false"},
++                            {"detection_max_edge": 31}, {"detection_max_edge": 4001},
++                            {"detection_max_edge": True}):
++                with self.subTest(options=options), self.assertRaises(ValueError):
++                    PaddleEngine(**options)
+diff --git a/receipt-ocr/tests/test_web_layouts.py b/receipt-ocr/tests/test_web_layouts.py
+new file mode 100644
+index 0000000..e3f0dcc
+--- /dev/null
++++ b/receipt-ocr/tests/test_web_layouts.py
+@@ -0,0 +1,138 @@
++"""웹 원본의 구조만 재현한다. 사진·상호·결제정보나 사진별 예외는 넣지 않는다."""
++from pathlib import Path
++import unittest
++
++from receipt_ocr.dictionary import load_dictionary
++from receipt_ocr.extract import extract
++from receipt_ocr.model import Token
++from test_extract import tokens
++
++
++class WebLayoutTests(unittest.TestCase):
++    def setUp(self):
++        self.dictionary = load_dictionary(Path(__file__).resolve().parents[1] / "data/drinks.md")
++
++    def read(self, *lines, confidence=.99):
++        return extract(tokens(*lines, confidence=confidence), self.dictionary)
++
++    def coded_rows(self, name="소주", code="000016", values=("5,000", "2", "10,000"),
++                   header="상품명 단가 수량 금액", code_x=10, next_y=65):
++        return [Token(header, .99, (10, 10, 400, 30)),
++                Token(name, .99, (10, 40, 90, 60)),
++                Token(code, .99, (code_x, next_y, code_x + 75, next_y + 20)),
++                *[Token(value, .99, (180 + i * 100, next_y, 240 + i * 100, next_y + 20))
++                  for i, value in enumerate(values)]]
++
++    def test_explicit_total_labels_preserve_conflicts_and_confirmation(self):
++        for label in ("총 주문 액:", "총 계::"):
++            with self.subTest(label=label):
++                result = self.read(label + " 42,000원")
++                self.assertEqual(42000, result.total)
++                self.assertTrue(result.to_dict()["requiresConfirmation"])
++                self.assertIsNone(self.read(label + " 42,000", "결제금액 40,000").total)
++                self.assertIsNone(self.read(label + " 42,000", confidence=.5).total)
++
++    def test_received_cash_subtotal_tax_and_discount_are_not_total_aliases(self):
++        result = self.read("소계 50,000", "총매출액 50,000", "판매금액 50,000", "할인금액 5,000",
++                           "받은금액 100,000", "거스름돈 55,000", "부가세 4,091")
++        self.assertIsNone(result.total)
++
++    def test_new_total_labels_do_not_repair_decimal_signed_or_split_money(self):
++        for value in ("42.000", "-42,000", "+42,000", "42,00", "42. 000"):
++            self.assertIsNone(self.read("총계:: " + value).total)
++        self.assertIsNone(self.read("총계::: 42,000").total)
++
++    def test_product_header_and_explicit_price_column_alias(self):
++        for header in ("상품 단가 수량 금액", "메뉴 가격 수량 금액"):
++            drink = self.read(header, "소주 5,000 2 10,000").drinks[0]
++            self.assertEqual((5000, 2, 10000), (drink.unit_price, drink.quantity, drink.line_amount))
++
++    def test_price_word_in_a_product_is_not_removed(self):
++        self.assertEqual([], self.read("상품 가격 수량 금액", "가격좋은소주 5,000 2 10,000").drinks)
++
++    def test_exact_observed_aliases_do_not_assume_subtype_or_bottle(self):
++        for name, category in (("참이슬빨간것", "SOJU"), ("장수막걸리", "MAKGEOLLI")):
++            drink = self.read("품명 단가 수량 금액", name + " 5,000 2 10,000").drinks[0]
++            self.assertEqual((category, 2, "UNKNOWN", None),
++                             (drink.category, drink.quantity, drink.unit, drink.bottle_count))
++            for suffix in ("무알콜", "제로", "잔세트", "(미등록)"):
++                self.assertEqual([], self.read("품명 단가 수량 금액",
++                                              name + suffix + " 5,000 2 10,000").drinks)
++
++    def test_order_amount_with_discount_needs_review_without_subtraction(self):
++        for label in ("총주문액", "총계"):
++            for discount in ("1,000", "-1,000", "1.000"):
++                for lines in ((label + " 10,000", "할인금액 " + discount, "청구금액 9,000"),
++                              ("할인금액 " + discount, label + " 10,000", "신용카드 9,000")):
++                    result = self.read(*lines)
++                    self.assertIsNone(result.total)
++                    self.assertIn("TOTAL_NEEDS_REVIEW", result.warnings)
++            self.assertEqual(10000, self.read(label + " 10,000", "할인금액 0").total)
++
++    def test_unreadable_or_missing_discount_cannot_authorize_a_new_total_label(self):
++        for label in ("총주문액", "총계"):
++            for value in ("I,000", "", "미확인"):
++                result = self.read(label + " 10,000", "할인금액 " + value, "청구금액 9,000")
++                self.assertIsNone(result.total)
++                self.assertIn("TOTAL_NEEDS_REVIEW", result.warnings)
++            uncertain_zero = [*tokens(label + " 10,000"), Token("할인금액 0", .5, (10, 40, 200, 60))]
++            self.assertIsNone(extract(uncertain_zero, self.dictionary).total)
++
++    def test_high_confidence_zero_discount_preserves_both_new_total_labels(self):
++        for total_label in ("총계", "총주문액"):
++            for discount_label in ("할인", "할인액", "할인금액", "총할인", "총할인금액"):
++                self.assertEqual(10000, self.read(total_label + " 10,000", discount_label + ": 0원").total)
++
++    def test_discount_guard_does_not_change_existing_total_label_policy(self):
++        self.assertEqual(9000, self.read("합계 9,000", "할인금액 1,000").total)
++
++    def test_sales_amount_can_exclude_tax_and_is_not_an_alias_for_the_total(self):
++        result = self.read("합계금액 42,000", "판매금액: 38,184", "부가세 3,816")
++        self.assertEqual(42000, result.total)
++        self.assertNotIn("TOTAL_CONFLICT", result.warnings)
++
++    def test_product_code_row_is_linked_only_with_explicit_complete_columns(self):
++        result = extract(self.coded_rows(), self.dictionary)
++        self.assertEqual(1, len(result.drinks))
++        drink = result.drinks[0]
++        self.assertEqual((5000, 2, 10000), (drink.unit_price, drink.quantity, drink.line_amount))
++        self.assertIsNone(drink.bottle_count)
++
++    def test_missing_header_code_or_quantity_does_not_get_a_default(self):
++        for values in (self.coded_rows(header="품명"), self.coded_rows(code="-000016"),
++                       self.coded_rows(values=("5,000", "10,000"))):
++            drink = extract(values, self.dictionary).drinks[0]
++            self.assertIsNone(drink.quantity)
++            self.assertIsNone(drink.unit_price)
++
++    def test_code_row_must_be_near_and_left_aligned_with_the_product(self):
++        for values in (self.coded_rows(next_y=100), self.coded_rows(code_x=120)):
++            drink = extract(values, self.dictionary).drinks[0]
++            self.assertIsNone(drink.quantity)
++            self.assertIsNone(drink.line_amount)
++
++    def test_next_table_header_and_non_alcohol_qualifiers_are_not_skipped(self):
++        values = self.coded_rows()
++        values.insert(2, Token("상품명 수량 금액", .99, (10, 61, 400, 64)))
++        self.assertIsNone(extract(values, self.dictionary).drinks[0].quantity)
++        for name in ("카스 0.0", "소주 무알콜", "소주잔", "장수막걸리 제로"):
++            self.assertEqual([], extract(self.coded_rows(name=name), self.dictionary).drinks)
++
++    def test_a_separate_qualifier_row_is_not_dropped_to_join_numbers(self):
++        values = self.coded_rows()
++        values.insert(2, Token("무알콜", .99, (10, 61, 85, 64)))
++        drink = extract(values, self.dictionary).drinks[0]
++        self.assertIsNone(drink.quantity)
++        self.assertIsNone(drink.line_amount)
++
++    def test_malformed_number_keeps_rejection_after_code_row_join(self):
++        for quantity in ("-2", "+2", "2.0", "2,00"):
++            drink = extract(self.coded_rows(name="병맥주", values=("5,000", quantity, "10,000")),
++                            self.dictionary).drinks[0]
++            self.assertIsNone(drink.quantity)
++            self.assertIsNone(drink.bottle_count)
++            self.assertIn("ITEM_OUT_OF_RANGE", drink.review_reasons)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/receipt-ocr/tools/benchmark_cpu.py b/receipt-ocr/tools/benchmark_cpu.py
+new file mode 100644
+index 0000000..f547b56
+--- /dev/null
++++ b/receipt-ocr/tools/benchmark_cpu.py
+@@ -0,0 +1,215 @@
++"""동일 원본에서 CPU 옵션을 순차 대조한다. 네이티브 오류·정확도 실패도 보존한다."""
++import argparse
++from dataclasses import asdict
++import hashlib
++from importlib.metadata import PackageNotFoundError, version
++import json
++import os
++from pathlib import Path
++import platform
++import statistics
++import subprocess
++import sys
++import tempfile
++import time
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT))
++from tools.validate_capture_campaign import TimedEngine, inspect_case
++from receipt_ocr.dictionary import load_dictionary
++
++
++BASELINE_OPTIONS = {"cpu_threads": 2, "enable_mkldnn": False, "detection_max_edge": None}
++CONFIGURATIONS = {
++    "baseline": dict(BASELINE_OPTIONS),
++    "det1280": {**BASELINE_OPTIONS, "detection_max_edge": 1280},
++    "threads4": {**BASELINE_OPTIONS, "cpu_threads": 4},
++    "mkldnn": {**BASELINE_OPTIONS, "enable_mkldnn": True},
++}
++
++
++def source_hashes():
++    paths = sorted((ROOT / "receipt_ocr").glob("*.py"))
++    paths.append(ROOT / "data/drinks.md")
++    paths.extend((ROOT / "tools/validate_capture_campaign.py", Path(__file__).resolve()))
++    return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
++
++
++def environment_versions():
++    versions = {"python": platform.python_version(), "platform": platform.system(),
++                "machine": platform.machine()}
++    for package in ("paddleocr", "paddlex", "paddlepaddle"):
++        try:
++            versions[package] = version(package)
++        except PackageNotFoundError:
++            versions[package] = None
++    return versions
++
++
++def write_report(path, report):
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
++
++
++def select_cases(cases, requested_ids):
++    if not requested_ids or len(requested_ids) != len(set(requested_ids)):
++        raise ValueError("sample IDs must be nonempty and unique")
++    by_id = {case["id"]: case for case in cases}
++    if len(by_id) != len(cases) or any(sample_id not in by_id for sample_id in requested_ids):
++        raise ValueError("manifest IDs must be unique and include every requested sample")
++    return [by_id[sample_id] for sample_id in requested_ids]
++
++
++def summarize(observations):
++    completed = [record for record in observations if "checks" in record]
++    seconds = [record["seconds"] for record in completed]
++    repeated_seconds = [record["seconds"] for record in completed if record["repeat"] > 1]
++    drink_checks = [[value for key, value in record["checks"].items() if key.startswith("drink")]
++                    for record in completed]
++    return {
++        "requests": len(observations), "executionFailures": len(observations) - len(completed),
++        "allAnnotatedChecksMatch": sum(all(record["checks"].values()) for record in completed),
++        "totalExactCount": sum(record["checks"].get("total", False) for record in completed),
++        "allDrinkSelectedFieldsExactCount": sum(bool(checks) and all(checks) for checks in drink_checks),
++        "medianSeconds": statistics.median(seconds) if seconds else None,
++        "maxSeconds": max(seconds) if seconds else None,
++        "repeatedMedianSeconds": statistics.median(repeated_seconds) if repeated_seconds else None,
++    }
++
++
++class FingerprintedEngine(TimedEngine):
++    def recognize(self, image):
++        tokens = super().recognize(image)
++        # 원문은 저장하지 않고 실행 설정에 따른 토큰 변화만 비교한다.
++        token_bytes = json.dumps([asdict(token) for token in tokens], ensure_ascii=False,
++                                 sort_keys=True, separators=(",", ":")).encode("utf-8")
++        self.token_sha256 = hashlib.sha256(token_bytes).hexdigest()
++        self.token_count = len(tokens)
++        return tokens
++
++
++def run_worker(arguments, cases, manifest_sha256):
++    os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(ROOT / ".models/paddlex"))
++    os.environ.setdefault("HF_HOME", str(ROOT / ".models/huggingface"))
++    report = {"configuration": arguments.worker, "options": CONFIGURATIONS[arguments.worker],
++              "manifestSha256": manifest_sha256, "sourceHashes": source_hashes(),
++              "observations": [], "modelStartupSeconds": None}
++    write_report(arguments.output, report)
++    try:
++        dictionary = load_dictionary(ROOT / "data/drinks.md")
++        started = time.perf_counter()
++        engine = FingerprintedEngine(**CONFIGURATIONS[arguments.worker])
++        report["modelStartupSeconds"] = round(time.perf_counter() - started, 3)
++        write_report(arguments.output, report)
++        for repeat in range(1, arguments.repeats + 1):
++            for case in cases:
++                record = inspect_case(case, arguments.samples, dictionary, engine)
++                record.update({"repeat": repeat, "firstPrediction": not report["observations"]})
++                if "checks" in record:
++                    record.update({"tokenSha256": engine.token_sha256, "tokenCount": engine.token_count})
++                report["observations"].append(record)
++                write_report(arguments.output, report)
++        report["status"] = "completed"
++    except Exception as error:
++        report.update({"status": "worker-error", "errorType": type(error).__name__})
++    report["sourceHashesAfter"] = source_hashes()
++    if report["sourceHashesAfter"] != report["sourceHashes"]:
++        report.update({"status": "source-changed", "errorType": "SourceChangedDuringBenchmark"})
++    if hashlib.sha256(arguments.manifest.read_bytes()).hexdigest() != manifest_sha256:
++        report.update({"status": "source-changed", "errorType": "ManifestChangedDuringBenchmark"})
++    write_report(arguments.output, report)
++    return int(report["status"] != "completed")
++
++
++def run_configuration(arguments, configuration, cases):
++    # 설정마다 새 프로세스를 써서 이전 가속 캐시와 네이티브 오류를 다음 대조에 넘기지 않는다.
++    with tempfile.TemporaryDirectory(prefix="receipt-cpu-") as temporary_folder:
++        worker_path = Path(temporary_folder) / "result.json"
++        command = [sys.executable, str(Path(__file__).resolve()), str(arguments.samples),
++                   "--manifest", str(arguments.manifest), "--ids", ",".join(arguments.ids),
++                   "--repeats", str(arguments.repeats), "--worker", configuration,
++                   "--output", str(worker_path)]
++        status = "completed"
++        return_code = None
++        try:
++            completed = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
++                                       timeout=arguments.timeout_seconds, check=False)
++            return_code = completed.returncode
++            if return_code:
++                status = "worker-failed"
++        except subprocess.TimeoutExpired:
++            status = "timeout"
++        try:
++            report = json.loads(worker_path.read_text(encoding="utf-8"))
++        except (OSError, ValueError):
++            report = {"configuration": configuration, "options": CONFIGURATIONS[configuration],
++                      "modelStartupSeconds": None, "observations": [], "status": "worker-failed"}
++        if status != "completed":
++            report["status"] = status
++        report["workerReturnCode"] = return_code
++        existing = {(record["sample"], record["repeat"]) for record in report["observations"]}
++        for repeat in range(1, arguments.repeats + 1):
++            for case in cases:
++                if (case["id"], repeat) not in existing:
++                    report["observations"].append({"sample": case["id"], "cohort": case["cohort"],
++                        "family": case["family"], "repeat": repeat, "seconds": None,
++                        "errorType": "WorkerTimeout" if status == "timeout" else "WorkerFailed"})
++        report["summary"] = summarize(report["observations"])
++        return report
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("samples", type=Path)
++    parser.add_argument("--manifest", type=Path, default=ROOT / "examples/manifest.web-pubs.example.json")
++    parser.add_argument("--ids", default="K345,K235,C48674,C49623")
++    parser.add_argument("--repeats", type=int, default=2)
++    parser.add_argument("--timeout-seconds", type=int, default=180, help="설정별 전체 프로세스 시간 제한")
++    parser.add_argument("--configuration", action="append", choices=CONFIGURATIONS)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--worker", choices=CONFIGURATIONS, help=argparse.SUPPRESS)
++    arguments = parser.parse_args()
++    if not 1 <= arguments.repeats <= 10 or not 10 <= arguments.timeout_seconds <= 900:
++        parser.error("repeats must be 1..10 and timeout-seconds must be 10..900")
++    arguments.samples = arguments.samples.resolve()
++    arguments.manifest = arguments.manifest.resolve()
++    arguments.ids = arguments.ids.split(",")
++    manifest_bytes = arguments.manifest.read_bytes()
++    try:
++        cases = select_cases(json.loads(manifest_bytes.decode("utf-8-sig")), arguments.ids)
++    except (KeyError, TypeError, ValueError) as error:
++        parser.error(type(error).__name__ + ": invalid manifest or selected IDs")
++    if arguments.worker:
++        return run_worker(arguments, cases, hashlib.sha256(manifest_bytes).hexdigest())
++    configurations = arguments.configuration or list(CONFIGURATIONS)
++    if len(configurations) != len(set(configurations)):
++        parser.error("configurations must be unique")
++    report = {"manifestSha256": hashlib.sha256(manifest_bytes).hexdigest(),
++              "selectedIds": arguments.ids, "repeats": arguments.repeats,
++              "timeoutSecondsPerConfiguration": arguments.timeout_seconds,
++              "sourceHashes": source_hashes(), "environment": environment_versions(), "configurations": [],
++              "limitations": ["partial annotations; not full field accuracy",
++                              "serial local CPU benchmark; not concurrent production latency",
++                              "first prediction and model initialization are separate"]}
++    write_report(arguments.output, report)
++    for configuration in configurations:
++        result = run_configuration(arguments, configuration, cases)
++        if (("sourceHashes" in result and result["sourceHashes"] != report["sourceHashes"])
++                or source_hashes() != report["sourceHashes"]):
++            result.update({"status": "source-changed", "errorType": "SourceChangedDuringBenchmark"})
++        if (("manifestSha256" in result and result["manifestSha256"] != report["manifestSha256"])
++                or hashlib.sha256(arguments.manifest.read_bytes()).hexdigest() != report["manifestSha256"]):
++            result.update({"status": "source-changed", "errorType": "ManifestChangedDuringBenchmark"})
++        report["configurations"].append(result)
++        write_report(arguments.output, report)
++        print(json.dumps({"configuration": configuration, "status": result.get("status"),
++                          "summary": result["summary"]}, ensure_ascii=True), flush=True)
++        if result.get("status") == "source-changed":
++            break
++    # 알려진 정확도 실패와 네이티브 오류를 성공 종료로 숨기지 않는다.
++    return int(any(result.get("status") != "completed" or result["summary"]["allAnnotatedChecksMatch"]
++                   != result["summary"]["requests"] for result in report["configurations"]))
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

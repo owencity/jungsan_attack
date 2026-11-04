@@ -1,5 +1,9 @@
 # PR 리뷰·스터디 기록
 
+영수증 합계·상품코드 행과 CPU 비교는 [가이드](receipt-ocr-parser-cpu/guide.md) ·
+[고정 diff](receipt-ocr-parser-cpu/changes.diff.patch) · [검증 기준](receipt-ocr-parser-cpu/manifest.json)을 본다.
+같은 개발 주류13개의 전체 선택 조건1→4개와 큰 사진을 포함한4원본×2회의 제한된 속도 비교를 구분한다.
+
 영수증 웹 전용 수집 후속은 [고정 근거](receipt-ocr-web-collection/guide.md) ·
 [부분 정답 diff](receipt-ocr-web-collection/changes.diff.patch) · [검증 기준](receipt-ocr-web-collection/manifest.json)을 본다.
 후기/리뷰 57개와 주류 부분 정답 13개를 구분하고 1/13의 미해결도 보존한다. 새 업무 구현/교재 학습은 없다.
