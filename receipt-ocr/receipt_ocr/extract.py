@@ -8,9 +8,10 @@ MAX_AMOUNT = 1_000_000_000
 MIN_CONFIDENCE = 0.85
 VALUE_WITH_UNIT = re.compile(rf"({NUMERIC_TOKEN})\s*(원|{UNIT_PATTERN})?", re.I)
 VALUES = re.compile(rf"{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?(?:\s+{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?){{0,2}}", re.I)
-TOTAL = re.compile(rf"^(합계금액|합계|총액|총금액|결제금액|총결제금액|받을금액)\s*[:：]?\s*({INTEGER})\s*원?$")
+TOTAL = re.compile(rf"^(합계금액|합계|총계|총액|총금액|총주문액|결제금액|총결제금액|받을금액)\s*[:：]{{0,2}}\s*({INTEGER})\s*원?$")
+DISCOUNT_TOTAL = re.compile(r"^(?:총할인금액|할인금액|총할인|할인액|할인)[:：]{0,2}(.*?)원?$")
 HEADER_LABELS = re.compile(r"단가|수량|할인|금액")
-HEADER_TEXT = re.compile(r"^(?:품명|품목|상품명|메뉴명|메뉴|단가|수량|할인|금액)+$")
+HEADER_TEXT = re.compile(r"^(?:품명|품목|상품명|상품|메뉴명|메뉴|단가|수량|할인|금액)+$")
 SUPPORTED_COLUMNS = ({"단가", "수량", "금액"}, {"수량", "금액"}, {"수량", "할인", "금액"})
 SPECIAL_ROW = re.compile(r"취소|환불|반품|VOID|CANCEL|할인|쿠폰|서비스|세트|[0-9]+\s*\+\s*[0-9]+", re.I)
 
@@ -45,35 +46,75 @@ def group_rows(tokens: list[Token]) -> list[list[Token]]:
     return [sorted(row, key=lambda token: token.box[0]) for row in rows]
 
 
+def _coded_item_continuation(row: list[Token], following: list[Token], columns: list[str],
+                             dictionary: dict[str, Entry]) -> list[Token] | None:
+    # 일부 POS는 상품명 다음 줄에 6자리 코드를 찍는다. 코드가 없거나 열 수가 다르면 연결하지 않는다.
+    if len(row) != 1 or len(following) != len(columns) + 1:
+        return None
+    product, values = split_product_values(row[0].text.strip(), dictionary)
+    if product is None or values or product.entry.category in {"NON_ALCOHOL", "NON_BEVERAGE"}:
+        return None
+    code, *numbers = following
+    if not re.fullmatch(r"[0-9]{6}", code.text.strip()) or code.confidence < MIN_CONFIDENCE:
+        return None
+    if not all(VALUE_WITH_UNIT.fullmatch(token.text.strip()) for token in numbers):
+        return None
+    name = row[0]
+    height = max(name.box[3] - name.box[1], code.box[3] - code.box[1])
+    gap = (code.box[1] + code.box[3] - name.box[1] - name.box[3]) / 2
+    if not (0 < gap <= 1.5 * height and abs(code.box[0] - name.box[0]) <= height / 2
+            and code.box[2] < min(token.box[0] for token in numbers)):
+        return None
+    # 상품명과 숫자 사이에 다른 상품/비알코올 접미사가 있으면 전체 이름을 잘라내지 않는다.
+    return [name, *numbers]
+
+
 def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
     warnings = []
     drinks = []
     totals = []
+    gross_total_seen = discount_seen = False
     columns = None
     rows = group_rows(tokens)
     # 가로로 붙은 두 표를 한 주문으로 섞지 않는다. 문서 분할이나 누락된 총액을 추측하지 않는다.
     for row in rows:
-        normalized = re.sub(r"\s+", "", "".join(token.text for token in row))
+        normalized = re.sub(r"\s+", "", "".join(token.text for token in row)).replace("가격", "단가")
         labels = HEADER_LABELS.findall(normalized)
         if HEADER_TEXT.fullmatch(normalized) and labels.count("수량") > 1 and labels.count("금액") > 1:
             return Receipt(None, [], ["MULTIPLE_RECEIPTS_SUSPECTED"])
-    for row in rows:
+    consumed_rows = set()
+    for index, row in enumerate(rows):
+        if index in consumed_rows:
+            continue
         text = " ".join(token.text.strip() for token in row).strip()
         confidence = min(token.confidence for token in row)
         normalized_text = re.sub(r"\s+", "", text)
+        discount_match = DISCOUNT_TOTAL.fullmatch(normalized_text)
+        if discount_match and (confidence < MIN_CONFIDENCE
+                               or read_integer(discount_match[1], MAX_AMOUNT, allow_zero=True) != 0):
+            discount_seen = True
         total_match = TOTAL.fullmatch(normalized_text)
         if total_match:
             amount = read_integer(total_match[2], MAX_AMOUNT, allow_zero=True)
             if amount is not None and confidence >= MIN_CONFIDENCE:
                 totals.append(amount)
+                gross_total_seen = gross_total_seen or total_match[1] in {"총주문액", "총계"}
             else:
                 warnings.append("TOTAL_NEEDS_REVIEW")
             continue
-        labels = HEADER_LABELS.findall(normalized_text)
-        if labels and HEADER_TEXT.fullmatch(normalized_text):
+        header_text = normalized_text.replace("가격", "단가")
+        labels = HEADER_LABELS.findall(header_text)
+        if labels and HEADER_TEXT.fullmatch(header_text):
             columns = labels if (len(labels) == len(set(labels)) and set(labels) in SUPPORTED_COLUMNS
                                  and confidence >= MIN_CONFIDENCE) else None
             continue
+        if columns is not None and index + 1 < len(rows):
+            continued = _coded_item_continuation(row, rows[index + 1], columns, dictionary)
+            if continued is not None:
+                row = continued
+                text = " ".join(token.text.strip() for token in row)
+                confidence = min(token.confidence for token in row)
+                consumed_rows.add(index + 1)
         product, values = split_product_values(text, dictionary)
         if product is None or product.entry.category in {"NON_ALCOHOL", "NON_BEVERAGE"}:
             continue
@@ -176,6 +217,10 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
         warnings.append("TOTAL_CONFLICT")
     else:
         total = totals[0] if totals else None
+    # 새 총계/주문 합계는 할인 전일 수 있다. 할인 여부가 불명확해도 최종 결제액을 만들어내지 않는다.
+    if gross_total_seen and discount_seen:
+        total = None
+        warnings.append("TOTAL_NEEDS_REVIEW")
     if total is None and "TOTAL_CONFLICT" not in warnings:
         warnings.append("TOTAL_NOT_FOUND")
     if not drinks:

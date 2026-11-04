@@ -23,6 +23,43 @@ class RecognitionAdapterTests(unittest.TestCase):
         self.assertEqual("korean_PP-OCRv5_mobile_rec", configurations[1][1]["model_name"])
         self.assertEqual(["cpu", "cpu"], [configuration[1]["device"] for configuration in configurations])
         self.assertEqual([2, 2], [configuration[1]["cpu_threads"] for configuration in configurations])
+        self.assertEqual([False, False], [configuration[1]["enable_mkldnn"] for configuration in configurations])
+        self.assertEqual(1280, configurations[0][1]["text_det_limit_side_len"])
+        self.assertEqual("max", configurations[0][1]["text_det_limit_type"])
+
+    def test_explicit_none_keeps_original_detection_configuration_for_comparison(self):
+        configurations = []
+        def factory(**options):
+            configurations.append(options)
+            return object()
+        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory)}):
+            PaddleEngine(detection_max_edge=None)
+        self.assertNotIn("text_det_limit_side_len", configurations[0])
+        self.assertNotIn("text_det_limit_type", configurations[0])
+
+    def test_experiment_options_apply_cpu_to_both_models_and_resize_to_detection_only(self):
+        configurations = []
+        def factory(**options):
+            configurations.append(options)
+            return object()
+        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory)}):
+            PaddleEngine(cpu_threads=4, enable_mkldnn=True, detection_max_edge=1280)
+        self.assertEqual([4, 4], [options["cpu_threads"] for options in configurations])
+        self.assertEqual([True, True], [options["enable_mkldnn"] for options in configurations])
+        self.assertEqual(1280, configurations[0]["text_det_limit_side_len"])
+        self.assertEqual("max", configurations[0]["text_det_limit_type"])
+        self.assertNotIn("text_det_limit_side_len", configurations[1])
+
+    def test_invalid_experiment_options_fail_before_native_initialization(self):
+        def forbidden(**options):
+            raise AssertionError("invalid options must not initialize native code")
+        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=forbidden, TextRecognition=forbidden)}):
+            for options in ({"cpu_threads": 0}, {"cpu_threads": 65}, {"cpu_threads": True},
+                            {"cpu_threads": 2.5}, {"enable_mkldnn": "false"},
+                            {"detection_max_edge": 31}, {"detection_max_edge": 4001},
+                            {"detection_max_edge": True}):
+                with self.subTest(options=options), self.assertRaises(ValueError):
+                    PaddleEngine(**options)
 
     def test_numeric_patch_uses_recognition_without_a_detection_pipeline(self):
         seen = []

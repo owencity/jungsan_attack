@@ -8,8 +8,20 @@ class OcrEngine(Protocol):
 
 
 class PaddleEngine:
-    def __init__(self):
+    def __init__(self, *, cpu_threads: int = 2, enable_mkldnn: bool = False,
+                 detection_max_edge: int | None = 1280):
+        if type(cpu_threads) is not int or not 1 <= cpu_threads <= 64:
+            raise ValueError("cpu_threads must be an integer between 1 and 64")
+        if type(enable_mkldnn) is not bool:
+            raise ValueError("enable_mkldnn must be a boolean")
+        if detection_max_edge is not None and (type(detection_max_edge) is not int
+                                                or not 32 <= detection_max_edge <= 4000):
+            raise ValueError("detection_max_edge must be an integer between 32 and 4000")
         from paddleocr import PaddleOCR, TextRecognition
+        # 검출 크기를 명시해 큰 원본의 CPU 비용을 제한한다. None은 이전 설정과의 대조용이다.
+        detection_options = {} if detection_max_edge is None else {
+            "text_det_limit_side_len": detection_max_edge, "text_det_limit_type": "max",
+        }
         # 기본 인식 모델의 언어 범위에 기대지 않고 한국어 모델을 고정한다.
         self.pipeline = PaddleOCR(
             text_detection_model_name="PP-OCRv5_mobile_det",
@@ -17,12 +29,14 @@ class PaddleEngine:
             use_doc_orientation_classify=False,
             use_doc_unwarping=False,
             use_textline_orientation=False,
-            device="cpu", cpu_threads=2, enable_mkldnn=False,
+            device="cpu", cpu_threads=cpu_threads, enable_mkldnn=enable_mkldnn,
+            **detection_options,
         )
         # 숫자 칸은 위치를 이미 알므로 검출기를 다시 거치지 않는다. 공개 API로 같은 가중치를 읽는다.
         # 전체 OCR과 별도 인식 인스턴스를 두어 라이브러리의 비공개 내부 객체에는 의존하지 않는다.
         self.numeric_recognizer = TextRecognition(
-            model_name="korean_PP-OCRv5_mobile_rec", device="cpu", cpu_threads=2, enable_mkldnn=False,
+            model_name="korean_PP-OCRv5_mobile_rec", device="cpu", cpu_threads=cpu_threads,
+            enable_mkldnn=enable_mkldnn,
         )
 
     def recognize(self, image: Image.Image) -> list[Token]:
