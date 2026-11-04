@@ -1,13 +1,14 @@
 import re
 from .dictionary import Entry
+from .layout import reconstruct_item_rows
 from .model import Drink, Receipt, Token
 from .product import INTEGER, MAX_QUANTITY, NUMERIC_TOKEN, UNIT_NAMES, UNIT_PATTERN, match_product, read_integer
 
 
 MAX_AMOUNT = 1_000_000_000
 MIN_CONFIDENCE = 0.85
-VALUE_WITH_UNIT = re.compile(rf"({NUMERIC_TOKEN})\s*(원|{UNIT_PATTERN})?", re.I)
-VALUES = re.compile(rf"{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?(?:\s+{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?){{0,2}}", re.I)
+VALUE_WITH_UNIT = re.compile(rf"({NUMERIC_TOKEN})\s*(원|{UNIT_PATTERN}|개)?", re.I)
+VALUES = re.compile(rf"{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN}|개)?(?:\s+{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN}|개)?){{0,2}}", re.I)
 TOTAL = re.compile(rf"^(합계금액|합계|총계|총액|총금액|총주문액|결제금액|총결제금액|받을금액)\s*[:：]{{0,2}}\s*({INTEGER})\s*원?$")
 DISCOUNT_TOTAL = re.compile(r"^(?:총할인금액|할인금액|총할인|할인액|할인)[:：]{0,2}(.*?)원?$")
 HEADER_LABELS = re.compile(r"단가|수량|할인|금액")
@@ -82,6 +83,7 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
         labels = HEADER_LABELS.findall(normalized)
         if HEADER_TEXT.fullmatch(normalized) and labels.count("수량") > 1 and labels.count("금액") > 1:
             return Receipt(None, [], ["MULTIPLE_RECEIPTS_SUSPECTED"])
+    rows = reconstruct_item_rows(tokens, rows, dictionary, MIN_CONFIDENCE, SUPPORTED_COLUMNS)
     consumed_rows = set()
     for index, row in enumerate(rows):
         if index in consumed_rows:
@@ -170,7 +172,7 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
             value_units = {label: value_unit.casefold() if value_unit else None
                            for label, (unused_value, value_unit) in mapped.items()}
             valid_units = all(value_unit in (None, "원") for label, value_unit in value_units.items() if label != "수량")
-            valid_units = valid_units and value_units["수량"] in (None, *UNIT_NAMES)
+            valid_units = valid_units and value_units["수량"] in (None, "개", *UNIT_NAMES)
             if not valid_units or any(value is None for value in parsed.values()):
                 reasons.append("ITEM_OUT_OF_RANGE")
                 unit_price = quantity = line_amount = None

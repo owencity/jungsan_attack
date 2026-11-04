@@ -3,14 +3,51 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
-from tools.benchmark_cpu import run_configuration, run_worker, select_cases, summarize
+from tools.benchmark_cpu import keep_system_awake, peak_rss_mib, run_configuration, run_worker, select_cases, summarize
 
 
 class BenchmarkTests(unittest.TestCase):
+    def test_awake_guard_restores_previous_thread_state_when_the_comparison_fails(self):
+        calls = []
+        def execution_state(flags):
+            calls.append(flags)
+            return 0x80000000
+        with patch("tools.benchmark_cpu.platform.system", return_value="Windows"), patch(
+                "ctypes.WinDLL", create=True, return_value=SimpleNamespace(SetThreadExecutionState=execution_state)):
+            with self.assertRaises(RuntimeError):
+                with keep_system_awake() as state:
+                    self.assertTrue(state["available"])
+                    self.assertFalse(state["displayRequired"])
+                    raise RuntimeError("comparison failed")
+        self.assertEqual([0x80000001, 0x80000000], calls)
+        self.assertTrue(state["restored"])
+
+    def test_unavailable_awake_guard_is_metadata_without_changing_comparison_behavior(self):
+        with patch("tools.benchmark_cpu.platform.system", return_value="Windows"), patch(
+                "ctypes.WinDLL", create=True, return_value=SimpleNamespace(SetThreadExecutionState=lambda _: 0)):
+            with keep_system_awake() as state:
+                self.assertTrue(state["requested"])
+                self.assertFalse(state["available"])
+        self.assertIsNone(state["restored"])
+
+    def test_peak_memory_units_distinguish_linux_kib_from_macos_bytes(self):
+        resource = SimpleNamespace(RUSAGE_SELF=0,
+            getrusage=lambda _: SimpleNamespace(ru_maxrss=1024 * 1024))
+        for operating_system, expected in (("Linux", 1024.0), ("Darwin", 1.0)):
+            with self.subTest(operating_system=operating_system), patch(
+                    "tools.benchmark_cpu.platform.system", return_value=operating_system), patch.dict(
+                    sys.modules, {"resource": resource}):
+                self.assertEqual(expected, peak_rss_mib())
+
+    def test_unsupported_peak_memory_measurement_is_unknown_instead_of_zero(self):
+        with patch("tools.benchmark_cpu.platform.system", return_value="unsupported"):
+            self.assertIsNone(peak_rss_mib())
+
     def test_selected_ids_preserve_requested_order_and_reject_unknown_or_duplicate_cases(self):
         cases = [{"id": "A"}, {"id": "B"}]
         self.assertEqual([cases[1], cases[0]], select_cases(cases, ["B", "A"]))

@@ -1,5 +1,6 @@
 """동일 원본에서 CPU 옵션을 순차 대조한다. 네이티브 오류·정확도 실패도 보존한다."""
 import argparse
+from contextlib import contextmanager
 from dataclasses import asdict
 import hashlib
 from importlib.metadata import PackageNotFoundError, version
@@ -19,13 +20,76 @@ from tools.validate_capture_campaign import TimedEngine, inspect_case
 from receipt_ocr.dictionary import load_dictionary
 
 
-BASELINE_OPTIONS = {"cpu_threads": 2, "enable_mkldnn": False, "detection_max_edge": None}
+BASELINE_OPTIONS = {"cpu_threads": 2, "enable_mkldnn": False, "detection_max_edge": None,
+                    "recognition_mkldnn": False}
 CONFIGURATIONS = {
     "baseline": dict(BASELINE_OPTIONS),
     "det1280": {**BASELINE_OPTIONS, "detection_max_edge": 1280},
     "threads4": {**BASELINE_OPTIONS, "cpu_threads": 4},
     "mkldnn": {**BASELINE_OPTIONS, "enable_mkldnn": True},
+    "hybrid": {**BASELINE_OPTIONS, "detection_max_edge": 1280, "recognition_mkldnn": True},
 }
+
+
+@contextmanager
+def keep_system_awake():
+    # 비교 중 자동 절전만 막는다. 화면·전역 전원 설정은 바꾸지 않고 기존 스레드 상태를 복구한다.
+    state = {"requested": platform.system() == "Windows", "available": False,
+             "restored": None, "displayRequired": False}
+    previous = None
+    execution_state = None
+    if state["requested"]:
+        try:
+            import ctypes
+            from ctypes import wintypes
+            execution_state = ctypes.WinDLL("kernel32", use_last_error=True).SetThreadExecutionState
+            execution_state.argtypes = [wintypes.DWORD]
+            execution_state.restype = wintypes.DWORD
+            previous = execution_state(0x80000001)
+            state["available"] = bool(previous)
+            if not previous:
+                state["errorType"] = "SetThreadExecutionStateFailed"
+        except (AttributeError, OSError) as error:
+            state["errorType"] = type(error).__name__
+    try:
+        yield state
+    finally:
+        if previous and execution_state is not None:
+            try:
+                state["restored"] = bool(execution_state(previous))
+            except (AttributeError, OSError) as error:
+                state.update({"restored": False, "restoreErrorType": type(error).__name__})
+
+
+def peak_rss_mib():
+    # 모델/oneDNN 캐시를 포함한 프로세스 최고 사용량이다. 측정 불가를 0MiB로 숨기지 않는다.
+    try:
+        operating_system = platform.system()
+        if operating_system == "Windows":
+            import ctypes
+            from ctypes import wintypes
+            class ProcessMemoryCounters(ctypes.Structure):
+                _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
+                    *[(name, ctypes.c_size_t) for name in ("PeakWorkingSetSize", "WorkingSetSize",
+                        "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
+                        "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage")]]
+            kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+            memory_api = ctypes.WinDLL("psapi", use_last_error=True).GetProcessMemoryInfo
+            kernel.GetCurrentProcess.restype = wintypes.HANDLE
+            memory_api.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessMemoryCounters), wintypes.DWORD]
+            memory_api.restype = wintypes.BOOL
+            counters = ProcessMemoryCounters()
+            counters.cb = ctypes.sizeof(counters)
+            if not memory_api(kernel.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+                return None
+            return round(counters.PeakWorkingSetSize / (1024 * 1024), 3)
+        if operating_system in {"Linux", "Darwin"}:
+            import resource
+            highest_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            return round(highest_rss / (1024 * 1024 if operating_system == "Darwin" else 1024), 3)
+    except (AttributeError, ImportError, OSError):
+        return None
+    return None
 
 
 def source_hashes():
@@ -113,6 +177,7 @@ def run_worker(arguments, cases, manifest_sha256):
     except Exception as error:
         report.update({"status": "worker-error", "errorType": type(error).__name__})
     report["sourceHashesAfter"] = source_hashes()
+    report["peakRssMiB"] = peak_rss_mib()
     if report["sourceHashesAfter"] != report["sourceHashes"]:
         report.update({"status": "source-changed", "errorType": "SourceChangedDuringBenchmark"})
     if hashlib.sha256(arguments.manifest.read_bytes()).hexdigest() != manifest_sha256:
@@ -191,21 +256,24 @@ def main():
               "limitations": ["partial annotations; not full field accuracy",
                               "serial local CPU benchmark; not concurrent production latency",
                               "first prediction and model initialization are separate"]}
-    write_report(arguments.output, report)
-    for configuration in configurations:
-        result = run_configuration(arguments, configuration, cases)
-        if (("sourceHashes" in result and result["sourceHashes"] != report["sourceHashes"])
-                or source_hashes() != report["sourceHashes"]):
-            result.update({"status": "source-changed", "errorType": "SourceChangedDuringBenchmark"})
-        if (("manifestSha256" in result and result["manifestSha256"] != report["manifestSha256"])
-                or hashlib.sha256(arguments.manifest.read_bytes()).hexdigest() != report["manifestSha256"]):
-            result.update({"status": "source-changed", "errorType": "ManifestChangedDuringBenchmark"})
-        report["configurations"].append(result)
+    with keep_system_awake() as awake_state:
+        report["systemAwakeGuard"] = awake_state
         write_report(arguments.output, report)
-        print(json.dumps({"configuration": configuration, "status": result.get("status"),
-                          "summary": result["summary"]}, ensure_ascii=True), flush=True)
-        if result.get("status") == "source-changed":
-            break
+        for configuration in configurations:
+            result = run_configuration(arguments, configuration, cases)
+            if (("sourceHashes" in result and result["sourceHashes"] != report["sourceHashes"])
+                    or source_hashes() != report["sourceHashes"]):
+                result.update({"status": "source-changed", "errorType": "SourceChangedDuringBenchmark"})
+            if (("manifestSha256" in result and result["manifestSha256"] != report["manifestSha256"])
+                    or hashlib.sha256(arguments.manifest.read_bytes()).hexdigest() != report["manifestSha256"]):
+                result.update({"status": "source-changed", "errorType": "ManifestChangedDuringBenchmark"})
+            report["configurations"].append(result)
+            write_report(arguments.output, report)
+            print(json.dumps({"configuration": configuration, "status": result.get("status"),
+                              "summary": result["summary"]}, ensure_ascii=True), flush=True)
+            if result.get("status") == "source-changed":
+                break
+    write_report(arguments.output, report)
     # 알려진 정확도 실패와 네이티브 오류를 성공 종료로 숨기지 않는다.
     return int(any(result.get("status") != "completed" or result["summary"]["allAnnotatedChecksMatch"]
                    != result["summary"]["requests"] for result in report["configurations"]))
