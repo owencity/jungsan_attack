@@ -1,0 +1,85 @@
+{
+  "date": "2026-11-04",
+  "annotationFrozenBeforeInference": true,
+  "manifestSha256": "f8507b5e807607997a5d5b5d21e1419cb6466d003f69202655a4eaf101d2456e",
+  "annotationMethod": "manual visual inspection; no OCR output used",
+  "selectedOriginals": 3,
+  "sourcePublishers": 3,
+  "merchantFamilies": 3,
+  "exactByteDuplicatesWithPriorSets": 0,
+  "note": "E1 product names/prices were previewed to root before blind coordination; no alias or parser rule may be based on this evaluation set. Not a fully blind benchmark. E2/E3 values withheld until code freeze.",
+  "provenance": [
+    {
+      "image": "gudoro-0.png",
+      "source": "https://lhshp0000.tistory.com/entry/%EC%A2%85%EA%B0%81-%ED%9A%8C%EC%8B%9D-%EA%B5%AC%EB%8F%84%EB%A1%9C%ED%86%B5%EB%8B%AD-%EC%A2%85%EA%B0%81",
+      "size": [
+        562,
+        449
+      ],
+      "sha256": "68bf42e982cddc050ace51c37171860b65a139ddfe1f171339300bb530f65c3b",
+      "rights": "publicly visible only; local comparison candidate, no training or redistribution permission established",
+      "licenseEvidence": [
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko",
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko",
+        "https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko"
+      ],
+      "id": "E1",
+      "family": "gudoro-jonggak-202401",
+      "visuallyReviewed": true,
+      "annotationMethod": "manual image inspection before model inference; no model output consulted",
+      "scopeNote": "Posted photo is cropped above the item table and below payment amount; complete visible item table plus matching order/card total. Quantity/amount columns only: no unit-price inference. Cocktail entries are menu names with article explanations; no component bottle inference.",
+      "date": "2026-11-04",
+      "rightsConclusion": "public access and any CC notice do not establish product-training or commercial redistribution permission"
+    },
+    {
+      "image": "songgye-1.jpg",
+      "source": "https://supiayj1.tistory.com/7",
+      "size": [
+        1512,
+        1631
+      ],
+      "sha256": "0d973061b2f63bb1c3510cabc697c09310924ad5422461138c2665ef981de283",
+      "rights": "publicly visible only; local comparison candidate, no training or redistribution permission established",
+      "licenseEvidence": [],
+      "id": "E2",
+      "family": "songgye-gyodae-202210",
+      "visuallyReviewed": true,
+      "annotationMethod": "manual image inspection before model inference; no model output consulted",
+      "scopeNote": "Readable explicit unit-price/quantity/amount columns. Final amount agrees across total/received/card. No discount shown.",
+      "date": "2026-11-04",
+      "rightsConclusion": "public access and any CC notice do not establish product-training or commercial redistribution permission"
+    },
+    {
+      "image": "gilseong-0.jpg",
+      "source": "https://young0316.tistory.com/152",
+      "size": [
+        936,
+        1248
+      ],
+      "sha256": "199ebde79ef2bf6e2e2db2f211b2ffd6279aa4469fcb1dff6516846ba7b0ffd8",
+      "rights": "publicly visible only; local comparison candidate, no training or redistribution permission established",
+      "licenseEvidence": [],
+      "id": "E3",
+      "family": "gilseong-suwon-202505",
+      "visuallyReviewed": true,
+      "annotationMethod": "manual image inspection before model inference; no model output consulted",
+      "scopeNote": "Readable printed item names on one line and six-digit codes plus numeric columns on next. Final total/received/card agree. No discount shown.",
+      "date": "2026-11-04",
+      "rightsConclusion": "public access and any CC notice do not establish product-training or commercial redistribution permission"
+    }
+  ],
+  "excludedCandidates": [
+    {
+      "source": "https://sgeng2325.tistory.com/576",
+      "reason": "receipt mentioned in prose but downloaded images show food/signage/profile, no receipt"
+    },
+    {
+      "source": "https://mamm.tistory.com/47",
+      "reason": "caption matching returned food only, no visible receipt in acquired candidate"
+    },
+    {
+      "source": "https://openclick.tistory.com/2510",
+      "reason": "additional readable restaurant receipt acquired but intentionally not added after bounded three-original target; no inference run"
+    }
+  ]
+}

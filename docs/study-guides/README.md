@@ -1,5 +1,9 @@
 # PR 리뷰·스터디 기록
 
+영수증 인식 전용 가속·행 한정자 보호 후속은 [가이드](receipt-ocr-hybrid-round2/guide.md) ·
+[고정 diff](receipt-ocr-hybrid-round2/changes.diff.patch) · [검증 기준](receipt-ocr-hybrid-round2/manifest.json)을 본다.
+개발13개6/13과 새3개0/3, 시간 단축과 메모리 증가를 함께 보존한다. 운영/ARM·독립 일반 정확도와 구분한다.
+
 영수증 합계·상품코드 행과 CPU 비교는 [가이드](receipt-ocr-parser-cpu/guide.md) ·
 [고정 diff](receipt-ocr-parser-cpu/changes.diff.patch) · [검증 기준](receipt-ocr-parser-cpu/manifest.json)을 본다.
 같은 개발 주류13개의 전체 선택 조건1→4개와 큰 사진을 포함한4원본×2회의 제한된 속도 비교를 구분한다.

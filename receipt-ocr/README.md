@@ -120,9 +120,13 @@ API 필드와 오류는 [계약 문서](../docs/RECEIPT_OCR.md)를 따른다.
 사진을 반복 실행하는 것만으로 모델이 학습되지는 않는다. 같은 원본의 실패를 수정한 결과와 처음 보는 매장의 평가를 구분한다.
 
 ```powershell
-.venv\Scripts\python tools\benchmark_cpu.py .samples/web-2026-11-03 --ids K345,K235,C48674,C49623 --repeats 2 --output reports/cpu-comparison.json
+.venv\Scripts\python tools\benchmark_cpu.py .samples/web-2026-11-03 --ids K345,K235,C48674,C49623 --configuration det1280 --configuration hybrid --repeats 2 --output reports/cpu-comparison.json
 ```
 
 비교 도구는 설정별 새 프로세스·유한한 제한 시간으로 순차 실행하고 정확도 불일치·실행 오류를 결과에 남긴다.
 소스·정답이 실행 도중 바뀌면 비교를 중단한다. 기동 시간과 첫 요청·반복 요청은 따로 확인한다.
 원문은 기록하지 않으며, 원본 사진은 기존 로컬 ignore 폴더에 준비돼 있어야 한다.
+
+추가 개선은 [인식 전용 가속·행 연결·새 평가](docs/round2-accuracy-hybrid-2026-11-04.md)를 본다.
+기본 엔진은 AMD64/x86_64에서 인식 단계만 CPU 가속하고 ARM·미상은 기존 실행 경로를 유지한다.
+명시적인 `recognition_mkldnn=False`로 비가속 대조를 재현한다. 실제 ARM 추론과 운영 연결은 별도 검증이다.

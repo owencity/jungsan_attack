@@ -1,0 +1,77 @@
+[
+  {
+    "id": "E1",
+    "image": "gudoro-0.png",
+    "family": "gudoro-jonggak-202401",
+    "source": "https://lhshp0000.tistory.com/entry/%EC%A2%85%EA%B0%81-%ED%9A%8C%EC%8B%9D-%EA%B5%AC%EB%8F%84%EB%A1%9C%ED%86%B5%EB%8B%AD-%EC%A2%85%EA%B0%81",
+    "cohort": "round2-new-merchant-partial-evaluation",
+    "sha256": "68bf42e982cddc050ace51c37171860b65a139ddfe1f171339300bb530f65c3b",
+    "total": 42800,
+    "drinks": [
+      {
+        "category": "BEER",
+        "quantity": 1,
+        "unitPrice": null,
+        "lineAmount": 4500
+      },
+      {
+        "category": "COCKTAIL_MIXED",
+        "quantity": 1,
+        "unitPrice": null,
+        "lineAmount": 5900
+      },
+      {
+        "category": "COCKTAIL_MIXED",
+        "quantity": 1,
+        "unitPrice": null,
+        "lineAmount": 7500
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount, total; not nine-field accuracy",
+    "usage": "local evaluation only; product training/commercial redistribution permission not established"
+  },
+  {
+    "id": "E2",
+    "image": "songgye-1.jpg",
+    "family": "songgye-gyodae-202210",
+    "source": "https://supiayj1.tistory.com/7",
+    "cohort": "round2-new-merchant-partial-evaluation",
+    "sha256": "0d973061b2f63bb1c3510cabc697c09310924ad5422461138c2665ef981de283",
+    "total": 136500,
+    "drinks": [
+      {
+        "category": "COCKTAIL_MIXED",
+        "quantity": 3,
+        "unitPrice": 8500,
+        "lineAmount": 25500
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount, total; not nine-field accuracy",
+    "usage": "local evaluation only; product training/commercial redistribution permission not established"
+  },
+  {
+    "id": "E3",
+    "image": "gilseong-0.jpg",
+    "family": "gilseong-suwon-202505",
+    "source": "https://young0316.tistory.com/152",
+    "cohort": "round2-new-merchant-partial-evaluation",
+    "sha256": "199ebde79ef2bf6e2e2db2f211b2ffd6279aa4469fcb1dff6516846ba7b0ffd8",
+    "total": 70000,
+    "drinks": [
+      {
+        "category": "BEER",
+        "quantity": 1,
+        "unitPrice": 5000,
+        "lineAmount": 5000
+      },
+      {
+        "category": "CHEONGJU_YAKJU",
+        "quantity": 1,
+        "unitPrice": 5000,
+        "lineAmount": 5000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount, total; not nine-field accuracy",
+    "usage": "local evaluation only; product training/commercial redistribution permission not established"
+  }
+]

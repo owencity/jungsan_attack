@@ -1,0 +1,700 @@
+diff --git a/receipt-ocr/data/drinks.md b/receipt-ocr/data/drinks.md
+index 9685d1d..2373d84 100644
+--- a/receipt-ocr/data/drinks.md
++++ b/receipt-ocr/data/drinks.md
+@@ -19,0 +20 @@ CTO 제공 문서의 브랜드·표기와 팩트체크 수정 사항을 실행
++| 대선 | 소주 | 대선 (세부형 미상) | 미상 | 미상 |
+diff --git a/receipt-ocr/receipt_ocr/extract.py b/receipt-ocr/receipt_ocr/extract.py
+index 8caf395..602d451 100644
+--- a/receipt-ocr/receipt_ocr/extract.py
++++ b/receipt-ocr/receipt_ocr/extract.py
+@@ -2,0 +3 @@ from .dictionary import Entry
++from .layout import reconstruct_item_rows
+@@ -9,2 +10,2 @@ MIN_CONFIDENCE = 0.85
+-VALUE_WITH_UNIT = re.compile(rf"({NUMERIC_TOKEN})\s*(원|{UNIT_PATTERN})?", re.I)
+-VALUES = re.compile(rf"{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?(?:\s+{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN})?){{0,2}}", re.I)
++VALUE_WITH_UNIT = re.compile(rf"({NUMERIC_TOKEN})\s*(원|{UNIT_PATTERN}|개)?", re.I)
++VALUES = re.compile(rf"{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN}|개)?(?:\s+{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN}|개)?){{0,2}}", re.I)
+@@ -84,0 +86 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
++    rows = reconstruct_item_rows(tokens, rows, dictionary, MIN_CONFIDENCE, SUPPORTED_COLUMNS)
+@@ -173 +175 @@ def extract(tokens: list[Token], dictionary: dict[str, Entry]) -> Receipt:
+-            valid_units = valid_units and value_units["수량"] in (None, *UNIT_NAMES)
++            valid_units = valid_units and value_units["수량"] in (None, "개", *UNIT_NAMES)
+diff --git a/receipt-ocr/receipt_ocr/layout.py b/receipt-ocr/receipt_ocr/layout.py
+new file mode 100644
+index 0000000..ee22772
+--- /dev/null
++++ b/receipt-ocr/receipt_ocr/layout.py
+@@ -0,0 +1,162 @@
++"""겹친 글자 상자는 명시된 표의 열과 실제 숫자로만 다시 연결한다."""
++import re
++from statistics import median
++
++from .dictionary import Entry, normalize
++from .model import Token
++from .product import NUMERIC_TOKEN, UNIT_PATTERN, match_product, read_integer
++
++
++NAME_HEADERS = {"품명", "품목", "상품명", "상품", "메뉴명", "메뉴"}
++COLUMN_HEADERS = {"단가", "가격", "수량", "할인", "금액"}
++CELL = re.compile(rf"{NUMERIC_TOKEN}\s*(?:원|{UNIT_PATTERN}|개)?", re.I)
++HEADER = re.compile(r"^(?:품명|품목|상품명|상품|메뉴명|메뉴|단가|가격|수량|할인|금액)+$")
++FOOTER = re.compile(r"^(?:합계|총계|총액|총금액|총주문액|결제|과세|부가세|부가가치세|면세|"
++                    r"매출|받을|받은|거스름|현금|카드|신용|공급가액|판매금액|소계|취소|환불|반품|void|cancel)", re.I)
++QUALIFIER = re.compile(r"무알|논알|비알코올|알코올프리|알콜프리|제로|0[.]0|토닉|미등록|미상|불명|"
++                       r"취소|환불|반품|서비스|증정|할인|쿠폰|세트|소주잔|와인잔|병따개|"
++                       r"non.?alcohol|alcohol.?free|unknown|void|cancel|"
++                       r"(?:^|[\s(])(?:병|캔|잔|피처|피쳐|bottles?|cans?|glass(?:es)?|pitcher)(?:$|[\s)])", re.I)
++
++
++def _center(token: Token) -> tuple[float, float]:
++    return ((token.box[0] + token.box[2]) / 2, (token.box[1] + token.box[3]) / 2)
++
++
++def _header_cells(anchor, tokens, minimum_confidence, supported_columns):
++    if anchor.confidence < minimum_confidence:
++        return None
++    cells = []
++    for token in tokens:
++        label = normalize(token.text)
++        if label not in COLUMN_HEADERS:
++            continue
++        height = max(anchor.box[3] - anchor.box[1], token.box[3] - token.box[1])
++        if abs(_center(token)[1] - _center(anchor)[1]) <= .65 * height and token.box[0] > anchor.box[2]:
++            cells.append(("단가" if label == "가격" else label, token))
++    cells.sort(key=lambda cell: cell[1].box[0])
++    labels = [label for label, unused_token in cells]
++    if (len(labels) != len(set(labels)) or set(labels) not in supported_columns
++            or any(token.confidence < minimum_confidence for unused_label, token in cells)):
++        return None
++    centers = [_center(anchor)[0], *[_center(token)[0] for unused_label, token in cells]]
++    limits = [(centers[index] + centers[index + 1]) / 2 for index in range(len(cells))]
++    limits.append(centers[-1] + (centers[-1] - centers[-2]) / 2)
++    return cells, limits
++
++
++def _previous_item_has_values(previous, current, tokens, cells, limits, current_numbers):
++    labels = [label for label, unused_token in cells]
++    required = {"금액", "단가" if "단가" in labels else "수량"}
++    previous_centers = []
++    for index, label in enumerate(labels):
++        if label not in required:
++            continue
++        values = [token for token in tokens if CELL.fullmatch(token.text.strip())
++                  and limits[index] < token.box[0] < token.box[2] < limits[index + 1]
++                  and _center(previous)[1] <= _center(token)[1] < _center(current)[1]]
++        if len(values) != 1:
++            return False
++        pattern = rf"({NUMERIC_TOKEN})\s*(?:{UNIT_PATTERN}|개)?" if label == "수량" else rf"({NUMERIC_TOKEN})\s*원?"
++        matched = re.fullmatch(pattern, values[0].text.strip(), re.I)
++        if not matched or read_integer(matched[1], 1000 if label == "수량" else 1_000_000_000) is None:
++            return False
++        previous_centers.append(_center(values[0])[1])
++    previous_offset = median(previous_centers) - _center(previous)[1]
++    current_offset = median(_center(token)[1] for token in current_numbers) - _center(current)[1]
++    # 앞 금액이 보인다는 이유만으로 이름 한정자를 버리지 않는다. 두 행의 기울기도 일치해야 한다.
++    # 글자 높이 1/4 제한은 맞는 행을 더 거절할 수 있지만 모호한 행을 긍정으로 넓히지 않는다.
++    tolerance = .25 * min(previous.box[3] - previous.box[1], current.box[3] - current.box[1])
++    return abs(previous_offset - current_offset) <= tolerance
++
++
++def reconstruct_item_rows(tokens: list[Token], rows: list[list[Token]], dictionary: dict[str, Entry],
++                          minimum_confidence: float, supported_columns) -> list[list[Token]]:
++    anchors = [token for token in tokens if normalize(token.text) in NAME_HEADERS]
++    original_rows = {id(token): row for row in rows for token in row}
++    candidates = []
++    for name in tokens:
++        product = match_product(name.text, dictionary)
++        if (product is None or product.entry.category in {"NON_ALCOHOL", "NON_BEVERAGE"}
++                or name.confidence < minimum_confidence):
++            continue
++        preceding = [anchor for anchor in anchors if _center(anchor)[1] < name.box[1]]
++        if not preceding:
++            continue
++        anchor = max(preceding, key=lambda token: _center(token)[1])
++        header = _header_cells(anchor, tokens, minimum_confidence, supported_columns)
++        if header is None:
++            continue
++        cells, limits = header
++        header_tokens = [anchor, *[token for unused_label, token in cells]]
++        header_ids = {id(token) for token in header_tokens}
++        header_bottom = max(_center(token)[1] for token in header_tokens)
++        # 불완전한 다음 헤더나 결제/세금 영역에서 이전 표의 열을 재사용하지 않는다.
++        if any(id(token) not in header_ids and header_bottom < _center(token)[1] <= _center(name)[1]
++               and (HEADER.fullmatch(normalize(token.text)) or FOOTER.match(normalize(token.text)))
++               for token in tokens):
++            continue
++        old_row = original_rows[id(name)]
++        if (len(old_row) == len(cells) + 1
++                and all(sum(CELL.fullmatch(token.text.strip()) is not None
++                            and limits[index] < token.box[0] < token.box[2] < limits[index + 1]
++                            for token in old_row) == 1 for index in range(len(cells)))):
++            continue
++        left_tolerance = 2 * max(name.box[3] - name.box[1], anchor.box[3] - anchor.box[1])
++        if name.box[0] < anchor.box[0] - left_tolerance or name.box[2] >= limits[0]:
++            continue
++        height = name.box[3] - name.box[1]
++        bottom = _center(name)[1] + 1.25 * height
++        numbers = []
++        for index, (unused_label, unused_header_token) in enumerate(cells):
++            found = [token for token in tokens if id(token) not in header_ids and token is not name
++                     and CELL.fullmatch(token.text.strip())
++                     and limits[index] < token.box[0] < token.box[2] < limits[index + 1]
++                     and _center(name)[1] <= _center(token)[1] <= bottom]
++            if len(found) != 1:
++                break
++            numbers.append(found[0])
++        if len(numbers) != len(cells):
++            continue
++        item_bottom = max(_center(token)[1] for token in numbers)
++        blockers = []
++        for token in tokens:
++            value = token.text.strip()
++            # 이름 열의 0.0 같은 숫자도 제품 한정자다. 분명한 금액 표기만 아래줄 가격으로 제외한다.
++            left_price = (("," in value or value.endswith("원"))
++                          and read_integer(value.removesuffix("원").strip(), 1_000_000_000) is not None)
++            ordinary_cell = CELL.fullmatch(value) and (token.box[0] >= limits[0] or left_price)
++            if (id(token) in header_ids or token is name or ordinary_cell
++                    or not name.box[0] - height <= _center(token)[0] <= limits[-1]
++                    or not max(header_bottom, _center(name)[1] - height) < _center(token)[1] <= item_bottom + .25 * height):
++                continue
++            # 긴 앞 상품명 상자는 아래 행과 겹쳐도 그 상품의 금액이 따로 보이면 앞 행이다.
++            earlier = _center(token)[1] < _center(name)[1] - .25 * min(height, token.box[3] - token.box[1])
++            combined = match_product(name.text + " " + token.text, dictionary)
++            modifier = QUALIFIER.search(token.text) or (combined is not None and combined.entry != product.entry)
++            ambiguous_name_number = CELL.fullmatch(value) and token.box[0] < limits[0] and not left_price
++            if (ambiguous_name_number or modifier
++                    or not (earlier and _previous_item_has_values(token, name, tokens, cells, limits, numbers))):
++                blockers.append(token)
++        if blockers:
++            continue
++        candidates.append((header_tokens, [name, *numbers]))
++    # 한 숫자가 두 상품에 동시에 붙는 경우에는 가까운 쪽을 임의로 고르지 않는다.
++    counts = {}
++    for unused_header, item in candidates:
++        for token in item:
++            counts[id(token)] = counts.get(id(token), 0) + 1
++    accepted = [(header, item) for header, item in candidates if all(counts[id(token)] == 1 for token in item)]
++    if not accepted:
++        return rows
++    consumed = {id(token) for header, item in accepted for token in [*header, *item]}
++    rebuilt = [[token for token in row if id(token) not in consumed] for row in rows]
++    rebuilt = [row for row in rebuilt if row]
++    emitted_headers = set()
++    for header, item in accepted:
++        identity = tuple(id(token) for token in header)
++        if identity not in emitted_headers:
++            rebuilt.append(header)
++            emitted_headers.add(identity)
++        rebuilt.append(item)
++    return sorted(rebuilt, key=lambda row: median(_center(token)[1] for token in row))
+diff --git a/receipt-ocr/receipt_ocr/ocr.py b/receipt-ocr/receipt_ocr/ocr.py
+index 3a842f1..2d98521 100644
+--- a/receipt-ocr/receipt_ocr/ocr.py
++++ b/receipt-ocr/receipt_ocr/ocr.py
+@@ -0,0 +1 @@
++import platform
+@@ -12 +13 @@ class PaddleEngine:
+-                 detection_max_edge: int | None = 1280):
++                 detection_max_edge: int | None = 1280, recognition_mkldnn: bool | None = None):
+@@ -16,0 +18,5 @@ class PaddleEngine:
++        if recognition_mkldnn is not None and type(recognition_mkldnn) is not bool:
++            raise ValueError("recognition_mkldnn must be a boolean or None")
++        if recognition_mkldnn is None:
++            # OCI ARM과 알 수 없는 아키텍처는 기존 CPU 경로를 유지한다. 실제 ARM 추론 검증을 대신하지 않는다.
++            recognition_mkldnn = platform.machine().lower() in {"amd64", "x86_64"}
+@@ -24,0 +31,12 @@ class PaddleEngine:
++        recognition_options = {}
++        if recognition_mkldnn:
++            from paddlex.inference import load_pipeline_config
++            # Paddle 3.3.1의 검출 oneDNN 오류를 피하면서 인식 연산만 가속한다. 공개 모듈별 설정을 쓴다.
++            configuration = load_pipeline_config("OCR")
++            configuration["SubModules"]["TextRecognition"].update({
++                "engine": "paddle_static",
++                "engine_config": {"paddle_static": {
++                    "device_type": "cpu", "cpu_threads": cpu_threads, "run_mode": "mkldnn",
++                }},
++            })
++            recognition_options["paddlex_config"] = configuration
+@@ -33,0 +52 @@ class PaddleEngine:
++            **recognition_options,
+@@ -39 +58 @@ class PaddleEngine:
+-            enable_mkldnn=enable_mkldnn,
++            enable_mkldnn=enable_mkldnn or recognition_mkldnn,
+diff --git a/receipt-ocr/tests/test_benchmark.py b/receipt-ocr/tests/test_benchmark.py
+index 841aca1..e8d9ae3 100644
+--- a/receipt-ocr/tests/test_benchmark.py
++++ b/receipt-ocr/tests/test_benchmark.py
+@@ -5,0 +6 @@ import subprocess
++import sys
+@@ -10 +11 @@ from unittest.mock import patch
+-from tools.benchmark_cpu import run_configuration, run_worker, select_cases, summarize
++from tools.benchmark_cpu import keep_system_awake, peak_rss_mib, run_configuration, run_worker, select_cases, summarize
+@@ -13,0 +15,36 @@ class BenchmarkTests(unittest.TestCase):
++    def test_awake_guard_restores_previous_thread_state_when_the_comparison_fails(self):
++        calls = []
++        def execution_state(flags):
++            calls.append(flags)
++            return 0x80000000
++        with patch("tools.benchmark_cpu.platform.system", return_value="Windows"), patch(
++                "ctypes.WinDLL", create=True, return_value=SimpleNamespace(SetThreadExecutionState=execution_state)):
++            with self.assertRaises(RuntimeError):
++                with keep_system_awake() as state:
++                    self.assertTrue(state["available"])
++                    self.assertFalse(state["displayRequired"])
++                    raise RuntimeError("comparison failed")
++        self.assertEqual([0x80000001, 0x80000000], calls)
++        self.assertTrue(state["restored"])
++
++    def test_unavailable_awake_guard_is_metadata_without_changing_comparison_behavior(self):
++        with patch("tools.benchmark_cpu.platform.system", return_value="Windows"), patch(
++                "ctypes.WinDLL", create=True, return_value=SimpleNamespace(SetThreadExecutionState=lambda _: 0)):
++            with keep_system_awake() as state:
++                self.assertTrue(state["requested"])
++                self.assertFalse(state["available"])
++        self.assertIsNone(state["restored"])
++
++    def test_peak_memory_units_distinguish_linux_kib_from_macos_bytes(self):
++        resource = SimpleNamespace(RUSAGE_SELF=0,
++            getrusage=lambda _: SimpleNamespace(ru_maxrss=1024 * 1024))
++        for operating_system, expected in (("Linux", 1024.0), ("Darwin", 1.0)):
++            with self.subTest(operating_system=operating_system), patch(
++                    "tools.benchmark_cpu.platform.system", return_value=operating_system), patch.dict(
++                    sys.modules, {"resource": resource}):
++                self.assertEqual(expected, peak_rss_mib())
++
++    def test_unsupported_peak_memory_measurement_is_unknown_instead_of_zero(self):
++        with patch("tools.benchmark_cpu.platform.system", return_value="unsupported"):
++            self.assertIsNone(peak_rss_mib())
++
+diff --git a/receipt-ocr/tests/test_layout_round2.py b/receipt-ocr/tests/test_layout_round2.py
+new file mode 100644
+index 0000000..fe1e294
+--- /dev/null
++++ b/receipt-ocr/tests/test_layout_round2.py
+@@ -0,0 +1,199 @@
++"""원근 표와 겹친 상품명에서 숫자를 다른 품목/표로 빌리지 않는지 확인한다."""
++from pathlib import Path
++import unittest
++
++from receipt_ocr.dictionary import load_dictionary
++from receipt_ocr.extract import extract
++from receipt_ocr.model import Token
++
++
++class CoordinateLayoutTests(unittest.TestCase):
++    def setUp(self):
++        self.dictionary = load_dictionary(Path(__file__).resolve().parents[1] / "data/drinks.md")
++
++    def two_columns(self, *, quantity="1개", header_confidence=.99):
++        return [Token("주문내역", .99, (10, 6, 110, 37)),
++                Token("상품명", header_confidence, (40, 30, 100, 56)),
++                Token("수량", header_confidence, (180, 26, 220, 53)),
++                Token("금액", header_confidence, (300, 16, 360, 44)),
++                Token("식사메뉴", .99, (10, 55, 100, 85)),
++                Token("8,000", .99, (300, 58, 360, 86)),
++                Token("1개", .99, (180, 73, 210, 97)),
++                Token("8,000", .99, (10, 76, 70, 102)),
++                Token("소주", .99, (10, 86, 70, 114)),
++                Token("5,000", .99, (300, 88, 360, 116)),
++                Token(quantity, .99, (180, 108, 210, 132)),
++                Token("5,000", .99, (10, 107, 70, 133))]
++
++    def three_columns(self, *, price_confidence=.99):
++        return [Token("상품명", .99, (40, 10, 100, 30)),
++                Token("단가", .99, (180, 10, 230, 30)),
++                Token("수량", .99, (260, 10, 300, 30)),
++                Token("금액", .99, (350, 10, 410, 30)),
++                Token("식사메뉴(소)", .99, (10, 55, 120, 105)),
++                Token("30,000", .99, (180, 82, 230, 104)),
++                Token("30,000", .99, (350, 82, 410, 104)),
++                Token("소주", .99, (10, 80, 65, 112)),
++                Token("4,000", price_confidence, (180, 104, 230, 126)),
++                Token("3", .99, (270, 106, 290, 124)),
++                Token("12,000", .99, (350, 101, 410, 129))]
++
++    def drink(self, source):
++        result = extract(source, self.dictionary)
++        return next((drink for drink in result.drinks if drink.category == "SOJU"), None)
++
++    def assert_no_count(self, source):
++        drink = self.drink(source)
++        self.assertTrue(drink is None or drink.quantity is None)
++        self.assertTrue(drink is None or drink.bottle_count is None)
++
++    def test_split_header_and_explicit_count_do_not_create_unit_price_or_bottles(self):
++        result = extract(self.two_columns(), self.dictionary)
++        self.assertEqual(1, len(result.drinks))
++        drink = result.drinks[0]
++        self.assertEqual((1, None, 5000, "UNKNOWN", None),
++                         (drink.quantity, drink.unit_price, drink.line_amount, drink.unit, drink.bottle_count))
++        self.assertTrue(result.to_dict()["requiresConfirmation"])
++
++    def test_tall_previous_name_keeps_its_own_amount_and_does_not_swallow_next_item(self):
++        drink = self.drink(self.three_columns())
++        self.assertEqual((3, 4000, 12000), (drink.quantity, drink.unit_price, drink.line_amount))
++        self.assertIsNone(drink.bottle_count)
++
++    def test_low_confidence_numeric_field_keeps_warning(self):
++        drink = self.drink(self.three_columns(price_confidence=.8))
++        self.assertEqual(3, drink.quantity)
++        self.assertIn("LOW_CONFIDENCE", drink.review_reasons)
++        self.assertIsNone(drink.bottle_count)
++
++    def test_missing_and_low_confidence_headers_do_not_lend_columns(self):
++        self.assert_no_count(self.two_columns()[4:])
++        self.assert_no_count(self.two_columns(header_confidence=.5))
++
++    def test_incomplete_next_header_resets_the_coordinate_table(self):
++        source = self.two_columns()
++        source.append(Token("품명 단가 금액", .99, (10, 75, 360, 82)))
++        self.assert_no_count(source)
++
++    def test_footer_stops_reuse_of_previous_header(self):
++        for label in ("합계", "부가세", "카드결제", "환불", "취소"):
++            source = self.two_columns()
++            source.append(Token(label, .99, (80, 76, 150, 84)))
++            self.assert_no_count(source)
++
++    def test_duplicate_quantity_or_amount_is_ambiguous(self):
++        for extra in (Token("2개", .99, (215, 108, 240, 132)),
++                      Token("9,000", .99, (362, 88, 390, 116))):
++            self.assert_no_count([*self.two_columns(), extra])
++
++    def test_number_crossing_column_boundary_is_not_assigned_by_center(self):
++        source = self.two_columns()
++        source[-2] = Token("1개", .99, (250, 108, 290, 132))
++        self.assert_no_count(source)
++
++    def test_missing_quantity_is_not_default_one(self):
++        source = self.two_columns()
++        del source[-2]
++        self.assert_no_count(source)
++
++    def test_signed_fractional_malformed_and_zero_counts_are_rejected(self):
++        for value in ("-1개", "+1개", "1.5개", "1,00개", "0개", "1,001개"):
++            with self.subTest(value=value):
++                self.assert_no_count(self.two_columns(quantity=value))
++
++    def test_unknown_quantity_units_are_not_discarded(self):
++        for value in ("1박스", "1원", "1회"):
++            self.assert_no_count(self.two_columns(quantity=value))
++
++    def test_qualifier_after_name_is_not_skipped(self):
++        for qualifier in ("무알콜", "토닉워터", "(미등록)", "서비스", "취소", "잔"):
++            source = self.two_columns()
++            source.append(Token(qualifier, .99, (10, 112, 90, 132)))
++            self.assert_no_count(source)
++
++    def test_qualifier_in_numeric_area_is_not_skipped(self):
++        source = self.two_columns()
++        source.append(Token("무알콜", .99, (240, 105, 295, 125)))
++        self.assert_no_count(source)
++
++    def test_earlier_qualifier_is_not_treated_as_food_even_with_its_own_amount(self):
++        for qualifier in ("무알콜", "논알코올", "제로", "(미등록)", "서비스", "환불", "잔"):
++            source = self.three_columns()
++            source[4] = Token(qualifier, .99, (10, 55, 120, 105))
++            self.assert_no_count(source)
++
++    def test_one_previous_amount_is_not_enough_to_discard_an_unknown_name_part(self):
++        source = self.three_columns()
++        del source[5]
++        self.assert_no_count(source)
++
++    def test_staggered_other_table_cannot_lend_its_numbers_to_a_far_left_name(self):
++        source = [Token("상품명", .99, (10, 10, 100, 30)),
++                  Token("단가", .99, (150, 10, 200, 30)),
++                  Token("수량", .99, (250, 10, 300, 30)),
++                  Token("금액", .99, (350, 10, 400, 30)),
++                  Token("상품명", .99, (500, 35, 600, 55)),
++                  Token("단가", .99, (650, 35, 700, 55)),
++                  Token("수량", .99, (750, 35, 790, 55)),
++                  Token("금액", .99, (850, 35, 900, 55)),
++                  Token("소주", .99, (10, 80, 90, 100)),
++                  Token("5,000", .99, (650, 105, 700, 125)),
++                  Token("2", .99, (750, 105, 790, 125)),
++                  Token("10,000", .99, (850, 105, 895, 125))]
++        self.assert_no_count(source)
++
++    def test_input_token_objects_and_coordinates_are_unchanged(self):
++        source = self.two_columns()
++        original = [(id(token), token.box, token.text) for token in source]
++        extract(source, self.dictionary)
++        self.assertEqual(original, [(id(token), token.box, token.text) for token in source])
++
++    def test_numeric_non_alcohol_qualifier_is_not_dropped_from_product_column(self):
++        for qualifier in ("0.0", "0.00", "0,0", "0"):
++            with self.subTest(qualifier=qualifier):
++                source = self.three_columns()
++                source[7] = Token("카스", .99, (10, 80, 65, 112))
++                source.append(Token(qualifier, .99, (70, 80, 120, 100)))
++                result = extract(source, self.dictionary)
++                self.assertFalse(any(drink.category == "BEER" and drink.quantity is not None
++                                     for drink in result.drinks))
++
++    def test_earlier_numeric_name_part_cannot_escape_through_previous_item_values(self):
++        for qualifier in ("0,0", "0", "25", "-1", "+1", "1.5", "1,00", "0.0", "0.00"):
++            with self.subTest(qualifier=qualifier):
++                source = self.three_columns()
++                source[5] = Token("30,000", .99, (180, 81, 230, 103))
++                source[6] = Token("30,000", .99, (350, 81, 410, 103))
++                source[7] = Token("카스", .99, (10, 80, 65, 112))
++                source.append(Token(qualifier, .99, (70, 80, 120, 100)))
++                result = extract(source, self.dictionary)
++                self.assertFalse(any(drink.category == "BEER" and drink.quantity is not None
++                                     for drink in result.drinks))
++
++    def test_unlisted_name_qualifier_with_inconsistent_row_offset_is_not_discarded(self):
++        for qualifier in ("알코올무첨가", "새로운한정문구"):
++            with self.subTest(qualifier=qualifier):
++                source = self.three_columns()
++                source[5] = Token("30,000", .99, (180, 81, 230, 103))
++                source[6] = Token("30,000", .99, (350, 81, 410, 103))
++                source[7] = Token("카스", .99, (10, 80, 65, 112))
++                source.append(Token(qualifier, .99, (70, 80, 120, 100)))
++                result = extract(source, self.dictionary)
++                self.assertFalse(any(drink.category == "BEER" and drink.quantity is not None
++                                     for drink in result.drinks))
++
++    def test_consistent_previous_food_row_does_not_need_a_dictionary_entry(self):
++        source = self.three_columns()
++        source[4] = Token("처음보는요리(소)", .99, (10, 55, 120, 105))
++        drink = self.drink(source)
++        self.assertEqual((3, 4000, 12000), (drink.quantity, drink.unit_price, drink.line_amount))
++
++    def test_inconsistent_food_row_is_also_left_unresolved(self):
++        source = self.three_columns()
++        source[5] = Token("30,000", .99, (180, 78, 230, 100))
++        source[6] = Token("30,000", .99, (350, 78, 410, 100))
++        self.assert_no_count(source)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/receipt-ocr/tests/test_observed_aliases_round2.py b/receipt-ocr/tests/test_observed_aliases_round2.py
+new file mode 100644
+index 0000000..0562fc6
+--- /dev/null
++++ b/receipt-ocr/tests/test_observed_aliases_round2.py
+@@ -0,0 +1,29 @@
++"""새 매장 평가 자료와 별개로 기존 개발 사진에서 확인한 전체 표기만 지원한다."""
++from pathlib import Path
++import unittest
++
++from receipt_ocr.dictionary import load_dictionary
++from receipt_ocr.extract import extract
++from test_extract import tokens
++
++
++class ObservedAliasesRound2Tests(unittest.TestCase):
++    def setUp(self):
++        self.dictionary = load_dictionary(Path(__file__).resolve().parents[1] / "data/drinks.md")
++
++    def test_exact_daesun_keeps_unknown_container_and_subtype(self):
++        result = extract(tokens("상품명 단가 수량 금액", "대선 4,000 2 8,000"), self.dictionary)
++        drink = result.drinks[0]
++        self.assertEqual(("SOJU", "대선 (세부형 미상)", 4000, 2, 8000),
++                         (drink.category, drink.name, drink.unit_price, drink.quantity, drink.line_amount))
++        self.assertEqual(("UNKNOWN", None, None), (drink.unit, drink.volume_ml, drink.bottle_count))
++        self.assertTrue(result.to_dict()["requiresConfirmation"])
++        # 기존의 명시 잔 단위는 유지하되 브랜드가 병 수를 만들지는 않는다.
++        glass = extract(tokens("상품명 단가 수량 금액", "대선 잔 4,000 2 8,000"), self.dictionary).drinks[0]
++        self.assertEqual(("GLASS", 2, 0), (glass.unit, glass.quantity, glass.bottle_count))
++
++    def test_unregistered_qualifier_and_non_alcohol_are_not_truncated(self):
++        for name in ("대선제로", "대선 무알콜", "대선소주잔", "대선(미등록)", "대선맥주"):
++            with self.subTest(name=name):
++                self.assertEqual([], extract(tokens("상품명 단가 수량 금액", name + " 4,000 2 8,000"),
++                                             self.dictionary).drinks)
+diff --git a/receipt-ocr/tests/test_ocr_adapter.py b/receipt-ocr/tests/test_ocr_adapter.py
+index 41644ce..3143c9a 100644
+--- a/receipt-ocr/tests/test_ocr_adapter.py
++++ b/receipt-ocr/tests/test_ocr_adapter.py
+@@ -21 +21 @@ class RecognitionAdapterTests(unittest.TestCase):
+-            PaddleEngine()
++            PaddleEngine(recognition_mkldnn=False)
+@@ -28,0 +29,63 @@ class RecognitionAdapterTests(unittest.TestCase):
++        self.assertNotIn("paddlex_config", configurations[0][1])
++
++    def test_recognition_acceleration_does_not_enable_the_broken_detection_backend(self):
++        configurations = []
++        def factory(**options):
++            configurations.append(options)
++            return object()
++        def configuration(name):
++            self.assertEqual("OCR", name)
++            return {"SubModules": {"TextDetection": {"model_name": "default-detector"},
++                                   "TextRecognition": {"batch_size": 6}}}
++        with patch.dict(sys.modules, {
++            "paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory),
++            "paddlex.inference": SimpleNamespace(load_pipeline_config=configuration),
++        }):
++            PaddleEngine(cpu_threads=4, recognition_mkldnn=True)
++        pipeline_options, numeric_options = configurations
++        self.assertFalse(pipeline_options["enable_mkldnn"])
++        self.assertTrue(numeric_options["enable_mkldnn"])
++        module = pipeline_options["paddlex_config"]["SubModules"]["TextRecognition"]
++        self.assertEqual("paddle_static", module["engine"])
++        self.assertEqual({"device_type": "cpu", "cpu_threads": 4, "run_mode": "mkldnn"},
++                         module["engine_config"]["paddle_static"])
++        self.assertEqual(6, module["batch_size"])
++        self.assertEqual({"model_name": "default-detector"},
++                         pipeline_options["paddlex_config"]["SubModules"]["TextDetection"])
++        self.assertEqual("korean_PP-OCRv5_mobile_rec", numeric_options["model_name"])
++
++    def test_default_acceleration_is_enabled_only_for_known_x86_64_architectures(self):
++        for architecture in ("AMD64", "x86_64"):
++            configurations = []
++            def factory(**options):
++                configurations.append(options)
++                return object()
++            with self.subTest(architecture=architecture), patch(
++                    "receipt_ocr.ocr.platform.machine", return_value=architecture), patch.dict(sys.modules, {
++                        "paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory),
++                        "paddlex.inference": SimpleNamespace(load_pipeline_config=lambda _: {
++                            "SubModules": {"TextRecognition": {}}}),
++                    }):
++                PaddleEngine()
++            self.assertFalse(configurations[0]["enable_mkldnn"])
++            self.assertTrue(configurations[1]["enable_mkldnn"])
++            self.assertEqual("mkldnn", configurations[0]["paddlex_config"]["SubModules"][
++                "TextRecognition"]["engine_config"]["paddle_static"]["run_mode"])
++
++    def test_default_arm_and_unknown_architectures_keep_the_plain_cpu_path(self):
++        for architecture in ("ARM64", "aarch64", "", "unknown"):
++            configurations = []
++            def factory(**options):
++                configurations.append(options)
++                return object()
++            def forbidden(_):
++                raise AssertionError("ARM default must not configure oneDNN")
++            with self.subTest(architecture=architecture), patch(
++                    "receipt_ocr.ocr.platform.machine", return_value=architecture), patch.dict(sys.modules, {
++                        "paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory),
++                        "paddlex.inference": SimpleNamespace(load_pipeline_config=forbidden),
++                    }):
++                PaddleEngine()
++            self.assertFalse(configurations[0]["enable_mkldnn"])
++            self.assertFalse(configurations[1]["enable_mkldnn"])
++            self.assertNotIn("paddlex_config", configurations[0])
+@@ -36 +99 @@ class RecognitionAdapterTests(unittest.TestCase):
+-            PaddleEngine(detection_max_edge=None)
++            PaddleEngine(detection_max_edge=None, recognition_mkldnn=False)
+@@ -46 +109 @@ class RecognitionAdapterTests(unittest.TestCase):
+-            PaddleEngine(cpu_threads=4, enable_mkldnn=True, detection_max_edge=1280)
++            PaddleEngine(cpu_threads=4, enable_mkldnn=True, detection_max_edge=1280, recognition_mkldnn=False)
+@@ -58,0 +122 @@ class RecognitionAdapterTests(unittest.TestCase):
++                            {"recognition_mkldnn": "false"}, {"recognition_mkldnn": 1},
+@@ -99 +163 @@ class RecognitionAdapterTests(unittest.TestCase):
+-                PaddleEngine()
++                PaddleEngine(recognition_mkldnn=False)
+diff --git a/receipt-ocr/tools/benchmark_cpu.py b/receipt-ocr/tools/benchmark_cpu.py
+index f547b56..538ff4b 100644
+--- a/receipt-ocr/tools/benchmark_cpu.py
++++ b/receipt-ocr/tools/benchmark_cpu.py
+@@ -2,0 +3 @@ import argparse
++from contextlib import contextmanager
+@@ -22 +23,2 @@ from receipt_ocr.dictionary import load_dictionary
+-BASELINE_OPTIONS = {"cpu_threads": 2, "enable_mkldnn": False, "detection_max_edge": None}
++BASELINE_OPTIONS = {"cpu_threads": 2, "enable_mkldnn": False, "detection_max_edge": None,
++                    "recognition_mkldnn": False}
+@@ -27,0 +30 @@ CONFIGURATIONS = {
++    "hybrid": {**BASELINE_OPTIONS, "detection_max_edge": 1280, "recognition_mkldnn": True},
+@@ -30,0 +34,61 @@ CONFIGURATIONS = {
++@contextmanager
++def keep_system_awake():
++    # 비교 중 자동 절전만 막는다. 화면·전역 전원 설정은 바꾸지 않고 기존 스레드 상태를 복구한다.
++    state = {"requested": platform.system() == "Windows", "available": False,
++             "restored": None, "displayRequired": False}
++    previous = None
++    execution_state = None
++    if state["requested"]:
++        try:
++            import ctypes
++            from ctypes import wintypes
++            execution_state = ctypes.WinDLL("kernel32", use_last_error=True).SetThreadExecutionState
++            execution_state.argtypes = [wintypes.DWORD]
++            execution_state.restype = wintypes.DWORD
++            previous = execution_state(0x80000001)
++            state["available"] = bool(previous)
++            if not previous:
++                state["errorType"] = "SetThreadExecutionStateFailed"
++        except (AttributeError, OSError) as error:
++            state["errorType"] = type(error).__name__
++    try:
++        yield state
++    finally:
++        if previous and execution_state is not None:
++            try:
++                state["restored"] = bool(execution_state(previous))
++            except (AttributeError, OSError) as error:
++                state.update({"restored": False, "restoreErrorType": type(error).__name__})
++
++
++def peak_rss_mib():
++    # 모델/oneDNN 캐시를 포함한 프로세스 최고 사용량이다. 측정 불가를 0MiB로 숨기지 않는다.
++    try:
++        operating_system = platform.system()
++        if operating_system == "Windows":
++            import ctypes
++            from ctypes import wintypes
++            class ProcessMemoryCounters(ctypes.Structure):
++                _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
++                    *[(name, ctypes.c_size_t) for name in ("PeakWorkingSetSize", "WorkingSetSize",
++                        "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
++                        "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage")]]
++            kernel = ctypes.WinDLL("kernel32", use_last_error=True)
++            memory_api = ctypes.WinDLL("psapi", use_last_error=True).GetProcessMemoryInfo
++            kernel.GetCurrentProcess.restype = wintypes.HANDLE
++            memory_api.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessMemoryCounters), wintypes.DWORD]
++            memory_api.restype = wintypes.BOOL
++            counters = ProcessMemoryCounters()
++            counters.cb = ctypes.sizeof(counters)
++            if not memory_api(kernel.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
++                return None
++            return round(counters.PeakWorkingSetSize / (1024 * 1024), 3)
++        if operating_system in {"Linux", "Darwin"}:
++            import resource
++            highest_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
++            return round(highest_rss / (1024 * 1024 if operating_system == "Darwin" else 1024), 3)
++    except (AttributeError, ImportError, OSError):
++        return None
++    return None
++
++
+@@ -115,0 +180 @@ def run_worker(arguments, cases, manifest_sha256):
++    report["peakRssMiB"] = peak_rss_mib()
+@@ -194,10 +259,2 @@ def main():
+-    write_report(arguments.output, report)
+-    for configuration in configurations:
+-        result = run_configuration(arguments, configuration, cases)
+-        if (("sourceHashes" in result and result["sourceHashes"] != report["sourceHashes"])
+-                or source_hashes() != report["sourceHashes"]):
+-            result.update({"status": "source-changed", "errorType": "SourceChangedDuringBenchmark"})
+-        if (("manifestSha256" in result and result["manifestSha256"] != report["manifestSha256"])
+-                or hashlib.sha256(arguments.manifest.read_bytes()).hexdigest() != report["manifestSha256"]):
+-            result.update({"status": "source-changed", "errorType": "ManifestChangedDuringBenchmark"})
+-        report["configurations"].append(result)
++    with keep_system_awake() as awake_state:
++        report["systemAwakeGuard"] = awake_state
+@@ -205,4 +262,15 @@ def main():
+-        print(json.dumps({"configuration": configuration, "status": result.get("status"),
+-                          "summary": result["summary"]}, ensure_ascii=True), flush=True)
+-        if result.get("status") == "source-changed":
+-            break
++        for configuration in configurations:
++            result = run_configuration(arguments, configuration, cases)
++            if (("sourceHashes" in result and result["sourceHashes"] != report["sourceHashes"])
++                    or source_hashes() != report["sourceHashes"]):
++                result.update({"status": "source-changed", "errorType": "SourceChangedDuringBenchmark"})
++            if (("manifestSha256" in result and result["manifestSha256"] != report["manifestSha256"])
++                    or hashlib.sha256(arguments.manifest.read_bytes()).hexdigest() != report["manifestSha256"]):
++                result.update({"status": "source-changed", "errorType": "ManifestChangedDuringBenchmark"})
++            report["configurations"].append(result)
++            write_report(arguments.output, report)
++            print(json.dumps({"configuration": configuration, "status": result.get("status"),
++                              "summary": result["summary"]}, ensure_ascii=True), flush=True)
++            if result.get("status") == "source-changed":
++                break
++    write_report(arguments.output, report)

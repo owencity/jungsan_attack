@@ -1,0 +1,60 @@
+{
+  "pullRequest": "https://github.com/owencity/jungsan_attack/pull/34",
+  "base": "2a97b7d50be97eba99bb2f20554e81178968a384",
+  "sourceHead": "abdb5a449c58f27519d209caef40afc7f4be0cb6",
+  "policyAndCatalogCommit": "8d27496270e6c8adcb78b4580d68c150f9c3cce6",
+  "files": [
+    "receipt-ocr/receipt_ocr/extract.py",
+    "receipt-ocr/receipt_ocr/layout.py",
+    "receipt-ocr/receipt_ocr/ocr.py",
+    "receipt-ocr/data/drinks.md",
+    "receipt-ocr/tools/benchmark_cpu.py",
+    "receipt-ocr/tests/test_layout_round2.py",
+    "receipt-ocr/tests/test_observed_aliases_round2.py",
+    "receipt-ocr/tests/test_ocr_adapter.py",
+    "receipt-ocr/tests/test_benchmark.py"
+  ],
+  "diffSha256": "efca86411e7673afe4b1f705b4985ff09794f8c06fdc00aac7ebb2667543ae17",
+  "newEvaluationManifestSha256": "f8507b5e807607997a5d5b5d21e1419cb6466d003f69202655a4eaf101d2456e",
+  "validation": {
+    "unitTests": 168,
+    "unitResult": "OK",
+    "unitSeconds": 0.58,
+    "serverCompile": "BUILD SUCCESSFUL in 15s; 6 up-to-date",
+    "nativeSamples": 32,
+    "nativeRuntimeErrors": 0,
+    "development13": {
+      "samples": 13,
+      "allAnnotatedChecksMatch": 6,
+      "totalChecksPassed": 7,
+      "annotatedDrinkSamples": 13,
+      "allSelectedDrinkFieldsExact": 7,
+      "medianSeconds": 3.277,
+      "maxSeconds": 4.102
+    },
+    "prior16": {
+      "samples": 16,
+      "allAnnotatedChecksMatch": 8,
+      "totalChecksPassed": 10,
+      "annotatedDrinkSamples": 15,
+      "allSelectedDrinkFieldsExact": 11,
+      "medianSeconds": 3.3025,
+      "maxSeconds": 5.908
+    },
+    "new3BeforeAllChecks": 0,
+    "new3AfterAllChecks": 0,
+    "lostPreviouslyTrueChecksInKnown29": [],
+    "controlMedianSeconds": 13.9065,
+    "hybridMedianSeconds": 4.626,
+    "speedOriginals": 3,
+    "speedRepeats": 2,
+    "speedEachAllChecks": "6/6",
+    "controlPeakRssMiB": 885.461,
+    "hybridPeakRssMiB": 1069.918,
+    "final32PeakRssMiB": 1290.219,
+    "armOrProductionTested": false,
+    "fullyBlindBenchmark": false
+  },
+  "imagesRawTokensOrSignedUrlsCommitted": false,
+  "review": "self-check plus agent safety checks; draft PR"
+}
