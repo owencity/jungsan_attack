@@ -59,11 +59,22 @@ no-store 성공200은 MockMvc에서 검증했다. 운영의401/필드400에는 C
 - 1e40bb7 재검증42028457453은 양쪽 XCTest 실행 전에 준비 명령 시간 제한으로 중단됐다.
   부팅 종료 로그는 있으나 당시 진단에는 명령이 없어 정확한 중단 명령은 확정하지 않는다.
   e3fc5bc는 xctestrun이 수행하는 설치와 중복된 simctl install을 제거하고 실패 명령을 남긴다.
-  테스트 단언/대기 제한은 유지한다. [e3 재검증42033427282](https://github.com/owencity/jungsan_app/actions/runs/42033427282) 진행 중.
+  테스트 단언/대기 제한은 유지한다. e3 재검증42033427282는 iPhone2건과 iPad 카카오 검사가
+  통과했으나 iPad 직접 Apple1건이 다시 실패했다. 로그에서 로딩 중 버튼 조회가22초 이상
+  멈춘 것을 확인했고 b1be3c5는 실제 입력란을 먼저 기다린 뒤 같은 앱의 닫기를 조회한다.
+- e3 일반CI42033427272는 실행된 XCTest들이 통과했으나 simctl pbcopy의 POSIX60 전송 시간
+  초과로 전체 실패했다. b1be3c5는 이 일시적 전송 오류만 한 번 재시도하며 값 불일치·다른
+  오류는 그대로 실패한다. 로컬 mock5건으로 이 경계를 확인했다.
+  [b1 인증42056917259](https://github.com/owencity/jungsan_app/actions/runs/42056917259) 및
+  [일반CI42056917619](https://github.com/owencity/jungsan_app/actions/runs/42056917619)는 재검증 중이다.
 - [TestFlight18 실행42033810265](https://github.com/owencity/jungsan_app/actions/runs/42033810265)을
   소스 `e3fc5bcc2665d14da0e86cbed95dd2f5981419a5`, export 서명, 운영 API 주소로 실행했다.
-  실제 Native key 설정 검사 통과 후 archive 진행 중이다. 업로드 성공·Apple 처리 완료로 보고하지 않는다.
+  **2026-11-05 22:29 KST 업로드 성공**을11/6 로그와 화면에서 확인했다. 작업 전체success,
+  `ARCHIVE SUCCEEDED`, `Upload succeeded`, `EXPORT SUCCEEDED`와 빌드18을 확인했다.
+  Apple 응답은 `Uploaded package is processing`이며 처리 완료·설치 가능 여부는 별도다.
+- b1be3c5는 테스트/검증 스크립트만 바뀌었고 e3fc5bc 이후 앱 제품 코드 변경은 없다.
+  추가 자동 검사의 성공과 실기기 로그인 성공을 업로드 성공으로 대신하지 않는다.
 
-PR은 스터디용으로 열어두고 main 병합은 하지 않았다. TestFlight18은 실기기 검증용 후속이며
+PR은 스터디용으로 열어두고 main 병합은 하지 않았다. TestFlight18은 실기기 검증용 빌드이며
 카카오톡 설치 기기의 실제 동의/취소/앱 복귀·기존 계정 유지, 미설치 안내의 명시적 App Store 열기,
 Apple 로그인 완료와 App Store 재심사 결과는 별도로 확인한다.
