@@ -58,6 +58,24 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
                 AuthCallbackLog.failed(provider, AuthCallbackLog.Failure.PROVIDER_REJECTED)
                 throw exception
             }
+        val uid = upsertIdentity(provider, identity)
+        val appReturnMode = if (row.text("client") == "app" && db.rows(
+            "SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to AuthPolicy.hash(state)).isNotEmpty()) "session" else "page"
+        db.update("DELETE FROM auth_challenges WHERE state_hash=:s","s" to AuthPolicy.hash(state))
+        if(row.text("client")=="web") return AuthFinish("web",row.text("return_to"),jwt.issue(uid))
+        val ticket=random()
+        db.update("INSERT INTO auth_tickets VALUES(:t,:u,:a,:e)","t" to AuthPolicy.hash(ticket),"u" to uid,"a" to row.text("app_challenge"),"e" to AuthPolicy.appTicketExpiresAt(Instant.now()))
+        return AuthFinish("app",row.text("return_to"),ticket,appReturnMode)
+    }
+
+    /** SDK 경로도 기존 provider_id를 사용하므로 실명·명단·보상이 다른 계정으로 갈라지지 않는다. */
+    fun completeNativeKakao(identity: ProviderIdentity): AppExchangeResponse {
+        val uid = upsertIdentity("KAKAO", identity)
+        val token = jwt.issue(uid, "APP")
+        return AppExchangeResponse(token, checkNotNull(jwt.identity(token)).expiresAt)
+    }
+
+    private fun upsertIdentity(provider: String, identity: ProviderIdentity): Long {
         if(identity.id.length !in 1..100) throw UnauthenticatedException()
         db.update("INSERT INTO users(provider,provider_id,nickname,profile_image_url,created_at) VALUES(:p,:id,:n,:i,:t) ON DUPLICATE KEY UPDATE nickname=VALUES(nickname),profile_image_url=VALUES(profile_image_url)",
             "p" to provider,"id" to identity.id,"n" to identity.nickname.take(50),"i" to identity.image,"t" to Instant.now())
@@ -67,13 +85,7 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
                 "u" to uid,"c" to identity.clientId,"t" to cipher.encrypt(identity.refreshToken))
             else if(db.rows("SELECT user_id FROM auth_credentials WHERE user_id=:u","u" to uid).isEmpty()) throw UnauthenticatedException()
         }
-        val appReturnMode = if (row.text("client") == "app" && db.rows(
-            "SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to AuthPolicy.hash(state)).isNotEmpty()) "session" else "page"
-        db.update("DELETE FROM auth_challenges WHERE state_hash=:s","s" to AuthPolicy.hash(state))
-        if(row.text("client")=="web") return AuthFinish("web",row.text("return_to"),jwt.issue(uid))
-        val ticket=random()
-        db.update("INSERT INTO auth_tickets VALUES(:t,:u,:a,:e)","t" to AuthPolicy.hash(ticket),"u" to uid,"a" to row.text("app_challenge"),"e" to AuthPolicy.appTicketExpiresAt(Instant.now()))
-        return AuthFinish("app",row.text("return_to"),ticket,appReturnMode)
+        return uid
     }
     fun exchange(request: AppExchangeRequest): AppExchangeResponse {
         if(!Regex("[A-Za-z0-9_-]{43}").matches(request.ticket)) throw UnauthenticatedException()

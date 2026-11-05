@@ -17,6 +17,8 @@ class AuthenticationGuardSpec : StringSpec({
             "app.jeongsan.server.user.AuthController#appleLogin",
             "app.jeongsan.server.user.AuthController#appleCallback",
             "app.jeongsan.server.user.AuthController#exchange",
+            // 로그인 전 제공자 토큰을 검증해 APP JWT를 발급한다. 쿠키/클라이언트 사용자 ID는 받지 않는다.
+            "app.jeongsan.server.user.NativeKakaoAuthController#login",
             "app.jeongsan.server.gathering.JoinController#preview",
             // 무인증으로는 브라우저 자격만 만든다. 참여·조회·수정은 GuestBrowser와 DB 범위 검사를 요구한다.
             "app.jeongsan.server.guest.GuestController#startSession",

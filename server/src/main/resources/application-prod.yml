@@ -27,6 +27,7 @@ app:
   cookie-secure: true
 
 kakao:
+  app-id: ${KAKAO_APP_ID}
   client-id: ${KAKAO_CLIENT_ID}
   client-secret: ${KAKAO_CLIENT_SECRET}
   redirect-uri: ${KAKAO_REDIRECT_URI}

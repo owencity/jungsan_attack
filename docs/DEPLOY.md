@@ -90,12 +90,19 @@ CTO가 Sign in with Apple 로그인용 Key ID·개인키를 서버에 직접 입
 | `PAYOUT_ENCRYPTION_KEY` | 계좌용 독립 32바이트 키의 Base64 |
 | `AUTH_ENCRYPTION_KEY` | Apple 해제 작업용 독립 32바이트 키의 Base64 |
 | `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` | 카카오 운영 REST API 키·로그인 시크릿 |
+| `KAKAO_APP_ID` | FC-034: 동일 카카오 개발자 앱의 양수 숫자 ID. 네이티브 토큰의 app_id 대조용이며 운영 필수 |
 | `KAKAO_REDIRECT_URI` | `https://jungsan-api.devkdk.com/api/v1/auth/kakao/callback` |
 | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID` | 웹 Services ID·Developer Team ID·Sign in with Apple Key ID |
 | `APPLE_PRIVATE_KEY_BASE64` | 해당 Apple p8의 PEM 헤더/푸터를 제외한 Base64 본문 |
 | `APPLE_REDIRECT_URI` | `https://jungsan-api.devkdk.com/api/v1/auth/apple/callback` |
 | `FRONTEND_ORIGIN` | `https://jungsan.devkdk.com` |
 | `LOGIN_SUCCESS_URL` | `https://jungsan.devkdk.com/jungsan` |
+
+FC-034 배포는 기존 개발자 앱의 숫자 ID를 먼저 확인하고 `.env`에 `KAKAO_APP_ID`를 추가한 뒤
+새 compose/이미지를 함께 적용한다. 필수 값이 없으면 배포하지 않는다. 별도 앱 저장소 Variables의
+`KAKAO_NATIVE_APP_KEY`에는 같은 앱의 공개 네이티브 키만 설정하며 REST Client Secret을 넣지 않는다.
+서버 배포·헬스/401 검증 이후에 새 iOS 빌드를 올린다. 기존 웹·Android·Apple 경로도 회귀 확인하고,
+실제 KakaoTalk 설치 기기의 로그인/취소/복귀는 시뮬레이터 검사와 별개로 기록한다.
 
 `APP_IMAGE`는 배포 스크립트가 해당 main SHA로 지정하므로 CTO가 `.env`에 넣지 않는다.
 `DB_HOST/PORT/NAME/USER`와 `SPRING_PROFILES_ACTIVE`는 운영 compose에서 지정한다.

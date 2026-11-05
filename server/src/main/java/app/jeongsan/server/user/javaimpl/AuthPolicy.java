@@ -14,6 +14,17 @@ import java.util.HexFormat;
 
 /** Java 학습 구현. Kotlin 정책으로 위임하지 않는다. */
 public final class AuthPolicy {
+    public static void nativeKakaoToken(String value) {
+        if (value == null || value.length() == 0 || value.length() > 2048 || value.codePoints().anyMatch(character -> character < 33 || character > 126))
+            throw new MalformedRequestException("카카오 로그인 정보를 확인해 주세요.");
+    }
+
+    public static String nativeKakaoSubject(Long id, Long appId, Long expiresIn, long expectedAppId) {
+        if (expectedAppId <= 0 || appId == null || appId != expectedAppId || id == null || id <= 0 || expiresIn == null || expiresIn <= 0)
+            throw new UnauthenticatedException();
+        return id.toString();
+    }
+
     public static String appReturnMode(String client, String value) {
         String mode = value == null ? "page" : value;
         if ((!"page".equals(mode) && !"session".equals(mode)) ||

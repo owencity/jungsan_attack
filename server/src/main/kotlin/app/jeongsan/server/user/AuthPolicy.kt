@@ -10,6 +10,17 @@ import java.util.Locale
 
 /** 같은 리다이렉트·티켓 규칙을 Java와 독립 비교한다. 시계·DB·HTTP는 호출부에서 제공한다. */
 object AuthPolicy {
+    fun nativeKakaoToken(value: String) {
+        if (value.isEmpty() || value.length > 2048 || value.any { it !in '!'..'~' })
+            throw MalformedRequestException("카카오 로그인 정보를 확인해 주세요.")
+    }
+
+    fun nativeKakaoSubject(id: Long?, appId: Long?, expiresIn: Long?, expectedAppId: Long): String {
+        if (expectedAppId <= 0 || appId != expectedAppId || id == null || id <= 0 || expiresIn == null || expiresIn <= 0)
+            throw UnauthenticatedException()
+        return id.toString()
+    }
+
     fun appReturnMode(client: String, value: String?): String {
         val mode = value ?: "page"
         if (mode !in setOf("page", "session") || (client != "app" && mode != "page"))
