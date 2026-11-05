@@ -5,6 +5,14 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
 
 ## 로그인
 
+### FC-034 iOS 카카오톡 간편 로그인 (2026-11-05)
+
+- iOS 카카오는 공식 SDK의 카카오톡 앱 로그인 후 `POST /api/v1/auth/kakao/native {accessToken}`으로 교환한다. Apple 시스템 인증·Android/웹 OAuth·기존 PKCE 교환은 유지한다. 카카오톡 미설치 시 설치 안내/Apple/취소를 제공하며 iOS 카카오 계정 웹 로그인으로 자동 전환하지 않는다.
+- 서버는 고정 Kakao API의 토큰 정보에서 `app_id == KAKAO_APP_ID`, 양수 사용자 ID·잔여 만료를 확인하고 `/v2/user/me` ID까지 대조한다. 클라이언트가 사용자 ID·닉네임을 지정하지 않는다. 외부 HTTP는 DB 트랜잭션 밖에서 호출한다.
+- 기존 `(KAKAO, provider_id)` upsert를 재사용하고 APP 전용 `{token, expiresAt}`만 반환한다(200/no-store/WEB 쿠키 없음). 기존 실명·술자리·스푼을 새 계정으로 옮기거나 초기화하지 않는다. 필드 검증400 `VALIDATION_FAILED`, 잘못된 JSON/문자400 `MALFORMED_REQUEST`, 제공자 거절401 `UNAUTHENTICATED`, 일시 실패503 `AUTH_PROVIDER_UNAVAILABLE`다.
+- 제공자 access/refresh token은 서버에 저장하지 않는다. 앱은 서버 검증에 필요한 access token만 전달하고 SDK 로컬 토큰 저장소를 지운다(원격 폐기가 아님). 우리 JWT는 기존 기기 저장·로그아웃·탈퇴 계약을 사용한다. 카카오 계정 연결 해제까지 추가했다고 보고하지 않는다.
+- 운영 `KAKAO_APP_ID`는 같은 개발자 앱의 양수 숫자 ID이며 미설정/잘못된 값은 기동 실패다. Native app key는 앱 공개 빌드 변수에만 둔다. 로컬 기본값0에서는 네이티브 경로만503이며 기존 `bootRun`은 유지한다. 실제 키 설정·기기 왕복·TestFlight 업로드는 코드 검증과 별도로 확인한다.
+
 ### FC-027 iOS 인증 세션 직접 복귀 (2026-10-28)
 
 - 앱이 `GET /api/v1/auth/{kakao|apple}/login?client=app&appReturn=session&codeChallenge=...`으로 시작하면, 성공 콜백은 **303·빈 본문·고정 `Location: jeongsan://auth?ticket=<43자 티켓>`**이다. ASWebAuthenticationSession의 callback scheme은jeongsan이다. 기존 exchange·PKCE·300초/일회용 정책을 유지한다.

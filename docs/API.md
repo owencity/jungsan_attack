@@ -1,4 +1,15 @@
-# 정산어택 — API 계약 · v22
+# 정산어택 — API 계약 · v23
+
+> **v23 변경(2026-11-05)** — [FC-034 카카오톡 간편 로그인](flow-changes/2026-11-05-kakaotalk-native-login.md).
+>
+> | 절 | 변경 |
+> |---|---|
+> | POST /api/v1/auth/kakao/native | 공개 JSON `{accessToken}` → 기존 앱 응답 `{token, expiresAt}`200. APP JWT만 발급, 웹 쿠키 없음 |
+> | 제공자 검증 | 토큰의 app_id/만료/ID 및 사용자 정보 ID 일치 검증, 다른 앱 토큰401 |
+> | 오류 | 기존 VALIDATION_FAILED/MALFORMED_REQUEST400, UNAUTHENTICATED401, AUTH_PROVIDER_UNAVAILABLE503 사용 |
+>
+> 제공자 토큰은 보관/로그하지 않는다. 기존 KAKAO provider_id로 로그인해 실명·명단·보상을 유지한다.
+> iOS 미설치 시 설치/Apple/취소 안내를 제공하며 계정 웹 로그인으로 자동 대체하지 않는다. 기존 OAuth/PKCE·Apple·Android 계약은 유지한다.
 
 > **v22 변경(2026-11-01)** — [FC-032 비회원 이름 정정](flow-changes/2026-11-01-guest-name-correction.md).
 >
@@ -481,6 +492,30 @@ Set-Cookie: jeongsan_token=eyJ...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-A
 > **구글은 아직 없다.** `users.provider` 에 자리는 있으나 구현은 카카오뿐이다.
 
 카카오 닉네임은 로그인마다 갱신하지만 등록한 실명은 변경하지 않는다.
+
+### 2.1-a 카카오톡 네이티브 로그인 — `POST /api/v1/auth/kakao/native` (FC-034)
+
+로그인 전 호출하는 공개 JSON 엔드포인트다. iOS 공식 Kakao SDK에서 받은 access token을 전달한다.
+사용자 ID·이름·앱 ID를 요청 필드로 받지 않는다.
+
+```json
+{"accessToken":"<Kakao SDK access token>"}
+```
+
+서버가 Kakao 토큰 정보의 앱 ID/만료/사용자 ID와 사용자 정보의 ID를 검증한다. 같은 개발자 앱의
+기존 `(KAKAO, provider_id)` 계정에 연결하고 실명·술자리·스푼은 유지한다.
+
+```json
+{"token":"<our APP JWT>","expiresAt":"2026-12-01T00:00:00Z"}
+```
+
+성공은200, `Cache-Control: no-store`, WEB 쿠키 미발급이다. 실제 expiresAt은 현재 JWT 설정값이다.
+빈 값/2048자 초과는400 `VALIDATION_FAILED`, 잘못된 JSON/토큰 문자는400 `MALFORMED_REQUEST`,
+만료·잘못된 토큰/다른 개발자 앱/ID 불일치는401 `UNAUTHENTICATED`, Kakao 일시 실패는503
+`AUTH_PROVIDER_UNAVAILABLE`다. 제공자 토큰은 서버에 보관하거나 로그에 남기지 않는다.
+
+iOS 카카오톡 미설치 시 설치/Apple/취소를 안내한다. 기존 웹·Android·Apple OAuth/PKCE는 유지한다.
+운영 준비와 로그아웃/탈퇴 구분은 [인증 계약](AUTH_RELEASE.md#fc-034-ios-카카오톡-간편-로그인-2026-11-05)을 따른다.
 
 ### 2.2 내 정보 — `GET /api/v1/auth/me`
 

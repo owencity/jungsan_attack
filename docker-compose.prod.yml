@@ -45,6 +45,7 @@ services:
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:?필수 운영 설정}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?필수 운영 설정}
+      KAKAO_APP_ID: ${KAKAO_APP_ID:?카카오 개발자 앱의 숫자 ID가 필요합니다}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?필수 운영 설정}
       KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:?필수 운영 설정}
       JWT_SECRET: ${JWT_SECRET:?필수 운영 설정}
