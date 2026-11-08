@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 033-round-expected-headcount
+      author: jeongsan
+      comment: "FC-029 후속. 총무가 각 차수에서 입력한 예상 인원을 독립적으로 보존한다."
+      changes:
+        - addColumn:
+            tableName: rounds
+            columns:
+              - column:
+                  name: expected_headcount
+                  type: INT
+                  remarks: "총무 포함 차수별 예상 참석 인원(2~50), 미설정은 NULL. 응답 수신·확정·계산의 조건으로 쓰지 않음"

@@ -1,5 +1,7 @@
 # 정산어택 — ERD
 
+> **2026-11-08 FC-029 후속** — `023-round-expected-headcount.yaml` / `033-round-expected-headcount`가 `rounds.expected_headcount INT NULL`을 추가한다. 차수별 총무 포함 예상 인원(2~50)이다. 단위 인원에서 소급하지 않는다.
+
 > **2026-11-01 FC-031:** `022-attendance-spoons.yaml` / `032-attendance-spoons`가 추가된다.
 > `spoon_attendance_rewards(gathering_id BIGINT,host_user_id BIGINT,participant_id BIGINT)` 복합 PK로 중복을 막는다.
 > `amount INT NOT NULL`, `awarded_at DATETIME(6) NOT NULL`은 지급 당시 수량과 UTC 시각이다.
