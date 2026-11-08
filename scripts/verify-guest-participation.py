@@ -352,4 +352,56 @@ locked_error = call("PUT", new_root + f"/participants/{name_pid}/name", host_coo
     {"displayName": "김잠금", "expectedDisplayName": locked_me["displayName"]}, 409)[0]
 check(not locked_me["canEditName"] and locked_error["code"] == "GUEST_NAME_LOCKED", "다른 단위가 OPEN이어도 확정된 이름은 보호")
 check(sql(f"SELECT COUNT(*) FROM guest_participations WHERE participant_id={name_pid}") == "1", "정정·경합 후 비회원 연결 하나 유지")
+
+# 1차 6명, 2차 7명, 3차 8명. 총무 포함 7명이 제출해도 마지막 차수에 응답할 수 있다.
+multi_room, multi_unit, multi_root, first_round = create(6)
+multi_payer = multi_room["me"]["participantId"]
+round_body = {"total": 10000, "payerParticipantId": multi_payer}
+first_path = f"{multi_root}/rounds/{first_round}"
+call("PUT", first_path, host_cookie, {**round_body, "expectedHeadcount": 6})
+check(call("PUT", first_path, host_cookie, round_body)[0]["expectedHeadcount"] == 6,
+      "구버전 차수 수정은 기존 예상 인원을 보존")
+second_round, third_round = [
+    call("POST", multi_root + "/rounds", host_cookie, {**round_body, "expectedHeadcount": count}, 201)[0]["id"]
+    for count in (7, 8)
+]
+bad_count = call("PUT", first_path, host_cookie, {**round_body, "expectedHeadcount": 51}, 400)[0]
+check(bad_count["code"] == "VALIDATION_FAILED", "차수별 예상 인원 범위를 검증")
+round_ids = (first_round, second_round, third_round)
+
+
+def multi_answers(attending):
+    return [{"roundId": rid, "type": "SOBER" if rid in attending else "ABSENT"} for rid in round_ids]
+
+
+def multi_join(attending):
+    return call("POST", "/guest/join/" + multi_room["shareToken"], session(), {
+        "displayName": "김차수", "settlementUnitId": multi_unit["id"], "responses": multi_answers(attending)
+    })[0]
+
+
+call("PUT", multi_root + "/responses/me", host_cookie, {"answers": multi_answers(round_ids)}, 204)
+for index in range(6):
+    multi_join(round_ids if index < 5 else round_ids[1:])
+detail_path = f"/gatherings/{multi_room['id']}"
+detail = call("GET", detail_path, host_cookie)[0]
+check([r["expectedHeadcount"] for r in detail["rounds"]] == [6, 7, 8]
+      and len(detail["settlementUnits"][0]["participantIds"]) == 7
+      and detail["settlementUnits"][0]["status"] == "OPEN",
+      "6·7·8명 설정과 총무 외 6명 응답을 보존하고 계속 OPEN")
+late_guest = multi_join([third_round])
+check(late_guest["settlementUnits"][0]["status"] == "OPEN"
+      and [(a["roundId"], a["type"]) for a in late_guest["responses"]] == list(zip(round_ids, ["ABSENT", "ABSENT", "SOBER"]))
+      and sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={multi_unit['id']}") == "0",
+      "늦은 참여자가 3차만 참석할 수 있고 확정 스냅샷은 없음")
+check(sql(f"SELECT COUNT(*) FROM notifications WHERE settlement_unit_id={multi_unit['id']} AND type='HEADCOUNT_EXCEEDED'") == "0",
+      "차수별 인원이 설정된 경우 이전 단위 인원 기준 초과 알림 없음")
+multi_preview = call("GET", multi_root + "/settlement/preview", host_cookie)[0]
+confirmed = call("POST", multi_root + "/settlement", host_cookie, {
+    "inputRevision": multi_preview["inputRevision"], "inputHash": multi_preview["inputHash"]
+})[0]
+check(confirmed["settlementUnits"][0]["status"] == "SETTLING"
+      and sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={multi_unit['id']}") == "1",
+      "총무가 직접 확정할 때만 정산을 마감")
+
 print(f"GUEST-PARTICIPATION: {checks} checks passed", flush=True)
