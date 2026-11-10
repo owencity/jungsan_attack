@@ -132,7 +132,7 @@ CONFIRMED ──수취인 확인 취소──▶ WAITING   (술자리가 SETTLIN
 | 항목 | 결정 |
 |---|---|
 | 로그인 식별자 | 유지 |
-| `display_name` | 실명(FC-013). nullable `VARCHAR(10)`, 최초 로그인·기존 사용자는 NULL. 앞뒤 공백 제거 후 2~10 Unicode 코드포인트. 최초 등록만 허용하며 같은 값 재요청은 멱등, 다른 값은 409. `015-user-display-name.yaml`로 추가 |
+| `display_name` | 서비스 표시 이름. nullable `VARCHAR(10)` 유지. 수동 최초 등록은 FC-013의 2~10 코드포인트와 재요청 규칙을 따른다. FC-036 Apple 로그인은 NULL일 때만 제공 이름(1~10 코드포인트) 또는 기본 표시 이름을 채운다. 기존 이름은 덮어쓰지 않는다. 스키마는 `015-user-display-name.yaml` 그대로 |
 | `nickname` | 기존 컬럼 유지. 카카오 닉네임을 로그인마다 갱신한다. 실명과 분리하며 실명 기본값으로 사용하지 않는다 |
 | 받을 계좌 | `payout_bank`, `payout_account_no`, `payout_holder` 추가. 암호화·마스킹은 §9 |
 | `spoon_count` | 추가. 받은 스푼 누적 수(`INT NOT NULL DEFAULT 0`). 술자리가 삭제돼도 줄지 않는다. 칭호는 이 값에서 계산하며 저장하지 않는다. **전설(10,000 이상) 순위**도 저장하지 않고 조회 시 `SELECT COUNT(*) + 1 FROM users WHERE spoon_count > :mine`로 계산한다 — 이를 위해 `INDEX (spoon_count)`를 둔다 |

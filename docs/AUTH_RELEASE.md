@@ -5,6 +5,16 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
 
 ## 로그인
 
+### FC-036 추가 앱 설치와 이름 재입력 없이 로그인 (2026-11-10)
+
+- iOS 카카오톡 미설치자는 기존 KAKAO 인가 주소를 `ASWebAuthenticationSession`으로 연다. `client=app&appReturn=session&codeChallenge=...`과 기존 티켓 교환을 사용한다. 카카오톡 설치·Apple 계정 전환을 요구하지 않는다. 설치자는 FC-034의 네이티브 경로를 유지한다.
+- Apple은 `scope=name`만 요청한다. `POST /api/v1/auth/apple/callback`의 선택 form 필드 `user`는 JSON 문자열이며 `name.firstName`·`name.lastName`만 이름 후보로 사용한다. 인증 검증을 마치기 전에는 이름을 저장하지 않는다. 계정 식별은 검증된 `sub` 그대로이며 이메일을 요청·저장하지 않는다.
+- `users.display_name IS NULL`인 Apple 계정만 이름을 채운다. 기존 이름은 재로그인·동시 요청에서도 덮어쓰지 않는다. 최초 동의 이름이 없으면 `총무`와 사용자 ID 끝 8자리로 기본 이름을 만든다. 제공 이름은 정규화·제어문자 제거 후 최대 10 코드포인트이며 한 글자도 허용한다. 표시 이름은 인증 수단이나 고유 식별자가 아니다.
+- `/auth/me` 응답 필드와 `needsName = displayName == null`은 유지한다. Apple 로그인이 이름을 채우므로 필수 이름 화면을 건너뛴다. 수동 최초 이름 등록 API의 검증·409 계약은 그대로다.
+- 이전 Apple 로그인 토큰을 재사용한 `/auth/me`에서도 이름이 NULL이면 기본 이름을 조건부 저장한다. 쓰기 트랜잭션의 READ_COMMITTED 재조회로 동시에 저장된 이름을 유지한다.
+- 앱은 소셜 로그인 시작 전에 약관 동의를 받는다. 저장된 세션의 해당 사용자에게 기기 내 확인 기록이 없으면 이름 입력 없는 약관 화면을 표시한다. 서버 약관 이력 저장이나 새 DB 컬럼은 추가하지 않는다. 설치하지 않은 기기의 실제 로그인·기존 계정 유지·Apple 재심사 결과는 서버 및 시뮬레이터 검증과 구분한다.
+- 아래 FC-034의 미설치 설치 안내와 FC-022의 이름 미요청 기록은 이 결정으로 대체한다. [상세 정책과 검증 범위](flow-changes/2026-11-10-ios-review-auth-access.md)를 따른다.
+
 ### FC-034 iOS 카카오톡 간편 로그인 (2026-11-05)
 
 - iOS 카카오는 공식 SDK의 카카오톡 앱 로그인 후 `POST /api/v1/auth/kakao/native {accessToken}`으로 교환한다. Apple 시스템 인증·Android/웹 OAuth·기존 PKCE 교환은 유지한다. 카카오톡 미설치 시 설치 안내/Apple/취소를 제공하며 iOS 카카오 계정 웹 로그인으로 자동 전환하지 않는다.
@@ -31,8 +41,8 @@ JWT 만료 14일/30일 미결은 변경하지 않는다. 실제 만료는 설정
   - 웹 기본값. 상대 경로 `/jungsan/`만 허용하며 `//`, 역슬래시, 제어문자, percent 인코딩을 거절한다.
   - 앱은 추가로 `codeChallenge` (SHA-256, base64url 43자)를 보낸다. 앱이 생성한 43~128자 `codeVerifier`는 앱에만 보관한다. [RFC 7636 §4.1·4.2](https://www.rfc-editor.org/rfc/rfc7636#section-4.1)의 문자·길이·S256 방식을 티켓 교환에 적용한다.
   - 5분짜리 일회용 state·nonce를 DB에 저장한다. 브라우저 httpOnly 상관 쿠키와 state를 함께 검증한다.
-  - Apple은 `response_mode=form_post`를 유지하고 `scope`를 보내지 않는다. 이름·이메일 제공 동의를 요청하지 않는다. HTTPS 상관 쿠키는 SameSite=None이다.
-- 카카오 콜백 GET / Apple 콜백 POST(form-urlencoded). 코드 교환 뒤 Apple ID 토큰의 RS256 서명·kid·issuer·audience·exp·nonce·subject를 검증한다. 계정 연결에는 `sub`만 사용하며 Apple 이름·이메일은 사용하거나 저장하지 않는다. 실명은 L2 등록 화면에서 따로 받는다. 이전 동의로 ID 토큰에 이메일이 포함되더라도 무시한다([Apple 인가 문서](https://developer.apple.com/documentation/signinwithapplerestapi/request-an-authorization-to-the-sign-in-with-apple-server)).
+  - Apple은 `response_mode=form_post`와 `scope=name`을 보낸다(FC-036). 이메일 동의는 요청하지 않는다. HTTPS 상관 쿠키는 SameSite=None이다.
+- 카카오 콜백 GET / Apple 콜백 POST(form-urlencoded). 코드 교환 뒤 Apple ID 토큰의 RS256 서명·kid·issuer·audience·exp·nonce·subject를 검증한다. 계정 연결에는 `sub`만 사용하며 Apple 이름은 검증 후 미등록 표시 이름을 채울 때만 사용한다. 이전 동의로 ID 토큰에 이메일이 포함되더라도 무시한다([Apple 인가 응답](https://developer.apple.com/documentation/signinwithapple/configuring-your-webpage-for-sign-in-with-apple)).
 - 웹: `jeongsan_token` 쿠키 발급, 원래 경로로303 복귀. 앱: 아래 완료 페이지를 통해 고정 `jeongsan://auth?ticket=...`로 복귀한다. JWT는 URL에 넣지 않는다.
 - `POST /api/v1/auth/app/exchange {ticket,codeVerifier}` → `{token,expiresAt}`. **5분 티켓**은 DB 잠금·삭제로 한 번만 교환되고 앱의 challenge와 대조한다. 만료 시각부터 거절한다. 기존 적용 changelog017의60초 설명은 과거 값이며 스키마 변경 없이 현재 AuthPolicy의300초를 적용한다.
 - 앱 Authorization Bearer는 APP 토큰만 받는다. 쿠키는 WEB 토큰만 받는다. 둘 다 있으면 Bearer를 우선하고 잘못된 헤더를 쿠키로 우회하지 않는다.

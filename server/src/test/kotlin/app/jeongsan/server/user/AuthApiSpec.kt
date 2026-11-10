@@ -52,6 +52,15 @@ class AuthApiSpec : StringSpec({
         response.contentAsString.contains("jeongsan://auth?ticket=$ticket") shouldBe true
         response.getHeaders("Set-Cookie").any { it.startsWith("jeongsan_token=") } shouldBe false
     }
+    "Apple 최초 동의의 선택 user 폼을 인증 서비스에 전달한다" {
+        val user = """{"name":{"firstName":"동규","lastName":"김"},"email":"unused@example.test"}"""
+        Mockito.`when`(flow.finish("APPLE",state,"browser","code",user)).thenReturn(AuthFinish("web","/jungsan/","signed"))
+        mvc.perform(post("/api/v1/auth/apple/callback").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .param("code","code").param("state",state).param("user",user)
+            .cookie(Cookie(AuthController.bindingName(state),"browser")))
+            .andExpect(status().isSeeOther).andExpect(header().string("Cache-Control","no-store"))
+        Mockito.verify(flow).finish("APPLE",state,"browser","code",user)
+    }
     "콜백의 잘못된 state는 서비스·제공자를 호출하지 않는다" {
         mvc.perform(get("/api/v1/auth/kakao/callback").param("code","code").param("state","invalid"))
             .andExpect(status().isUnauthorized)

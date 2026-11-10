@@ -19,17 +19,23 @@ import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.Callable
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import tools.jackson.module.kotlin.jacksonMapperBuilder
 
 private const val AUTH_KEY="AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
 
 class ProbeGateway : ProviderGateway {
     val subject=UUID.randomUUID().toString()
     var calls=0; var revokeCalls=0
+    var appleRefreshToken: String? = "test-refresh"
     override fun authorize(provider: String,state: String,nonce: String)="https://provider.test/?state=$state"
     override fun identity(provider: String,code: String,nonce: String): ProviderIdentity {
         calls++
         if(code!="good") throw UnauthenticatedException()
-        return ProviderIdentity(subject,"테스트",null,if(provider=="APPLE") "test-refresh" else null,if(provider=="APPLE") "test-client" else null)
+        return ProviderIdentity(subject,"테스트",null,if(provider=="APPLE") appleRefreshToken else null,if(provider=="APPLE") "test-client" else null)
     }
     override fun revokeApple(clientId: String,token: String) { revokeCalls++; check(clientId=="test-client"&&token=="test-refresh"); if(revokeCalls==1) error("retry") }
 }
@@ -135,6 +141,70 @@ fun main() {
         rejects("UNAUTHENTICATED") {flow.authenticated(web,"WEB")}; passed("탈퇴 전 유효 JWT도 즉시 거절")
         val appleStart=flow.start("APPLE","web",null,null); flow.finish("APPLE",appleStart.state,appleStart.browser,"good")
         val appleUid=db.rows("SELECT id FROM users WHERE provider='APPLE' AND provider_id=:p","p" to gateway.subject).single().long("id")
+        fun appleName() = db.rows("SELECT display_name FROM users WHERE id=:u","u" to appleUid).single()["display_name"]
+        fun finishApple(user: String? = null): Long {
+            val next = flow.start("APPLE","web",null,null)
+            val result = flow.finish("APPLE",next.state,next.browser,"good",user)
+            return checkNotNull(jwt.identity(result.credential)).userId
+        }
+        check(appleName()==AppleDisplayName.fromCallback(null,appleUid))
+        passed("Apple 신규 계정은 이름 미수신이어도 기본 표시명으로 가입 완료")
+        gateway.appleRefreshToken = null
+        db.update("UPDATE users SET display_name=NULL WHERE id=:u","u" to appleUid)
+        check(finishApple("""{"name":{"firstName":"동규","lastName":"김"},"id":"forged-subject","email":"unused@example.test"}""")==appleUid)
+        check(appleName()=="김동규")
+        check(db.rows("SELECT id FROM users WHERE provider='APPLE' AND provider_id='forged-subject'").isEmpty())
+        passed("Apple 과거 미등록 계정은 검증한 subject와 같은 ID로 이름만 채우고 폼 ID·이메일 무시")
+        check(finishApple()==appleUid && finishApple("""{"name":{"firstName":"다른이름"}}""")==appleUid)
+        check(appleName()=="김동규")
+        passed("Apple 재로그인의 이름 누락·다른 이름은 기존 표시명과 계정 ID를 보존")
+        db.update("UPDATE users SET display_name=NULL WHERE id=:u","u" to appleUid)
+        check(finishApple()==appleUid)
+        val stableName = appleName()
+        check(stableName==AppleDisplayName.fromCallback(null,appleUid))
+        check(finishApple("{")==appleUid && appleName()==stableName)
+        passed("Apple 과거 이름 미수신 계정도 다시 입력하지 않고 안정적인 기본 표시명 유지")
+        db.update("UPDATE users SET display_name=NULL WHERE id=:u","u" to appleUid)
+        val appleLogins = Executors.newFixedThreadPool(2)
+        try {
+            val results = appleLogins.invokeAll(listOf("가나다", "라마바사").map { candidate ->
+                Callable { finishApple("""{"name":{"firstName":"$candidate"}}""") }
+            }).map { it.get() }
+            check(results.all { it == appleUid } && appleName() in listOf("가나다", "라마바사"))
+            check(db.rows("SELECT id FROM users WHERE provider='APPLE' AND provider_id=:p","p" to gateway.subject).size==1)
+        } finally { appleLogins.shutdown() }
+        passed("Apple 두 로그인 동시 완료도 계정 하나에 최초 표시명만 저장")
+        // 같은 CI DB를 쓰는 실제 HTTP/JPA 경로에서 기존 토큰의 프로필 복원을 확인한다.
+        val http = HttpClient.newHttpClient()
+        val mapper = jacksonMapperBuilder().build()
+        fun me(token: String, client: String = "APP"): tools.jackson.databind.JsonNode {
+            val request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:18081/api/v1/auth/me"))
+                .timeout(java.time.Duration.ofSeconds(10))
+            if (client == "APP") request.header("Authorization", "Bearer $token")
+            else request.header("Cookie", "jeongsan_token=$token")
+            val response = http.send(request.GET().build(), HttpResponse.BodyHandlers.ofString())
+            check(response.statusCode() == 200) { "기존 토큰 내 정보 조회 실패: ${response.statusCode()}" }
+            return mapper.readTree(response.body())
+        }
+        val oldAppleToken = jwt.issue(appleUid,"APP")
+        db.update("UPDATE users SET display_name=NULL WHERE id=:u","u" to appleUid)
+        val restored = me(oldAppleToken)
+        check(restored.path("id").asLong()==appleUid && !restored.path("needsName").asBoolean())
+        check(restored.path("displayName").asString()==AppleDisplayName.fromCallback(null,appleUid) && appleName()==restored.path("displayName").asString())
+        passed("기존 Apple 앱 JWT의 실제 내 정보 API는 JPA 조건부 저장 후 재조회하여 이름 입력을 건너뜀")
+        db.update("UPDATE users SET display_name='기존이름' WHERE id=:u","u" to appleUid)
+        check(me(oldAppleToken).path("displayName").asString()=="기존이름" && appleName()=="기존이름")
+        passed("Apple 내 정보 조회는 이미 저장된 이름을 그대로 유지")
+        db.update("UPDATE users SET display_name=NULL WHERE id=:u","u" to appleUid)
+        val restoredWeb = me(jwt.issue(appleUid),"WEB")
+        check(!restoredWeb.path("needsName").asBoolean() && restoredWeb.path("displayName").asString()==AppleDisplayName.fromCallback(null,appleUid))
+        passed("기존 Apple 웹 쿠키도 재로그인 없이 기본 표시명을 저장")
+        val kakaoUid = db.insert("INSERT INTO users(provider,provider_id,nickname,created_at) VALUES('KAKAO',:p,'카카오검증',UTC_TIMESTAMP())","p" to UUID.randomUUID().toString())
+        val kakaoMe = me(jwt.issue(kakaoUid,"APP"))
+        check(kakaoMe.path("needsName").asBoolean() && kakaoMe.path("displayName").isNull)
+        check(db.rows("SELECT display_name FROM users WHERE id=:u","u" to kakaoUid).single()["display_name"]==null)
+        deletion.delete(kakaoUid)
+        passed("카카오 이름 미등록 계정은 내 정보 조회 후에도 최초 이름 입력 유지")
         val encrypted=db.rows("SELECT token_encrypted FROM auth_credentials WHERE user_id=:u","u" to appleUid).single()["token_encrypted"] as ByteArray
         check(!encrypted.contentEquals("test-refresh".toByteArray())); passed("Apple refresh token은 암호문으로 저장")
         deletion.delete(appleUid)
