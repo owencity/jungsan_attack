@@ -33,12 +33,48 @@ class UserApiSpec : StringSpec({
         .cookie(cookie).contentType(MediaType.APPLICATION_JSON)
         .content(jacksonMapperBuilder().build().writeValueAsString(DisplayNameRequest(value)))
 
-    "미등록 사용자 조회는 실명 null과 needsName true를 반환한다" {
-        Mockito.`when`(repository.findById(12)).thenReturn(Optional.of(User(id = 12, nickname = "봄이")))
+    "미등록 카카오 사용자 조회는 실명 null과 needsName true를 유지한다" {
+        Mockito.`when`(repository.findById(12)).thenReturn(Optional.of(User(id = 12, provider = "KAKAO", nickname = "봄이")))
         mvc.perform(get("/api/v1/auth/me").cookie(cookie)).andExpect(status().isOk)
             .andExpect(jsonPath("$.needsName").value(true))
             .andExpect(jsonPath("$.nickname").value("봄이"))
             .andExpect(jsonPath("$.displayName").isEmpty)
+        Mockito.verify(repository).findById(12)
+        Mockito.verifyNoMoreInteractions(repository)
+    }
+
+    listOf("WEB", "APP").forEach { client ->
+        "기존 Apple $client 토큰으로 내 정보를 읽어도 미등록 이름을 자동으로 채운다" {
+            Mockito.`when`(repository.findById(12))
+                .thenReturn(Optional.of(User(id = 12, provider = "APPLE")))
+                .thenReturn(Optional.of(User(id = 12, provider = "APPLE", displayName = "총무12")))
+            Mockito.`when`(repository.registerDisplayName(12,"총무12")).thenReturn(1)
+            val request = get("/api/v1/auth/me")
+            if (client == "APP") request.header("Authorization", "Bearer ${jwt.issue(12,"APP")}") else request.cookie(cookie)
+            mvc.perform(request).andExpect(status().isOk)
+                .andExpect(jsonPath("$.displayName").value("총무12"))
+                .andExpect(jsonPath("$.needsName").value(false))
+            Mockito.verify(repository).registerDisplayName(12,"총무12")
+        }
+    }
+
+    "이미 이름이 있는 Apple 사용자는 조회에서 변경하지 않는다" {
+        Mockito.`when`(repository.findById(12)).thenReturn(Optional.of(User(id = 12, provider = "APPLE", displayName = "김동규")))
+        mvc.perform(get("/api/v1/auth/me").cookie(cookie)).andExpect(status().isOk)
+            .andExpect(jsonPath("$.displayName").value("김동규"))
+            .andExpect(jsonPath("$.needsName").value(false))
+        Mockito.verify(repository).findById(12)
+        Mockito.verifyNoMoreInteractions(repository)
+    }
+
+    "조회 중 Apple 콜백이 먼저 이름을 저장했으면 기본 이름 대신 저장된 이름을 반환한다" {
+        Mockito.`when`(repository.findById(12))
+            .thenReturn(Optional.of(User(id = 12, provider = "APPLE")))
+            .thenReturn(Optional.of(User(id = 12, provider = "APPLE", displayName = "김동규")))
+        Mockito.`when`(repository.registerDisplayName(12,"총무12")).thenReturn(0)
+        mvc.perform(get("/api/v1/auth/me").cookie(cookie)).andExpect(status().isOk)
+            .andExpect(jsonPath("$.displayName").value("김동규"))
+            .andExpect(jsonPath("$.needsName").value(false))
     }
 
     "실명을 공백 제거해 최초 등록하고 갱신된 내 정보를 반환한다" {

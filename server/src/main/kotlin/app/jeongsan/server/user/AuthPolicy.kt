@@ -42,10 +42,11 @@ object AuthPolicy {
         else "jeongsan://auth?ticket=$ticket"
     }
 
-    // 실명은 L2에서 받으므로 Apple 이름·이메일 동의를 요청하지 않는다.
+    // Apple이 첫 동의 때 제공한 이름을 사용해 같은 정보를 다시 입력하게 하지 않는다. 이메일은 쓰지 않는다.
     fun appleAuthorizationParameters(nonce: String): Map<String, String> = mapOf(
         "response_mode" to "form_post",
         "nonce" to nonce,
+        "scope" to "name",
     )
 
     fun providerAvailable(provider: String, kakaoSettings: List<String>, appleSettings: List<String>): Boolean = when (provider) {

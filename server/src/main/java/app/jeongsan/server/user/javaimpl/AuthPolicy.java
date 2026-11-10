@@ -47,9 +47,9 @@ public final class AuthPolicy {
         return "jeongsan://auth?ticket=" + ticket;
     }
 
-    // 실명은 L2에서 받으므로 Apple 이름·이메일 동의를 요청하지 않는다.
+    // Apple이 첫 동의 때 제공한 이름을 재사용하며 서비스에 필요 없는 이메일은 요청하지 않는다.
     public static Map<String, String> appleAuthorizationParameters(String nonce) {
-        return Map.of("response_mode", "form_post", "nonce", nonce);
+        return Map.of("response_mode", "form_post", "nonce", nonce, "scope", "name");
     }
 
     public static boolean providerAvailable(String provider, List<String> kakaoSettings, List<String> appleSettings) {

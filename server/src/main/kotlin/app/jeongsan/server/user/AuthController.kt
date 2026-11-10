@@ -39,14 +39,15 @@ class AuthController(private val flow: AuthFlowService, private val userService:
     @GetMapping("/api/v1/auth/kakao/callback")
     fun callback(@RequestParam code: String, @RequestParam state: String, request: HttpServletRequest) = finish("KAKAO",code,state,request)
     @PostMapping("/api/v1/auth/apple/callback", consumes=[MediaType.APPLICATION_FORM_URLENCODED_VALUE])
-    fun appleCallback(@RequestParam code: String, @RequestParam state: String, request: HttpServletRequest) = finish("APPLE",code,state,request)
-    private fun finish(provider: String,code: String,state: String,request: HttpServletRequest): ResponseEntity<String> {
+    fun appleCallback(@RequestParam code: String, @RequestParam state: String, @RequestParam(required=false) user: String?,
+        request: HttpServletRequest) = finish("APPLE",code,state,request,user)
+    private fun finish(provider: String,code: String,state: String,request: HttpServletRequest,appleUser: String? = null): ResponseEntity<String> {
         if(!Regex("[A-Za-z0-9_-]{43}").matches(state)) {
             AuthCallbackLog.failed(provider, AuthCallbackLog.Failure.INVALID_STATE)
             throw app.jeongsan.server.common.UnauthenticatedException()
         }
         val browser=request.cookies?.firstOrNull { it.name==bindingName(state) }?.value
-        val result=flow.finish(provider,state,browser,code)
+        val result=flow.finish(provider,state,browser,code,appleUser)
         val authSession = result.client == "app" && result.appReturnMode == "session"
         val response=if(authSession) ResponseEntity.status(HttpStatus.SEE_OTHER)
             .location(URI.create(AuthPolicy.appSessionReturnLink(result.credential)))

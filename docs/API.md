@@ -1,4 +1,15 @@
-# 정산어택 — API 계약 · v23
+# 정산어택 — API 계약 · v25
+
+> **v25 변경(2026-11-10)** — [FC-036 추가 앱 설치와 이름 재입력 없이 로그인](flow-changes/2026-11-10-ios-review-auth-access.md).
+>
+> | 절 | 변경 |
+> |---|---|
+> | Apple 인가·콜백 | `scope=name`, form POST의 선택 `user` JSON으로 이름 수신. 검증된 `sub`로만 계정 연결 |
+> | GET /auth/me | Apple은 저장된 이름 유지. 이전 로그인 토큰의 이름 미등록 계정도 기본 표시 이름을 저장한 뒤 `needsName=false` |
+> | iOS 카카오 미설치 | 기존 OAuth·PKCE·session 복귀를 앱 안 시스템 인증창에서 사용 |
+>
+> URL·응답 필드·스키마·수동 최초 이름 등록 계약은 유지한다. 이메일은 요청·저장하지 않는다.
+> v24/FC-035의 차수별 예상 인원 변경은 별도 브랜치이며 이 수정에는 포함하지 않는다. 과거 버전 기록보다 이 계약을 우선한다.
 
 > **v23 변경(2026-11-05)** — [FC-034 카카오톡 간편 로그인](flow-changes/2026-11-05-kakaotalk-native-login.md).
 >
@@ -488,6 +499,7 @@ Set-Cookie: jeongsan_token=eyJ...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-A
 
 > **FC-013 결정:** 첫 실명 입력 여부는 `GET /auth/me`의 `needsName`으로 전달한다.
 > `displayName`이 NULL이면 true다. 기존 계정도 아직 실명을 등록하지 않았다면 true다.
+> **FC-036:** Apple 로그인은 미등록 이름을 제공받은 이름 또는 기본 표시 이름으로 채운다. 별도 이름 입력을 요구하지 않는다.
 
 > **구글은 아직 없다.** `users.provider` 에 자리는 있으나 구현은 카카오뿐이다.
 
@@ -514,7 +526,7 @@ Set-Cookie: jeongsan_token=eyJ...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-A
 만료·잘못된 토큰/다른 개발자 앱/ID 불일치는401 `UNAUTHENTICATED`, Kakao 일시 실패는503
 `AUTH_PROVIDER_UNAVAILABLE`다. 제공자 토큰은 서버에 보관하거나 로그에 남기지 않는다.
 
-iOS 카카오톡 미설치 시 설치/Apple/취소를 안내한다. 기존 웹·Android·Apple OAuth/PKCE는 유지한다.
+iOS 카카오톡 미설치 시 기존 OAuth·PKCE·`appReturn=session`을 앱 안 시스템 인증창에서 사용한다(FC-036). 기존 웹·Android 경로는 유지한다.
 운영 준비와 로그아웃/탈퇴 구분은 [인증 계약](AUTH_RELEASE.md#fc-034-ios-카카오톡-간편-로그인-2026-11-05)을 따른다.
 
 ### 2.2 내 정보 — `GET /api/v1/auth/me`
@@ -530,7 +542,7 @@ Cookie: jeongsan_token=eyJ...          ← 브라우저가 자동으로 붙인�
 **새로고침할 때마다 프론트가 이걸 부른다.** 쿠키가 httpOnly 라 JS 가 읽을 수 없어
 **로그인 여부를 프론트가 스스로 알 방법이 없다** — 서버에 물어봐야 한다.
 
-`displayName`은 본인이 등록한 실명, `nickname`은 카카오 닉네임이다.
+`displayName`은 서비스에서 쓰는 이름이다. 수동 등록 이름 또는 Apple에서 받은 이름이며, Apple이 이름을 보내지 않은 미등록 계정은 기본 표시 이름을 사용한다(FC-036). `nickname`은 카카오 닉네임이다.
 목록의 `실명(닉네임)` 표시는 프론트가 조합한다. 토큰에는 `userId`만 담고 DB에서 조회한다.
 
 ### 2.2-a 실명 등록 — `PUT /api/v1/users/me/display-name`

@@ -39,7 +39,7 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
             "stateHash" to AuthPolicy.hash(state))
         return AuthStart(state,browser,location)
     }
-    fun finish(provider: String, state: String, browser: String?, code: String): AuthFinish {
+    fun finish(provider: String, state: String, browser: String?, code: String, appleUser: String? = null): AuthFinish {
         fun reject(reason: AuthCallbackLog.Failure): Nothing {
             AuthCallbackLog.failed(provider, reason)
             throw UnauthenticatedException()
@@ -58,7 +58,8 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
                 AuthCallbackLog.failed(provider, AuthCallbackLog.Failure.PROVIDER_REJECTED)
                 throw exception
             }
-        val uid = upsertIdentity(provider, identity)
+        // user 폼은 서명된 신원이 아니다. state·쿠키·제공자 토큰을 검증한 뒤 표시 이름만 읽는다.
+        val uid = upsertIdentity(provider, identity, appleUser)
         val appReturnMode = if (row.text("client") == "app" && db.rows(
             "SELECT state_hash FROM auth_session_returns WHERE state_hash=:stateHash", "stateHash" to AuthPolicy.hash(state)).isNotEmpty()) "session" else "page"
         db.update("DELETE FROM auth_challenges WHERE state_hash=:s","s" to AuthPolicy.hash(state))
@@ -75,7 +76,7 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
         return AppExchangeResponse(token, checkNotNull(jwt.identity(token)).expiresAt)
     }
 
-    private fun upsertIdentity(provider: String, identity: ProviderIdentity): Long {
+    private fun upsertIdentity(provider: String, identity: ProviderIdentity, appleUser: String? = null): Long {
         if(identity.id.length !in 1..100) throw UnauthenticatedException()
         db.update("INSERT INTO users(provider,provider_id,nickname,profile_image_url,created_at) VALUES(:p,:id,:n,:i,:t) ON DUPLICATE KEY UPDATE nickname=VALUES(nickname),profile_image_url=VALUES(profile_image_url)",
             "p" to provider,"id" to identity.id,"n" to identity.nickname.take(50),"i" to identity.image,"t" to Instant.now())
@@ -84,6 +85,9 @@ class AuthFlowService(private val db: GatheringStore, private val gateway: Provi
             if(identity.refreshToken!=null) db.update("INSERT INTO auth_credentials VALUES(:u,:c,:t) ON DUPLICATE KEY UPDATE client_id=VALUES(client_id),token_encrypted=VALUES(token_encrypted)",
                 "u" to uid,"c" to identity.clientId,"t" to cipher.encrypt(identity.refreshToken))
             else if(db.rows("SELECT user_id FROM auth_credentials WHERE user_id=:u","u" to uid).isEmpty()) throw UnauthenticatedException()
+            // 재로그인에는 이름이 다시 오지 않을 수 있다. 기존 이름과 계정 연결은 그대로 유지한다.
+            db.update("UPDATE users SET display_name=:name WHERE id=:u AND display_name IS NULL",
+                "name" to AppleDisplayName.fromCallback(appleUser, uid), "u" to uid)
         }
         return uid
     }

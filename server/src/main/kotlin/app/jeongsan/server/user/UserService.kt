@@ -4,13 +4,21 @@ import app.jeongsan.server.common.DisplayNameAlreadySetException
 import app.jeongsan.server.common.MalformedRequestException
 import app.jeongsan.server.common.UnauthenticatedException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class UserService(private val userRepository: UserRepository, private val gatherings: app.jeongsan.server.gathering.GatheringService? = null) {
-    @Transactional(readOnly = true)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     fun me(userId: Long): MeResponse {
-        val response=findUser(userId).toMeResponse()
+        val previous = findUser(userId)
+        val user = if (previous.provider == "APPLE" && previous.displayName == null) {
+            // 이전 앱 토큰도 재로그인 없이 사용할 수 있게 한다. 먼저 저장된 이름은 덮지 않는다.
+            userRepository.registerDisplayName(userId, AppleDisplayName.fromCallback(null, userId))
+            // 벌크 UPDATE가 clear한 엔티티를 재사용하지 않는다. READ_COMMITTED로 동시 콜백의 이름도 읽는다.
+            findUser(userId)
+        } else previous
+        val response=user.toMeResponse()
         val info=gatherings?.meInfo(userId) ?: return response
         return response.copy(payout=info["payout"],spoonCount=info["spoonCount"] as Long,unreadNotificationCount=info["unreadNotificationCount"] as Long)
     }
