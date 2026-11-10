@@ -60,8 +60,8 @@
 
 | 번호 | 제목 | 상태 | 백엔드 반영·근거 | 파일 |
 |---|---|---|---|---|
-| FC-036 | 추가 앱 설치와 이름 재입력 없이 로그인 | 열림 · 구현·검증 중 | API v25 · FC-022/034의 로그인 흐름 대체, 배포·실기기 후속 | [2026-11-10-ios-review-auth-access.md](2026-11-10-ios-review-auth-access.md) |
-| FC-034 | iOS 카카오톡 간편 로그인·미설치 안내 | 열림 · 백엔드 운영/설정 완료 | PR56·운영8e23b7f·API v23 · 앱PR9/TestFlight18·실기기 후속 | [2026-11-05-kakaotalk-native-login.md](2026-11-05-kakaotalk-native-login.md) |
+| FC-036 | 추가 앱 설치와 이름 재입력 없이 로그인 | 서버·웹 반영됨 · TestFlight 19 업로드 완료 | API v25 · 앱 CI 완료, 실계정 로그인 확인 대기 | [2026-11-10-ios-review-auth-access.md](2026-11-10-ios-review-auth-access.md) |
+| FC-034 | iOS 카카오톡 간편 로그인·미설치 안내 | 설치자 간편 로그인 유지 · 미설치 안내는 FC-036으로 대체 | API v23 · SDK 연결 유지, 미설치자는 앱 안 계정 로그인 | [2026-11-05-kakaotalk-native-login.md](2026-11-05-kakaotalk-native-login.md) |
 | FC-033 | 공개 데모 샘플 정산표 이미지 저장 | 반영됨 · 앱 PR6/빌드17 | Android·iPhone·iPad 통과 · 서버/API 변경 없음 | [2026-11-01-demo-settlement-image.md](2026-11-01-demo-settlement-image.md) |
 | FC-032 | 비회원 이름 정정·동일 브라우저 재방문 | 백엔드·웹 반영됨 · TestFlight16 업로드/CI 완료 · 실기기 확인 대기 | API v22 · 공유 신원/보상 유지 · 총무 웹/앱 연결 | [2026-11-01-guest-name-correction.md](2026-11-01-guest-name-correction.md) |
 | FC-031 | 참석자당 총무 10스푼 자동 적립·회수 없음 | 반영됨 (운영 적용 후속) | PR #53·API v21·022/032·실제 MySQL/HTTP 검증, 앱 PR #4 조회 갱신 | [2026-11-01-attendance-spoons.md](2026-11-01-attendance-spoons.md) |
