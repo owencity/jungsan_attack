@@ -1,4 +1,15 @@
-# 정산어택 — API 계약 · v25
+# 정산어택 — API 계약 · v26
+
+> **v26 변경(2026-11-11)** — [FC-037 총 정산인원](flow-changes/2026-11-11-total-headcount.md). v24 차수별 인원과 v25 로그인 변경을 함께 포함한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | PUT /api/v1/gatherings/{gid}/settlement-units/{id}/total-headcount | JSON `{totalHeadcount:7}`(정수2~50) →204. 로그인한 단위 총무·OPEN 전용. 누락/NULL/범위 밖400, 무인증401, 총무 아님403, 확정 후409 |
+> | 회원 목록·상세 settlementUnits, 초대 미리보기 | `totalHeadcount: Int?` 추가. 총무 포함 전체 예상 고유 인원. 생성 직후와 기존 방은 null, 별도 PUT으로 설정 |
+> | 기존 headcount·차수 expectedHeadcount | 새 총인원과 독립. 구버전 호출로 totalHeadcount를 변경하지 않으며 기존 값으로 채우지 않음 |
+> | 정산·응답 | 인원은 안내용. 총무 명시적 확정·기존 core 계산 유지. 변경 시 revision 증가, 동일 값 재시도는 유지 |
+>
+> 상세 권한·상태 오류는 기존 NOT_PARTICIPANT / NOT_SETTLEMENT_UNIT_HOST / SETTLEMENT_UNIT_NOT_OPEN과 같은 의미다. DB는 신규024/034만 추가하며 기존 확정 스냅샷과 계산 규칙은 바꾸지 않는다.
 
 > **v25 변경(2026-11-10)** — [FC-036 추가 앱 설치와 이름 재입력 없이 로그인](flow-changes/2026-11-10-ios-review-auth-access.md).
 >

@@ -42,3 +42,5 @@ databaseChangeLog:
       file: db/changelog/022-attendance-spoons.yaml
   - include:
       file: db/changelog/023-round-expected-headcount.yaml
+  - include:
+      file: db/changelog/024-unit-total-headcount.yaml

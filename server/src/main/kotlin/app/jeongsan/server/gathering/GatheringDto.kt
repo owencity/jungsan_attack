@@ -6,6 +6,7 @@ import java.time.LocalDate
 
 data class GatheringCreateRequest(@field:Min(2) @field:Max(50) val headcount: Int? = null)
 data class HeadcountRequest(@field:Min(2) @field:Max(50) val headcount: Int)
+data class TotalHeadcountRequest(@field:Min(2) @field:Max(50) val totalHeadcount: Int)
 data class UnitCreateRequest(val requestId: java.util.UUID, @field:Size(min=1,max=1000) val participantIds: List<Long>,
     @field:Min(2) @field:Max(50) val headcount: Int? = null)
 data class GatheringEditRequest(@field:Size(min=1, max=20) val title: String? = null, val date: LocalDate? = null)

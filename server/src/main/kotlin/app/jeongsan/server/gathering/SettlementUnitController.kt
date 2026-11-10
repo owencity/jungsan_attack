@@ -19,6 +19,11 @@ class SettlementUnitController(private val service: GatheringService) {
     fun headcount(@PathVariable gid: Long, @PathVariable id: Long, @LoginUser userId: Long,
         @Valid @RequestBody request: HeadcountRequest) = service.headcount(gid,id,userId,request.headcount)
 
+    @PutMapping("/{id}/total-headcount")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun totalHeadcount(@PathVariable gid: Long, @PathVariable id: Long, @LoginUser userId: Long,
+        @Valid @RequestBody request: TotalHeadcountRequest) = service.totalHeadcount(gid,id,userId,request.totalHeadcount)
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@PathVariable gid: Long, @LoginUser userId: Long, @Valid @RequestBody request: UnitCreateRequest) = service.createUnit(gid,userId,request)
