@@ -60,9 +60,9 @@
 
 | 번호 | 제목 | 상태 | 백엔드 반영·근거 | 파일 |
 |---|---|---|---|---|
-| FC-037 | 총 정산인원과 차수별 참석 인원 분리 | 반영됨 · 서버 운영 완료, 웹·앱 배포 별도 | API v26·024/034 · PR59·9880b58·CI 통과 · [배포 기록](../operations/2026-11-11-total-headcount-release.md) | [2026-11-11-total-headcount.md](2026-11-11-total-headcount.md) |
+| FC-037 | 총 정산인원과 차수별 참석 인원 분리 | 반영됨 · 서버·웹 운영, TestFlight 20 업로드 완료 | API v26·024/034 · 서버9880b58·웹1dd8974·앱6c59e61 · Android6 업로드·Apple 처리 확인 후속 · [배포 기록](../operations/2026-11-11-total-headcount-release.md) | [2026-11-11-total-headcount.md](2026-11-11-total-headcount.md) |
 | FC-036 | 추가 앱 설치와 이름 재입력 없이 로그인 | 서버·웹 반영됨 · TestFlight 19 업로드 완료 | API v25 · 앱 CI 완료, 실계정 로그인 확인 대기 | [2026-11-10-ios-review-auth-access.md](2026-11-10-ios-review-auth-access.md) |
-| FC-035 | 차수별 예상 참석 인원 | 반영됨 · FC-037과 함께 서버 운영 완료 | API v24·023/033 · PR57 수정을 PR59·9880b58에 포함, 웹·앱 배포 별도 | [2026-11-01-host-review.md](2026-11-01-host-review.md#2026-11-08-차수별-예상-인원) |
+| FC-035 | 차수별 예상 참석 인원 | 반영됨 · FC-037과 함께 서버·웹 운영, TestFlight 20 업로드 완료 | API v24·023/033 · PR57 수정을 PR59·9880b58에 포함 · Android6 업로드·Apple 처리 확인 후속 | [2026-11-01-host-review.md](2026-11-01-host-review.md#2026-11-08-차수별-예상-인원) |
 | FC-034 | iOS 카카오톡 간편 로그인·미설치 안내 | 설치자 간편 로그인 유지 · 미설치 안내는 FC-036으로 대체 | API v23 · SDK 연결 유지, 미설치자는 앱 안 계정 로그인 | [2026-11-05-kakaotalk-native-login.md](2026-11-05-kakaotalk-native-login.md) |
 | FC-033 | 공개 데모 샘플 정산표 이미지 저장 | 반영됨 · 앱 PR6/빌드17 | Android·iPhone·iPad 통과 · 서버/API 변경 없음 | [2026-11-01-demo-settlement-image.md](2026-11-01-demo-settlement-image.md) |
 | FC-032 | 비회원 이름 정정·동일 브라우저 재방문 | 백엔드·웹 반영됨 · TestFlight16 업로드/CI 완료 · 실기기 확인 대기 | API v22 · 공유 신원/보상 유지 · 총무 웹/앱 연결 | [2026-11-01-guest-name-correction.md](2026-11-01-guest-name-correction.md) |

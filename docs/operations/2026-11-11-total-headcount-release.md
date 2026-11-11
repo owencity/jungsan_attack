@@ -53,12 +53,13 @@ FC-035와 FC-037의 서버 변경을 운영에 배포했다. 총무가 지정한
 
 기계가 읽을 수 있는 로컬 결과는 `build/releases/total-headcount/backend-deployment.json`과 `build/total-headcount-release/`의 `production-smoke.json`, `production-verification.json`, `database-verification.json`에 저장했다. 이 산출물은 Git 추적 대상이 아니다.
 
-## 웹·앱의 남은 배포
+## 웹·앱 배포와 남은 확인
 
-문서 작성 시 확인한 진행 상태다. 아래 단계가 끝나면 해당 저장소의 실행 SHA와 배포 결과를 별도로 기록한다.
+2026-11-11 12:20 KST까지 확인한 결과다. 웹 본인 확인 대기와 iOS 검증 중이었던 이전 기록을 아래 상태로 갱신했다. 백엔드는 재배포하지 않았으며 실행 소스 `9880b58`을 유지한다.
 
-- 웹: Vercel 운영 반영을 위한 이메일 본인 확인 대기. 새 운영 반영 완료로 기록하지 않는다.
-- Android: 버전 코드 6 AAB 준비와 CI 성공. Google Play 업로드·심사·사용자 업데이트 완료와는 구분한다.
-- iOS: 자동 검증 중. 이번 변경의 TestFlight 업로드와 기기 반영은 아직 완료로 기록하지 않는다.
+- 웹: 소스 `1dd8974140488504797b4e429610b8737f3f0967`. 사용자의 이메일 본인 확인 후 12:14 KST에 [Vercel 배포 HiyCtSBQj2shis6kyHKeTENSG1Br](https://vercel.com/kdks-projects-8235f941/jungsan/HiyCtSBQj2shis6kyHKeTENSG1Br)가 `jungsan.devkdk.com`의 Production·Current·Ready임을 확인했다.
+- 앱 공통 검증: 소스 `6c59e618f6ad11289f818fac7b7434d0faacf327`의 [CI 42855434587, 두 번째 실행](https://github.com/owencity/jungsan_app/actions/runs/42855434587/attempts/2)이 성공했다. 첫 실행은 iOS 시스템 키보드 안내의 `Continue` 처리 시간 초과로 실패했다. 소스를 바꾸지 않고 재실행해 성공했으므로 첫 실패를 코드 수정으로 해결했다고 기록하지 않는다.
+- iOS: 같은 앱 소스로 [TestFlight 20 업로드 실행 42951101378](https://github.com/owencity/jungsan_app/actions/runs/42951101378)이 성공했다. 12:20 KST 로그의 `Upload succeeded`와 `EXPORT SUCCEEDED`를 확인했다. Apple 처리 완료·TestFlight 목록 노출·기기 업데이트는 아직 확인하지 않았다. App Review 제출·승인 완료를 뜻하지 않는다.
+- Android: 버전 코드 6 AAB 준비와 CI 성공. Google Play 업로드·심사·사용자 업데이트는 아직 확인하지 않았다.
 
-구버전 앱은 새 총인원 필드를 사용하지 않을 수 있다. 서버 배포만으로 모든 사용자 화면의 응답 수 안내가 바뀌었다고 판단하지 않는다.
+구버전 앱은 새 총인원 필드를 사용하지 않을 수 있다. 웹 운영 반영과 iOS 업로드가 끝났어도 모든 사용자가 새 앱으로 업데이트했다고 판단하지 않는다.
