@@ -352,4 +352,225 @@ locked_error = call("PUT", new_root + f"/participants/{name_pid}/name", host_coo
     {"displayName": "김잠금", "expectedDisplayName": locked_me["displayName"]}, 409)[0]
 check(not locked_me["canEditName"] and locked_error["code"] == "GUEST_NAME_LOCKED", "다른 단위가 OPEN이어도 확정된 이름은 보호")
 check(sql(f"SELECT COUNT(*) FROM guest_participations WHERE participant_id={name_pid}") == "1", "정정·경합 후 비회원 연결 하나 유지")
+
+# 1차 6명, 2차 7명, 3차 8명. 총무 포함 7명이 제출해도 마지막 차수에 응답할 수 있다.
+multi_room, multi_unit, multi_root, first_round = create(6)
+multi_payer = multi_room["me"]["participantId"]
+round_body = {"total": 10000, "payerParticipantId": multi_payer}
+first_path = f"{multi_root}/rounds/{first_round}"
+call("PUT", first_path, host_cookie, {**round_body, "expectedHeadcount": 6})
+check(call("PUT", first_path, host_cookie, round_body)[0]["expectedHeadcount"] == 6,
+      "구버전 차수 수정은 기존 예상 인원을 보존")
+second_round, third_round = [
+    call("POST", multi_root + "/rounds", host_cookie, {**round_body, "expectedHeadcount": count}, 201)[0]["id"]
+    for count in (7, 8)
+]
+bad_count = call("PUT", first_path, host_cookie, {**round_body, "expectedHeadcount": 51}, 400)[0]
+check(bad_count["code"] == "VALIDATION_FAILED", "차수별 예상 인원 범위를 검증")
+round_ids = (first_round, second_round, third_round)
+
+
+def multi_answers(attending):
+    return [{"roundId": rid, "type": "SOBER" if rid in attending else "ABSENT"} for rid in round_ids]
+
+
+def multi_join(attending):
+    return call("POST", "/guest/join/" + multi_room["shareToken"], session(), {
+        "displayName": "김차수", "settlementUnitId": multi_unit["id"], "responses": multi_answers(attending)
+    })[0]
+
+
+call("PUT", multi_root + "/responses/me", host_cookie, {"answers": multi_answers(round_ids)}, 204)
+for index in range(6):
+    multi_join(round_ids if index < 5 else round_ids[1:])
+detail_path = f"/gatherings/{multi_room['id']}"
+detail = call("GET", detail_path, host_cookie)[0]
+check([r["expectedHeadcount"] for r in detail["rounds"]] == [6, 7, 8]
+      and len(detail["settlementUnits"][0]["participantIds"]) == 7
+      and detail["settlementUnits"][0]["status"] == "OPEN",
+      "6·7·8명 설정과 총무 외 6명 응답을 보존하고 계속 OPEN")
+late_guest = multi_join([third_round])
+check(late_guest["settlementUnits"][0]["status"] == "OPEN"
+      and [(a["roundId"], a["type"]) for a in late_guest["responses"]] == list(zip(round_ids, ["ABSENT", "ABSENT", "SOBER"]))
+      and sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={multi_unit['id']}") == "0",
+      "늦은 참여자가 3차만 참석할 수 있고 확정 스냅샷은 없음")
+check(sql(f"SELECT COUNT(*) FROM notifications WHERE settlement_unit_id={multi_unit['id']} AND type='HEADCOUNT_EXCEEDED'") == "0",
+      "차수별 인원이 설정된 경우 이전 단위 인원 기준 초과 알림 없음")
+multi_preview = call("GET", multi_root + "/settlement/preview", host_cookie)[0]
+confirmed = call("POST", multi_root + "/settlement", host_cookie, {
+    "inputRevision": multi_preview["inputRevision"], "inputHash": multi_preview["inputHash"]
+})[0]
+check(confirmed["settlementUnits"][0]["status"] == "SETTLING"
+      and sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={multi_unit['id']}") == "1",
+      "총무가 직접 확정할 때만 정산을 마감")
+
+# FC-037: 총무 A와 B~G 일곱 명. 참석자는 1차 A~F, 2차 A~E+G, 3차 A~D+G다.
+# 여섯 명이 먼저 모든 차수에 답해도 전체 일곱 명의 응답이 끝난 것은 아니다.
+total_room, total_unit, total_root, total_first = create(6)
+total_gid, total_uid = total_room["id"], total_unit["id"]
+total_host = total_room["me"]["participantId"]
+total_detail_path = f"/gatherings/{total_gid}"
+total_path = total_root + "/total-headcount"
+
+
+def total_detail():
+    return call("GET", total_detail_path, host_cookie)[0]
+
+
+def total_unit_view(detail):
+    return next(unit for unit in detail["settlementUnits"] if unit["id"] == total_uid)
+
+
+check(total_unit_view(total_detail())["totalHeadcount"] is None
+      and sql(f"SELECT total_headcount IS NULL FROM settlement_units WHERE id={total_uid}") == "1",
+      "과거 headcount가 있어도 총 정산인원을 추론하지 않고 NULL로 시작")
+for invalid_body in ({"totalHeadcount": 1}, {"totalHeadcount": 51}, {"totalHeadcount": None}, {}):
+    call("PUT", total_path, host_cookie, invalid_body, 400)
+call("PUT", total_path, body={"totalHeadcount": 7}, expected=401)
+call("PUT", total_path, session(), {"totalHeadcount": 7}, 401)
+check(total_unit_view(total_detail())["totalHeadcount"] is None,
+      "총인원 범위·NULL·누락·무인증·비회원 총무 사칭은 저장하지 않음")
+before_total_revision = total_unit_view(total_detail())["inputRevision"]
+call("PUT", total_path, host_cookie, {"totalHeadcount": 7}, 204)
+after_total = total_unit_view(total_detail())
+check(after_total["totalHeadcount"] == 7 and after_total["inputRevision"] == before_total_revision + 1,
+      "총무의 총 정산인원 최초 저장은 204이며 revision을 한 번 올림")
+call("PUT", total_path, host_cookie, {"totalHeadcount": 7}, 204)
+check(total_unit_view(total_detail())["inputRevision"] == after_total["inputRevision"],
+      "같은 총인원 재시도는 revision을 올리지 않음")
+with ThreadPoolExecutor(2) as executor:
+    list(executor.map(lambda _: call("PUT", total_path, host_cookie, {"totalHeadcount": 7}, 204), range(2)))
+check(total_unit_view(total_detail())["inputRevision"] == after_total["inputRevision"],
+      "같은 총인원의 동시 재시도도 저장된 값과 revision을 유지")
+
+total_round_body = {"payerParticipantId": total_host}
+call("PUT", total_root + f"/rounds/{total_first}", host_cookie,
+     {**total_round_body, "total": 6000, "expectedHeadcount": 6})
+total_second = call("POST", total_root + "/rounds", host_cookie,
+    {**total_round_body, "total": 6000, "expectedHeadcount": 6}, 201)[0]["id"]
+total_third = call("POST", total_root + "/rounds", host_cookie,
+    {**total_round_body, "total": 5000, "expectedHeadcount": 5}, 201)[0]["id"]
+total_rounds = (total_first, total_second, total_third)
+# 구버전 앱이 마지막 차수의 인원 5를 기존 API로 보내도 새 총인원 7을 바꾸지 않는다.
+call("PUT", total_root + "/headcount", host_cookie, {"headcount": 5}, 204)
+call("PUT", total_root + f"/rounds/{total_first}", host_cookie, {**total_round_body, "total": 6000})
+total_config = total_detail()
+check(total_unit_view(total_config)["totalHeadcount"] == 7 and total_unit_view(total_config)["headcount"] == 5
+      and [row["expectedHeadcount"] for row in total_config["rounds"]] == [6, 6, 5],
+      "차수 수정·구버전 headcount 요청과 총 정산인원은 서로 독립")
+listed = next(room for room in call("GET", "/me/gatherings", host_cookie)[0] if room["id"] == total_gid)
+public_unit = next(unit for unit in call("GET", "/join/" + total_room["shareToken"])[0]["settlementUnits"] if unit["id"] == total_uid)
+check(total_unit_view(listed)["totalHeadcount"] == 7 and public_unit["totalHeadcount"] == 7,
+      "총인원은 총무 목록과 공개 초대 미리보기에도 같은 값으로 표시")
+
+
+def total_answers(attending):
+    return [{"roundId": rid, "type": "SOBER" if rid in attending else "ABSENT"} for rid in total_rounds]
+
+
+def total_counts(detail):
+    active = set(total_unit_view(detail)["participantIds"])
+    answers = {(answer["participantId"], answer["roundId"]): answer
+        for answer in detail["responses"] if answer["participantId"] in active}
+    submitted = sum(all((pid, rid) in answers and answers[pid, rid]["source"] in ("SELF", "HOST")
+        for rid in total_rounds) for pid in active)
+    attending = [sum(answers.get((pid, rid), {}).get("type") in ("SOBER", "DRANK") for pid in active)
+        for rid in total_rounds]
+    return submitted, attending
+
+
+call("PUT", total_root + "/responses/me", host_cookie, {"answers": total_answers(total_rounds)}, 204)
+total_people = [total_host]
+for attending in (total_rounds, total_rounds, total_rounds, total_rounds[:2], total_rounds[:1]):
+    joined = call("POST", "/guest/join/" + total_room["shareToken"], session(), {
+        "displayName": "김총인원", "settlementUnitId": total_uid, "responses": total_answers(attending)
+    })[0]
+    total_people.append(joined["participantId"])
+first_six = total_detail()
+check(total_counts(first_six) == (6, [6, 5, 4]) and total_unit_view(first_six)["totalHeadcount"] == 7
+      and len(total_unit_view(first_six)["participantIds"]) == 6 and total_unit_view(first_six)["status"] == "OPEN"
+      and sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={total_uid}") == "0",
+      "총7명 중6명 응답은 6/7이며 현재 명단 전원이 응답해도 OPEN·스냅샷0 유지")
+
+# 마지막 G는 회원으로 참여시켜 같은 방의 비총무 권한도 함께 검증한다.
+last_provider = str(uuid.uuid4())
+sql(f"INSERT INTO users(provider,provider_id,nickname,display_name,tier,created_at) VALUES('GUEST_TEST','{last_provider}','검증','검증마지막','FREE',UTC_TIMESTAMP())")
+last_user = int(sql(f"SELECT id FROM users WHERE provider_id='{last_provider}'"))
+last_cookie = member_cookie(last_user)
+last_member = call("POST", "/join/" + total_room["shareToken"], last_cookie,
+    {"settlementUnitId": total_uid, "responses": total_answers(total_rounds[1:])})[0]
+total_people.append(last_member["participantId"])
+non_host = call("PUT", total_path, last_cookie, {"totalHeadcount": 8}, 403)[0]
+all_seven = total_detail()
+check(non_host["code"] == "NOT_SETTLEMENT_UNIT_HOST" and total_counts(all_seven) == (7, [6, 6, 5])
+      and total_unit_view(all_seven)["totalHeadcount"] == 7 and total_unit_view(all_seven)["status"] == "OPEN"
+      and sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={total_uid}") == "0",
+      "늦은7번째가2·3차에 응답해6·6·5명으로 완성돼도 자동확정하지 않고 비총무 변경은 거절")
+check(sql(f"SELECT COUNT(*) FROM notifications WHERE settlement_unit_id={total_uid} AND type='HEADCOUNT_EXCEEDED'") == "0",
+      "과거 headcount5 대신 별도 총인원7을 사용해 일곱 명까지 초과 알림을 보내지 않음")
+expected_totals = dict(zip(total_people, [3000, 3000, 3000, 3000, 2000, 1000, 2000]))
+seven_preview = call("GET", total_root + "/settlement/preview", host_cookie)[0]
+check({line["participantId"]: line["total"] for line in seven_preview["lines"]} == expected_totals
+      and seven_preview["grandTotal"] == sum(expected_totals.values()) == 17000
+      and all(not line["auto"] for line in seven_preview["lines"])
+      and {(transfer["from"], transfer["to"]): transfer["amount"] for transfer in seven_preview["transfers"]}
+          == {(pid, total_host): amount for pid, amount in expected_totals.items() if pid != total_host},
+      "실제6·6·5명 참석을 core로 계산해 개인부담·총17000원·총무에게 보낼14000원 일치")
+call("PUT", total_path, host_cookie, {"totalHeadcount": 8}, 204)
+new_preview = call("GET", total_root + "/settlement/preview", host_cookie)[0]
+stale_total = call("POST", total_root + "/settlement", host_cookie,
+    {"inputRevision": seven_preview["inputRevision"], "inputHash": seven_preview["inputHash"]}, 409)[0]
+check(new_preview["lines"] == seven_preview["lines"] and new_preview["transfers"] == seven_preview["transfers"]
+      and new_preview["inputRevision"] == seven_preview["inputRevision"] + 1
+      and stale_total["code"] == "SETTLEMENT_INPUT_CHANGED",
+      "총인원만 수정해도 금액은 그대로이며 이전 revision의 확정은 거절")
+call("PUT", total_path, host_cookie, {"totalHeadcount": 7}, 204)
+
+extra_spoons_before = int(sql(f"SELECT spoon_count FROM users WHERE id={host_id}"))
+eighth_browser = session()
+eighth = call("POST", "/guest/join/" + total_room["shareToken"], eighth_browser, {
+    "displayName": "김초과", "settlementUnitId": total_uid, "responses": total_answers(total_rounds)
+})[0]
+eighth_pid = eighth["participantId"]
+extra_detail = total_detail()
+check(len(total_unit_view(extra_detail)["participantIds"]) == 8 and total_unit_view(extra_detail)["status"] == "OPEN"
+      and sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={total_uid}") == "0"
+      and int(sql(f"SELECT spoon_count FROM users WHERE id={host_id}")) == extra_spoons_before + 10,
+      "총인원7을 넘어도8번째 응답을 막거나 자동제외하지 않고 스푼은한번 적립")
+check(sql(f"SELECT COUNT(*) FROM notifications WHERE settlement_unit_id={total_uid} AND type='HEADCOUNT_EXCEEDED'") == "1",
+      "여덟 번째 응답자는 총인원7 기준 초과 안내만 한 번 생성")
+eighth_path = f"/guest/gatherings/{total_gid}/settlement-units/{total_uid}/responses/me"
+call("DELETE", total_root + f"/participants/{eighth_pid}", host_cookie, expected=204)
+call("PUT", eighth_path, eighth_browser, {"answers": total_answers(total_rounds)}, 403)
+check(total_counts(total_detail()) == (7, [6, 6, 5])
+      and int(sql(f"SELECT spoon_count FROM users WHERE id={host_id}")) == extra_spoons_before + 10,
+      "총무가 초과응답자를 제외하면 응답집계에서 빠지고 기존스푼은 유지")
+call("PUT", total_root + f"/participants/{eighth_pid}", host_cookie, expected=204)
+call("PUT", eighth_path, eighth_browser, {"answers": total_answers(total_rounds)}, 204)
+check(int(sql(f"SELECT spoon_count FROM users WHERE id={host_id}")) == extra_spoons_before + 10
+      and sql(f"SELECT COUNT(*) FROM guest_participations WHERE participant_id={eighth_pid}") == "1"
+      and sql(f"SELECT COUNT(*) FROM spoon_attendance_rewards WHERE gathering_id={total_gid} AND participant_id={eighth_pid}") == "1",
+      "총무가 재포함한 기존신원으로 재응답해도 참여자와스푼 지급이력을 중복생성하지 않음")
+call("DELETE", total_root + f"/participants/{eighth_pid}", host_cookie, expected=204)
+final_total_preview = call("GET", total_root + "/settlement/preview", host_cookie)[0]
+check({line["participantId"]: line["total"] for line in final_total_preview["lines"]} == expected_totals,
+      "초과응답자를 제외한 뒤에도 원래7명의 계산을 정확히 복원")
+final_total = call("POST", total_root + "/settlement", host_cookie,
+    {"inputRevision": final_total_preview["inputRevision"], "inputHash": final_total_preview["inputHash"]})[0]
+snapshot_query = (
+    f"SELECT * FROM settlements WHERE settlement_unit_id={total_uid} ORDER BY id; "
+    f"SELECT transfer_entry.* FROM settlement_transfers transfer_entry JOIN settlements settlement ON settlement.id=transfer_entry.settlement_id WHERE settlement.settlement_unit_id={total_uid} ORDER BY transfer_entry.id; "
+    f"SELECT basis.* FROM settlement_transfer_items basis JOIN settlement_transfers transfer_entry ON transfer_entry.id=basis.transfer_id JOIN settlements settlement ON settlement.id=transfer_entry.settlement_id WHERE settlement.settlement_unit_id={total_uid} ORDER BY basis.transfer_id,basis.round_id"
+)
+snapshot_before = sql(snapshot_query)
+locked_total = call("PUT", total_path, host_cookie, {"totalHeadcount": 8}, 409)[0]
+final_table = call("GET", total_root + "/settlement/table", host_cookie)[0]
+check(total_unit_view(final_total)["status"] == "SETTLING" and locked_total["code"] == "SETTLEMENT_UNIT_NOT_OPEN"
+      and total_unit_view(total_detail())["totalHeadcount"] == 7 and sql(snapshot_query) == snapshot_before
+      and sql(f"SELECT COUNT(*) FROM settlements WHERE settlement_unit_id={total_uid}") == "1",
+      "총무확정 후 총인원수정409이며 확정스냅샷·송금·근거·총인원 불변")
+check(not final_table["isEstimate"] and final_table["table"]["grandTotal"] == 17000
+      and {line["participantId"]: line["total"] for line in final_table["table"]["lines"]} == expected_totals,
+      "확정 이미지 표도 실제7명 개인부담과총17000원을 그대로 제공")
+
 print(f"GUEST-PARTICIPATION: {checks} checks passed", flush=True)

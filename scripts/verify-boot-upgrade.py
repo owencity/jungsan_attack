@@ -162,8 +162,14 @@ def verify():
           ["030-auth-session-return", "jeongsan", "db/changelog/020-auth-session-return.yaml"],
           ["031-guest-participations", "jeongsan", "db/changelog/021-guest-participations.yaml"],
           ["032-attendance-spoons", "jeongsan", "db/changelog/022-attendance-spoons.yaml"],
+          ["033-round-expected-headcount", "jeongsan", "db/changelog/023-round-expected-headcount.yaml"],
+          ["034-unit-total-headcount", "jeongsan", "db/changelog/024-unit-total-headcount.yaml"],
           ] and all(row[3].startswith("9:") and row[5] == "EXECUTED" for row in added_history),
-          "신고·차단029·인증 세션030·비회원031·스푼032가 순서대로 정확히 한 번 추가 적용")
+          "신고·차단029·인증030·비회원031·스푼032·차수033·총 정산인원034가 순서대로 한 번 적용")
+    check(sql(f"SELECT COUNT(*) FROM rounds WHERE gathering_id IN ({state['open_id']},{state['settled_id']}) "
+              "AND expected_headcount IS NOT NULL") == "0", "기존 차수 예상 인원을 임의로 채우지 않음")
+    check(sql(f"SELECT COUNT(*) FROM settlement_units WHERE gathering_id IN ({state['open_id']},{state['settled_id']}) "
+              "AND total_headcount IS NOT NULL") == "0", "기존 OPEN·확정 정산의 총인원을 과거 headcount에서 채우지 않음")
     check(sql(f"SELECT HEX(payout_encrypted) FROM users WHERE id={state['host_id']}") == state["payout_hex"],
           "구버전 계좌 암호문을 변경·재암호화하지 않음")
     me = call("GET", "/auth/me", state["host"])
@@ -175,6 +181,10 @@ def verify():
     call("GET", "/auth/me", state["app"], "WEB", status=401)
     check(True, "업그레이드 뒤에도 APP/WEB 토큰 교차 사용은 401")
     detail = call("GET", f"/gatherings/{state['settled_id']}", state["host"])
+    for old_round in detail["rounds"]:
+        check(old_round.pop("expectedHeadcount") is None, "구버전 차수의 예상 인원은 미설정")
+    for old_unit in detail["settlementUnits"]:
+        check(old_unit.pop("totalHeadcount") is None, "구버전 단위의 총 정산인원도 미설정")
     check(detail == state["settled"], "기존 정산 단위·송금 근거·명단·날짜·타임라인 JSON 보존")
     preview = call("GET", state["open_root"] + "/settlement/preview", state["host"])
     check(preview == state["open_preview"], "정산 전 입력의 revision·hash·금액이 양쪽 버전에서 같음")

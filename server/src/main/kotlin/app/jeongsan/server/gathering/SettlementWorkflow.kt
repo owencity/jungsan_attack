@@ -9,7 +9,8 @@ import java.security.MessageDigest
 data class UnitInput(val id: Long, val hostId: Long, val state: String, val revision: Long, val participantIds: List<Long>)
 data class PersonInput(val id: Long, val userId: Long, val name: String)
 data class DrinkInput(val name: String, val unitPrice: Long, val quantity: Int)
-data class RoundInput(val id: Long, val unitId: Long, val seq: Int, val total: Long, val payerId: Long, val drinks: List<DrinkInput>)
+data class RoundInput(val id: Long, val unitId: Long, val seq: Int, val total: Long, val payerId: Long,
+    val drinks: List<DrinkInput>, val expectedHeadcount: Int? = null)
 data class ResponseInput(val participantId: Long, val roundId: Long, val type: String, val source: String)
 data class PreviewLine(val participantId: Long, val total: Long, val auto: Boolean, val rounds: List<SettlementPresentation.Basis>)
 data class PreviewTransfer(val from: Long, val to: Long, val amount: Long, val basis: List<SettlementPresentation.Basis>)

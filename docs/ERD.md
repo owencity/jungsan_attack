@@ -1,5 +1,9 @@
 # 정산어택 — ERD
 
+> **2026-11-11 FC-037:** 신규 `024-unit-total-headcount.yaml` / changeSet `034-unit-total-headcount`가 `settlement_units.total_headcount INT NULL`을 추가한다. 총무가 직접 정한 전체 고유 인원(총무 포함2~50)이며 기본값·과거 값 복사·새 CHECK는 없다. 기존 JDBC 저장소로 접근하므로 JPA 엔티티는 추가하지 않는다. 적용된 changelog와 확정 스냅샷은 수정하지 않는다.
+
+> **2026-11-08 FC-029 후속** — `023-round-expected-headcount.yaml` / `033-round-expected-headcount`가 `rounds.expected_headcount INT NULL`을 추가한다. 차수별 총무 포함 예상 인원(2~50)이다. 단위 인원에서 소급하지 않는다.
+
 > **2026-11-01 FC-031:** `022-attendance-spoons.yaml` / `032-attendance-spoons`가 추가된다.
 > `spoon_attendance_rewards(gathering_id BIGINT,host_user_id BIGINT,participant_id BIGINT)` 복합 PK로 중복을 막는다.
 > `amount INT NOT NULL`, `awarded_at DATETIME(6) NOT NULL`은 지급 당시 수량과 UTC 시각이다.

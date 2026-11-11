@@ -42,6 +42,7 @@ class GatheringApiSpec : StringSpec({
         Case("PUT",root+"/participants/2",code=204),Case("DELETE",root+"/participants/2",code=204),
         Case("PUT",root+"/participants/2/name","""{"displayName":"김정정","expectedDisplayName":"김하나"}""",204),
         Case("PUT",root+"/headcount","""{"headcount":3}""",204),
+        Case("PUT",root+"/total-headcount","""{"totalHeadcount":7}""",204),
         Case("POST",root+"/rounds",round,201),Case("PUT",root+"/rounds/1",round),Case("DELETE",root+"/rounds/1",code=204),
         Case("PUT",root+"/responses/me",answers,204),Case("PUT",root+"/participants/2/responses",answers,204),
         Case("GET",root+"/settlement/preview"),Case("GET",root+"/settlement/table"),Case("POST",root+"/settlement","""{"inputRevision":1,"inputHash":"${"a".repeat(64)}"}"""),
@@ -89,6 +90,22 @@ class GatheringApiSpec : StringSpec({
             .content("""{"requestId":"00000000-0000-0000-0000-000000000001","participantIds":[1],"headcount":1}"""))
             .andExpect(status().isBadRequest).andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
             .andExpect(jsonPath("$.errors[0].field").value("headcount"))
+        Mockito.verifyNoInteractions(service)
+    }
+    "총 정산인원은 별도 필드로 저장하며 2와 50 경계를 허용한다" {
+        for (total in listOf(2,7,50)) {
+            mvc.perform(request(HttpMethod.PUT,root+"/total-headcount").cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON).content("""{"totalHeadcount":$total}"""))
+                .andExpect(status().isNoContent)
+            Mockito.verify(service).totalHeadcount(1,10,12,total)
+        }
+    }
+    "총 정산인원의 누락 NULL 범위 위반은 저장하지 않는다" {
+        for (body in listOf("{}", """{"totalHeadcount":null}""", """{"headcount":7}""",
+            """{"totalHeadcount":1}""", """{"totalHeadcount":51}""")) {
+            mvc.perform(request(HttpMethod.PUT,root+"/total-headcount").cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest)
+        }
         Mockito.verifyNoInteractions(service)
     }
     "본인만 선택하고 목표 인원을 2로 둔 단위 생성은 서비스에 전달한다" {

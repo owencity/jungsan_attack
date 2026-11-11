@@ -1,0 +1,15 @@
+# FC-037 · 총 정산인원과 차수별 참석 인원을 구분한다
+
+- **상태:** 반영됨 · 서버·웹 운영 배포와 TestFlight 20 업로드 완료. Android 6의 Google Play 업로드와 Apple 처리 완료·TestFlight 목록 노출은 미확인이다.
+- **문제:** 전체 7명이 1차 6명·2차 6명·3차 5명으로 나뉘어 참석했다. 먼저 들어온 6명이 응답하면 현재 명단만 보고 전원 응답으로 표시했다. 차수별 최대 인원으로 전체 고유 인원을 추론할 수 없다.
+- **바뀐 흐름:** 총무가 OPEN 정산방에서 `총 정산인원 (나 포함)`을 별도로 설정·수정한다. 차수별 예상 참석 인원은 각각 유지한다. 전체 7명에 6명 제출이면 `6 / 7명 응답`, 미설정이면 `6명 응답 · 총 인원 미설정`으로 안내한다. 목표를 채워도 총무 확인 전까지 추가 응답을 받는다.
+- **응답 수:** 현재 단위 ACTIVE 명단에서 모든 차수에 SELF/HOST 응답을 제출한 사람을 participantId별 한 번 센다. 총무도 포함하며 전 차수 불참도 제출로 센다. 미응답·AUTO·제외된 사람은 세지 않는다. 차수가 없으면 0명이다. 차수별 참석 수는 해당 차수의 논알코올·알코올만 센다.
+- **백엔드 영향:** `settlement_units.total_headcount INT NULL`과 `PUT /api/v1/gatherings/{gid}/settlement-units/{id}/total-headcount`를 추가한다. JSON `{totalHeadcount:7}`(정수 2~50), 성공204. 로그인한 단위 총무이며 OPEN일 때만 수정한다. 회원 목록·상세의 settlementUnits와 초대 미리보기에 `totalHeadcount`를 추가한다.
+- **기존 값:** 과거 `headcount`는 마지막 차수 입력일 수 있으므로 총인원으로 복사하거나 fallback하지 않는다. 기존 방은 null로 두고 총무가 지정한다. 새 차수 `expectedHeadcount`도 기존 값에서 추론하지 않는다. 이전 API는 호환 목적으로 유지하며 새 필드를 덮어쓰지 않는다.
+- **동시성·재시도:** 기존 단위→술자리 잠금을 사용한다. 값이 달라질 때만 inputRevision을 올려 오래된 미리보기 확정을 거절한다. 같은 값을 다시 저장하면 revision은 유지한다. 총무가 확정한 뒤에는 409 SETTLEMENT_UNIT_NOT_OPEN이다.
+- **계산·보상:** 인원 값은 안내용이며 분모·명단·송금액·스푼의 근거로 쓰지 않는다. 실제 명단·차수별 응답을 기존 core에 넘긴다. 부족·초과 인원으로 자동 제외·자동 확정하지 않는다. 이미 확정된 스냅샷은 수정하지 않는다.
+- **이전 수정 통합:** 백엔드 PR57의 FC-035 차수별 인원 수정과 FC-036 로그인 수정을 `9880b58`에 함께 포함해 운영에 배포했다. 이전 앱 PR10·웹 PR3의 수정과 비회원 링크·동일 브라우저 정정은 프론트 통합 범위이며, 서버 배포만으로 프론트 배포가 완료되는 것은 아니다.
+- **백엔드 반영·근거:** [PR59](https://github.com/owencity/jungsan_attack/pull/59), API v26, changelog `024`/`034`와 `GatheringService.totalHeadcount`에 반영했다. 실행 소스는 `9880b58b59dc209e5ecab0e805931232cfaaf70c`다. [CI](https://github.com/owencity/jungsan_attack/actions/runs/42854345618)에서 Core 59개·Server 254개, 실제 HTTP·DB 검사 213개와 업그레이드 보존 검사 17개를 통과했다.
+- **확인한 계산·상태:** 실제 MySQL·HTTP에서 총 7명·차수 6/6/5를 만들었다. 6명 응답 뒤에도 OPEN·스냅샷 0건이며, 7번째 응답 후에도 총무가 직접 확정하기 전까지 OPEN이다. 개인별 부담 합계 17,000원·총무에게 보낼 합계 14,000원, 초과 참여자 제외·재포함 때 기존 신원과 스푼 유지, 같은 총인원 동시 저장 시 revision 유지, 확정 후 수정 409를 확인했다. 총인원 미설정·범위·권한·구버전 요청과 확정 이미지 표도 검사했다.
+- **운영 확인:** 실행 이미지·jar 해시와 health UP을 확인했다. 기존 정산·송금·근거 25개는 배포 전후 누락 0건·변경 0건이다. 운영의 새 총인원 API는 익명 요청에 401을 반환한다. 실제 운영 방을 바꾸는 204 저장·계산 검사는 하지 않았으며 성공 동작은 격리된 CI DB에서 검증했다.
+- **웹·앱 배포:** 2026-11-11 12:14 KST에 웹 `1dd8974`의 [Vercel 배포](https://vercel.com/kdks-projects-8235f941/jungsan/HiyCtSBQj2shis6kyHKeTENSG1Br)가 `jungsan.devkdk.com`의 Production·Current·Ready임을 확인했다. 앱 `6c59e61`은 [CI 재실행](https://github.com/owencity/jungsan_app/actions/runs/42855434587/attempts/2)에 성공했고, [TestFlight 20](https://github.com/owencity/jungsan_app/actions/runs/42951101378)은 12:20 KST에 업로드 성공을 확인했다. Apple 처리 완료·목록 노출·기기 반영은 미확인이다. Android는 버전 코드 6 AAB가 준비됐으나 Google Play 업로드는 확인하지 않았다. 서버 실행 소스는 `9880b58`을 유지한다. 상세 근거와 CI 첫 실패 원인은 [배포 기록](../operations/2026-11-11-total-headcount-release.md)에 남긴다.

@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 034-unit-total-headcount
+      author: jeongsan
+      comment: "FC-037. 과거 차수 인원과 섞인 headcount를 추론하지 않고 총무가 지정한 전체 정산인원을 보존한다."
+      changes:
+        - addColumn:
+            tableName: settlement_units
+            columns:
+              - column:
+                  name: total_headcount
+                  type: INT
+                  remarks: "총무가 별도 지정한 전체 예상 고유 인원(총무 포함 2~50). NULL은 미설정이며 계산·자동확정 조건으로 쓰지 않음"

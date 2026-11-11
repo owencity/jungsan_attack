@@ -1,4 +1,15 @@
-# 정산어택 — API 계약 · v25
+# 정산어택 — API 계약 · v26
+
+> **v26 변경(2026-11-11)** — [FC-037 총 정산인원](flow-changes/2026-11-11-total-headcount.md). v24 차수별 인원과 v25 로그인 변경을 함께 포함한다.
+>
+> | 절 | 변경 |
+> |---|---|
+> | PUT /api/v1/gatherings/{gid}/settlement-units/{id}/total-headcount | JSON `{totalHeadcount:7}`(정수2~50) →204. 로그인한 단위 총무·OPEN 전용. 누락/NULL/범위 밖400, 무인증401, 총무 아님403, 확정 후409 |
+> | 회원 목록·상세 settlementUnits, 초대 미리보기 | `totalHeadcount: Int?` 추가. 총무 포함 전체 예상 고유 인원. 생성 직후와 기존 방은 null, 별도 PUT으로 설정 |
+> | 기존 headcount·차수 expectedHeadcount | 새 총인원과 독립. 구버전 호출로 totalHeadcount를 변경하지 않으며 기존 값으로 채우지 않음 |
+> | 정산·응답 | 인원은 안내용. 총무 명시적 확정·기존 core 계산 유지. 변경 시 revision 증가, 동일 값 재시도는 유지 |
+>
+> 상세 권한·상태 오류는 기존 NOT_PARTICIPANT / NOT_SETTLEMENT_UNIT_HOST / SETTLEMENT_UNIT_NOT_OPEN과 같은 의미다. DB는 신규024/034만 추가하며 기존 확정 스냅샷과 계산 규칙은 바꾸지 않는다.
 
 > **v25 변경(2026-11-10)** — [FC-036 추가 앱 설치와 이름 재입력 없이 로그인](flow-changes/2026-11-10-ios-review-auth-access.md).
 >
@@ -10,6 +21,16 @@
 >
 > URL·응답 필드·스키마·수동 최초 이름 등록 계약은 유지한다. 이메일은 요청·저장하지 않는다.
 > v24/FC-035의 차수별 예상 인원 변경은 별도 브랜치이며 이 수정에는 포함하지 않는다. 과거 버전 기록보다 이 계약을 우선한다.
+
+> **v24 변경(2026-11-08)** — [FC-029 차수별 예상 참석 인원](flow-changes/2026-11-01-host-review.md).
+>
+> | 절 | 변경 |
+> |---|---|
+> | 차수 POST/PUT | 선택 `expectedHeadcount` 정수(2~50, 총무 포함). 생성 시 생략/NULL은 미설정, 수정 시 생략/NULL은 기존 값 유지. 범위를 벗어나면 400 VALIDATION_FAILED |
+> | 차수 저장 응답 및 회원 술자리 목록·상세 | 차수별 `expectedHeadcount` 추가. 미설정은 null |
+> | 정산 단위 `headcount` | 기존 클라이언트 호환용. 차수별 예상 인원이 하나라도 설정된 단위에서는 기존 인원 초과 알림을 생성하지 않음 |
+>
+> 예상 인원은 총무의 응답 현황 안내에 쓰인다. 총무가 직접 확정하기 전까지 응답을 받고, 금액은 실제 명단과 차수별 응답으로 계산한다. 기존 단위 값은 차수에 복사하지 않는다.
 
 > **v23 변경(2026-11-05)** — [FC-034 카카오톡 간편 로그인](flow-changes/2026-11-05-kakaotalk-native-login.md).
 >
