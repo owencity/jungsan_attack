@@ -1,0 +1,516 @@
+{
+  "manifestSha256": "e1cd429397811a8d2e92d262b05a10be5764fc1cc8fd276643b2008d49653530",
+  "modelStartupSeconds": 4.928,
+  "observations": [
+    {
+      "sample": "HWARO",
+      "cohort": "new-web-printed-alcohol",
+      "family": "hwaro-cheongra",
+      "sha256": "543f4ed7447980703fecc9b899d4876e3b9af93010954947d481cf8e80984e8c",
+      "result": {
+        "schemaVersion": 2,
+        "total": null,
+        "drinks": [
+          {
+            "name": "소주 (브랜드 미상)",
+            "category": "SOJU",
+            "unit": "UNKNOWN",
+            "unitPrice": null,
+            "quantity": null,
+            "lineAmount": null,
+            "confidence": 0.9121,
+            "reviewReasons": [
+              "COLUMN_HEADER_MISSING",
+              "UNKNOWN_CONTAINER"
+            ],
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null
+          }
+        ],
+        "warnings": [
+          "TOTAL_NOT_FOUND",
+          "ITEMS_NEED_REVIEW"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": false,
+        "drinkCount": true,
+        "drink0.category": true,
+        "drink0.quantity": false,
+        "drink0.unitPrice": true,
+        "drink0.lineAmount": false
+      },
+      "baseSeconds": 4.984,
+      "numericSeconds": 0,
+      "numericCalls": 0,
+      "seconds": 5.013
+    },
+    {
+      "sample": "C48674",
+      "cohort": "new-web-printed-alcohol",
+      "family": "yeojaman-agujjim",
+      "sha256": "6112f8dbb32f1ae5cff0adf540f64c3607b6719703fa6afcb7dac0841eb95c28",
+      "result": {
+        "schemaVersion": 2,
+        "total": null,
+        "drinks": [],
+        "warnings": [
+          "TOTAL_NOT_FOUND",
+          "NO_DRINK_ITEMS"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": false,
+        "drinkCount": false,
+        "drink0.category": false,
+        "drink0.quantity": false,
+        "drink0.unitPrice": false,
+        "drink0.lineAmount": false
+      },
+      "baseSeconds": 12.152,
+      "numericSeconds": 0,
+      "numericCalls": 0,
+      "seconds": 12.166
+    },
+    {
+      "sample": "C49859",
+      "cohort": "new-web-printed-alcohol",
+      "family": "hankook-sundae",
+      "sha256": "56b454f75ecac413072f036faa38996542c131a29cb7838258d3bfef32589dfe",
+      "result": {
+        "schemaVersion": 2,
+        "total": null,
+        "drinks": [],
+        "warnings": [
+          "TOTAL_NOT_FOUND",
+          "NO_DRINK_ITEMS"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": false,
+        "drinkCount": false,
+        "drink0.category": false,
+        "drink0.quantity": false,
+        "drink0.unitPrice": false,
+        "drink0.lineAmount": false
+      },
+      "baseSeconds": 9.113,
+      "numericSeconds": 0.264,
+      "numericCalls": 2,
+      "seconds": 9.389
+    },
+    {
+      "sample": "C49623",
+      "cohort": "new-web-printed-alcohol",
+      "family": "eosa-chultto-isu-20191227",
+      "sha256": "c01d717438392187f3ac4e26e2e6cee5bec7d92761dcc1a63226e43f1b77ba82",
+      "result": {
+        "schemaVersion": 2,
+        "total": null,
+        "drinks": [],
+        "warnings": [
+          "TOTAL_NOT_FOUND",
+          "NO_DRINK_ITEMS"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": false,
+        "drinkCount": false,
+        "drink0.category": false,
+        "drink0.quantity": false,
+        "drink0.unitPrice": false,
+        "drink0.lineAmount": false
+      },
+      "baseSeconds": 10.33,
+      "numericSeconds": 0,
+      "numericCalls": 0,
+      "seconds": 10.34
+    },
+    {
+      "sample": "C49059",
+      "cohort": "new-web-printed-alcohol",
+      "family": "gopchangga-dongducheon",
+      "sha256": "c01240b3f7003c830e2cd6f493e4293b41d57e2a91b70ba68f161c5e7b8dc89f",
+      "result": {
+        "schemaVersion": 2,
+        "total": 54400,
+        "drinks": [
+          {
+            "name": "소주 (브랜드 미상)",
+            "category": "SOJU",
+            "unit": "UNKNOWN",
+            "unitPrice": null,
+            "quantity": null,
+            "lineAmount": null,
+            "confidence": 0.9991,
+            "reviewReasons": [
+              "ITEM_VALUES_MISSING",
+              "UNKNOWN_CONTAINER"
+            ],
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null
+          },
+          {
+            "name": "맥주 (브랜드 미상)",
+            "category": "BEER",
+            "unit": "UNKNOWN",
+            "unitPrice": null,
+            "quantity": null,
+            "lineAmount": null,
+            "confidence": 0.9996,
+            "reviewReasons": [
+              "ITEM_VALUES_MISSING",
+              "UNKNOWN_CONTAINER"
+            ],
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null
+          }
+        ],
+        "warnings": [
+          "ITEMS_NEED_REVIEW"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": true,
+        "drinkCount": true,
+        "drink0.category": true,
+        "drink0.quantity": false,
+        "drink0.unitPrice": false,
+        "drink0.lineAmount": false,
+        "drink1.category": true,
+        "drink1.quantity": false,
+        "drink1.unitPrice": false,
+        "drink1.lineAmount": false
+      },
+      "baseSeconds": 8.888,
+      "numericSeconds": 0,
+      "numericCalls": 0,
+      "seconds": 8.897
+    },
+    {
+      "sample": "C49470",
+      "cohort": "new-web-printed-alcohol",
+      "family": "cheonggyesan",
+      "sha256": "726cbabc8c50ab2dc7714ccb0dcf755dde59657241eaacacc5b82734015808be",
+      "result": {
+        "schemaVersion": 2,
+        "total": 45000,
+        "drinks": [
+          {
+            "name": "참이슬 (세부형 미상)",
+            "category": "SOJU",
+            "unit": "UNKNOWN",
+            "unitPrice": 4000,
+            "quantity": 1,
+            "lineAmount": 4000,
+            "confidence": 0.9565,
+            "reviewReasons": [
+              "UNKNOWN_CONTAINER"
+            ],
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null
+          }
+        ],
+        "warnings": [
+          "ITEMS_NEED_REVIEW"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": true,
+        "drinkCount": false,
+        "drink0.category": false,
+        "drink0.quantity": false,
+        "drink0.unitPrice": false,
+        "drink0.lineAmount": false,
+        "drink1.category": false,
+        "drink1.quantity": false,
+        "drink1.unitPrice": false,
+        "drink1.lineAmount": false
+      },
+      "baseSeconds": 9.158,
+      "numericSeconds": 0,
+      "numericCalls": 0,
+      "seconds": 9.166
+    },
+    {
+      "sample": "C47325",
+      "cohort": "new-web-printed-alcohol",
+      "family": "myeongga-galbi-bupyeong",
+      "sha256": "e44b252e53ad550da34f84d00f97d3a9e469839601d7c4cdcb1e1e2bada4e391",
+      "result": {
+        "schemaVersion": 2,
+        "total": null,
+        "drinks": [],
+        "warnings": [
+          "TOTAL_NOT_FOUND",
+          "NO_DRINK_ITEMS"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": false,
+        "drinkCount": false,
+        "drink0.category": false,
+        "drink0.quantity": false,
+        "drink0.unitPrice": false,
+        "drink0.lineAmount": false
+      },
+      "baseSeconds": 8.49,
+      "numericSeconds": 0,
+      "numericCalls": 0,
+      "seconds": 8.5
+    },
+    {
+      "sample": "K345",
+      "cohort": "new-web-printed-alcohol",
+      "family": "golmok-galbi-choryang",
+      "sha256": "2a68c66e85f0f11ce8fc251e1da6d3f1d91aa0dbfb96e6b56bc9c5c80c0b0934",
+      "result": {
+        "schemaVersion": 2,
+        "total": 95600,
+        "drinks": [
+          {
+            "name": "소주 (브랜드 미상)",
+            "category": "SOJU",
+            "unit": "UNKNOWN",
+            "unitPrice": 4000,
+            "quantity": 3,
+            "lineAmount": 12000,
+            "confidence": 0.7514,
+            "reviewReasons": [
+              "LOW_CONFIDENCE",
+              "UNKNOWN_CONTAINER"
+            ],
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null
+          }
+        ],
+        "warnings": [
+          "ITEMS_NEED_REVIEW"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": true,
+        "drinkCount": true,
+        "drink0.category": true,
+        "drink0.quantity": true,
+        "drink0.unitPrice": true,
+        "drink0.lineAmount": true
+      },
+      "baseSeconds": 10.816,
+      "numericSeconds": 0,
+      "numericCalls": 0,
+      "seconds": 10.824
+    },
+    {
+      "sample": "K399",
+      "cohort": "new-web-printed-alcohol",
+      "family": "sundae-maeul",
+      "sha256": "847b8a189b0cc6af60a9ee194bd9fe097ea70ac4484e94e3ee3fb49859f6aa65",
+      "result": {
+        "schemaVersion": 2,
+        "total": 42000,
+        "drinks": [],
+        "warnings": [
+          "NO_DRINK_ITEMS"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": true,
+        "drinkCount": false,
+        "drink0.category": false,
+        "drink0.quantity": false,
+        "drink0.unitPrice": false,
+        "drink0.lineAmount": false
+      },
+      "baseSeconds": 7.321,
+      "numericSeconds": 0,
+      "numericCalls": 0,
+      "seconds": 7.328
+    },
+    {
+      "sample": "K263",
+      "cohort": "new-web-printed-alcohol",
+      "family": "naengsam-jip",
+      "sha256": "ce9eedc2231b517e83e85fe3c13d610cc12ee276425c9d458b2cdaba66f52339",
+      "result": {
+        "schemaVersion": 2,
+        "total": null,
+        "drinks": [],
+        "warnings": [
+          "TOTAL_NOT_FOUND",
+          "NO_DRINK_ITEMS"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": false,
+        "drinkCount": false,
+        "drink0.category": false,
+        "drink0.quantity": false,
+        "drink0.unitPrice": false,
+        "drink0.lineAmount": false
+      },
+      "baseSeconds": 8.44,
+      "numericSeconds": 0,
+      "numericCalls": 0,
+      "seconds": 8.457
+    },
+    {
+      "sample": "K860",
+      "cohort": "new-web-printed-alcohol",
+      "family": "woori-hanwoo",
+      "sha256": "6292ebc971798c1a82ee2c1e653e0d00d23964633c93371fe332f81b19ebd516",
+      "result": {
+        "schemaVersion": 2,
+        "total": null,
+        "drinks": [],
+        "warnings": [
+          "TOTAL_NOT_FOUND",
+          "NO_DRINK_ITEMS"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": false,
+        "drinkCount": false,
+        "drink0.category": false,
+        "drink0.quantity": false,
+        "drink0.unitPrice": false,
+        "drink0.lineAmount": false
+      },
+      "baseSeconds": 7.469,
+      "numericSeconds": 0,
+      "numericCalls": 0,
+      "seconds": 7.475
+    },
+    {
+      "sample": "K203",
+      "cohort": "new-web-printed-alcohol",
+      "family": "ichadol-nampo",
+      "sha256": "98fceaed1c5808313ad373455774079827130757d715fd3194e96e875d3c4551",
+      "result": {
+        "schemaVersion": 2,
+        "total": null,
+        "drinks": [],
+        "warnings": [
+          "TOTAL_NOT_FOUND",
+          "NO_DRINK_ITEMS"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": false,
+        "drinkCount": false,
+        "drink0.category": false,
+        "drink0.quantity": false,
+        "drink0.unitPrice": false,
+        "drink0.lineAmount": false,
+        "drink1.category": false,
+        "drink1.quantity": false,
+        "drink1.unitPrice": false,
+        "drink1.lineAmount": false
+      },
+      "baseSeconds": 9.313,
+      "numericSeconds": 0.217,
+      "numericCalls": 2,
+      "seconds": 9.541
+    },
+    {
+      "sample": "K235",
+      "cohort": "new-web-printed-alcohol",
+      "family": "busan-bulmakssam",
+      "sha256": "958c7467259f55fed99793ff0401058abe825e84664e98316a01c0532ebc0cff",
+      "result": {
+        "schemaVersion": 2,
+        "total": null,
+        "drinks": [
+          {
+            "name": "소주 (브랜드 미상)",
+            "category": "SOJU",
+            "unit": "UNKNOWN",
+            "unitPrice": 4000,
+            "quantity": 3,
+            "lineAmount": 12000,
+            "confidence": 0.9316,
+            "reviewReasons": [
+              "NUMERIC_REGION_RECOGNIZED",
+              "UNKNOWN_CONTAINER"
+            ],
+            "servingType": "UNKNOWN",
+            "volumeMl": null,
+            "bottleCount": null
+          }
+        ],
+        "warnings": [
+          "TOTAL_NOT_FOUND",
+          "ITEMS_NEED_REVIEW"
+        ],
+        "requiresConfirmation": true
+      },
+      "checks": {
+        "confirmationRequired": true,
+        "total": false,
+        "drinkCount": true,
+        "drink0.category": true,
+        "drink0.quantity": true,
+        "drink0.unitPrice": true,
+        "drink0.lineAmount": true
+      },
+      "baseSeconds": 9.364,
+      "numericSeconds": 0.261,
+      "numericCalls": 2,
+      "seconds": 9.632
+    }
+  ],
+  "summary": {
+    "samples": 13,
+    "families": 13,
+    "executionFailures": 0,
+    "allAnnotatedChecksMatch": 1,
+    "medianSeconds": 9.166,
+    "maxSeconds": 12.166
+  },
+  "date": "2026-11-03",
+  "ocrRuntimeHead": "b99f7a745aacded10ec01defbd91a55171fa23ed",
+  "referenceMain": "8d27496270e6c8adcb78b4580d68c150f9c3cce6",
+  "expectedExitCode": 1,
+  "totalExactCount": 4,
+  "allDrinkSelectedFieldsExactCount": 2,
+  "unitTests": {
+    "count": 112,
+    "result": "OK",
+    "seconds": 0.529
+  },
+  "limitations": [
+    "partial field truth, not all nine fields",
+    "new image cohort; not a speedup comparison",
+    "same author convenience sample",
+    "photos and raw OCR text are not committed"
+  ]
+}

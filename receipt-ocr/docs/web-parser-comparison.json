@@ -1,0 +1,862 @@
+{
+  "method": "cached original inference tokens, same final numeric recovery tokens, no native re-inference or speed measurement",
+  "beforeHead": "4e33613454df2afd9407b1bc1fac3622af572683",
+  "observations": [
+    {
+      "sample": "HWARO",
+      "sha256": "543f4ed7447980703fecc9b899d4876e3b9af93010954947d481cf8e80984e8c",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [
+            {
+              "name": "소주 (브랜드 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": null,
+              "quantity": null,
+              "lineAmount": null,
+              "confidence": 0.9121,
+              "reviewReasons": [
+                "COLUMN_HEADER_MISSING",
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": true,
+          "drink0.category": true,
+          "drink0.quantity": false,
+          "drink0.unitPrice": true,
+          "drink0.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 99520,
+          "drinks": [
+            {
+              "name": "소주 (브랜드 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": null,
+              "quantity": null,
+              "lineAmount": null,
+              "confidence": 0.9121,
+              "reviewReasons": [
+                "COLUMN_HEADER_MISSING",
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": true,
+          "drink0.category": true,
+          "drink0.quantity": false,
+          "drink0.unitPrice": true,
+          "drink0.lineAmount": false
+        }
+      }
+    },
+    {
+      "sample": "C48674",
+      "sha256": "6112f8dbb32f1ae5cff0adf540f64c3607b6719703fa6afcb7dac0841eb95c28",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 85000,
+          "drinks": [],
+          "warnings": [
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      }
+    },
+    {
+      "sample": "C49859",
+      "sha256": "56b454f75ecac413072f036faa38996542c131a29cb7838258d3bfef32589dfe",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      }
+    },
+    {
+      "sample": "C49623",
+      "sha256": "c01d717438392187f3ac4e26e2e6cee5bec7d92761dcc1a63226e43f1b77ba82",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      }
+    },
+    {
+      "sample": "C49059",
+      "sha256": "c01240b3f7003c830e2cd6f493e4293b41d57e2a91b70ba68f161c5e7b8dc89f",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 54400,
+          "drinks": [
+            {
+              "name": "소주 (브랜드 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": null,
+              "quantity": null,
+              "lineAmount": null,
+              "confidence": 0.9991,
+              "reviewReasons": [
+                "ITEM_VALUES_MISSING",
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            },
+            {
+              "name": "맥주 (브랜드 미상)",
+              "category": "BEER",
+              "unit": "UNKNOWN",
+              "unitPrice": null,
+              "quantity": null,
+              "lineAmount": null,
+              "confidence": 0.9996,
+              "reviewReasons": [
+                "ITEM_VALUES_MISSING",
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": true,
+          "drink0.category": true,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false,
+          "drink1.category": true,
+          "drink1.quantity": false,
+          "drink1.unitPrice": false,
+          "drink1.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 54400,
+          "drinks": [
+            {
+              "name": "소주 (브랜드 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": 4000,
+              "quantity": 2,
+              "lineAmount": 8000,
+              "confidence": 0.9598,
+              "reviewReasons": [
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            },
+            {
+              "name": "맥주 (브랜드 미상)",
+              "category": "BEER",
+              "unit": "UNKNOWN",
+              "unitPrice": 4000,
+              "quantity": 2,
+              "lineAmount": 8000,
+              "confidence": 0.9083,
+              "reviewReasons": [
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": true,
+          "drink0.category": true,
+          "drink0.quantity": true,
+          "drink0.unitPrice": true,
+          "drink0.lineAmount": true,
+          "drink1.category": true,
+          "drink1.quantity": true,
+          "drink1.unitPrice": true,
+          "drink1.lineAmount": true
+        }
+      }
+    },
+    {
+      "sample": "C49470",
+      "sha256": "726cbabc8c50ab2dc7714ccb0dcf755dde59657241eaacacc5b82734015808be",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 45000,
+          "drinks": [
+            {
+              "name": "참이슬 (세부형 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": 4000,
+              "quantity": 1,
+              "lineAmount": 4000,
+              "confidence": 0.9565,
+              "reviewReasons": [
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false,
+          "drink1.category": false,
+          "drink1.quantity": false,
+          "drink1.unitPrice": false,
+          "drink1.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 45000,
+          "drinks": [
+            {
+              "name": "장수막걸리 (세부형 미상)",
+              "category": "MAKGEOLLI",
+              "unit": "UNKNOWN",
+              "unitPrice": 3000,
+              "quantity": 3,
+              "lineAmount": 9000,
+              "confidence": 0.943,
+              "reviewReasons": [
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            },
+            {
+              "name": "참이슬 (세부형 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": 4000,
+              "quantity": 1,
+              "lineAmount": 4000,
+              "confidence": 0.9565,
+              "reviewReasons": [
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": true,
+          "drink0.category": true,
+          "drink0.quantity": true,
+          "drink0.unitPrice": true,
+          "drink0.lineAmount": true,
+          "drink1.category": true,
+          "drink1.quantity": true,
+          "drink1.unitPrice": true,
+          "drink1.lineAmount": true
+        }
+      }
+    },
+    {
+      "sample": "C47325",
+      "sha256": "e44b252e53ad550da34f84d00f97d3a9e469839601d7c4cdcb1e1e2bada4e391",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 84000,
+          "drinks": [
+            {
+              "name": "참이슬 (세부형 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": 3000,
+              "quantity": 2,
+              "lineAmount": 6000,
+              "confidence": 0.9384,
+              "reviewReasons": [
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": true,
+          "drink0.category": true,
+          "drink0.quantity": true,
+          "drink0.unitPrice": true,
+          "drink0.lineAmount": true
+        }
+      }
+    },
+    {
+      "sample": "K345",
+      "sha256": "2a68c66e85f0f11ce8fc251e1da6d3f1d91aa0dbfb96e6b56bc9c5c80c0b0934",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 95600,
+          "drinks": [
+            {
+              "name": "소주 (브랜드 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": 4000,
+              "quantity": 3,
+              "lineAmount": 12000,
+              "confidence": 0.7514,
+              "reviewReasons": [
+                "LOW_CONFIDENCE",
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": true,
+          "drink0.category": true,
+          "drink0.quantity": true,
+          "drink0.unitPrice": true,
+          "drink0.lineAmount": true
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 95600,
+          "drinks": [
+            {
+              "name": "소주 (브랜드 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": 4000,
+              "quantity": 3,
+              "lineAmount": 12000,
+              "confidence": 0.7514,
+              "reviewReasons": [
+                "LOW_CONFIDENCE",
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": true,
+          "drink0.category": true,
+          "drink0.quantity": true,
+          "drink0.unitPrice": true,
+          "drink0.lineAmount": true
+        }
+      }
+    },
+    {
+      "sample": "K399",
+      "sha256": "847b8a189b0cc6af60a9ee194bd9fe097ea70ac4484e94e3ee3fb49859f6aa65",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 42000,
+          "drinks": [],
+          "warnings": [
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": 42000,
+          "drinks": [],
+          "warnings": [
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": true,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      }
+    },
+    {
+      "sample": "K263",
+      "sha256": "ce9eedc2231b517e83e85fe3c13d610cc12ee276425c9d458b2cdaba66f52339",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      }
+    },
+    {
+      "sample": "K860",
+      "sha256": "6292ebc971798c1a82ee2c1e653e0d00d23964633c93371fe332f81b19ebd516",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false
+        }
+      }
+    },
+    {
+      "sample": "K203",
+      "sha256": "98fceaed1c5808313ad373455774079827130757d715fd3194e96e875d3c4551",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false,
+          "drink1.category": false,
+          "drink1.quantity": false,
+          "drink1.unitPrice": false,
+          "drink1.lineAmount": false
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "NO_DRINK_ITEMS"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": false,
+          "drink0.category": false,
+          "drink0.quantity": false,
+          "drink0.unitPrice": false,
+          "drink0.lineAmount": false,
+          "drink1.category": false,
+          "drink1.quantity": false,
+          "drink1.unitPrice": false,
+          "drink1.lineAmount": false
+        }
+      }
+    },
+    {
+      "sample": "K235",
+      "sha256": "958c7467259f55fed99793ff0401058abe825e84664e98316a01c0532ebc0cff",
+      "before": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [
+            {
+              "name": "소주 (브랜드 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": 4000,
+              "quantity": 3,
+              "lineAmount": 12000,
+              "confidence": 0.9316,
+              "reviewReasons": [
+                "NUMERIC_REGION_RECOGNIZED",
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": true,
+          "drink0.category": true,
+          "drink0.quantity": true,
+          "drink0.unitPrice": true,
+          "drink0.lineAmount": true
+        }
+      },
+      "after": {
+        "result": {
+          "schemaVersion": 2,
+          "total": null,
+          "drinks": [
+            {
+              "name": "소주 (브랜드 미상)",
+              "category": "SOJU",
+              "unit": "UNKNOWN",
+              "unitPrice": 4000,
+              "quantity": 3,
+              "lineAmount": 12000,
+              "confidence": 0.9316,
+              "reviewReasons": [
+                "NUMERIC_REGION_RECOGNIZED",
+                "UNKNOWN_CONTAINER"
+              ],
+              "servingType": "UNKNOWN",
+              "volumeMl": null,
+              "bottleCount": null
+            }
+          ],
+          "warnings": [
+            "TOTAL_NOT_FOUND",
+            "ITEMS_NEED_REVIEW"
+          ],
+          "requiresConfirmation": true
+        },
+        "checks": {
+          "confirmationRequired": true,
+          "total": false,
+          "drinkCount": true,
+          "drink0.category": true,
+          "drink0.quantity": true,
+          "drink0.unitPrice": true,
+          "drink0.lineAmount": true
+        }
+      }
+    }
+  ],
+  "summary": {
+    "before": {
+      "totalExact": 4,
+      "allSelectedDrinkFieldsExact": 2,
+      "allAnnotatedChecksMatch": 1
+    },
+    "after": {
+      "totalExact": 7,
+      "allSelectedDrinkFieldsExact": 5,
+      "allAnnotatedChecksMatch": 4
+    }
+  },
+  "afterSourceSha256": {
+    "receipt_ocr\\extract.py": "157a3dff29bb8aba43871731ecdaa1009ac8772dfb84c3019b695269e54d1852",
+    "data\\drinks.md": "ceee8268718ad8beb33a744adc2e7d366b9f29cb5441282128a9fde141e9a568"
+  }
+}

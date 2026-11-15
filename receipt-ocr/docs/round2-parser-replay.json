@@ -1,0 +1,473 @@
+[
+  {
+    "sample": "HWARO",
+    "result": {
+      "schemaVersion": 2,
+      "total": 99520,
+      "drinks": [
+        {
+          "name": "소주 (브랜드 미상)",
+          "category": "SOJU",
+          "unit": "UNKNOWN",
+          "unitPrice": null,
+          "quantity": 1,
+          "lineAmount": 5000,
+          "confidence": 0.9121,
+          "reviewReasons": [
+            "ITEM_UNIT_PRICE_MISSING",
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        }
+      ],
+      "warnings": [
+        "ITEMS_NEED_REVIEW"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": true,
+      "drinkCount": true,
+      "drink0.category": true,
+      "drink0.quantity": true,
+      "drink0.unitPrice": true,
+      "drink0.lineAmount": true
+    }
+  },
+  {
+    "sample": "C48674",
+    "result": {
+      "schemaVersion": 2,
+      "total": 85000,
+      "drinks": [],
+      "warnings": [
+        "NO_DRINK_ITEMS"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": true,
+      "drinkCount": false,
+      "drink0.category": false,
+      "drink0.quantity": false,
+      "drink0.unitPrice": false,
+      "drink0.lineAmount": false
+    }
+  },
+  {
+    "sample": "C49859",
+    "result": {
+      "schemaVersion": 2,
+      "total": null,
+      "drinks": [],
+      "warnings": [
+        "TOTAL_NOT_FOUND",
+        "NO_DRINK_ITEMS"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": false,
+      "drinkCount": false,
+      "drink0.category": false,
+      "drink0.quantity": false,
+      "drink0.unitPrice": false,
+      "drink0.lineAmount": false
+    }
+  },
+  {
+    "sample": "C49623",
+    "result": {
+      "schemaVersion": 2,
+      "total": null,
+      "drinks": [],
+      "warnings": [
+        "TOTAL_NOT_FOUND",
+        "NO_DRINK_ITEMS"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": false,
+      "drinkCount": false,
+      "drink0.category": false,
+      "drink0.quantity": false,
+      "drink0.unitPrice": false,
+      "drink0.lineAmount": false
+    }
+  },
+  {
+    "sample": "C49059",
+    "result": {
+      "schemaVersion": 2,
+      "total": 54400,
+      "drinks": [
+        {
+          "name": "소주 (브랜드 미상)",
+          "category": "SOJU",
+          "unit": "UNKNOWN",
+          "unitPrice": 4000,
+          "quantity": 2,
+          "lineAmount": 8000,
+          "confidence": 0.9598,
+          "reviewReasons": [
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        },
+        {
+          "name": "맥주 (브랜드 미상)",
+          "category": "BEER",
+          "unit": "UNKNOWN",
+          "unitPrice": 4000,
+          "quantity": 2,
+          "lineAmount": 8000,
+          "confidence": 0.9083,
+          "reviewReasons": [
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        }
+      ],
+      "warnings": [
+        "ITEMS_NEED_REVIEW"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": true,
+      "drinkCount": true,
+      "drink0.category": true,
+      "drink0.quantity": true,
+      "drink0.unitPrice": true,
+      "drink0.lineAmount": true,
+      "drink1.category": true,
+      "drink1.quantity": true,
+      "drink1.unitPrice": true,
+      "drink1.lineAmount": true
+    }
+  },
+  {
+    "sample": "C49470",
+    "result": {
+      "schemaVersion": 2,
+      "total": 45000,
+      "drinks": [
+        {
+          "name": "장수막걸리 (세부형 미상)",
+          "category": "MAKGEOLLI",
+          "unit": "UNKNOWN",
+          "unitPrice": 3000,
+          "quantity": 3,
+          "lineAmount": 9000,
+          "confidence": 0.943,
+          "reviewReasons": [
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        },
+        {
+          "name": "참이슬 (세부형 미상)",
+          "category": "SOJU",
+          "unit": "UNKNOWN",
+          "unitPrice": 4000,
+          "quantity": 1,
+          "lineAmount": 4000,
+          "confidence": 0.9565,
+          "reviewReasons": [
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        }
+      ],
+      "warnings": [
+        "ITEMS_NEED_REVIEW"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": true,
+      "drinkCount": true,
+      "drink0.category": true,
+      "drink0.quantity": true,
+      "drink0.unitPrice": true,
+      "drink0.lineAmount": true,
+      "drink1.category": true,
+      "drink1.quantity": true,
+      "drink1.unitPrice": true,
+      "drink1.lineAmount": true
+    }
+  },
+  {
+    "sample": "C47325",
+    "result": {
+      "schemaVersion": 2,
+      "total": 84000,
+      "drinks": [
+        {
+          "name": "참이슬 (세부형 미상)",
+          "category": "SOJU",
+          "unit": "UNKNOWN",
+          "unitPrice": 3000,
+          "quantity": 2,
+          "lineAmount": 6000,
+          "confidence": 0.9384,
+          "reviewReasons": [
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        }
+      ],
+      "warnings": [
+        "ITEMS_NEED_REVIEW"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": true,
+      "drinkCount": true,
+      "drink0.category": true,
+      "drink0.quantity": true,
+      "drink0.unitPrice": true,
+      "drink0.lineAmount": true
+    }
+  },
+  {
+    "sample": "K345",
+    "result": {
+      "schemaVersion": 2,
+      "total": 95600,
+      "drinks": [
+        {
+          "name": "소주 (브랜드 미상)",
+          "category": "SOJU",
+          "unit": "UNKNOWN",
+          "unitPrice": 4000,
+          "quantity": 3,
+          "lineAmount": 12000,
+          "confidence": 0.7514,
+          "reviewReasons": [
+            "LOW_CONFIDENCE",
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        }
+      ],
+      "warnings": [
+        "ITEMS_NEED_REVIEW"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": true,
+      "drinkCount": true,
+      "drink0.category": true,
+      "drink0.quantity": true,
+      "drink0.unitPrice": true,
+      "drink0.lineAmount": true
+    }
+  },
+  {
+    "sample": "K399",
+    "result": {
+      "schemaVersion": 2,
+      "total": 42000,
+      "drinks": [
+        {
+          "name": "소주 (브랜드 미상)",
+          "category": "SOJU",
+          "unit": "UNKNOWN",
+          "unitPrice": 4000,
+          "quantity": 3,
+          "lineAmount": 12000,
+          "confidence": 0.8403,
+          "reviewReasons": [
+            "LOW_CONFIDENCE",
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        }
+      ],
+      "warnings": [
+        "ITEMS_NEED_REVIEW"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": true,
+      "drinkCount": true,
+      "drink0.category": true,
+      "drink0.quantity": true,
+      "drink0.unitPrice": true,
+      "drink0.lineAmount": true
+    }
+  },
+  {
+    "sample": "K263",
+    "result": {
+      "schemaVersion": 2,
+      "total": null,
+      "drinks": [
+        {
+          "name": "대선 (세부형 미상)",
+          "category": "SOJU",
+          "unit": "UNKNOWN",
+          "unitPrice": null,
+          "quantity": null,
+          "lineAmount": null,
+          "confidence": 0.9341,
+          "reviewReasons": [
+            "COLUMN_HEADER_MISSING",
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        }
+      ],
+      "warnings": [
+        "TOTAL_NOT_FOUND",
+        "ITEMS_NEED_REVIEW"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": false,
+      "drinkCount": true,
+      "drink0.category": true,
+      "drink0.quantity": false,
+      "drink0.unitPrice": false,
+      "drink0.lineAmount": false
+    }
+  },
+  {
+    "sample": "K860",
+    "result": {
+      "schemaVersion": 2,
+      "total": null,
+      "drinks": [],
+      "warnings": [
+        "TOTAL_NOT_FOUND",
+        "NO_DRINK_ITEMS"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": false,
+      "drinkCount": false,
+      "drink0.category": false,
+      "drink0.quantity": false,
+      "drink0.unitPrice": false,
+      "drink0.lineAmount": false
+    }
+  },
+  {
+    "sample": "K203",
+    "result": {
+      "schemaVersion": 2,
+      "total": null,
+      "drinks": [
+        {
+          "name": "대선 (세부형 미상)",
+          "category": "SOJU",
+          "unit": "UNKNOWN",
+          "unitPrice": null,
+          "quantity": null,
+          "lineAmount": null,
+          "confidence": 0.9811,
+          "reviewReasons": [
+            "ITEM_VALUES_MISSING",
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        }
+      ],
+      "warnings": [
+        "TOTAL_NOT_FOUND",
+        "ITEMS_NEED_REVIEW"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": false,
+      "drinkCount": false,
+      "drink0.category": true,
+      "drink0.quantity": false,
+      "drink0.unitPrice": true,
+      "drink0.lineAmount": false,
+      "drink1.category": false,
+      "drink1.quantity": false,
+      "drink1.unitPrice": false,
+      "drink1.lineAmount": false
+    }
+  },
+  {
+    "sample": "K235",
+    "result": {
+      "schemaVersion": 2,
+      "total": null,
+      "drinks": [
+        {
+          "name": "소주 (브랜드 미상)",
+          "category": "SOJU",
+          "unit": "UNKNOWN",
+          "unitPrice": 4000,
+          "quantity": 3,
+          "lineAmount": 12000,
+          "confidence": 0.9316,
+          "reviewReasons": [
+            "NUMERIC_REGION_RECOGNIZED",
+            "UNKNOWN_CONTAINER"
+          ],
+          "servingType": "UNKNOWN",
+          "volumeMl": null,
+          "bottleCount": null
+        }
+      ],
+      "warnings": [
+        "TOTAL_NOT_FOUND",
+        "ITEMS_NEED_REVIEW"
+      ],
+      "requiresConfirmation": true
+    },
+    "checks": {
+      "confirmationRequired": true,
+      "total": false,
+      "drinkCount": true,
+      "drink0.category": true,
+      "drink0.quantity": true,
+      "drink0.unitPrice": true,
+      "drink0.lineAmount": true
+    }
+  }
+]

@@ -1,0 +1,178 @@
+"""네이티브 모델 없이 공개 인식 모듈과의 경계만 검증한다."""
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+from PIL import Image
+from receipt_ocr.ocr import PaddleEngine
+
+
+class RecognitionAdapterTests(unittest.TestCase):
+    def test_verified_local_models_are_passed_to_all_public_interfaces(self):
+        configurations = []
+        def factory(**options):
+            configurations.append(options)
+            return object()
+        local = {"PP-OCRv5_mobile_det": Path("pinned/det"), "korean_PP-OCRv5_mobile_rec": Path("pinned/rec")}
+        with patch("receipt_ocr.model_files.verify_models", return_value=local) as verify, patch.dict(
+                sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory)}):
+            PaddleEngine(model_directory=Path("pinned"), recognition_mkldnn=False)
+        verify.assert_called_once_with(Path("pinned"))
+        self.assertEqual(str(local["PP-OCRv5_mobile_det"]), configurations[0]["text_detection_model_dir"])
+        self.assertEqual(str(local["korean_PP-OCRv5_mobile_rec"]), configurations[0]["text_recognition_model_dir"])
+        self.assertEqual(str(local["korean_PP-OCRv5_mobile_rec"]), configurations[1]["model_dir"])
+
+    def test_initialization_pins_korean_model_for_both_public_interfaces(self):
+        configurations = []
+        def pipeline(**options):
+            configurations.append(("pipeline", options))
+            return object()
+        def recognition(**options):
+            configurations.append(("recognition", options))
+            return object()
+        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=pipeline, TextRecognition=recognition)}):
+            PaddleEngine(recognition_mkldnn=False)
+        self.assertEqual("korean_PP-OCRv5_mobile_rec", configurations[0][1]["text_recognition_model_name"])
+        self.assertEqual("korean_PP-OCRv5_mobile_rec", configurations[1][1]["model_name"])
+        self.assertEqual(["cpu", "cpu"], [configuration[1]["device"] for configuration in configurations])
+        self.assertEqual([2, 2], [configuration[1]["cpu_threads"] for configuration in configurations])
+        self.assertEqual([False, False], [configuration[1]["enable_mkldnn"] for configuration in configurations])
+        self.assertEqual(1280, configurations[0][1]["text_det_limit_side_len"])
+        self.assertEqual("max", configurations[0][1]["text_det_limit_type"])
+        self.assertNotIn("paddlex_config", configurations[0][1])
+
+    def test_recognition_acceleration_does_not_enable_the_broken_detection_backend(self):
+        configurations = []
+        def factory(**options):
+            configurations.append(options)
+            return object()
+        def configuration(name):
+            self.assertEqual("OCR", name)
+            return {"SubModules": {"TextDetection": {"model_name": "default-detector"},
+                                   "TextRecognition": {"batch_size": 6}}}
+        with patch.dict(sys.modules, {
+            "paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory),
+            "paddlex.inference": SimpleNamespace(load_pipeline_config=configuration),
+        }):
+            PaddleEngine(cpu_threads=4, recognition_mkldnn=True)
+        pipeline_options, numeric_options = configurations
+        self.assertFalse(pipeline_options["enable_mkldnn"])
+        self.assertTrue(numeric_options["enable_mkldnn"])
+        module = pipeline_options["paddlex_config"]["SubModules"]["TextRecognition"]
+        self.assertEqual("paddle_static", module["engine"])
+        self.assertEqual({"device_type": "cpu", "cpu_threads": 4, "run_mode": "mkldnn"},
+                         module["engine_config"]["paddle_static"])
+        self.assertEqual(6, module["batch_size"])
+        self.assertEqual({"model_name": "default-detector"},
+                         pipeline_options["paddlex_config"]["SubModules"]["TextDetection"])
+        self.assertEqual("korean_PP-OCRv5_mobile_rec", numeric_options["model_name"])
+
+    def test_default_acceleration_is_enabled_only_for_known_x86_64_architectures(self):
+        for architecture in ("AMD64", "x86_64"):
+            configurations = []
+            def factory(**options):
+                configurations.append(options)
+                return object()
+            with self.subTest(architecture=architecture), patch(
+                    "receipt_ocr.ocr.platform.machine", return_value=architecture), patch.dict(sys.modules, {
+                        "paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory),
+                        "paddlex.inference": SimpleNamespace(load_pipeline_config=lambda _: {
+                            "SubModules": {"TextRecognition": {}}}),
+                    }):
+                PaddleEngine()
+            self.assertFalse(configurations[0]["enable_mkldnn"])
+            self.assertTrue(configurations[1]["enable_mkldnn"])
+            self.assertEqual("mkldnn", configurations[0]["paddlex_config"]["SubModules"][
+                "TextRecognition"]["engine_config"]["paddle_static"]["run_mode"])
+
+    def test_default_arm_and_unknown_architectures_keep_the_plain_cpu_path(self):
+        for architecture in ("ARM64", "aarch64", "", "unknown"):
+            configurations = []
+            def factory(**options):
+                configurations.append(options)
+                return object()
+            def forbidden(_):
+                raise AssertionError("ARM default must not configure oneDNN")
+            with self.subTest(architecture=architecture), patch(
+                    "receipt_ocr.ocr.platform.machine", return_value=architecture), patch.dict(sys.modules, {
+                        "paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory),
+                        "paddlex.inference": SimpleNamespace(load_pipeline_config=forbidden),
+                    }):
+                PaddleEngine()
+            self.assertFalse(configurations[0]["enable_mkldnn"])
+            self.assertFalse(configurations[1]["enable_mkldnn"])
+            self.assertNotIn("paddlex_config", configurations[0])
+
+    def test_explicit_none_keeps_original_detection_configuration_for_comparison(self):
+        configurations = []
+        def factory(**options):
+            configurations.append(options)
+            return object()
+        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory)}):
+            PaddleEngine(detection_max_edge=None, recognition_mkldnn=False)
+        self.assertNotIn("text_det_limit_side_len", configurations[0])
+        self.assertNotIn("text_det_limit_type", configurations[0])
+
+    def test_experiment_options_apply_cpu_to_both_models_and_resize_to_detection_only(self):
+        configurations = []
+        def factory(**options):
+            configurations.append(options)
+            return object()
+        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=factory, TextRecognition=factory)}):
+            PaddleEngine(cpu_threads=4, enable_mkldnn=True, detection_max_edge=1280, recognition_mkldnn=False)
+        self.assertEqual([4, 4], [options["cpu_threads"] for options in configurations])
+        self.assertEqual([True, True], [options["enable_mkldnn"] for options in configurations])
+        self.assertEqual(1280, configurations[0]["text_det_limit_side_len"])
+        self.assertEqual("max", configurations[0]["text_det_limit_type"])
+        self.assertNotIn("text_det_limit_side_len", configurations[1])
+
+    def test_invalid_experiment_options_fail_before_native_initialization(self):
+        def forbidden(**options):
+            raise AssertionError("invalid options must not initialize native code")
+        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=forbidden, TextRecognition=forbidden)}):
+            for options in ({"cpu_threads": 0}, {"cpu_threads": 65}, {"cpu_threads": True},
+                            {"cpu_threads": 2.5}, {"enable_mkldnn": "false"},
+                            {"recognition_mkldnn": "false"}, {"recognition_mkldnn": 1},
+                            {"detection_max_edge": 31}, {"detection_max_edge": 4001},
+                            {"detection_max_edge": True}):
+                with self.subTest(options=options), self.assertRaises(ValueError):
+                    PaddleEngine(**options)
+
+    def test_numeric_patch_uses_recognition_without_a_detection_pipeline(self):
+        seen = []
+        def predict(array):
+            seen.append(array)
+            return [{"rec_text": " 12 ", "rec_score": .98}]
+        engine = PaddleEngine.__new__(PaddleEngine)
+        engine.numeric_recognizer = SimpleNamespace(predict=predict)
+        with Image.new("RGB", (40, 20)) as image:
+            with patch.dict(sys.modules, {"numpy": SimpleNamespace(asarray=lambda value: value.size)}):
+                tokens = engine._recognize_numeric(image)
+        self.assertEqual([(40, 20)], seen)
+        self.assertEqual(("12", .98, (0, 0, 40, 20)), (tokens[0].text, tokens[0].confidence, tokens[0].box))
+
+    def test_empty_and_multiple_results_do_not_become_one_combined_number(self):
+        engine = PaddleEngine.__new__(PaddleEngine)
+        engine.numeric_recognizer = SimpleNamespace(predict=lambda array: [
+            {"rec_text": "", "rec_score": .99}, {"rec_text": "1", "rec_score": .99},
+            {"rec_text": "2", "rec_score": .99}])
+        with Image.new("RGB", (40, 20)) as image:
+            with patch.dict(sys.modules, {"numpy": SimpleNamespace(asarray=lambda value: value.size)}):
+                self.assertEqual(["1", "2"], [token.text for token in engine._recognize_numeric(image)])
+
+    def test_invalid_model_score_propagates_instead_of_returning_a_trusted_number(self):
+        engine = PaddleEngine.__new__(PaddleEngine)
+        engine.numeric_recognizer = SimpleNamespace(predict=lambda array: [{"rec_text": "1", "rec_score": float("nan")}])
+        with Image.new("RGB", (40, 20)) as image:
+            with patch.dict(sys.modules, {"numpy": SimpleNamespace(asarray=lambda value: value.size)}):
+                with self.assertRaises(ValueError):
+                    engine._recognize_numeric(image)
+
+    def test_recognition_initialization_failure_is_not_hidden(self):
+        def fail(**options):
+            raise RuntimeError("model failed")
+        with patch.dict(sys.modules, {"paddleocr": SimpleNamespace(PaddleOCR=lambda **options: object(), TextRecognition=fail)}):
+            with self.assertRaises(RuntimeError):
+                PaddleEngine(recognition_mkldnn=False)

@@ -1,0 +1,9 @@
+.venv
+.models
+.samples
+reports
+.env
+.env.*
+**/__pycache__
+**/*.pyc
+.git
