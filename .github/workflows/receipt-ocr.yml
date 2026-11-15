@@ -11,6 +11,11 @@ on:
       - 'receipt-ocr/**'
       - '.github/workflows/receipt-ocr.yml'
   workflow_dispatch:
+    inputs:
+      export_image:
+        description: 검증한 ARM 이미지를 운영 전달용 파일로 보관
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -37,14 +42,17 @@ jobs:
         run: python -m receipt_ocr --tokens examples/receipt-tokens.json
 
   arm-runtime:
+    needs: test
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
       - name: 한글 합성 영수증용 글꼴 준비
         run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
       - name: 운영과 같은 ARM 이미지 빌드
-        run: docker build --tag receipt-ocr:verify receipt-ocr
+        run: |
+          docker build --tag receipt-ocr:verify --tag "jeongsan-receipt:$GITHUB_SHA" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" receipt-ocr
       - name: 인터넷 없이 CPU·메모리를 제한해 실행
         run: |
           test "$(uname -m)" = "aarch64"
@@ -86,6 +94,24 @@ jobs:
           docker stats --no-stream receipt-ocr-verify || true
           docker inspect --format 'status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} restarts={{.RestartCount}}' receipt-ocr-verify || true
           docker exec receipt-ocr-verify python -c "from pathlib import Path; p=Path('/sys/fs/cgroup/memory.peak'); print('memory_peak_bytes=' + p.read_text().strip() if p.exists() else 'memory_peak_unavailable')" || true
+      - name: 실제 검증한 이미지를 고정 SHA로 묶기
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.export_image }}
+        run: |
+          mkdir -p receipt-image
+          test "$(docker image inspect --format '{{.Id}}' receipt-ocr:verify)" = "$(docker image inspect --format '{{.Id}}' "jeongsan-receipt:$GITHUB_SHA")"
+          docker save "jeongsan-receipt:$GITHUB_SHA" | gzip -1 > "receipt-image/receipt-ocr-$GITHUB_SHA.tar.gz"
+          (cd receipt-image && sha256sum "receipt-ocr-$GITHUB_SHA.tar.gz" > "receipt-ocr-$GITHUB_SHA.tar.gz.sha256")
+          docker image inspect --format '{{.Id}}' "jeongsan-receipt:$GITHUB_SHA" > receipt-image/image-id.txt
+          printf '%s\n' "$GITHUB_SHA" > receipt-image/source-commit.txt
+      - name: 검증한 ARM 이미지 보관
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.export_image }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: receipt-ocr-arm64-${{ github.sha }}
+          path: receipt-image/
+          retention-days: 2
+          compression-level: 0
+          if-no-files-found: error
       - name: 컨테이너 정리
         if: always()
         run: docker rm -f receipt-ocr-verify || true

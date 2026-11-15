@@ -34,7 +34,19 @@ fi
 
 # compose 명령을 한 곳에서 만든다. 파일이 늘어나면(-f monitoring.yml 등) 여기만 고친다.
 compose() {
-  docker compose --project-directory "$DEPLOY_ROOT" --env-file "${DEPLOY_ROOT}/.env" -p jeongsan -f "$COMPOSE_FILE" "$@"
+  local files=(-f "$COMPOSE_FILE")
+  local env_files=(--env-file "${DEPLOY_ROOT}/.env")
+  if [ -f "${DEPLOY_ROOT}/.receipt-release.env" ]; then
+    require_file "${DEPLOY_ROOT}/docker-compose.receipt.yml"
+    require_file "${DEPLOY_ROOT}/.receipt.env" "OCR 내부 키를 먼저 준비한다."
+    local receipt_image
+    receipt_image="$(sed -n 's/^RECEIPT_IMAGE=//p' "${DEPLOY_ROOT}/.receipt-release.env")"
+    [[ "$receipt_image" =~ ^jeongsan-receipt:[a-f0-9]{40}$ ]] || die "검증한 OCR 커밋 이미지 태그가 필요하다."
+    export RECEIPT_IMAGE="$receipt_image"
+    files+=(-f "${DEPLOY_ROOT}/docker-compose.receipt.yml")
+    env_files+=(--env-file "${DEPLOY_ROOT}/.receipt.env")
+  fi
+  docker compose --project-directory "$DEPLOY_ROOT" "${env_files[@]}" -p jeongsan "${files[@]}" "$@"
 }
 
 require_file() {

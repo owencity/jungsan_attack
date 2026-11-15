@@ -24,6 +24,18 @@ import org.springframework.web.servlet.resource.NoResourceFoundException
 class GlobalExceptionHandler {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    @ExceptionHandler(app.jeongsan.server.receipt.ReceiptException::class)
+    fun handleReceipt(e: app.jeongsan.server.receipt.ReceiptException): ResponseEntity<ErrorResponse> {
+        val response = ResponseEntity.status(e.status).header("Cache-Control", "no-store")
+        e.retryAfter?.let { response.header("Retry-After", it.toString()) }
+        return response.body(ErrorResponse(e.code, e.message))
+    }
+
+    @ExceptionHandler(app.jeongsan.server.quicksettlement.QuickSettlementValidationException::class)
+    fun handleQuickSettlement(e: app.jeongsan.server.quicksettlement.QuickSettlementValidationException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(e.status).header("Cache-Control", "no-store").body(ErrorResponse(e.code, e.message,
+            e.details.map { FieldErrorDetail(it.code.name, it.message) }))
+
     @ExceptionHandler(app.jeongsan.server.gathering.SettlementValidationException::class)
     fun handleSettlement(e: app.jeongsan.server.gathering.SettlementValidationException): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(e.status).body(ErrorResponse(e.code, e.message, e.details.map {

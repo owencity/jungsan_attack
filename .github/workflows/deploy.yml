@@ -78,6 +78,7 @@ jobs:
           rsync -az \
             -e "ssh -i ~/.ssh/id_key" \
             docker-compose.prod.yml \
+            docker-compose.receipt.yml \
             "$OCI_USER@${{ secrets.OCI_HOST }}:~/${{ env.REMOTE_DIR }}/"
           rsync -az -e "ssh -i ~/.ssh/id_key" scripts/deploy/ \
             "$OCI_USER@${{ secrets.OCI_HOST }}:~/${{ env.REMOTE_DIR }}/scripts/deploy/"

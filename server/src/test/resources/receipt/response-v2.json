@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "total": 50000,
+  "drinks": [{
+    "name": "참이슬 (세부형 미상)",
+    "category": "SOJU",
+    "unit": "UNKNOWN",
+    "unitPrice": 5000,
+    "quantity": 3,
+    "lineAmount": 15000,
+    "servingType": "UNKNOWN",
+    "volumeMl": null,
+    "bottleCount": null,
+    "confidence": 0.98,
+    "reviewReasons": ["UNKNOWN_CONTAINER"]
+  }],
+  "warnings": ["ITEMS_NEED_REVIEW"],
+  "requiresConfirmation": true
+}

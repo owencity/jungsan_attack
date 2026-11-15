@@ -1,4 +1,15 @@
-# 정산어택 — API 계약 · v26
+# 정산어택 — API 계약 · v27
+
+> **v27 변경(2026-11-15)** — [FC-038 간단 N빵·영수증 촬영 입력](flow-changes/2026-11-15-receipt-quick-settlement.md).
+>
+> | 절 | 변경 |
+> |---|---|
+> | POST /api/v1/receipts/extract | 로그인한 사용자의 간단 정산용 영수증 후보 추출. 사진·후보 저장 없음 |
+> | POST /api/v1/gatherings/{gid}/settlement-units/{sid}/receipts/extract | 활성 총무·OPEN 단위의 영수증 후보 추출. 추출 전후 권한 확인 |
+> | POST /api/v1/settlements/quick | `{total, headcount}`로 기존 core 계산. 본인 포함 2~50명, 저장 없는 N빵 결과 반환 |
+> | 사진·오류·호출 제한 | raw JPEG/PNG 8MiB, schemaVersion=2·requiresConfirmation=true. 사용자당 60초 10회·서버 동시 1건, 429/503 Retry-After |
+>
+> 앱은 최대 5장을 순서대로 인식하고 총무가 확인한 후보만 적용한다. 기존 금액 교체·추가를 명시적으로 선택한다. DB 스키마·기존 정산 계산·확정 스냅샷은 유지한다. 상세 계약은 [FC-038](flow-changes/2026-11-15-receipt-quick-settlement.md)을 따른다.
 
 > **v26 변경(2026-11-11)** — [FC-037 총 정산인원](flow-changes/2026-11-11-total-headcount.md). v24 차수별 인원과 v25 로그인 변경을 함께 포함한다.
 >
