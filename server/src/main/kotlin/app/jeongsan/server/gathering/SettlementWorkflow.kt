@@ -26,6 +26,11 @@ object SettlementWorkflow {
         if (unit.hostId != person.id) fail("NOT_SETTLEMENT_UNIT_HOST", status = HttpStatus.FORBIDDEN)
     }
     fun open(unit: UnitInput) { if (unit.state != "OPEN") fail("SETTLEMENT_UNIT_NOT_OPEN") }
+    fun expectedRevision(unit: UnitInput, expected: Long?) {
+        if (expected == null) return
+        if (expected < 0) fail("MALFORMED_REQUEST", status = HttpStatus.BAD_REQUEST)
+        if (unit.revision != expected) fail("SETTLEMENT_INPUT_CHANGED")
+    }
     fun member(unit: UnitInput, participantId: Long) {
         if (participantId !in unit.participantIds) fail("NOT_SETTLEMENT_UNIT_MEMBER", status = HttpStatus.FORBIDDEN)
     }

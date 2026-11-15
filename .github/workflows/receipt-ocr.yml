@@ -97,6 +97,7 @@ jobs:
       - name: 실제 검증한 이미지를 고정 SHA로 묶기
         if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.export_image }}
         run: |
+          set -euo pipefail
           mkdir -p receipt-image
           test "$(docker image inspect --format '{{.Id}}' receipt-ocr:verify)" = "$(docker image inspect --format '{{.Id}}' "jeongsan-receipt:$GITHUB_SHA")"
           docker save "jeongsan-receipt:$GITHUB_SHA" | gzip -1 > "receipt-image/receipt-ocr-$GITHUB_SHA.tar.gz"

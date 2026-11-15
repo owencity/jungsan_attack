@@ -12,6 +12,7 @@ import uuid
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
 assert os.environ.get("GITHUB_ACTIONS") == "true", "CI 전용이다."
 sys.stdout.reconfigure(encoding="utf-8")
@@ -53,7 +54,7 @@ def call(method, path, user=None, body=None, expected=200, media="application/js
     except HTTPError as error:
         status, raw, returned = error.code, error.read(), error.headers
     value = json.loads(raw) if raw else None
-    assert status == expected, (method, path, status, value)
+    assert status in (expected if isinstance(expected, tuple) else (expected,)), (method, path, status, value)
     return value, returned
 
 def upstream_calls():
@@ -178,4 +179,49 @@ with ThreadPoolExecutor(max_workers=1) as pool:
     changed, _ = future.result(timeout=10)
 check(changed["code"] == "SETTLEMENT_UNIT_NOT_OPEN", "추론 동안 단위를 잠그지 않고 확정 변경을 응답 전에 다시 확인")
 check(snapshot() == before, "다른 단위의 추론 중 상태 변경도 기존 차수·정산·응답 수를 바꾸지 않음")
+
+# 두 기기가 같은 버전을 보고 저장해도 단위 행 잠금 안에서 한 요청만 반영한다.
+round_body = {"total":12000, "payerParticipantId":host_id, "drinks":[], "expectedHeadcount":2}
+created_round, _ = call("POST", root + "/rounds", host, round_body, 201, client="APP")
+round_id = created_round["id"]
+round_path = root + f"/rounds/{round_id}"
+call("PUT", round_path, host, {**round_body, "total":15000, "expectedInputRevision":None}, client="APP")
+check(sql(f"SELECT total_amount,expected_headcount FROM rounds WHERE id={round_id}") == "15000\t2",
+    "구버전 차수 생성과 명시null 수정이 기존 금액·예상인원 계약으로 동작")
+revision = int(sql(f"SELECT input_revision FROM settlement_units WHERE id={settlement_unit_id}"))
+events = int(sql(f"SELECT COUNT(*) FROM timeline_entries WHERE gathering_id={gathering_id}"))
+variants = [
+    {"total":16000, "payerParticipantId":host_id, "expectedHeadcount":3,
+     "drinks":[{"name":"소주", "unitPrice":1000, "quantity":2}], "expectedInputRevision":revision},
+    {"total":17000, "payerParticipantId":other_id, "expectedHeadcount":4,
+     "drinks":[{"name":"맥주", "unitPrice":2000, "quantity":2}], "expectedInputRevision":revision},
+]
+start = Barrier(2)
+def competing_save(body):
+    start.wait(timeout=5)
+    return call("PUT", round_path, host, body, (200,409), client="APP")[0]
+with ThreadPoolExecutor(max_workers=2) as pool:
+    futures = [pool.submit(competing_save, body) for body in variants]
+    outcomes = [future.result(timeout=20) for future in futures]
+winners = [index for index, outcome in enumerate(outcomes) if outcome.get("id") == round_id]
+check(len(winners) == 1 and sum(outcome.get("code") == "SETTLEMENT_INPUT_CHANGED" for outcome in outcomes) == 1,
+    "같은 버전 동시 PUT 두 건은200 한 건과409 한 건으로 끝남")
+winner = variants[winners[0]]
+check(sql(f"SELECT total_amount,payer_id,expected_headcount FROM rounds WHERE id={round_id}") ==
+    f"{winner['total']}\t{winner['payerParticipantId']}\t{winner['expectedHeadcount']}",
+    "경합 승자의 금액·결제자·예상인원을 하나의 입력으로 보존")
+drink = winner["drinks"][0]
+check(sql(f"SELECT name,unit_price,bottle_count FROM drink_items WHERE round_id={round_id}") ==
+    f"{drink['name']}\t{drink['unitPrice']}\t{drink['quantity']}", "경합 패자가 승자의 술 항목을 삭제하거나 덮어쓰지 않음")
+check(int(sql(f"SELECT input_revision FROM settlement_units WHERE id={settlement_unit_id}")) == revision + 1 and
+    int(sql(f"SELECT COUNT(*) FROM timeline_entries WHERE gathering_id={gathering_id}")) == events + 1,
+    "경합 실패는 입력 버전과 차수 저장 이력을 추가하지 않음")
+for value in (-1, 1.5, "1", True, 9223372036854775808):
+    call("PUT", round_path, host, {**round_body, "expectedInputRevision":value}, 400, client="APP")
+check(int(sql(f"SELECT input_revision FROM settlement_units WHERE id={settlement_unit_id}")) == revision + 1,
+    "음수·소수·문자·불리언·범위초과 버전은 기존 입력을 그대로 보존")
+sql(f"UPDATE settlement_units SET status='SETTLING' WHERE id={settlement_unit_id}")
+closed, _ = call("PUT", round_path, host, {**round_body, "expectedInputRevision":revision + 1}, 409, client="APP")
+check(closed["code"] == "SETTLEMENT_UNIT_NOT_OPEN", "버전이 맞아도 확정된 단위의 차수는 수정할 수 없음")
+sql(f"UPDATE settlement_units SET status='OPEN' WHERE id={settlement_unit_id}")
 print(f"Receipt bridge verification: {checks} checks passed", flush=True)

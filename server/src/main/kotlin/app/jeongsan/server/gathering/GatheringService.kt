@@ -122,7 +122,10 @@ class GatheringService(private val db: GatheringStore, private val mapper: Objec
         refreshCalculationError(gid,id)
     }
     fun saveRound(gid: Long,id: Long,uid: Long,rid: Long?,request: RoundRequest): Map<String,Any?> {
-        val u=authorize(gid,id,uid);SettlementWorkflow.member(u,request.payerParticipantId)
+        val u=authorize(gid,id,uid)
+        // 조회와 PUT 사이 다른 기기에서 바뀐 입력을 덮어쓰지 않도록 단위 잠금 안에서 비교한다.
+        SettlementWorkflow.expectedRevision(u,request.expectedInputRevision)
+        SettlementWorkflow.member(u,request.payerParticipantId)
         // 비회원 계좌·수취 권한은 후속이다. 응답 참여만 가능한 사람을 수취인으로 고정하지 않는다.
         if(db.rows("SELECT participant_id FROM guest_participations WHERE gathering_id=:g AND participant_id=:p",
                 "g" to gid,"p" to request.payerParticipantId).isNotEmpty()) fail("PAYER_LOGIN_REQUIRED")
