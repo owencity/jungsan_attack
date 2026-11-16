@@ -28,6 +28,11 @@ public final class SettlementWorkflow {
         if (unit.hostId()!=person.id()) throw error("NOT_SETTLEMENT_UNIT_HOST",HttpStatus.FORBIDDEN);
     }
     public static void open(UnitInput unit) { if (!unit.state().equals("OPEN")) throw error("SETTLEMENT_UNIT_NOT_OPEN",HttpStatus.CONFLICT); }
+    public static void expectedRevision(UnitInput unit, Long expected) {
+        if (expected == null) return;
+        if (expected < 0) throw error("MALFORMED_REQUEST", HttpStatus.BAD_REQUEST);
+        if (unit.revision() != expected) throw error("SETTLEMENT_INPUT_CHANGED", HttpStatus.CONFLICT);
+    }
     public static void member(UnitInput unit, long id) {
         if (!unit.participantIds().contains(id)) throw error("NOT_SETTLEMENT_UNIT_MEMBER",HttpStatus.FORBIDDEN);
     }

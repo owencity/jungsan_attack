@@ -8,8 +8,10 @@ if docker inspect "$container" >/dev/null 2>&1; then
   exit 1
 fi
 server_pid=''
+ocr_pid=''
 cleanup() {
   [ -z "$server_pid" ] || kill "$server_pid" 2>/dev/null || true
+  [ -z "$ocr_pid" ] || kill "$ocr_pid" 2>/dev/null || true
   if [ "$(docker inspect --format '{{index .Config.Labels "jeongsan.ci"}}' "$container" 2>/dev/null)" = "$GITHUB_RUN_ID" ]; then
     docker rm -f "$container" >/dev/null
   fi
@@ -46,6 +48,15 @@ if [ -n "${BOOT3_BASELINE_JAR:-}" ]; then
   server_pid=''
 fi
 
+RECEIPT_OCR_SERVICE_KEY=ci-only-receipt-service-key-32-characters \
+  python3 scripts/receipt-bridge-stub.py > server/build/receipt-stub.log 2>&1 &
+ocr_pid=$!
+for attempt in $(seq 1 30); do
+  if curl -fsS http://127.0.0.1:18082/calls >/dev/null 2>&1; then break; fi
+  kill -0 "$ocr_pid" 2>/dev/null || { echo 'OCR 대역 시작 실패' >&2; exit 1; }
+  sleep 1
+done
+env RECEIPT_OCR_BASE_URL=http://127.0.0.1:18082 RECEIPT_OCR_SERVICE_KEY=ci-only-receipt-service-key-32-characters \
 java -Duser.timezone=Asia/Seoul -jar server/build/libs/server.jar --server.port=18081 \
   '--spring.datasource.url=jdbc:mysql://127.0.0.1:13306/jeongsan_auth_test?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true' \
   --spring.datasource.password=local-v4-test > server/build/release-http.log 2>&1 &
@@ -64,6 +75,7 @@ python3 scripts/verify-ugc-safety.py
 python3 scripts/verify-auth-release.py
 python3 scripts/verify-guest-participation.py
 python3 scripts/verify-attendance-spoons.py
+python3 scripts/verify-receipt-bridge.py
 ./gradlew :server:authDatabaseProbe --no-daemon
 python3 scripts/verify-deploy.py
 
@@ -92,3 +104,4 @@ done
 [ "$ready" = true ] || { echo 'Apple 미설정 운영 프로필 기동 실패' >&2; tail -n 45 server/build/release-prod-http.log; exit 1; }
 python3 scripts/verify-provider-availability.py
 python3 scripts/verify-apple-callback-cors.py
+python3 scripts/verify-receipt-bridge.py disabled

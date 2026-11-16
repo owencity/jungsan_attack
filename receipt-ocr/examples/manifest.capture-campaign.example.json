@@ -1,0 +1,255 @@
+[
+  {
+    "id": "R",
+    "image": "ramen.jpg",
+    "family": "ramen-2747",
+    "cohort": "development-regression",
+    "total": 18500,
+    "drinks": [
+      {
+        "name": "카스 (세부형 미상)",
+        "category": "BEER",
+        "unit": "UNKNOWN",
+        "servingType": "DRAFT",
+        "unitPrice": null,
+        "quantity": 1,
+        "lineAmount": 2000,
+        "volumeMl": 300,
+        "bottleCount": 0
+      }
+    ],
+    "sha256": "c260098cfa4e8b9af5d364e3228952a6c7425c48b15db0e86e266c36bce87d8a",
+    "source": "https://geniusjw.com/2747"
+  },
+  {
+    "id": "T",
+    "image": "newtown.jpg",
+    "family": "newtown-2744",
+    "cohort": "development-regression",
+    "total": 81800,
+    "drinks": [
+      {
+        "name": "청도맥주 (세부형 미상)",
+        "category": "BEER",
+        "unit": "UNKNOWN",
+        "servingType": "UNKNOWN",
+        "unitPrice": 7000,
+        "quantity": 1,
+        "lineAmount": 7000,
+        "volumeMl": null,
+        "bottleCount": null
+      }
+    ],
+    "sha256": "115bddfc8297057a393914df5822b628e490b4b0357246169add04b1bb8c3782",
+    "source": "https://geniusjw.com/2744"
+  },
+  {
+    "id": "C1",
+    "image": "candidate-2000-2.jpg",
+    "family": "panchiya-2000",
+    "cohort": "new-receipt",
+    "total": 26500,
+    "drinks": [],
+    "sha256": "9e12abeea6d0802cf6076421ded623d4c5e450e07c638a18ac89e146aa87e1e0",
+    "source": "https://geniusjw.com/2000"
+  },
+  {
+    "id": "C2",
+    "image": "candidate-2123-2.jpg",
+    "family": "paju-2123",
+    "cohort": "new-receipt",
+    "total": 13400,
+    "drinks": [],
+    "sha256": "ecabe631298167120abc5c9b4b101e7817b3fc9b9233d35be60977606dfc823e",
+    "source": "https://geniusjw.com/2123"
+  },
+  {
+    "id": "C3",
+    "image": "candidate-1816-2.jpg",
+    "family": "garage-1816",
+    "cohort": "new-receipt",
+    "total": 52000,
+    "drinks": [],
+    "sha256": "90e6d98036890c9122696da248f974ce061d8d99c02199ccacf5ce73d9d6c85e",
+    "source": "https://geniusjw.com/1816"
+  },
+  {
+    "id": "G1",
+    "image": "grocery-cj.jpg",
+    "family": "grocery-cj-223073896995",
+    "cohort": "new-challenge",
+    "total": 196580,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "unitPrice": 1060,
+        "quantity": 20,
+        "lineAmount": 21200
+      },
+      {
+        "category": "BEER",
+        "unitPrice": 740,
+        "quantity": 24,
+        "lineAmount": 17760
+      }
+    ],
+    "sha256": "cffdb9ef04c1791bccba9045e59846f679fa2d199235b5f7d52fbb821b9145ca",
+    "source": "https://blog.naver.com/angel830012/223073896995"
+  },
+  {
+    "id": "G2",
+    "image": "grocery-haesung.jpg",
+    "family": "grocery-haesung-223023693755",
+    "cohort": "new-challenge",
+    "total": 297230,
+    "drinks": [
+      {
+        "category": "BEER",
+        "unitPrice": 1260,
+        "quantity": 24,
+        "lineAmount": 30240
+      },
+      {
+        "category": "SOJU",
+        "unitPrice": 980,
+        "quantity": 40,
+        "lineAmount": 39200
+      },
+      {
+        "category": "WHISKY_SPIRIT",
+        "unitPrice": 37790,
+        "quantity": 1,
+        "lineAmount": 37790
+      },
+      {
+        "category": "WHISKY_SPIRIT",
+        "unitPrice": 79700,
+        "quantity": 2,
+        "lineAmount": 159400
+      }
+    ],
+    "sha256": "933268855e799c74a06ed9342855078382744f49c6d3e03556aa17524155ade1",
+    "source": "https://blog.naver.com/totanns/223023693755"
+  },
+  {
+    "id": "W",
+    "image": "wholesale-bongjeong.jpg",
+    "family": "wholesale-223260363732",
+    "cohort": "new-control",
+    "noInventedPrices": true,
+    "sha256": "b0d26e2ecf0cec591701f90bad1e28d6bbfadaa9ebe4d2159c8bc0319d2a5f20",
+    "source": "https://blog.naver.com/huns86/223260363732"
+  },
+  {
+    "id": "M1",
+    "image": "candidate-1816-1.jpg",
+    "family": "garage-1816",
+    "cohort": "new-control",
+    "total": null,
+    "drinks": [],
+    "sha256": "71de281f1993cf9784f9d9283101fc461d9887a8ac7a3392bce27f277bad2cd8",
+    "source": "https://geniusjw.com/1816"
+  },
+  {
+    "id": "M2",
+    "image": "candidate-1993-1.jpg",
+    "family": "peace-1993",
+    "cohort": "new-control",
+    "total": null,
+    "drinks": [],
+    "sha256": "4fb5c83ba1e4571cb1eba72af3f008d7bb780a89798cb7a41e8629f77c91f8b1",
+    "source": "https://geniusjw.com/1993"
+  },
+  {
+    "id": "B",
+    "image": "butter-lamb.jpg",
+    "family": "butter-2364",
+    "cohort": "known-failure",
+    "total": 96000,
+    "drinks": [],
+    "sha256": "65699d73f2ed8e91aef5b4718e1df10a9551300e0eafec97e0c9edcb4314d1ac",
+    "source": "https://geniusjw.com/2364"
+  },
+  {
+    "id": "P",
+    "image": "pub-bill.jpg",
+    "family": "pub-10896169",
+    "cohort": "known-failure",
+    "total": 162700,
+    "drinks": [
+      {
+        "category": "COCKTAIL_MIXED",
+        "unitPrice": 7000,
+        "quantity": 1,
+        "lineAmount": 7000
+      },
+      {
+        "category": "COCKTAIL_MIXED",
+        "unitPrice": 7000,
+        "quantity": 2,
+        "lineAmount": 14000
+      },
+      {
+        "category": "SOJU",
+        "unitPrice": 5000,
+        "quantity": 6,
+        "lineAmount": 30000
+      },
+      {
+        "category": "BEER",
+        "unitPrice": 5000,
+        "quantity": 7,
+        "lineAmount": 35000
+      },
+      {
+        "category": "COCKTAIL_MIXED",
+        "unitPrice": 7000,
+        "quantity": 1,
+        "lineAmount": 7000
+      }
+    ],
+    "sha256": "52fe85f5116f2975d36d3803851fa9a66fef4b061b5e0e1c41cad04f5f3a413b",
+    "source": "https://www.mk.co.kr/news/society/10896169"
+  },
+  {
+    "id": "J",
+    "image": "jeju.jpg",
+    "family": "jeju-268525",
+    "cohort": "development-control",
+    "total": 59000,
+    "drinks": [],
+    "sha256": "be6c7dd2f7bca02ad49bf2a0ba2a9ad77719406fe83763cb9c4fd7d819834d83",
+    "source": "https://www.newsje.com/news/articleView.html?idxno=268525"
+  },
+  {
+    "id": "N",
+    "image": "two-receipts.jpg",
+    "family": "newstapa-wfzOH",
+    "cohort": "development-control",
+    "total": null,
+    "drinks": [],
+    "warning": "MULTIPLE_RECEIPTS_SUSPECTED",
+    "sha256": "5174efb14651842a97f2cb61694565e37e7a45df2055f9c7eb25fd743fe201f4",
+    "source": "https://newstapa.org/article/wfzOH"
+  },
+  {
+    "id": "F1",
+    "image": "dried-fish.jpg",
+    "family": "food-2684",
+    "cohort": "development-control",
+    "total": null,
+    "drinks": [],
+    "sha256": "c74b1a8a198d5b7fc3a202b425dbb9e0b3037206a6cb7b0b27579295ecfb0b9c",
+    "source": "https://geniusjw.com/2684"
+  },
+  {
+    "id": "F2",
+    "image": "renge.jpg",
+    "family": "food-2617",
+    "cohort": "development-control",
+    "total": null,
+    "drinks": [],
+    "sha256": "d83552b1b03a65ff03c752c47ca40adc51f7f4e914725f84c5951831f658807b",
+    "source": "https://geniusjw.com/2617"
+  }
+]

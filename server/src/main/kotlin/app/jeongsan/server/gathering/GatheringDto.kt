@@ -13,7 +13,9 @@ data class GatheringEditRequest(@field:Size(min=1, max=20) val title: String? = 
 data class DrinkRequest(@field:Size(min=1,max=20) val name: String, @field:Min(1) val unitPrice: Long, @field:Min(1) val quantity: Int)
 data class RoundRequest(@field:Min(1) @field:Max(1_000_000_000_000) val total: Long, val payerParticipantId: Long,
     @field:Valid @field:Size(max=100) val drinks: List<DrinkRequest> = emptyList(),
-    @field:Min(2) @field:Max(50) val expectedHeadcount: Int? = null)
+    @field:Min(2) @field:Max(50) val expectedHeadcount: Int? = null,
+    @field:Min(0) @field:tools.jackson.databind.annotation.JsonDeserialize(using = InputRevisionDeserializer::class)
+    val expectedInputRevision: Long? = null)
 data class AnswerRequest(val roundId: Long, val type: String)
 data class ResponseRequest(@field:Size(max=1000) val answers: List<AnswerRequest>)
 data class GuestNameRequest(@field:Size(max=100) val displayName: String,

@@ -1,0 +1,514 @@
+{
+  "diagnosis": {
+    "status": "existing version only, no install or requirements changes",
+    "sources": [
+      "https://github.com/PaddlePaddle/PaddleOCR/issues/18162",
+      "https://github.com/PaddlePaddle/Paddle/issues/77340",
+      "https://www.paddleocr.ai/main/en/version3.x/inference_deployment/local_inference/inference_engine.html",
+      "https://www.paddleocr.ai/latest/en/version3.x/inference_deployment/others/benchmark.html"
+    ],
+    "baselineProfile": {
+      "totalSeconds": 11.015,
+      "TextDetRunnerPredictor.apply": 0.787147000002733,
+      "TextRecRunnerPredictor.apply": 10.22249460000603
+    },
+    "failedPublicOldIRProbe": {
+      "mode": "oldir",
+      "initializationSeconds": 2.102,
+      "status": "error",
+      "errorType": "NotImplementedError",
+      "errorSignature": "(Unimplemented) ConvertPirAttribute2RuntimeAttribute not support [pir::ArrayAttribute<pir::DoubleAttribute>]  (at ..\\paddle\\fluid\\framework\\new_executor\\instruction\\onednn\\onednn_instruction.cc:118)\n"
+    },
+    "globalMkldnnRequested": false,
+    "recognitionOnlyConfig": {
+      "batch_size": 6,
+      "engine": "paddle_static",
+      "engine_config": {
+        "paddle_static": {
+          "cpu_threads": 2,
+          "device_type": "cpu",
+          "run_mode": "mkldnn"
+        }
+      },
+      "model_dir": null,
+      "model_name": "korean_PP-OCRv5_mobile_rec",
+      "module_name": "text_recognition",
+      "score_thresh": 0.0
+    },
+    "oneDNNPrimitiveExecLines": 6984,
+    "initialHybridVerboseEnabled": true,
+    "initialHybridIsNotControlledSpeedComparison": true
+  },
+  "controlledComparison": {
+    "manifestSha256": "3010e666c55f09be1ea63ad3cdd7816c4fa897d069f95591717e11ff005f351b",
+    "selectedIds": [
+      "R",
+      "T",
+      "K345"
+    ],
+    "repeats": 2,
+    "timeoutSecondsPerConfiguration": 240,
+    "sourceHashes": {
+      "receipt_ocr\\__init__.py": "9e930ffa44f877dff59553bc7508df27a7484a66e067db34d29b2aafa91e5b05",
+      "receipt_ocr\\__main__.py": "45f08072867872ca1506bcea75c547ade1cc8e3b33dedffdebb0e56fd1136e1c",
+      "receipt_ocr\\api.py": "a651e1c943bd823811f45b1a750a760d4356a910198429c5f8823eb591a5cc69",
+      "receipt_ocr\\dictionary.py": "47d99636d11e782420aa86269f9ae842574c3a4baf339eafd5fa35facd6f5121",
+      "receipt_ocr\\evaluate.py": "c9c1906a9005e804f6caad0d8c5f62381e428e8a48ee5b5cf31719236367f991",
+      "receipt_ocr\\extract.py": "5736d1cc26ec18f37d14e8701532ad432b166bb49ffaabae8bdd96d579f80e61",
+      "receipt_ocr\\images.py": "88719902cf547e66e2299a0849bb26b5f54fa66cac043c6aa8fe9710e08d1755",
+      "receipt_ocr\\layout.py": "8993d246646a8d730b44de645503562ca8e106073e0af82e81209333f7e263a8",
+      "receipt_ocr\\model.py": "0598cd18c21b9472feb665a5b1428f2af25cd6c0444bb9af764b2ad1a783fd01",
+      "receipt_ocr\\numeric_regions.py": "7d10150f93492758f0f3dbc3766098a7e5c1bce32f16fd6eddda686ffef2b3c0",
+      "receipt_ocr\\ocr.py": "66e2ef84505747e8f9ef1844acd935bbfe6f6292aea1c89ca456284986d1529b",
+      "receipt_ocr\\product.py": "fb39efefa29f0102bd1289a3232a808ed0ed0d02a218a99dc02e53d679777e86",
+      "data\\drinks.md": "1aba4182a270d3e7809a849c45b4f381908e33c3c82d709e9819b43c22cd6fb5",
+      "tools\\validate_capture_campaign.py": "018e6dd3a085dca274b41538035e6242948ee97e92b001b16412e38ec2fd307c",
+      "tools\\benchmark_cpu.py": "751888a68ce46a373dd00c65487eff9ba2b10085db6ef4cc192c5a7330057b28"
+    },
+    "environment": {
+      "python": "3.12.6",
+      "platform": "Windows",
+      "machine": "AMD64",
+      "paddleocr": "3.7.0",
+      "paddlex": "3.7.2",
+      "paddlepaddle": "3.3.1"
+    },
+    "configurations": [
+      {
+        "configuration": "det1280",
+        "options": {
+          "cpu_threads": 2,
+          "enable_mkldnn": false,
+          "detection_max_edge": 1280,
+          "recognition_mkldnn": false
+        },
+        "manifestSha256": "3010e666c55f09be1ea63ad3cdd7816c4fa897d069f95591717e11ff005f351b",
+        "sourceHashes": {
+          "receipt_ocr\\__init__.py": "9e930ffa44f877dff59553bc7508df27a7484a66e067db34d29b2aafa91e5b05",
+          "receipt_ocr\\__main__.py": "45f08072867872ca1506bcea75c547ade1cc8e3b33dedffdebb0e56fd1136e1c",
+          "receipt_ocr\\api.py": "a651e1c943bd823811f45b1a750a760d4356a910198429c5f8823eb591a5cc69",
+          "receipt_ocr\\dictionary.py": "47d99636d11e782420aa86269f9ae842574c3a4baf339eafd5fa35facd6f5121",
+          "receipt_ocr\\evaluate.py": "c9c1906a9005e804f6caad0d8c5f62381e428e8a48ee5b5cf31719236367f991",
+          "receipt_ocr\\extract.py": "5736d1cc26ec18f37d14e8701532ad432b166bb49ffaabae8bdd96d579f80e61",
+          "receipt_ocr\\images.py": "88719902cf547e66e2299a0849bb26b5f54fa66cac043c6aa8fe9710e08d1755",
+          "receipt_ocr\\layout.py": "8993d246646a8d730b44de645503562ca8e106073e0af82e81209333f7e263a8",
+          "receipt_ocr\\model.py": "0598cd18c21b9472feb665a5b1428f2af25cd6c0444bb9af764b2ad1a783fd01",
+          "receipt_ocr\\numeric_regions.py": "7d10150f93492758f0f3dbc3766098a7e5c1bce32f16fd6eddda686ffef2b3c0",
+          "receipt_ocr\\ocr.py": "66e2ef84505747e8f9ef1844acd935bbfe6f6292aea1c89ca456284986d1529b",
+          "receipt_ocr\\product.py": "fb39efefa29f0102bd1289a3232a808ed0ed0d02a218a99dc02e53d679777e86",
+          "data\\drinks.md": "1aba4182a270d3e7809a849c45b4f381908e33c3c82d709e9819b43c22cd6fb5",
+          "tools\\validate_capture_campaign.py": "018e6dd3a085dca274b41538035e6242948ee97e92b001b16412e38ec2fd307c",
+          "tools\\benchmark_cpu.py": "751888a68ce46a373dd00c65487eff9ba2b10085db6ef4cc192c5a7330057b28"
+        },
+        "observations": [
+          {
+            "sample": "R",
+            "sha256": "c260098cfa4e8b9af5d364e3228952a6c7425c48b15db0e86e266c36bce87d8a",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.name": true,
+              "drink0.category": true,
+              "drink0.unit": true,
+              "drink0.servingType": true,
+              "drink0.unitPrice": true,
+              "drink0.quantity": true,
+              "drink0.lineAmount": true,
+              "drink0.volumeMl": true,
+              "drink0.bottleCount": true
+            },
+            "baseSeconds": 14.67,
+            "numericSeconds": 0.896,
+            "numericCalls": 6,
+            "seconds": 15.859,
+            "repeat": 1,
+            "firstPrediction": true,
+            "tokenSha256": "c5f7a4779036c8b73543217f7b29729588ea571b70c80fe7657d7d2ee29d963f",
+            "tokenCount": 52
+          },
+          {
+            "sample": "T",
+            "sha256": "115bddfc8297057a393914df5822b628e490b4b0357246169add04b1bb8c3782",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.name": true,
+              "drink0.category": true,
+              "drink0.unit": true,
+              "drink0.servingType": true,
+              "drink0.unitPrice": true,
+              "drink0.quantity": true,
+              "drink0.lineAmount": true,
+              "drink0.volumeMl": true,
+              "drink0.bottleCount": true
+            },
+            "baseSeconds": 10.379,
+            "numericSeconds": 0,
+            "numericCalls": 0,
+            "seconds": 10.598,
+            "repeat": 1,
+            "firstPrediction": false,
+            "tokenSha256": "8306275d1615f54b42f3b6d61b118bfc99437f6617d49940476fd0bf153427ff",
+            "tokenCount": 34
+          },
+          {
+            "sample": "K345",
+            "sha256": "2a68c66e85f0f11ce8fc251e1da6d3f1d91aa0dbfb96e6b56bc9c5c80c0b0934",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.category": true,
+              "drink0.quantity": true,
+              "drink0.unitPrice": true,
+              "drink0.lineAmount": true
+            },
+            "baseSeconds": 14.18,
+            "numericSeconds": 0,
+            "numericCalls": 0,
+            "seconds": 14.19,
+            "repeat": 1,
+            "firstPrediction": false,
+            "tokenSha256": "801fd4c197f6797b5ef67c7672b644e527d8ab835cab9942ebb3cd6e91f13140",
+            "tokenCount": 63
+          },
+          {
+            "sample": "R",
+            "sha256": "c260098cfa4e8b9af5d364e3228952a6c7425c48b15db0e86e266c36bce87d8a",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.name": true,
+              "drink0.category": true,
+              "drink0.unit": true,
+              "drink0.servingType": true,
+              "drink0.unitPrice": true,
+              "drink0.quantity": true,
+              "drink0.lineAmount": true,
+              "drink0.volumeMl": true,
+              "drink0.bottleCount": true
+            },
+            "baseSeconds": 15.046,
+            "numericSeconds": 1.198,
+            "numericCalls": 6,
+            "seconds": 16.554,
+            "repeat": 2,
+            "firstPrediction": false,
+            "tokenSha256": "c5f7a4779036c8b73543217f7b29729588ea571b70c80fe7657d7d2ee29d963f",
+            "tokenCount": 52
+          },
+          {
+            "sample": "T",
+            "sha256": "115bddfc8297057a393914df5822b628e490b4b0357246169add04b1bb8c3782",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.name": true,
+              "drink0.category": true,
+              "drink0.unit": true,
+              "drink0.servingType": true,
+              "drink0.unitPrice": true,
+              "drink0.quantity": true,
+              "drink0.lineAmount": true,
+              "drink0.volumeMl": true,
+              "drink0.bottleCount": true
+            },
+            "baseSeconds": 10.459,
+            "numericSeconds": 0,
+            "numericCalls": 0,
+            "seconds": 10.712,
+            "repeat": 2,
+            "firstPrediction": false,
+            "tokenSha256": "8306275d1615f54b42f3b6d61b118bfc99437f6617d49940476fd0bf153427ff",
+            "tokenCount": 34
+          },
+          {
+            "sample": "K345",
+            "sha256": "2a68c66e85f0f11ce8fc251e1da6d3f1d91aa0dbfb96e6b56bc9c5c80c0b0934",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.category": true,
+              "drink0.quantity": true,
+              "drink0.unitPrice": true,
+              "drink0.lineAmount": true
+            },
+            "baseSeconds": 13.611,
+            "numericSeconds": 0,
+            "numericCalls": 0,
+            "seconds": 13.623,
+            "repeat": 2,
+            "firstPrediction": false,
+            "tokenSha256": "801fd4c197f6797b5ef67c7672b644e527d8ab835cab9942ebb3cd6e91f13140",
+            "tokenCount": 63
+          }
+        ],
+        "modelStartupSeconds": 5.664,
+        "status": "completed",
+        "sourceHashesAfter": {
+          "receipt_ocr\\__init__.py": "9e930ffa44f877dff59553bc7508df27a7484a66e067db34d29b2aafa91e5b05",
+          "receipt_ocr\\__main__.py": "45f08072867872ca1506bcea75c547ade1cc8e3b33dedffdebb0e56fd1136e1c",
+          "receipt_ocr\\api.py": "a651e1c943bd823811f45b1a750a760d4356a910198429c5f8823eb591a5cc69",
+          "receipt_ocr\\dictionary.py": "47d99636d11e782420aa86269f9ae842574c3a4baf339eafd5fa35facd6f5121",
+          "receipt_ocr\\evaluate.py": "c9c1906a9005e804f6caad0d8c5f62381e428e8a48ee5b5cf31719236367f991",
+          "receipt_ocr\\extract.py": "5736d1cc26ec18f37d14e8701532ad432b166bb49ffaabae8bdd96d579f80e61",
+          "receipt_ocr\\images.py": "88719902cf547e66e2299a0849bb26b5f54fa66cac043c6aa8fe9710e08d1755",
+          "receipt_ocr\\layout.py": "8993d246646a8d730b44de645503562ca8e106073e0af82e81209333f7e263a8",
+          "receipt_ocr\\model.py": "0598cd18c21b9472feb665a5b1428f2af25cd6c0444bb9af764b2ad1a783fd01",
+          "receipt_ocr\\numeric_regions.py": "7d10150f93492758f0f3dbc3766098a7e5c1bce32f16fd6eddda686ffef2b3c0",
+          "receipt_ocr\\ocr.py": "66e2ef84505747e8f9ef1844acd935bbfe6f6292aea1c89ca456284986d1529b",
+          "receipt_ocr\\product.py": "fb39efefa29f0102bd1289a3232a808ed0ed0d02a218a99dc02e53d679777e86",
+          "data\\drinks.md": "1aba4182a270d3e7809a849c45b4f381908e33c3c82d709e9819b43c22cd6fb5",
+          "tools\\validate_capture_campaign.py": "018e6dd3a085dca274b41538035e6242948ee97e92b001b16412e38ec2fd307c",
+          "tools\\benchmark_cpu.py": "751888a68ce46a373dd00c65487eff9ba2b10085db6ef4cc192c5a7330057b28"
+        },
+        "peakRssMiB": 885.461,
+        "workerReturnCode": 0,
+        "summary": {
+          "requests": 6,
+          "executionFailures": 0,
+          "allAnnotatedChecksMatch": 6,
+          "totalExactCount": 6,
+          "allDrinkSelectedFieldsExactCount": 6,
+          "medianSeconds": 13.9065,
+          "maxSeconds": 16.554,
+          "repeatedMedianSeconds": 13.623
+        }
+      },
+      {
+        "configuration": "hybrid",
+        "options": {
+          "cpu_threads": 2,
+          "enable_mkldnn": false,
+          "detection_max_edge": 1280,
+          "recognition_mkldnn": true
+        },
+        "manifestSha256": "3010e666c55f09be1ea63ad3cdd7816c4fa897d069f95591717e11ff005f351b",
+        "sourceHashes": {
+          "receipt_ocr\\__init__.py": "9e930ffa44f877dff59553bc7508df27a7484a66e067db34d29b2aafa91e5b05",
+          "receipt_ocr\\__main__.py": "45f08072867872ca1506bcea75c547ade1cc8e3b33dedffdebb0e56fd1136e1c",
+          "receipt_ocr\\api.py": "a651e1c943bd823811f45b1a750a760d4356a910198429c5f8823eb591a5cc69",
+          "receipt_ocr\\dictionary.py": "47d99636d11e782420aa86269f9ae842574c3a4baf339eafd5fa35facd6f5121",
+          "receipt_ocr\\evaluate.py": "c9c1906a9005e804f6caad0d8c5f62381e428e8a48ee5b5cf31719236367f991",
+          "receipt_ocr\\extract.py": "5736d1cc26ec18f37d14e8701532ad432b166bb49ffaabae8bdd96d579f80e61",
+          "receipt_ocr\\images.py": "88719902cf547e66e2299a0849bb26b5f54fa66cac043c6aa8fe9710e08d1755",
+          "receipt_ocr\\layout.py": "8993d246646a8d730b44de645503562ca8e106073e0af82e81209333f7e263a8",
+          "receipt_ocr\\model.py": "0598cd18c21b9472feb665a5b1428f2af25cd6c0444bb9af764b2ad1a783fd01",
+          "receipt_ocr\\numeric_regions.py": "7d10150f93492758f0f3dbc3766098a7e5c1bce32f16fd6eddda686ffef2b3c0",
+          "receipt_ocr\\ocr.py": "66e2ef84505747e8f9ef1844acd935bbfe6f6292aea1c89ca456284986d1529b",
+          "receipt_ocr\\product.py": "fb39efefa29f0102bd1289a3232a808ed0ed0d02a218a99dc02e53d679777e86",
+          "data\\drinks.md": "1aba4182a270d3e7809a849c45b4f381908e33c3c82d709e9819b43c22cd6fb5",
+          "tools\\validate_capture_campaign.py": "018e6dd3a085dca274b41538035e6242948ee97e92b001b16412e38ec2fd307c",
+          "tools\\benchmark_cpu.py": "751888a68ce46a373dd00c65487eff9ba2b10085db6ef4cc192c5a7330057b28"
+        },
+        "observations": [
+          {
+            "sample": "R",
+            "sha256": "c260098cfa4e8b9af5d364e3228952a6c7425c48b15db0e86e266c36bce87d8a",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.name": true,
+              "drink0.category": true,
+              "drink0.unit": true,
+              "drink0.servingType": true,
+              "drink0.unitPrice": true,
+              "drink0.quantity": true,
+              "drink0.lineAmount": true,
+              "drink0.volumeMl": true,
+              "drink0.bottleCount": true
+            },
+            "baseSeconds": 4.389,
+            "numericSeconds": 0.369,
+            "numericCalls": 6,
+            "seconds": 5.112,
+            "repeat": 1,
+            "firstPrediction": true,
+            "tokenSha256": "c78e209d03b1d654fcd91134346d2eec860e494f56360ad1bac98beb0d8a9f3a",
+            "tokenCount": 52
+          },
+          {
+            "sample": "T",
+            "sha256": "115bddfc8297057a393914df5822b628e490b4b0357246169add04b1bb8c3782",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.name": true,
+              "drink0.category": true,
+              "drink0.unit": true,
+              "drink0.servingType": true,
+              "drink0.unitPrice": true,
+              "drink0.quantity": true,
+              "drink0.lineAmount": true,
+              "drink0.volumeMl": true,
+              "drink0.bottleCount": true
+            },
+            "baseSeconds": 4.256,
+            "numericSeconds": 0,
+            "numericCalls": 0,
+            "seconds": 4.564,
+            "repeat": 1,
+            "firstPrediction": false,
+            "tokenSha256": "46942fb8bc1dfe6d8e9c3821d8579e1f704eae7bdd9f7b38e635b80f413c3106",
+            "tokenCount": 34
+          },
+          {
+            "sample": "K345",
+            "sha256": "2a68c66e85f0f11ce8fc251e1da6d3f1d91aa0dbfb96e6b56bc9c5c80c0b0934",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.category": true,
+              "drink0.quantity": true,
+              "drink0.unitPrice": true,
+              "drink0.lineAmount": true
+            },
+            "baseSeconds": 3.913,
+            "numericSeconds": 0,
+            "numericCalls": 0,
+            "seconds": 3.93,
+            "repeat": 1,
+            "firstPrediction": false,
+            "tokenSha256": "6fb36af57109873f4c9c6539e07bf110b95cdf8536a11652baa885379dc95e5b",
+            "tokenCount": 63
+          },
+          {
+            "sample": "R",
+            "sha256": "c260098cfa4e8b9af5d364e3228952a6c7425c48b15db0e86e266c36bce87d8a",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.name": true,
+              "drink0.category": true,
+              "drink0.unit": true,
+              "drink0.servingType": true,
+              "drink0.unitPrice": true,
+              "drink0.quantity": true,
+              "drink0.lineAmount": true,
+              "drink0.volumeMl": true,
+              "drink0.bottleCount": true
+            },
+            "baseSeconds": 4.069,
+            "numericSeconds": 0.256,
+            "numericCalls": 6,
+            "seconds": 4.688,
+            "repeat": 2,
+            "firstPrediction": false,
+            "tokenSha256": "c78e209d03b1d654fcd91134346d2eec860e494f56360ad1bac98beb0d8a9f3a",
+            "tokenCount": 52
+          },
+          {
+            "sample": "T",
+            "sha256": "115bddfc8297057a393914df5822b628e490b4b0357246169add04b1bb8c3782",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.name": true,
+              "drink0.category": true,
+              "drink0.unit": true,
+              "drink0.servingType": true,
+              "drink0.unitPrice": true,
+              "drink0.quantity": true,
+              "drink0.lineAmount": true,
+              "drink0.volumeMl": true,
+              "drink0.bottleCount": true
+            },
+            "baseSeconds": 4.393,
+            "numericSeconds": 0,
+            "numericCalls": 0,
+            "seconds": 4.702,
+            "repeat": 2,
+            "firstPrediction": false,
+            "tokenSha256": "46942fb8bc1dfe6d8e9c3821d8579e1f704eae7bdd9f7b38e635b80f413c3106",
+            "tokenCount": 34
+          },
+          {
+            "sample": "K345",
+            "sha256": "2a68c66e85f0f11ce8fc251e1da6d3f1d91aa0dbfb96e6b56bc9c5c80c0b0934",
+            "checks": {
+              "confirmationRequired": true,
+              "total": true,
+              "drinkCount": true,
+              "drink0.category": true,
+              "drink0.quantity": true,
+              "drink0.unitPrice": true,
+              "drink0.lineAmount": true
+            },
+            "baseSeconds": 3.643,
+            "numericSeconds": 0,
+            "numericCalls": 0,
+            "seconds": 3.66,
+            "repeat": 2,
+            "firstPrediction": false,
+            "tokenSha256": "6fb36af57109873f4c9c6539e07bf110b95cdf8536a11652baa885379dc95e5b",
+            "tokenCount": 63
+          }
+        ],
+        "modelStartupSeconds": 6.688,
+        "status": "completed",
+        "sourceHashesAfter": {
+          "receipt_ocr\\__init__.py": "9e930ffa44f877dff59553bc7508df27a7484a66e067db34d29b2aafa91e5b05",
+          "receipt_ocr\\__main__.py": "45f08072867872ca1506bcea75c547ade1cc8e3b33dedffdebb0e56fd1136e1c",
+          "receipt_ocr\\api.py": "a651e1c943bd823811f45b1a750a760d4356a910198429c5f8823eb591a5cc69",
+          "receipt_ocr\\dictionary.py": "47d99636d11e782420aa86269f9ae842574c3a4baf339eafd5fa35facd6f5121",
+          "receipt_ocr\\evaluate.py": "c9c1906a9005e804f6caad0d8c5f62381e428e8a48ee5b5cf31719236367f991",
+          "receipt_ocr\\extract.py": "5736d1cc26ec18f37d14e8701532ad432b166bb49ffaabae8bdd96d579f80e61",
+          "receipt_ocr\\images.py": "88719902cf547e66e2299a0849bb26b5f54fa66cac043c6aa8fe9710e08d1755",
+          "receipt_ocr\\layout.py": "8993d246646a8d730b44de645503562ca8e106073e0af82e81209333f7e263a8",
+          "receipt_ocr\\model.py": "0598cd18c21b9472feb665a5b1428f2af25cd6c0444bb9af764b2ad1a783fd01",
+          "receipt_ocr\\numeric_regions.py": "7d10150f93492758f0f3dbc3766098a7e5c1bce32f16fd6eddda686ffef2b3c0",
+          "receipt_ocr\\ocr.py": "66e2ef84505747e8f9ef1844acd935bbfe6f6292aea1c89ca456284986d1529b",
+          "receipt_ocr\\product.py": "fb39efefa29f0102bd1289a3232a808ed0ed0d02a218a99dc02e53d679777e86",
+          "data\\drinks.md": "1aba4182a270d3e7809a849c45b4f381908e33c3c82d709e9819b43c22cd6fb5",
+          "tools\\validate_capture_campaign.py": "018e6dd3a085dca274b41538035e6242948ee97e92b001b16412e38ec2fd307c",
+          "tools\\benchmark_cpu.py": "751888a68ce46a373dd00c65487eff9ba2b10085db6ef4cc192c5a7330057b28"
+        },
+        "peakRssMiB": 1069.918,
+        "workerReturnCode": 0,
+        "summary": {
+          "requests": 6,
+          "executionFailures": 0,
+          "allAnnotatedChecksMatch": 6,
+          "totalExactCount": 6,
+          "allDrinkSelectedFieldsExactCount": 6,
+          "medianSeconds": 4.6259999999999994,
+          "maxSeconds": 5.112,
+          "repeatedMedianSeconds": 4.688
+        }
+      }
+    ],
+    "limitations": [
+      "partial annotations; not full field accuracy",
+      "serial local CPU benchmark; not concurrent production latency",
+      "first prediction and model initialization are separate"
+    ],
+    "systemAwakeGuard": {
+      "requested": true,
+      "available": true,
+      "restored": true,
+      "displayRequired": false
+    }
+  },
+  "excludedComparisons": [
+    {
+      "report": "cpu-hybrid-round2-aborted.json",
+      "excluded": true,
+      "reason": "stopped to fix numeric name qualifier; not used for speed claims"
+    },
+    {
+      "report": "cpu-hybrid-round2-final.json",
+      "excluded": true,
+      "reason": "baseline request took 212.229 seconds; cause unconfirmed; comparison not used for speed claims"
+    }
+  ]
+}

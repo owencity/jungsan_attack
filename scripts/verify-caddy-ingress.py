@@ -106,6 +106,9 @@ def main():
             assert json.loads(body) == {'method': 'POST', 'path': '/api/v1/auth/apple/callback?state=DUMMY_STATE', 'body': 'code=DUMMY_CODE'}
             assert headers['Access-Control-Allow-Origin'] == 'https://jungsan.devkdk.com'
             assert 'HttpOnly; Secure; SameSite=Lax' in headers['Set-Cookie']
+            for path in ('/api/v1/receipts/extract', '/api/v1/gatherings/1/settlement-units/2/receipts/extract'):
+                status, _, body = request('POST', path, 'synthetic-image')
+                assert status == 401 and json.loads(body)['path'] == path
             before_denied = len(ApplicationHandler.requests)
             for path in ('/actuator/prometheus', '/actuator/metrics', '/actuator/health/extra', '/api', '/admin'):
                 assert request('GET', path)[0] == 404

@@ -1,0 +1,10 @@
+.venv/
+.models/
+.samples/
+reports/
+__pycache__/
+*.pyc
+.env
+*.egg-info/
+!receipt_ocr/__init__.py
+!receipt_ocr/__main__.py

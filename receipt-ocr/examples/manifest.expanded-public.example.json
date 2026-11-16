@@ -1,0 +1,16 @@
+[
+  {
+    "image": "ramen.jpg", "total": 18500,
+    "drinks": [{
+      "name": "카스 (세부형 미상)", "category": "BEER", "unit": "UNKNOWN", "servingType": "DRAFT",
+      "unitPrice": null, "quantity": 1, "lineAmount": 2000, "volumeMl": 300, "bottleCount": 0
+    }]
+  },
+  {
+    "image": "newtown.jpg", "total": 81800,
+    "drinks": [{
+      "name": "청도맥주 (세부형 미상)", "category": "BEER", "unit": "UNKNOWN", "servingType": "UNKNOWN",
+      "unitPrice": 7000, "quantity": 1, "lineAmount": 7000, "volumeMl": null, "bottleCount": null
+    }]
+  }
+]

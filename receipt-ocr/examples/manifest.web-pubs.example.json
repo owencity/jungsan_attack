@@ -1,0 +1,267 @@
+[
+  {
+    "id": "HWARO",
+    "image": "public/hwaro-cheongra.png",
+    "family": "hwaro-cheongra",
+    "source": "https://www.diningcode.com/profile.php?rid=xpJZ2hHK8cNY",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "543f4ed7447980703fecc9b899d4876e3b9af93010954947d481cf8e80984e8c",
+    "total": 99520,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 1,
+        "unitPrice": null,
+        "lineAmount": 5000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "C48674",
+    "image": "cslee33/11748674.jpg",
+    "family": "yeojaman-agujjim",
+    "source": "https://cslee33.tistory.com/11748674",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "6112f8dbb32f1ae5cff0adf540f64c3607b6719703fa6afcb7dac0841eb95c28",
+    "total": 85000,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 6,
+        "unitPrice": 3000,
+        "lineAmount": 18000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "C49859",
+    "image": "cslee33/11749859.png",
+    "family": "hankook-sundae",
+    "source": "https://cslee33.tistory.com/11749859",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "56b454f75ecac413072f036faa38996542c131a29cb7838258d3bfef32589dfe",
+    "total": 87300,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 5,
+        "unitPrice": 4000,
+        "lineAmount": 20000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "C49623",
+    "image": "cslee33/11749623-1.jpg",
+    "family": "eosa-chultto-isu-20191227",
+    "source": "https://cslee33.tistory.com/11749623",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "c01d717438392187f3ac4e26e2e6cee5bec7d92761dcc1a63226e43f1b77ba82",
+    "total": 394500,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 19,
+        "unitPrice": 4500,
+        "lineAmount": 85500
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "C49059",
+    "image": "cslee33/extra-11749059-4.jpg",
+    "family": "gopchangga-dongducheon",
+    "source": "https://cslee33.tistory.com/11749059",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "c01240b3f7003c830e2cd6f493e4293b41d57e2a91b70ba68f161c5e7b8dc89f",
+    "total": 54400,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 2,
+        "unitPrice": 4000,
+        "lineAmount": 8000
+      },
+      {
+        "category": "BEER",
+        "quantity": 2,
+        "unitPrice": 4000,
+        "lineAmount": 8000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "C49470",
+    "image": "cslee33/extra-11749470-1.jpg",
+    "family": "cheonggyesan",
+    "source": "https://cslee33.tistory.com/11749470",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "726cbabc8c50ab2dc7714ccb0dcf755dde59657241eaacacc5b82734015808be",
+    "total": 45000,
+    "drinks": [
+      {
+        "category": "MAKGEOLLI",
+        "quantity": 3,
+        "unitPrice": 3000,
+        "lineAmount": 9000
+      },
+      {
+        "category": "SOJU",
+        "quantity": 1,
+        "unitPrice": 4000,
+        "lineAmount": 4000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "C47325",
+    "image": "cslee33/extra-11747325-1.jpg",
+    "family": "myeongga-galbi-bupyeong",
+    "source": "https://cslee33.tistory.com/11747325",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "e44b252e53ad550da34f84d00f97d3a9e469839601d7c4cdcb1e1e2bada4e391",
+    "total": 84000,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 2,
+        "unitPrice": 3000,
+        "lineAmount": 6000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "K345",
+    "image": "kidm/345-0.jpg",
+    "family": "golmok-galbi-choryang",
+    "source": "https://kidm.tistory.com/345",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "2a68c66e85f0f11ce8fc251e1da6d3f1d91aa0dbfb96e6b56bc9c5c80c0b0934",
+    "total": 95600,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 3,
+        "unitPrice": 4000,
+        "lineAmount": 12000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "K399",
+    "image": "kidm/399-0.jpg",
+    "family": "sundae-maeul",
+    "source": "https://kidm.tistory.com/399",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "847b8a189b0cc6af60a9ee194bd9fe097ea70ac4484e94e3ee3fb49859f6aa65",
+    "total": 42000,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 3,
+        "unitPrice": 4000,
+        "lineAmount": 12000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "K263",
+    "image": "kidm/263-0.jpg",
+    "family": "naengsam-jip",
+    "source": "https://kidm.tistory.com/263",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "ce9eedc2231b517e83e85fe3c13d610cc12ee276425c9d458b2cdaba66f52339",
+    "total": 37500,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 2,
+        "unitPrice": 4000,
+        "lineAmount": 8000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "K860",
+    "image": "kidm/860-0.jpg",
+    "family": "woori-hanwoo",
+    "source": "https://kidm.tistory.com/860",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "6292ebc971798c1a82ee2c1e653e0d00d23964633c93371fe332f81b19ebd516",
+    "total": 124000,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 3,
+        "unitPrice": 4000,
+        "lineAmount": 12000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "K203",
+    "image": "kidm-extra/203.jpg",
+    "family": "ichadol-nampo",
+    "source": "https://kidm.tistory.com/203",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "98fceaed1c5808313ad373455774079827130757d715fd3194e96e875d3c4551",
+    "total": 52400,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 2,
+        "unitPrice": null,
+        "lineAmount": 8000
+      },
+      {
+        "category": "SOJU",
+        "quantity": 1,
+        "unitPrice": null,
+        "lineAmount": 4000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  },
+  {
+    "id": "K235",
+    "image": "kidm-extra/235.jpg",
+    "family": "busan-bulmakssam",
+    "source": "https://kidm.tistory.com/235",
+    "cohort": "new-web-printed-alcohol",
+    "sha256": "958c7467259f55fed99793ff0401058abe825e84664e98316a01c0532ebc0cff",
+    "total": 56500,
+    "drinks": [
+      {
+        "category": "SOJU",
+        "quantity": 3,
+        "unitPrice": 4000,
+        "lineAmount": 12000
+      }
+    ],
+    "labelScope": "visible category, quantity, printed unit price or null, line amount; not all nine fields",
+    "usage": "local comparison; original redistribution/product training permission not established"
+  }
+]

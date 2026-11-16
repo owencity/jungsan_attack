@@ -19,6 +19,16 @@
 
 jungsan-api.devkdk.com {
 	# OAuth code·state와 쿠키가 접근 로그에 남지 않도록 access log를 켜지 않는다.
+	@receipt path_regexp receipt ^/api/v1/(receipts/extract|gatherings/[0-9]+/settlement-units/[0-9]+/receipts/extract)$
+	handle @receipt {
+		reverse_proxy 127.0.0.1:18080 {
+			transport http {
+				dial_timeout 3s
+				# 내부 추론 40초·Spring 읽기 45초보다 길게 두며 다른 API는 30초를 유지한다.
+				response_header_timeout 55s
+			}
+		}
+	}
 	@application path /api/* /actuator/health
 	handle @application {
 		reverse_proxy 127.0.0.1:18080 {

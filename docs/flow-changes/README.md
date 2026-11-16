@@ -60,6 +60,7 @@
 
 | 번호 | 제목 | 상태 | 백엔드 반영·근거 | 파일 |
 |---|---|---|---|---|
+| FC-038 | 간단 N빵·영수증 촬영 입력 | 열림 · 서버·웹 완료, 앱 업로드·기기 확인 대기 | API v27 · 서버 ca07bdc 운영 반영 · [배포 기록](../operations/2026-11-16-receipt-quick-release.md) | [2026-11-15-receipt-quick-settlement.md](2026-11-15-receipt-quick-settlement.md) |
 | FC-037 | 총 정산인원과 차수별 참석 인원 분리 | 반영됨 · 서버·웹 운영, TestFlight 20 업로드 완료 | API v26·024/034 · 서버9880b58·웹1dd8974·앱6c59e61 · Android6 업로드·Apple 처리 확인 후속 · [배포 기록](../operations/2026-11-11-total-headcount-release.md) | [2026-11-11-total-headcount.md](2026-11-11-total-headcount.md) |
 | FC-036 | 추가 앱 설치와 이름 재입력 없이 로그인 | 서버·웹 반영됨 · TestFlight 19 업로드 완료 | API v25 · 앱 CI 완료, 실계정 로그인 확인 대기 | [2026-11-10-ios-review-auth-access.md](2026-11-10-ios-review-auth-access.md) |
 | FC-035 | 차수별 예상 참석 인원 | 반영됨 · FC-037과 함께 서버·웹 운영, TestFlight 20 업로드 완료 | API v24·023/033 · PR57 수정을 PR59·9880b58에 포함 · Android6 업로드·Apple 처리 확인 후속 | [2026-11-01-host-review.md](2026-11-01-host-review.md#2026-11-08-차수별-예상-인원) |
