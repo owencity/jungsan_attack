@@ -7,9 +7,13 @@
 > | POST /api/v1/receipts/extract | 로그인한 사용자의 간단 정산용 영수증 후보 추출. 사진·후보 저장 없음 |
 > | POST /api/v1/gatherings/{gid}/settlement-units/{sid}/receipts/extract | 활성 총무·OPEN 단위의 영수증 후보 추출. 추출 전후 권한 확인 |
 > | POST /api/v1/settlements/quick | `{total, headcount}`로 기존 core 계산. 본인 포함 2~50명, 저장 없는 N빵 결과 반환 |
+> | 차수 POST/PUT의 RoundRequest | 선택 `expectedInputRevision: Long?` 추가. 0 이상의 JSON 정수이며 생략·null은 기존 저장 동작 유지. 값을 보내면 해당 정산 단위의 잠금 안에서 현재 inputRevision과 비교 |
+> | 차수 저장 충돌·오류 | 버전 불일치 409 SETTLEMENT_INPUT_CHANGED, 잘못된 버전 형식·음수·범위 초과 400. 버전이 맞아도 확정 후에는 기존 409 SETTLEMENT_UNIT_NOT_OPEN으로 거절 |
 > | 사진·오류·호출 제한 | raw JPEG/PNG 8MiB, schemaVersion=2·requiresConfirmation=true. 사용자당 60초 10회·서버 동시 1건, 429/503 Retry-After |
 >
 > 앱은 최대 5장을 순서대로 인식하고 총무가 확인한 후보만 적용한다. 기존 금액 교체·추가를 명시적으로 선택한다. DB 스키마·기존 정산 계산·확정 스냅샷은 유지한다. 상세 계약은 [FC-038](flow-changes/2026-11-15-receipt-quick-settlement.md)을 따른다.
+>
+> OCR 차수 저장은 최근 조회한 `settlementUnits[].inputRevision`을 `expectedInputRevision`으로 보낸다. 조회 직후 다른 기기에서 입력을 고쳤다면 늦게 도착한 요청이 최신 금액·결제자·술 항목·예상 인원을 덮어쓰지 않도록 저장을 거절한다. 생략·null 요청에는 이 추가 버전 검사를 적용하지 않는다. 409를 받으면 최신 입력을 다시 확인하며, 버전 값만 갱신해서 같은 본문을 자동 재전송하지 않는다.
 
 > **v26 변경(2026-11-11)** — [FC-037 총 정산인원](flow-changes/2026-11-11-total-headcount.md). v24 차수별 인원과 v25 로그인 변경을 함께 포함한다.
 >
