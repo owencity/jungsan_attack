@@ -46,8 +46,8 @@ class ReceiptApiSpec : StringSpec({
             return fixture
         }
     }
-    fun service() = ReceiptService(access, client, admission)
-    fun mvc() = MockMvcBuilders.standaloneSetup(ReceiptController(service()))
+    fun service() = ReceiptService(access, client, admission, ReceiptPhotoReader())
+    fun mvc() = MockMvcBuilders.standaloneSetup(ReceiptController(service(), ReceiptReceptionService(access, ReceiptPhotoReader(), admission)))
         .setCustomArgumentResolvers(LoginUserArgumentResolver(jwt)).setControllerAdvice(GlobalExceptionHandler())
         .setMessageConverters(JacksonJsonHttpMessageConverter(mapper)).build()
     beforeTest { calls = 0; checks = 0; error = null; afterCallError = null; enabled = true; failure = null; admission = ReceiptAdmission() }

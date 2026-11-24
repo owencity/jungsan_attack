@@ -10,7 +10,12 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/v1/gatherings/{gid}/settlement-units/{sid}/receipts")
-class ReceiptController(private val service: ReceiptService) {
+class ReceiptController(private val service: ReceiptService, private val reception: ReceiptReceptionService) {
+    @PostMapping("/receive")
+    fun receive(@LoginUser userId: Long, @PathVariable gid: Long, @PathVariable sid: Long, request: HttpServletRequest): ResponseEntity<ReceiptReceptionResponse> =
+        ResponseEntity.ok().header("Cache-Control", "no-store").body(
+            reception.receive(gid, sid, userId, request.contentType, request.contentLengthLong) { request.inputStream })
+
     @PostMapping("/extract")
     fun extract(@LoginUser userId: Long, @PathVariable gid: Long, @PathVariable sid: Long, request: HttpServletRequest): ResponseEntity<ReceiptExtractionResponse> =
         ResponseEntity.ok().header("Cache-Control", "no-store").body(
